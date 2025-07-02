@@ -1,0 +1,17 @@
+category: Performance
+description: Second rule, which has no node_id
+impact: Best Practice
+likelihood: 1
+node_id: ''
+product_code: rhev
+publish_date: '2018-09-23 15:38:55+00:00'
+python_module: test_rules
+reboot_required: false
+resolution_risk: Adjust Service Status
+role: manager
+status: active
+tags:
+- active
+- kernel
+- second
+- testing

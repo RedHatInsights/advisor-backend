@@ -1,0 +1,31 @@
+[{ "model": "api.systemtype", "pk": 9,
+    "fields": {"role": "host","product_code": "docker"}
+},{ "model": "api.systemtype", "pk": 19,
+    "fields": {"role": "container", "product_code": "docker"}
+},{ "model": "api.systemtype", "pk": 29,
+    "fields": {"role": "image", "product_code": "docker"}
+},{ "model": "api.systemtype", "pk": 39,
+    "fields": {"role": "controller", "product_code": "osp"}
+},{ "model": "api.systemtype", "pk": 49,
+    "fields": {"role": "compute", "product_code": "osp"}
+},{ "model": "api.systemtype", "pk": 59,
+    "fields": {"role": "director", "product_code": "osp"}
+},{ "model": "api.systemtype", "pk": 69,
+    "fields": {"role": "cluster", "product_code": "osp"}
+},{ "model": "api.systemtype", "pk": 79,
+    "fields": {"role": "host", "product_code": "aep"}
+},{ "model": "api.systemtype", "pk": 89,
+    "fields": {"role": "manager", "product_code": "rhev"}
+},{ "model": "api.systemtype", "pk": 99,
+    "fields": {"role": "hypervisor", "product_code": "rhev"}
+},{ "model": "api.systemtype", "pk": 105,
+    "fields": {"role": "host", "product_code": "rhel"}
+},{ "model": "api.systemtype", "pk": 315,
+    "fields": {"role": "cluster", "product_code": "rhev"}
+},{ "model": "api.systemtype", "pk": 325,
+    "fields": {"role": "cluster", "product_code": "ocp"}
+},{ "model": "api.systemtype", "pk": 335,
+    "fields": {"role": "master", "product_code": "ocp"}
+},{ "model": "api.systemtype", "pk": 345,
+    "fields": {"role": "node", "product_code": "ocp"}
+}]

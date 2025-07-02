@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_ack_views.AckCountViewTestCase-20250630235930" tests="5" file="api/tests/test_ack_views.py" time="0.304" timestamp="2025-06-30T23:59:30" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_detail" time="0.268" timestamp="2025-06-30T23:59:30" file="advisor/api/tests/test_ack_views.py" line="415"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_detail_invalid_rule_id" time="0.005" timestamp="2025-06-30T23:59:30" file="advisor/api/tests/test_ack_views.py" line="452"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_endpoint_access_fails_for_non_internal_user" time="0.006" timestamp="2025-06-30T23:59:30" file="advisor/api/tests/test_ack_views.py" line="469"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_list" time="0.004" timestamp="2025-06-30T23:59:30" file="advisor/api/tests/test_ack_views.py" line="400"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_add_deleting_acks_to_modify_ack_counts" time="0.021" timestamp="2025-06-30T23:59:30" file="advisor/api/tests/test_ack_views.py" line="426"/>
+</testsuite>

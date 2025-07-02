@@ -1,0 +1,134 @@
+[
+  {
+    "model": "api.pathway",
+    "pk": 1,
+    "fields": {
+      "slug": "test-component-1",
+      "name": "test component 1",
+      "description": "Testing Component 1",
+      "component": "test1",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2018-05-23T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 2,
+    "fields": {
+      "slug": "test-component-2",
+      "name": "test component 2",
+      "description": "Testing Component 2",
+      "component": "test2",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2018-05-23T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 3,
+    "fields": {
+      "slug": "upgrade-kernel",
+      "name": "Upgrade Kernel",
+      "description": "Upgrade your kernel to avoid problems with boot failures, kernel panic situations, or system performance degradations.",
+      "component": "kernel",
+      "resolution_risk_name": "Upgrade Kernel",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 4,
+    "fields": {
+      "slug": "update-networkmanager-package",
+      "name": "Update NetworkManager Package",
+      "description": "Prevent drops in network performance and network connectivity losses by updating the NetworkManager package.",
+      "component": "NetworkManager",
+      "resolution_risk_name": "Update Package",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 5,
+    "fields": {
+      "slug": "update-grub-kernel-boot-options",
+      "name": "Update GRUB Kernel Boot Options",
+      "description": "Stay on top of system boot failures, kernel panics, kdump failures and other issues by updating your kernel boot options.",
+      "component": "grub",
+      "resolution_risk_name": "Update Kernel Boot Options",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 6,
+    "fields": {
+      "slug": "virtual-memory-sysctl-parameter-tuning",
+      "name": "Virtual Memory Sysctl Parameter Tuning",
+      "description": "Avoid issues with system memory, kernel panics, and improve performance of DBs by modifying kernel parameters using sysctl.",
+      "component": "sysctl.vm",
+      "resolution_risk_name": "Sysctl Parameter Tuning",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 7,
+    "fields": {
+      "slug": "update-httpd-service-configuration",
+      "name": "Update HTTPD Service Configuration",
+      "description": "Improve security posture and prevent availability issues by updating the service configuration of httpd.",
+      "component": "httpd",
+      "resolution_risk_name": "Update Service Configuration",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 8,
+    "fields": {
+      "slug": "pathway-with-incident",
+      "name": "Pathway with an incident",
+      "description": "A Pathway that contains an incident.",
+      "component": "has-incident",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 9,
+    "fields": {
+      "slug": "pathway-without-incident",
+      "name": "Pathway without an incident",
+      "description": "A Pathway that does not contain an incident.",
+      "component": "no-incident",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 10,
+    "fields": {
+      "slug": "pathway-requiring-reboot",
+      "name": "Pathway requiring a reboot",
+      "description": "A Pathway that requires reboot",
+      "component": "requires-reboot",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 11,
+    "fields": {
+      "slug": "pathway-no-reboot",
+      "name": "Pathway no reboot",
+      "description": "A Pathway that does not require reboot",
+      "component": "no-reboot",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2021-07-28T15:38:55Z"
+    }
+  }
+]

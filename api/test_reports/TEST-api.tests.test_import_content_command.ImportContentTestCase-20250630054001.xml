@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content_command.ImportContentTestCase-20250630054001" tests="6" file="api/tests/test_import_content_command.py" time="1.331" timestamp="2025-06-30T05:40:20" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_autoack_import" time="0.277" timestamp="2025-06-30T05:40:19" file="advisor/api/tests/test_import_content_command.py" line="322"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_basic_import_rule_config" time="0.110" timestamp="2025-06-30T05:40:19" file="advisor/api/tests/test_import_content_command.py" line="262"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_basic_import_rule_content" time="0.141" timestamp="2025-06-30T05:40:19" file="advisor/api/tests/test_import_content_command.py" line="277"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_dump_load" time="0.188" timestamp="2025-06-30T05:40:19" file="advisor/api/tests/test_import_content_command.py" line="446"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_dump_load_compressed" time="0.197" timestamp="2025-06-30T05:40:20" file="advisor/api/tests/test_import_content_command.py" line="497"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_update" time="0.417" timestamp="2025-06-30T05:40:20" file="advisor/api/tests/test_import_content_command.py" line="361">
+		<!--
+        Test updates to content.
+        -->
+	</testcase>
+</testsuite>

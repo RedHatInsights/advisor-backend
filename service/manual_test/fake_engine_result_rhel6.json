@@ -1,0 +1,110 @@
+{
+  "input": {
+    "host": {
+      "org_id": "9876543",
+      "account": "1234567",
+      "ansible_host": null,
+      "bios_uuid": null,
+      "created": null,
+      "culled_timestamp": null,
+      "display_name": "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test",
+      "external_id": null,
+      "fqdn": "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test",
+      "id": "57c4c38b-a8c6-4289-9897-223681fd804d",
+      "insights_id": "45bdd8ce-36e6-4861-a4dd-cd69af79f6f1",
+      "ip_addresses": [],
+      "mac_addresses": [],
+      "reporter": "puptoo",
+      "rhel_machine_id": null,
+      "satellite_id": null,
+      "stale_timestamp": "2020-02-12T12:30:21.831767+00:00",
+      "stale_warning_timestamp": "2020-02-12T12:30:21.831767+00:00",
+      "subscription_manager_id": "f0025e01-52ce-4681-ab88-f3ed0657fa95",
+      "system_profile": {},
+      "tags": [{"namespace": "foo", "key": "bar", "value": "buzz"},
+               {"namespace": "sample", "key": "tag", "value": "1"},
+               {"namespace": "sample", "key": "tag", "value": "2"}],
+      "updated": null
+    },
+    "platform_metadata": {
+      "org_id": "9876543",
+      "account": "1234567",
+      "b64_identity": "eyJpZGVudGl0eSI6eyJpbnRlcm5hbCI6eyJvcmdfaWQiOiI3MTE0OTciLCJhdXRoX3RpbWUiOjB9LCJhY2NvdW50X251bWJlciI6IjQ3NzkzMSIsImF1dGhfdHlwZSI6ImJhc2ljLWF1dGgiLCJ1c2VyIjp7ImZpcnN0X25hbWUiOiJRdWFsaXR5IiwibGFzdF9uYW1lIjoiQXNzdXJhbmNlIiwiaXNfaW50ZXJuYWwiOnRydWUsImlzX2FjdGl2ZSI6dHJ1ZSwibG9jYWxlIjoiZW5fVVMiLCJpc19vcmdfYWRtaW4iOnRydWUsInVzZXJuYW1lIjoicWFAcmVkaGF0LmNvbSIsImVtYWlsIjoicWErcWFAcmVkaGF0LmNvbSJ9LCJ0eXBlIjoiVXNlciJ9LCJlbnRpdGxlbWVudHMiOnsiaW5zaWdodHMiOnsiaXNfZW50aXRsZWQiOnRydWV9LCJjb3N0X21hbmFnZW1lbnQiOnsiaXNfZW50aXRsZWQiOnRydWV9LCJhbnNpYmxlIjp7ImlzX2VudGl0bGVkIjpmYWxzZX0sIm9wZW5zaGlmdCI6eyJpc19lbnRpdGxlZCI6dHJ1ZX0sInNtYXJ0X21hbmFnZW1lbnQiOnsiaXNfZW50aXRsZWQiOnRydWV9LCJtaWdyYXRpb25zIjp7ImlzX2VudGl0bGVkIjp0cnVlfX19",
+      "category": "collection",
+      "elapsed_time": 1581510621.724584,
+      "extras": {},
+      "host": {},
+      "id": "57c4c38b-a8c6-4289-9897-223681fd804d",
+      "metadata": {
+        "fqdn": "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test",
+        "insights_id": "45bdd8ce-36e6-4861-a4dd-cd69af79f6f1",
+        "machine_id": "436b7059-6588-4873-9592-61c1174613e0"
+      },
+      "payload_id": null,
+      "principal": "711497",
+      "request_id": "33689b60f49144abb64450e30b8c0f95",
+      "satellite_managed": null,
+      "service": "advisor",
+      "size": 524,
+      "test": null,
+      "timestamp": "2020-02-12T12:30:20.713120676Z",
+      "url": "http://localhost/sample_archive_rhel.tar.gz",
+      "validation": null
+    },
+    "timestamp": "2020-02-12T12:30:21.831767+00:00",
+    "type": "updated"
+  },
+  "results": {
+    "fingerprints": [],
+    "reports": [
+      {"rule_id": "test|Active_rule", "component": "prodsec.rules.security_stats_rhel_version.report", "type": "rule", "key": "STATS_RHEL7", "details": {"release": "Red Hat Enterprise Linux Server release 7.5 (Maipo)", "type": "rule", "error_key": "STATS_RHEL7"}, "tags": [], "links": {}},
+      {"rule_id": "test|Second_rule", "component": "prodsec.rules.bash_injection.report", "type": "rule", "key": "VULNERABLE_BASH_DETECTED", "details": {"package": "bash-4.2.45-5.el7_0.2", "cves_fail": ["CVE-2014-6271", "CVE-2014-7169"], "cves_pass": [], "type": "rule", "error_key": "VULNERABLE_BASH_DETECTED"}, "tags": [], "links": {"kcs": ["https://access.redhat.com/articles/1200223 ", "https://access.redhat.com/articles/1213683 "], "bugzilla": ["https://bugzilla.redhat.com/show_bug.cgi?id=1141597 ", "https://bugzilla.redhat.com/show_bug.cgi?id=1146319 "]}},
+      {"rule_id": "rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1", "component": "telemetry.rules.plugins.leapp.rhel6_upgrade.report", "type": "rule", "key": "RHEL6_HAS_TO_UPGRADE_WARN_V1", "details": {"release": "Red Hat Enterprise Linux Server release 6.10 (Santiago)", "kernel": "2.6.32-754.50.1.el6.x86_64", "type": "rule", "error_key": "RHEL6_HAS_TO_UPGRADE_WARN_V1"}, "tags": [], "links": {"jira": ["https://issues.redhat.com/browse/RHINENG-10287"], "kcs": ["https://access.redhat.com/solutions/7073474"]}}
+    ],
+    "system": {
+      "hostname": "pit-med-03",
+      "metadata": {
+        "bios_information": {
+          "bios_revision": "2.0",
+          "release_date": "02/16/2016",
+          "vendor": "Dell Inc.",
+          "version": "2.0.1"
+        },
+        "listening_processes": [
+          {
+            "ip_addr": "",
+            "port": "::5355",
+            "process_name": "systemd-resolv"
+          },
+          {
+            "ip_addr": "",
+            "port": "::111",
+            "process_name": "systemd"
+          },
+          {
+            "ip_addr": "",
+            "port": "::22",
+            "process_name": "sshd"
+          }
+        ],
+        "release": "Red Hat Enterprise Linux release 6.10 (Santiago)",
+        "rhel_version": "6.10",
+        "system_information": {
+          "family": "Not Specified",
+          "manufacturer": "Dell Inc.",
+          "product_name": "PowerEdge M630",
+          "virtual_machine": false
+        },
+        "timezone_information": {
+          "timezone": "EDT",
+          "utcoffset": -14400
+        }
+      },
+      "product": "rhel",
+      "remote_branch": -1,
+      "remote_leaf": -1,
+      "system_id": "7d7ef554-7812-460a-b4b7-519544251e2c",
+      "type": "host"
+    }
+  }
+}

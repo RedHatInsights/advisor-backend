@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_hostack_views.HostAckViewTestCase-20250630235212" tests="15" file="api/tests/test_hostack_views.py" time="0.239" timestamp="2025-06-30T23:52:20" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_add" time="0.062" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="113"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_add_cert_auth" time="0.033" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="175"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_add_exceptions" time="0.013" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="256"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_add_service_account" time="0.033" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="215"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_delete" time="0.009" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="366"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_delete_cert_auth" time="0.010" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="381"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_delete_errors" time="0.004" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="411"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_delete_service_account" time="0.009" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="396"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_edit_justification" time="0.012" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="306"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_edit_justification_cert_auth" time="0.012" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="333"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_list" time="0.010" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="41"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_list_filter_rule_ids" time="0.006" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="64"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_list_filter_system_profile" time="0.016" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="78"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_list_other_account" time="0.004" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="103"/>
+	<testcase classname="api.tests.test_hostack_views.HostAckViewTestCase" name="test_hostack_update_justification_exceptions" time="0.004" timestamp="2025-06-30T23:52:20" file="advisor/api/tests/test_hostack_views.py" line="360"/>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rule_topic_views.RuleTopicViewsTestCase-20250630054001" tests="8" file="api/tests/test_rule_topic_views.py" time="0.443" timestamp="2025-06-30T05:40:35" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_enable_disable_topic" time="0.109" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="103"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_rules_with_tag" time="0.056" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="326"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_create_destroy" time="0.104" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="187"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_detail" time="0.030" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="85"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_list" time="0.025" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="44"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_list_system_profile_filter" time="0.021" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="67"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_systems" time="0.040" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="149"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_update" time="0.058" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_topic_views.py" line="281"/>
+</testsuite>

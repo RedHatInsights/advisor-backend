@@ -1,0 +1,82 @@
+- name: bootc upgrade
+  hosts: localhost
+  become: true
+  gather_facts: false
+  vars:
+    insights_signature_exclude: /hosts,/vars/insights_signature
+    insights_signature: !!binary |
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
+      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU205SVNsWjRRVUZ2U2tWTmRuYzFPRVFyYWpWd1Ru
+      VnVZMUZCUzBoS2RTdG9RMDVCVTFWNFF6STROM1ZVZG5FeGFHNEtlVVl6WjFZd1pISmtWbGRYVFV3
+      NVpVNTZabEZFVEN0NmVrdElaa1JoYzFsMlMyNVpSV3N6VVUxcWFUbFVTVXd2Y21GMk4yNXdTMWhF
+      V1VKRGVVSnVTZ3BhTlZCeFVXUmhZakk1ZEZaSFNqUnNXVXBvUlVGc1VsWm5RaTgzV2k4MVZGY3pV
+      emRUVDA5Mk5UUklRbFZDUzFsa0wzQTVORGh2TTNsVlVXOVJkVTVUQ2sxUFVHTXlWbFY2UlRaNVZX
+      dExXVFUwYUZjemJsbHlWMjkwWlRrMFN6TmlRVzFtUWxsb1RsWTJkR000TWtSUkswTTRTREJRTDNG
+      c1dFMVBiVVpvWXpBS1N6bEdjVU14Y1VsellVOWxUMnRGVm1KelpYSjZlQ3RCUnpoM2VFeFBkbGQz
+      Ym5VclUzRmlNbXBLT0hsVVRHTjJSRlozYm1vclFUTnplbk15VG1GT1dBcFhLMDE0Ym1KVVMwUjFT
+      MmcxWTFOTFlrTXJWVWt3ZW1oYVRXTnVkbkUzVTNCdlkweDJUV2M0UVZCWlRsTkZNVGhTY201V2Fp
+      OWhaR1JyUkdseWVIRmxDa1JEWlRablFYZE1RMkZUWVVSUU0waDNWR1ZqYkVKTk5HbDNjbVExYkRo
+      QmRIcHdSbkUwTW1kQmMwNVhWVzkxUW5CQ1pqVnNZakFyTVdGbmJtNUdVbmtLWlhWRk9VZHdNV1o0
+      TlRGemVqRlpRamhJVDFONlJtaHpiMll2ZDBkRVFVZEZlR1ZNVTBoSWFYRXlUMWhYSzNkRk56SjJX
+      V04zUVdGNFEwcGFlR2xQUmdvMmJISnFkU3RVVlhONllqaE1ialJsV1hCWk1EWlBSelZJYUV4bU5s
+      aENXVVJRYkdGTFRGUllhVUZhU213M1RrUmpibmhzWlUxc1ltMTROakpHZDNOR0NtSjVielZHU2pO
+      dlNHUnBNMGh3YVVOVmNubENVRE01YlRkbFJVbFFiV3AzV0RKa1lVaEVaM1JxYWtabFUyVjZhRWh3
+      T0UxUWMzQTJPRFJNZFRFNUsxQUtNMHR2YlRWa2RTdHlTMU5rTVdwalpuZFpaVkZ4VkdGS1JEQnJT
+      VmhJYVV4S05WcDRRMGQwV0ZJNFZIcERjM1pCTDB0NlUxTXZialpHVERGYWIzbFBiZ3BDV21WUFdX
+      cG9TRFpwVjNkTVVtOVNVMUpqZEFvOVRDODRaUW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
+      RkxTMHRMUzBL
+  tasks:
+    - name: Run bootc status to determine bootc image
+      ansible.builtin.shell: "(bootc status --format=json 2>/dev/null || bootc status --json) | jq -r '.status.booted.image.image.image // .spec.image.image'"
+      register: bootc_status_results
+    - name: Using bootc image from bootc status output {{bootc_status_results.stdout}}
+      ansible.builtin.set_fact:
+        bootc_image: "{{bootc_status_results.stdout}}"
+
+    - name: Execute bootc upgrade
+      ansible.builtin.shell: "NO_COLOR=1 bootc upgrade 2>&1"
+      register: command_results
+      no_log: true
+      ignore_errors: true
+
+    - block:
+        - when: "command_results.rc != 0 or 'Queued for next boot' not in command_results.stdout"
+          name: Set result for bootc upgrade failure
+          ansible.builtin.set_fact:
+            task_results:
+              report: "{{command_results.stdout}}\n{{command_results.stderr}}"
+              message: "bootc upgrade failed.  Expand for details."
+              alert: "{{command_results.rc != 0}}"
+
+        - name: Fail playbook if bootc upgrade failed
+          ansible.builtin.fail:
+            msg: "bootc upgrade failed somehow.  Ensure the playbook fails as well."
+          when: task_results is defined
+
+        - when: task_results is not defined
+          name: Set result for bootc upgrade successful completion
+          ansible.builtin.set_fact:
+            task_results:
+              report: ""
+              message: "bootc upgrade of '{{bootc_image}}' completed successfully."
+              alert: false
+
+        - when: "'Queued for next boot' in command_results.stdout"
+          block:
+            - name: Schedule insights-client after boot
+              file:
+                path: "/etc/insights-client/.run_insights_client_next_boot"
+                state: touch
+            - name: Enable boot service
+              systemd:
+                name: insights-client-boot.service
+                enabled: true
+              ignore_errors: true
+            - name: Reboot system
+              shell: sleep 10 && shutdown -r now "Ansible triggered reboot" &
+              ignore_errors: true
+
+      always:
+        - name: Print Task Result
+          ansible.builtin.debug:
+            var: task_results

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content_command.FullImportContentTestCase-20250630235212" tests="2" file="api/tests/test_import_content_command.py" time="85.438" timestamp="2025-06-30T23:53:51" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content_command.FullImportContentTestCase" name="test_basic_import_rule_config" time="27.306" timestamp="2025-06-30T23:52:52" file="advisor/api/tests/test_import_content_command.py" line="581"/>
+	<testcase classname="api.tests.test_import_content_command.FullImportContentTestCase" name="test_resolution_multi_system_fix" time="58.132" timestamp="2025-06-30T23:53:51" file="advisor/api/tests/test_import_content_command.py" line="592"/>
+</testsuite>

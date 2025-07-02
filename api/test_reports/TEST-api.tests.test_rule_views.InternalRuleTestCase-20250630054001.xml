@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rule_views.InternalRuleTestCase-20250630054001" tests="2" file="api/tests/test_rule_views.py" time="0.115" timestamp="2025-06-30T05:40:35" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rule_views.InternalRuleTestCase" name="test_rule_list_detail" time="0.094" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_views.py" line="1763"/>
+	<testcase classname="api.tests.test_rule_views.InternalRuleTestCase" name="test_rule_reports_content_preview" time="0.021" timestamp="2025-06-30T05:40:35" file="advisor/api/tests/test_rule_views.py" line="1822"/>
+</testsuite>

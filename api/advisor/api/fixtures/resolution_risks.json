@@ -1,0 +1,778 @@
+[
+  {
+    "model": "api.resolutionrisk",
+    "pk": 1,
+    "fields": {
+      "name": "Adjust Service Status",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 2,
+    "fields": {
+      "name": "BIOS Parameter Adjustment",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 3,
+    "fields": {
+      "name": "Hardware Vendor Firmware Update",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 4,
+    "fields": {
+      "name": "Activate SELinux",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 5,
+    "fields": {
+      "name": "Adjust Tuned Profile",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 6,
+    "fields": {
+      "name": "Add System Resource",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 7,
+    "fields": {
+      "name": "Adjust Time",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 8,
+    "fields": {
+      "name": "Apply kpatch for Kernel",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 9,
+    "fields": {
+      "name": "Apply kmod",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 10,
+    "fields": {
+      "name": "Change Cloud Instance",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 11,
+    "fields": {
+      "name": "Change AWS AMI",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 12,
+    "fields": {
+      "name": "Change Cluster Infrastructure",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 13,
+    "fields": {
+      "name": "Change CPU Type",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 14,
+    "fields": {
+      "name": "Change Package Version",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 15,
+    "fields": {
+      "name": "Clean Database",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 16,
+    "fields": {
+      "name": "Clean Disk Space",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 17,
+    "fields": {
+      "name": "Configure SELinux",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 18,
+    "fields": {
+      "name": "Configure fstab",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 19,
+    "fields": {
+      "name": "Configure Hostname",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 20,
+    "fields": {
+      "name": "Configure Users or Groups",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 21,
+    "fields": {
+      "name": "Contact Red Hat Support",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 22,
+    "fields": {
+      "name": "CPU Performance Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 23,
+    "fields": {
+      "name": "Disable Swap",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 24,
+    "fields": {
+      "name": "Docker Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 25,
+    "fields": {
+      "name": "Downgrade Package",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 26,
+    "fields": {
+      "name": "Eliminate Orphaned Semaphores",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 27,
+    "fields": {
+      "name": "Hardware Vendor Analysis",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 28,
+    "fields": {
+      "name": "Increase Kdump Target Size",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 29,
+    "fields": {
+      "name": "Increase Memory Size",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 30,
+    "fields": {
+      "name": "Inspect Hardware",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 31,
+    "fields": {
+      "name": "Install Package",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 32,
+    "fields": {
+      "name": "Limits Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 33,
+    "fields": {
+      "name": "Load Module",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 34,
+    "fields": {
+      "name": "Migrate Database",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 35,
+    "fields": {
+      "name": "Migrate Filesystem",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 36,
+    "fields": {
+      "name": "Network Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 37,
+    "fields": {
+      "name": "OpenStack Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 38,
+    "fields": {
+      "name": "Openshift Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 39,
+    "fields": {
+      "name": "Openshift Configuration Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 40,
+    "fields": {
+      "name": "Pacemaker Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 41,
+    "fields": {
+      "name": "RHV Storage Tuning",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 42,
+    "fields": {
+      "name": "Rebuild RPM Database",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 43,
+    "fields": {
+      "name": "Rebuild Initramfs",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 44,
+    "fields": {
+      "name": "Reinstall Kernel",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 45,
+    "fields": {
+      "name": "Reinstall Package",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 46,
+    "fields": {
+      "name": "Remount Filesystem",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 47,
+    "fields": {
+      "name": "Remove Package",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 48,
+    "fields": {
+      "name": "Restart Container",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 49,
+    "fields": {
+      "name": "Restart libvirtd",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 50,
+    "fields": {
+      "name": "Software Vendor Analysis",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 51,
+    "fields": {
+      "name": "Storage Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 52,
+    "fields": {
+      "name": "Sysctl Parameter Tuning",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 53,
+    "fields": {
+      "name": "Systemd Daemon Reload",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 54,
+    "fields": {
+      "name": "Update Ceph Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 55,
+    "fields": {
+      "name": "Update Ceph Deployment",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 56,
+    "fields": {
+      "name": "Update Certificate",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 57,
+    "fields": {
+      "name": "Update Cluster Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 58,
+    "fields": {
+      "name": "Update Commonly Used Library",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 59,
+    "fields": {
+      "name": "Update Database Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 60,
+    "fields": {
+      "name": "Update File Permission",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 61,
+    "fields": {
+      "name": "Update Firewall",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 62,
+    "fields": {
+      "name": "Update Grub Configuration",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 63,
+    "fields": {
+      "name": "Update License",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 64,
+    "fields": {
+      "name": "Update IPA Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 65,
+    "fields": {
+      "name": "Update IPMIlan Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 66,
+    "fields": {
+      "name": "Update Insights Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 67,
+    "fields": {
+      "name": "Update JBoss Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 68,
+    "fields": {
+      "name": "Update LVM Configuration",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 69,
+    "fields": {
+      "name": "Update Libraries Symbolic Link",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 70,
+    "fields": {
+      "name": "Update Module Parameter",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 71,
+    "fields": {
+      "name": "Update Mount Parameter",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 72,
+    "fields": {
+      "name": "Update Network Configuration",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 73,
+    "fields": {
+      "name": "Update OpenStack Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 74,
+    "fields": {
+      "name": "Update Openshift Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 75,
+    "fields": {
+      "name": "Update Package",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 76,
+    "fields": {
+      "name": "Update RHV Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 77,
+    "fields": {
+      "name": "Update RHSM Configuration",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 78,
+    "fields": {
+      "name": "Update Registration Info",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 79,
+    "fields": {
+      "name": "Update Satellite Configuration",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 80,
+    "fields": {
+      "name": "Update Service Configuration",
+      "risk": 1
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 81,
+    "fields": {
+      "name": "Update Storage Configuration",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 82,
+    "fields": {
+      "name": "Update Swap Configuration",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 83,
+    "fields": {
+      "name": "Update Third-party Software",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 84,
+    "fields": {
+      "name": "Update Kernel Boot Options",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 85,
+    "fields": {
+      "name": "Update Kernel Parameter",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 86,
+    "fields": {
+      "name": "Update Kdump Parameter",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 87,
+    "fields": {
+      "name": "Upgrade Kernel",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 88,
+    "fields": {
+      "name": "Upgrade Openshift",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 89,
+    "fields": {
+      "name": "Upgrade Openstack",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 90,
+    "fields": {
+      "name": "Upgrade Ceph Cluster",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 91,
+    "fields": {
+      "name": "Upgrade RHV Hypervisor",
+      "risk": 2
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 92,
+    "fields": {
+      "name": "Upgrade RHV Manager",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 93,
+    "fields": {
+      "name": "Upgrade Satellite",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 94,
+    "fields": {
+      "name": "Upgrade Product",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 95,
+    "fields": {
+      "name": "Upgrade RHEL",
+      "risk": 3
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 96,
+    "fields": {
+      "name": "Use Unprivileged User",
+      "risk": 4
+    }
+  },
+  {
+    "model": "api.resolutionrisk",
+    "pk": 97,
+    "fields": {
+      "name": "null",
+      "risk": 1
+    }
+  }
+]

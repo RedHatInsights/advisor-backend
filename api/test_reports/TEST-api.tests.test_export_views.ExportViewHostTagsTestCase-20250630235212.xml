@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_export_views.ExportViewHostTagsTestCase-20250630235212" tests="2" file="api/tests/test_export_views.py" time="0.093" timestamp="2025-06-30T23:52:16" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_export_views.ExportViewHostTagsTestCase" name="test_host_and_rule_export" time="0.031" timestamp="2025-06-30T23:52:16" file="advisor/api/tests/test_export_views.py" line="946">
+		<!--
+        Tests of host_and_rule export; no Inventory testing yet.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_export_views.ExportViewHostTagsTestCase" name="test_systems_export" time="0.062" timestamp="2025-06-30T23:52:16" file="advisor/api/tests/test_export_views.py" line="1011">
+		<!--
+        Tests of Systems export
+        -->
+	</testcase>
+</testsuite>

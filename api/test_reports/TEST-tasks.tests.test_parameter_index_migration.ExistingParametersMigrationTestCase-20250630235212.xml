@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_parameter_index_migration.ExistingParametersMigrationTestCase-20250630235212" tests="1" file="tasks/tests/test_parameter_index_migration.py" time="3.070" timestamp="2025-06-30T23:54:35" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_parameter_index_migration.ExistingParametersMigrationTestCase" name="test_params_have_id_index" time="3.070" timestamp="2025-06-30T23:54:35" file="advisor/tasks/tests/test_parameter_index_migration.py" line="43"/>
+</testsuite>

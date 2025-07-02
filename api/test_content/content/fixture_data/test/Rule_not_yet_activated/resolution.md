@@ -1,0 +1,1 @@
+This rule has {{=pydata.notactivated}} yet

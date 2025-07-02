@@ -1,0 +1,52 @@
+---
+
+- hosts: dbservers
+  vars:
+    postgresql_version: "10"
+    postgresql_server_listen: "'*'"
+    postgresql_server_auth:
+    - database: insightsapi
+      user: insightsapi
+      address: 0.0.0.0/0
+    postgresql_databases:
+    - name: insightsapi
+      owner: insightsapi
+    postgresql_users:
+    - user: insightsapi
+      password: InsightsData
+      databases: [insightsapi]
+  pre_tasks:
+    - name: include db config vars
+      include_vars: "vars/{{ env }}.yml"
+      tags: ["always"]
+    - name: install postgresql10-contrib
+      package:
+        name: "postgresql{{ postgresql_version }}-contrib"
+        state: present
+    - name: install hll
+      package:
+        name: "hll_{{ postgresql_version }}"
+        state: present
+    - name: create hll extension
+      become: true
+      become_user: postgres
+      shell: psql -c 'create extension if not exists hll'
+    - name: check if insightsapi db exists
+      become: true
+      become_user: postgres
+      shell: psql -c '\l' | grep insightsapi
+      register: db_exists
+      ignore_errors: true
+    - name: drop insightsapi database
+      become: true
+      become_user: postgres
+      command: dropdb insightsapi
+      when: env == "restore" and db_exists
+  post_tasks:
+    - name: grant superuser to 'insightsapi'
+      become: true
+      become_user: postgres
+      command: psql -c 'ALTER USER insightsapi WITH SUPERUSER'
+  roles:
+    - "ome.postgresql"
+

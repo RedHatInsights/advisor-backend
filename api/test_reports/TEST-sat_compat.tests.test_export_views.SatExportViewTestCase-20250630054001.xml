@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_export_views.SatExportViewTestCase-20250630054001" tests="4" file="sat_compat/tests/test_export_views.py" time="0.149" timestamp="2025-06-30T05:40:56" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_export_views.SatExportViewTestCase" name="test_reports_export" time="0.019" timestamp="2025-06-30T05:40:56" file="advisor/sat_compat/tests/test_export_views.py" line="80">
+		<!--
+        Tests of reports export.
+        -->
+	</testcase>
+	<testcase classname="sat_compat.tests.test_export_views.SatExportViewTestCase" name="test_reports_export_cert_auth" time="0.102" timestamp="2025-06-30T05:40:56" file="advisor/sat_compat/tests/test_export_views.py" line="125">
+		<!--
+        Tests of reports export with Satellite certificate authentication.
+        -->
+	</testcase>
+	<testcase classname="sat_compat.tests.test_export_views.SatExportViewTestCase" name="test_systems_export" time="0.017" timestamp="2025-06-30T05:40:56" file="advisor/sat_compat/tests/test_export_views.py" line="165">
+		<!--
+        Tests of systems export.
+        -->
+	</testcase>
+	<testcase classname="sat_compat.tests.test_export_views.SatExportViewTestCase" name="test_systems_export_cert_auth" time="0.011" timestamp="2025-06-30T05:40:56" file="advisor/sat_compat/tests/test_export_views.py" line="210">
+		<!--
+        Tests of systems export with Satellite certificate authentication.
+        -->
+	</testcase>
+</testsuite>

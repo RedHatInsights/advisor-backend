@@ -1,0 +1,43 @@
+postgresql_server_conf:
+  TimeZone: UTC
+  application_name: psql
+  autovacuum: 'off'
+  checkpoint_completion_target: 0.9
+  client_encoding: UTF8
+  default_statistics_target: 500
+  default_text_search_config: '''pg_catalog.english'''
+  effective_cache_size: 5898240
+  effective_io_concurrency: 200
+  fsync: 'off'
+  full_page_writes: 'off'
+  huge_pages: 'off'
+  lc_messages: '''en_US.UTF-8'''
+  lc_monetary: '''en_US.UTF-8'''
+  lc_numeric: '''en_US.UTF-8'''
+  lc_time: '''en_US.UTF-8'''
+  listen_addresses: '''*'''
+  log_line_prefix: '''< %m > '''
+  log_rotation_size: 0kB
+  log_timezone: UTC
+  log_truncate_on_rotation: 'on'
+  logging_collector: 'on'
+  maintenance_work_mem: 2097152kB
+  max_connections: 40
+  max_parallel_workers_per_gather: 4
+  max_stack_depth: 2048kB
+  max_wal_senders: 0
+  max_wal_size: 8192MB
+  min_wal_size: 4096MB
+  random_page_cost: 1.1
+  shared_buffers: 1966080
+  synchronous_commit: 'off'
+  tcp_keepalives_count: 9
+  tcp_keepalives_idle: 7200s
+  tcp_keepalives_interval: 75s
+  timezone_abbreviations: Default
+  transaction_isolation: '''read committed'''
+  wal_buffers: 2048
+  wal_level: minimal
+  wal_writer_delay: 10000ms
+  work_mem: 49152kB
+  shared_preload_libraries: '''hll'''

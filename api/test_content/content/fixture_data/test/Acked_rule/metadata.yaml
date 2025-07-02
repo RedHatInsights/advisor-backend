@@ -1,0 +1,17 @@
+category: Stability
+description: Acked rule
+impact: Best Practice
+likelihood: 1
+node_id: '1048578'
+product_code: rhel
+publish_date: '2018-05-23 15:38:55+00:00'
+python_module: test_rules
+reboot_required: false
+resolution_risk: Adjust Service Status
+role: host
+status: active
+tags:
+- acked
+- active
+- idm
+- testing

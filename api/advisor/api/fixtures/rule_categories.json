@@ -1,0 +1,9 @@
+[{ "model": "api.rulecategory", "pk": 1,
+    "fields": {"name": "Availability"}
+},{ "model": "api.rulecategory", "pk": 2,
+    "fields": {"name": "Security"}
+},{ "model": "api.rulecategory", "pk": 3,
+    "fields": {"name": "Stability"}
+},{ "model": "api.rulecategory", "pk": 4,
+    "fields": {"name": "Performance"}
+}]

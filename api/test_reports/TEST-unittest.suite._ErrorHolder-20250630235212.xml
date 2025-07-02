@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="unittest.suite._ErrorHolder-20250630235212" tests="2" file="unittest/suite.py" time="0.000" timestamp="0001-01-01T00:00:00" failures="0" errors="0" skipped="2">
+	<testcase classname="" name="setUpClass (api.tests.test_import_content_command.ImportContentTestCase)" time="0.000" timestamp="0001-01-01T00:00:00" file="advisor/api/tests/test_import_content_command.py" line="592">
+		<skipped type="skip" message="Path for content repository '/home/pwayper/Code/insights/advisor-backend/../advisor-test-rule-content/' not found - cannot run ImportContentTestCase"/>
+	</testcase>
+	<testcase classname="" name="setUpClass (api.tests.test_import_content_command.NoDataImportContentTestCase)" time="0.000" timestamp="0001-01-01T00:00:00" file="advisor/api/tests/test_import_content_command.py" line="592">
+		<skipped type="skip" message="Path for content repository '/home/pwayper/Code/insights/advisor-backend/../advisor-test-rule-content/' not found - cannot run NoDataImportContentTestCase"/>
+	</testcase>
+</testsuite>

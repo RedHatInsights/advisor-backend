@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.RHIdentityAuthFailTestCase-20250630235212" tests="1" file="api/tests/test_view_auth.py" time="0.003" timestamp="2025-06-30T23:54:15" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.RHIdentityAuthFailTestCase" name="test_user_subsection_must_be_object" time="0.003" timestamp="2025-06-30T23:54:15" file="advisor/api/tests/test_view_auth.py" line="253">
+		<!--
+        A view that requires the 'is_internal' flag needs to have a user
+        field that is an object.
+        -->
+	</testcase>
+</testsuite>

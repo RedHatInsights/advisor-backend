@@ -1,0 +1,37 @@
+[{
+    "model": "api.InventoryHost",
+    "pk": "57c4c38b-a8c6-4289-9897-223681fd804d",
+    "fields": {
+        "account": "477931",
+        "org_id": "5882103",
+        "created": "2020-02-21T23:59:59Z",
+        "culled_timestamp": "2020-03-14T23:59:59Z",
+        "display_name": "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test",
+        "stale_timestamp": "2020-02-28T23:59:59Z",
+        "stale_warning_timestamp": "2020-03-06T23:59:59Z",
+        "system_profile": {},
+        "tags": [],
+        "groups": [],
+        "updated": "2020-02-21T23:59:59Z",
+        "per_reporter_staleness": {"puptoo": {"stale_timestamp": "3020-01-01T06:00:00Z"}},
+        "insights_id": "d60db782-8462-410e-b0fc-f4ee97d985cb"
+    }
+}, {
+    "model": "api.InventoryHost",
+    "pk": "2db7adeb-e3e8-4d40-bf68-bd00064e252b",
+    "fields": {
+        "account": "123456",
+        "org_id": "9876543",
+        "created": "2020-02-21T23:59:59Z",
+        "culled_timestamp": "2020-03-14T23:59:59Z",
+        "display_name": "unknown",
+        "stale_timestamp": "2020-02-28T23:59:59Z",
+        "stale_warning_timestamp": "2020-03-06T23:59:59Z",
+        "system_profile": {},
+        "tags": [],
+        "groups": [],
+        "updated": "2020-02-21T23:59:59Z",
+        "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
+        "insights_id": "8da8bea4-964a-99f4-6e28bd13aaec5423"
+    }
+}]

@@ -1,0 +1,1 @@
+Deleted rule with {{=pydata.deleted}} deleted content

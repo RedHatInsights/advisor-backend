@@ -1,0 +1,2 @@
+[dbservers]
+CHANGE_TO_IP_ADDR    ansible_user=root

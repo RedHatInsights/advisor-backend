@@ -1,0 +1,270 @@
+- name: task for upgrading host machine using leapp upgrade
+  hosts: localhost
+  become: true
+  vars:
+    rhui_packages:
+      rhel7:
+        - src_pkg: rh-amazon-rhui-client
+          leapp_pkg: leapp-rhui-aws
+        - src_pkg: rh-amazon-rhui-client-sap-bundle
+          leapp_pkg: leapp-rhui-aws-sap-e4s
+        - src_pkg: rhui-azure-rhel7
+          leapp_pkg: leapp-rhui-azure
+        - src_pkg: rhui-azure-rhel7-base-sap-apps
+          leapp_pkg: leapp-rhui-azure-sap
+        - src_pkg: rhui-azure-rhel7-base-sap-ha
+          leapp_pkg: leapp-rhui-azure-sap
+        - src_pkg: google-rhui-client-rhel7
+          leapp_pkg: leapp-rhui-google
+        - src_pkg: google-rhui-client-rhel79-sap
+          leapp_pkg: leapp-rhui-google-sap
+      rhel8:
+        - src_pkg: rh-amazon-rhui-client
+          leapp_pkg: leapp-rhui-aws
+        - src_pkg: rh-amazon-rhui-client-sap-bundle-e4s
+          leapp_pkg: leapp-rhui-aws-sap-e4s
+        - src_pkg: rhui-azure-rhel8
+          leapp_pkg: leapp-rhui-azure
+        - src_pkg: rhui-azure-rhel8-eus
+          leapp_pkg: leapp-rhui-azure-eus
+        - src_pkg: rhui-azure-rhel8-sap-ha
+          leapp_pkg: leapp-rhui-azure-sap
+        - src_pkg: rhui-azure-rhel8-sapapps
+          leapp_pkg: leapp-rhui-azure-sap
+        - src_pkg: google-rhui-client-rhel8
+          leapp_pkg: leapp-rhui-google
+        - src_pkg: google-rhui-client-rhel8-sap
+          leapp_pkg: leapp-rhui-google-sap
+    upgrade_command: '/usr/bin/leapp upgrade --report-schema=1.2.0'
+    no_rhsm: false
+    is_leapp_upgrade_successful: false
+    insights_signature_exclude: /hosts,/vars/insights_signature
+    insights_signature: !!binary |
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
+      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU214NWEzWmlRVUZ2U2tWTmRuYzFPRVFyYWpWd1Ru
+      YzFNRkF2VW1sRVkzWkhiVXhIU1VscFUxVnVLek5YZFZCMVJGSUtNRkJtV1ROVmJpOVhTbmRLYm1W
+      blJEQTNkRnAwTVhOeGFsQmpla01yWm5CRE5YUTFTa0pXTWtGM1ZWaFFNVTQ0YlVVdllXSnJTRGh0
+      YTA5M1ptcDVWZ3B1UW5sR1VUQjNSa3hvZFRNMlowd3pWMjFGUTJNeE4wc3phSGM0UVhZNVZsTXJl
+      RkJFYjJwdWExSlVlSEozVkdSb2FEWldlR0pPZUhaeE1tdHFVVFpOQ25OT2IwWmFhSFVyYmt3NGRI
+      YzVNamx1S3k4M1FYSTJaeXRGYkdSU1p6bHpNVUZPWnpWR2QwcFlRMloyU1RGbEt6Tm9abTlNUldO
+      MlJXZ3dibXcyUlVZS2RqaGxiM2t4Y1hkb2JFbHBiRFZ1VUV4eFdWWTJhbXMzTm1kWmJYRlhSQzh3
+      YjFKMllsbDNNVFJVWWtwYU5tVnZaMkZoZEVGSU1XNHZOR2x2VlZVeFJnb3hTVmRDVUVSaWVuYzVO
+      RGRsWkVaYVUzZDJaMDVhTVZJeVlVWTVPRmw1V1ZVd1kyaGlZMlpaVVZNd05GZG5ha1ZHYTNSWFR6
+      RTFaMFUzUnk5TVoyNVRDbmhVTDJkQ2NERm9ja3BCYkV0UlIzTlJOV1JHUjFBMloxSm9NMWxyU0Vo
+      dldEUjZXbFZpTWtaS04wbzJNM1JvYldOVGNrNWlTaTlITVZaT2NVOXdabWNLY2tNNE1EZzVZMlpr
+      ZW1sU2NtdzFSVkJUZDJOWVpXaERVVEJFWkRjeGJHMWtkRGhDUjFsQmJtcEVPWEoxTlVSTVdUZHBT
+      Mk5ZTDFaR2VqRmhUbnBqTHdwbVYyZ3JNMkU1UVhONGRUTlFWbTR3ZEdOMVpXWTRMMVpyYTBSSk1F
+      WnZURnA2TTFBM1lVUlRSaTlyZGtscFdGVnFkMGtyZURRNFNYQTNWSGN6Vm14NkNsTTRaVGwyTURB
+      M2RrSnZhVUZDVWtJd1EyUXpkVXN5T1VWeU1ESkhXa1ZWVG1KelpYTk1hWGhKWlhoVGVIWTNSa2hP
+      Vm1WVFl6VjBSRnBwWkROcVNGUUtVVUZWVldKVFMzZENVREI1VkdwVmJ6aExVRkJVWTFSblVXdDBT
+      SGxzU2paSWNUZ3lLMkU1YjNSalUyaGFPQzlqVm1WRE1WSmxUMnBSTVZscmRWVkxVQXA2U0VOblRH
+      NU5lVTlvVlRGM01VVjJTblZWVmdvOU5FeDNhUW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
+      RkxTMHRMUzBL
+  tasks:
+    - name: Exit for non-eligible releases
+      ansible.builtin.meta: end_host
+      when:
+        - ansible_distribution != 'Red Hat Enterprise Linux'
+        - ansible_distribution_major_version <= '6'
+        - ansible_distribution_major_version >= '9'
+
+    - name: Gather package facts
+      package_facts:
+        manager: auto
+
+    - name: Set rhui_packages_found to empty list
+      set_fact:
+        rhui_packages_found: []
+
+    - name: Do RHEL7 specific tasks
+      block:
+        - name: Install Leapp from RHEL 7 Extras
+          yum:
+            name: leapp-upgrade
+            state: latest
+            enablerepo: rhel-7-server-extras-rpms
+        - name: Determine if any RHUI packages are installed on RHEL 7
+          set_fact:
+            rhui_packages_found: "{{ rhui_packages_found + [item] }}"
+          loop: "{{ rhui_packages.rhel7 }}"
+          when: item.src_pkg in ansible_facts.packages.keys()
+      when: ansible_distribution_major_version == '7'
+
+    - name: Do RHEL8 specific tasks
+      block:
+        - name: Install Leapp on RHEL 8
+          dnf:
+            name: leapp-upgrade
+            state: latest
+        - name: Determine if any RHUI packages are installed on RHEL 8
+          set_fact:
+            rhui_packages_found: "{{ rhui_packages_found + [item] }}"
+          loop: "{{ rhui_packages.rhel8 }}"
+          when: item.src_pkg in ansible_facts.packages.keys()
+      when: ansible_distribution_major_version == '8'
+
+    - name: Determine --no-rhsm flag usage and do corresponding steps when rhsm cannot be used
+      block:
+        - name: Check if subscription-manager is installed
+          command: which subscription-manager
+          changed_when: false
+          failed_when: false
+          register: rhsm_installed_check
+
+        - name: Check if system has repositories available
+          ansible.builtin.command: "subscription-manager repos --list-enabled"
+          register: rhsm_repo_check
+          changed_when: false
+          failed_when: false
+          when: rhsm_installed_check is success
+
+        - name: Set rhsm_repo_check_fail if there are no available repositories through RHSM
+          set_fact:
+            rhsm_repo_check_fail: true
+          when:
+            - >
+              'This system has no repositories available through subscriptions.' in rhsm_repo_check.stdout_lines or
+              'Repositories disabled by configuration.' in rhsm_repo_check.stdout_lines
+
+        - name: Set no_rhsm flag to true if RHUI package are found AND (there are no available repositories OR subscription-manager is not installed)
+          set_fact:
+            no_rhsm: true
+          when:
+            - rhui_packages_found | length > 0
+            - rhsm_installed_check is failed or rhsm_repo_check_fail is defined
+
+        - name: Add --no-rhsm switch to leapp upgrade command if no_rhsm flag is true
+          set_fact:
+            upgrade_command: "{{ upgrade_command }} --no-rhsm"
+          when: no_rhsm == true
+
+        - name: Install corresponding leapp_pkg for installed RHUI packages if no_rhsm flag is true
+          yum:
+            name: "{{ item.leapp_pkg }}"
+            state: latest
+          loop: "{{ rhui_packages_found }}"
+          when: no_rhsm == true
+
+    - name: Execute leapp upgrade
+      ansible.builtin.shell: "{{ upgrade_command }} || true"
+      register: leapp_upgrade_result
+      no_log: true
+      ignore_errors: true
+
+    - name: debug last 5 lines of leapp upgrade output
+      ansible.builtin.debug:
+        msg: "{{ leapp_upgrade_result.stdout_lines[-5:] }}"
+
+    - name: Set leapp upgrade result as true if reboot guidance message is found
+      set_fact:
+        is_leapp_upgrade_successful: true
+      when: '"A reboot is required to continue. Please reboot your system." in leapp_upgrade_result.stdout'
+
+    - name: Prepare report content
+      block:
+        - name: Read json report
+          ansible.builtin.slurp:
+            src: '/var/log/leapp/leapp-report.json'
+          register: report_content_raw
+
+        - name: Read text report
+          ansible.builtin.slurp:
+            src: '/var/log/leapp/leapp-report.txt'
+          register: report_content_txt_raw
+
+        - name: Set report fact
+          ansible.builtin.set_fact:
+            report_content: "{{ report_content_raw.content | b64decode }}"
+
+        - name: Set total problems count
+          ansible.builtin.set_fact:
+            total_problems_count: "{{ report_content.entries | length }}"
+
+        - name: Set inhibitor count
+          ansible.builtin.set_fact:
+            inhibitor_count: "{{ report_content.entries | selectattr('groups', 'defined') | selectattr('groups', 'contains', 'inhibitor') | list | length }}"
+
+        - name: Set errors count
+          ansible.builtin.set_fact:
+            error_count: "{{ report_content.entries | selectattr('groups', 'defined') | selectattr('groups', 'contains', 'error') | list | length }}"
+
+        - name: Init new empty entries for report with edited severity
+          ansible.builtin.set_fact:
+            report_content_edited: >-
+              {{
+                {
+                  "entries": []
+                }
+              }}
+
+        - name: Transform severities in leapp report to distinguish errors and inhibitors from other high risks entries
+          set_fact:
+            report_content_edited: >-
+              {{
+                report_content_edited | combine(
+                  {
+                    "entries": report_content_edited.entries | default([]) +
+                      [
+                        entry | combine(
+                          {"severity": "inhibitor"} if "error" in entry.groups | default([]) else
+                          {"severity": "inhibitor"} if "inhibitor" in entry.groups | default([]) else {}
+                        )
+                      ]
+                  }
+                )
+              }}
+          loop: "{{ report_content.entries | default([]) }}"
+          loop_control:
+            loop_var: entry
+
+    - name: Prepare final result
+      block:
+        - name: Set default fail message
+          set_fact:
+            message: >-
+              The upgrade cannot proceed.
+              Your system has {{ error_count | int + inhibitor_count | int }} inhibitor{{ 's' if inhibitor_count | int + error_count | int != 1 else '' }}
+              out of {{ total_problems_count }} potential problems.
+
+        - name: Set message if leapp upgrade succeeded
+          set_fact:
+            message: >-
+              No problems found. The system will be upgraded. Rebooting system in 1 minute.
+              After reboot check inventory to verify the RHEL system is registered with new major version.
+          when: is_leapp_upgrade_successful is true
+
+        - name: Set report content as empty if upgrade was successful
+          set_fact:
+            report_content_edited: ""
+          when: is_leapp_upgrade_successful is true
+
+        - name: Set result
+          ansible.builtin.set_fact:
+            task_results:
+              report_json: "{{ report_content_edited }}"
+              report: "{{ report_content_txt_raw.content | b64decode }}"
+              message: "{{ message }}"
+              alert: "{{ not is_leapp_upgrade_successful }}"
+
+    - name: Start insights-client for immediate data collection of leapp-report
+      ansible.builtin.shell: insights-client >/dev/null 2>&1
+
+    - name: Schedule reboot and Insights report if leapp upgrade is successful
+      block:
+        - name: Schedule insights-client after boot
+          file:
+            path: "/etc/insights-client/.run_insights_client_next_boot"
+            state: touch
+        - name: Enable boot service
+          systemd:
+            name: insights-client-boot.service
+            enabled: true
+          ignore_errors: true
+        - name: Schedule system reboot for 1 minute in the future
+          shell: shutdown -r +1 "Ansible triggered reboot"
+          ignore_errors: true
+      when: is_leapp_upgrade_successful is true
+
+    - name: Print Task Result
+      ansible.builtin.debug:
+        var: task_results

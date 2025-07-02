@@ -1,0 +1,1 @@
+Inactive rule should have {{=pydata.inactive}} inactive content

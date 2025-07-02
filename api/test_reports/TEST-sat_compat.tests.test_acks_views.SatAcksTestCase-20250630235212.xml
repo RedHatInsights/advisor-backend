@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_acks_views.SatAcksTestCase-20250630235212" tests="6" file="sat_compat/tests/test_acks_views.py" time="0.239" timestamp="2025-06-30T23:54:18" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_acks_views.SatAcksTestCase" name="test_ack_list" time="0.110" timestamp="2025-06-30T23:54:18" file="advisor/sat_compat/tests/test_acks_views.py" line="35"/>
+	<testcase classname="sat_compat.tests.test_acks_views.SatAcksTestCase" name="test_ack_list_cert_auth" time="0.005" timestamp="2025-06-30T23:54:18" file="advisor/sat_compat/tests/test_acks_views.py" line="156"/>
+	<testcase classname="sat_compat.tests.test_acks_views.SatAcksTestCase" name="test_advisor_ack_no_satellite" time="0.046" timestamp="2025-06-30T23:54:18" file="advisor/sat_compat/tests/test_acks_views.py" line="175"/>
+	<testcase classname="sat_compat.tests.test_acks_views.SatAcksTestCase" name="test_create_destroy" time="0.029" timestamp="2025-06-30T23:54:18" file="advisor/sat_compat/tests/test_acks_views.py" line="229"/>
+	<testcase classname="sat_compat.tests.test_acks_views.SatAcksTestCase" name="test_create_destroy_cert_auth" time="0.025" timestamp="2025-06-30T23:54:18" file="advisor/sat_compat/tests/test_acks_views.py" line="297"/>
+	<testcase classname="sat_compat.tests.test_acks_views.SatAcksTestCase" name="test_create_destroy_with_branch_id_param" time="0.023" timestamp="2025-06-30T23:54:18" file="advisor/sat_compat/tests/test_acks_views.py" line="366"/>
+</testsuite>

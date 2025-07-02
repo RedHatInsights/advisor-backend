@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_api_docs.OpenAPI3SchemaValidation-20250630235212" tests="1" file="api/tests/test_api_docs.py" time="0.578" timestamp="2025-06-30T23:52:14" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_api_docs.OpenAPI3SchemaValidation" name="test_openapi_3_schema_validation" time="0.578" timestamp="2025-06-30T23:52:14" file="advisor/api/tests/test_api_docs.py" line="383"/>
+</testsuite>

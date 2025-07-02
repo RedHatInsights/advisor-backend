@@ -1,0 +1,44 @@
+# A simple bash script that Tasks can execute with rhc-worker-script
+- name: rhc-worker-script Hello World
+  vars:
+    insights_signature: !!binary |
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
+      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU20xaFlsTTVRVUZ2U2tWTmRuYzFPRVFyYWpWd1Rt
+      aHlWVkFyZDJWd05HZzFVa3cxT0U5TFRVTldiR3RzY2tSdmVVY0tVbkpoYWxOeVl6Vm1UekJQY25W
+      MVFuQnlhRGxIV2tZNWFURkxObkpPTUd0TFRrSkhXV3RFYTJNd2JIbG5lRUpxYUVKd1prZGhNa1po
+      VWtZNGJISjJNUXBPWlVGc1RXOXlUMXBJVldwa1RYWlNXRUk1TkZad01XOW1WM1J5UW5VMGJXbG5i
+      alYzWm5GRWRVVmtaV3cyYkdnellVSlZjU3R4TDNWSlRYRTRaMXBrQ2twQ2RuRXpkRnBwSzNSTlkx
+      UlNlWFpOUjNwcE5HODFhVzVZY0M5WGNFRnZOMjFNV0RacWRXMXVWVzVTTjFSMWEwTjNWVFE0YWxw
+      UFVYWkZPV0pOVVdVS1dGTTVOVEZOTlUxa1VWVmtWVWMzZDI1aGMxaHdOa3h1TDNGWE5uaGFNQ3Mx
+      YXpkTVp6Vm1UMVo0ZERZNVMyVkRWSFpvZFRobmJHeElSWE12YVhBelJRbzBURlJ2VTFocFZrWkxi
+      V2R6TkRCUGFHMHhObU5vSzBwbFJraFhZa1ZTUm01cldub3ZNR0V5YVhwbk5GcExkRzVFVlU1eGVr
+      ZFdabVJtVW5sWGEzaFRDbkFyVEVNeWNVbE1OWGg1UVU1WFoyOHhNalJQUkVONlkxbHRWaXRYUW01
+      dFV6QjBVblJKYkZoaVV6QmhjbFJyT1hGU2F5dDRjazg0Ym5kRk0wNVBaelVLTXlzNGRWSlpUVEZR
+      WWpGRGEwUjBVMHR1TTBkSE16WkpVR05MVWtWRVpUVnhiamgzSzA1R2VHWm9iak5DT0Vzd015OURO
+      RUpGZGpobE5reFZWeXRZUWdvclpUSnFjbTltWmpSTWIxRnJNRE5LY210eWRreFBXbXBGZDNkNFMy
+      ZzFhSEo0TUM4eGNrcENaM1ptWkdveU5WWTJkRkV3ZEZoMVJXcGFTRXhvTWpaSUNrUlVWRlZJTWta
+      TU9VZGpRaXRqUldsWll6aGtjbmhwTW5RMVZEZHhVV2w0Vms5cE9WUlRhWFpHYkZSVmVqWTFTeTlu
+      TUhCcllWZHVPRlIyVFZGUlpFOEtkbms0WW10dlVEUXlZVkEyZVZkWWJWSndSa1pIUTBaNVJHOHdV
+      MDFIVTFGa1pTdFNlbmhwUlVoTE1YUk9kemc1UmxVdllVeHJjWGhJWlZsS2RVbEpaZ3BxWTNGcFkw
+      ODFVbkY0VjFSWlZreFFNMnRvVFFvOWVWYzVkUW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
+      RkxTMHRMUzBL
+    insights_signature_exclude: /vars/insights_signature,/vars/content_vars
+    interpreter: /bin/bash
+    content: |
+      #!/bin/bash
+      cat << EOF
+      Hello World Script
+
+      ### JSON START ###
+      {
+        "alert": false,
+        "message": "Hello World rhc-worker-script",
+        "report": "Data from env var: ${RHC_WORKER_TEST_VAR}",
+        "report_json": { "data": "structured data" },
+        "error": false
+      }
+      ### JSON END ###
+
+      EOF
+    content_vars:
+      TEST_VAR: Hello World Env Var

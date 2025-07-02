@@ -1,0 +1,113 @@
+- name: RHEL AI update
+  hosts: localhost
+  become: true
+  gather_facts: false
+  vars:
+    insights_signature_exclude: /hosts,/vars/insights_signature,/vars/content_vars
+    insights_signature: !!binary |
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
+      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU205SVNsWXJRVUZ2U2tWTmRuYzFPRVFyYWpWd1Rs
+      TjNaMUF2TVhWWVpGUjJTRTVTVHl0SFIzQjROelV3YW5KWlRGZ0tSSEkxUzI1V2EyVnljMGxHUkc4
+      elR6TllhV3RYZG5WRmIyZzJSWGxYVkRGdGJTODRWVzVLUWxsRmJWYzJPSFJTY0RsWFFuaGpkMUZM
+      TkdzMFFrVk1jQW8yVVZGT2RXeDBaVkJRYW1SSGNHRkpSVmw1YlhNNVIxZ3dNRUl3WXl0REswdFpl
+      bEZ4UjBFNVQxQlRWVzV6WldwVUsxaDVNbk0zY0RGTGQya3pNVk0xQ200d1IybE9kRzl0VG1aNWEz
+      ZHNWa0ptZFRaeGVXZHZTbEJ6YkRCeFNHeHlXbHBTYTA1UmQzRkhiRFp3ZEZOWllUQnJjbkp5YzBj
+      eVRVSlpUMUEzWmxVS1pteGtiRkoxUlZWaU5sVkhWVnBYV1ZsbVltOXhWWE4zUzNCQ2ExUkVTbEZ2
+      YW1KU1YzWlZVSGMwZGtwM1NIQnFhQ3QwU1RORmRHTnBWekF5YjIwMFJncG1iR2xwYlV0YWNIaEdN
+      WGhKZFZwTGFHRlVZblZUZHpVd1YxQndhakpxYUdKQ1EwZFhXVTVhYjJzNGJHZHlkemhRYWpWcmVE
+      QllXbkJZTlhWeWMzcDNDaXRrZEd0TGFGRkpkRUprZEVWNlMzZFJZVE5xT0cxQlNsVnVWMDgxVEho
+      clZ6aGtZWFJGT1RWVVlqSk1SMXBDZDJaNGQxQjZXbGhMVDBkRlV6Rk1aV1lLVjFaSlpuSm9PVWs1
+      YkRCNkwyVkZZWEp0YjBacWIxZHZXRkpEZDNKNWQyeGxOVEkwVVV4UWR5dHVkWGd3Y1hBdmRrRlJT
+      bTVCYzJkelNtNUtkWE5SWlFwdlJFaDNTbTlUYkdWc01URjBRMlZRWm1oRE4zb3pXbk0xZUV0MlNG
+      ZGFXbUlyZVZGMFdrdE5hekJsY1dSSE4zbExkWFJzTW5BNVVsRnJOSFJOTWk5dENrTkdjR1Y0UjNa
+      aU0ySjRiVzkzVDB4T1IySkpPQzlqVWxsR1FXczRVa055WlZSaGJrbzNiWGhuTUhObU9WSkNUa2x1
+      Ym5SSk5qbHFaRU5pVEZaMmFXd0thbFoyV1ZCM1dISjVRMnR5ZVRKRlJHVnlkRzl6Y1VweGIzSTVP
+      VFU0WTJGUVVUa3hhR3RDU0ZGaFpuUmFWbFJtZFRKbmRtaElaRGxCVUZCaFEwOTJZd3AxYVdrMFNs
+      Y3lUa2hMT1ZKYWJXOTVhREYxVXdvOVdHSkpZZ290TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
+      RkxTMHRMUzBL
+    content_vars:
+      update_version: "z-stream"
+
+  tasks:
+    - name: Run bootc status to determine Red Hat container registry and RHEL AI image
+      ansible.builtin.shell: "(bootc status --format=json 2>/dev/null || bootc status --json) | jq -r '.status.booted.image.image.image // .spec.image.image'"
+      register: bootc_status_results
+    - name: Using RHEL AI image from bootc status output {{bootc_status_results.stdout}}
+      ansible.builtin.set_fact:
+        rhelai_image: "{{bootc_status_results.stdout}}"
+    - name: Extract Red Hat container registry name from {{rhelai_image}}
+      ansible.builtin.set_fact:
+        rh_registry: "{{rhelai_image | split('/') | first}}"
+
+    - when: content_vars.update_version in ['z-stream', 'latest']
+      name: Use bootc upgrade command to update image
+      ansible.builtin.set_fact:
+        bootc_command: "bootc upgrade"
+
+    - when: content_vars.update_version not in ['z-stream', 'latest']
+      block:
+        - name: Extract RHEL AI image name from {{rhelai_image}}
+          ansible.builtin.set_fact:
+            rhelai_image_name: "{{rhelai_image | regex_replace(':([^:]+)$', '')}}"
+        - name: Set new RHEL AI image with update_version tag
+          ansible.builtin.set_fact:
+            new_rhelai_image: "{{rhelai_image_name}}:{{content_vars.update_version}}"
+        - name: Use bootc switch command to update image {{new_rhelai_image}}
+          ansible.builtin.set_fact:
+            bootc_command: "bootc switch {{new_rhelai_image}}"
+
+    - name: Execute '{{bootc_command}}'
+      ansible.builtin.shell: "NO_COLOR=1 {{bootc_command}} 2>&1"
+      register: bootc_command_results
+      no_log: true
+      ignore_errors: true
+
+    - block:
+        - when: "bootc_command_results.rc != 0 and 'unauthorized' in bootc_command_results.stdout"
+          name: Set result for '{{bootc_command}}' authorization failure
+          ansible.builtin.set_fact:
+            task_results:
+              report: "{{bootc_command_results.stdout}}\n{{bootc_command_results.stderr}}"
+              message: "Accessing Red Hat Container Registry failed.  Run 'podman login {{rh_registry}} --authfile=/etc/ostree/auth.json' on the target system."
+              alert: false
+
+        - when: "task_results is not defined and (bootc_command_results.rc != 0 or 'Queued for next boot' not in bootc_command_results.stdout)"
+          name: Set result for '{{bootc_command}}' failure
+          ansible.builtin.set_fact:
+            task_results:
+              report: "{{bootc_command_results.stdout}}\n{{bootc_command_results.stderr}}"
+              message: "RHEL AI image update failed.  Expand for details."
+              alert: "{{bootc_command_results.rc != 0}}"
+
+        - name: Fail playbook if RHEL AI update failed
+          ansible.builtin.fail:
+            msg: "RHEL AI image update failed somehow.  Ensure the playbook fails as well."
+          when: task_results is defined
+
+        - when: task_results is not defined
+          name: Set result for '{{bootc_command}}' successful completion
+          ansible.builtin.set_fact:
+            task_results:
+              report: ""
+              message: "RHEL AI image update to '{{new_rhelai_image | default(rhelai_image, true)}}' completed successfully."
+              alert: false
+
+        - when: "'Queued for next boot' in bootc_command_results.stdout"
+          block:
+            - name: Schedule insights-client after boot
+              file:
+                path: "/etc/insights-client/.run_insights_client_next_boot"
+                state: touch
+            - name: Enable boot service
+              systemd:
+                name: insights-client-boot.service
+                enabled: true
+              ignore_errors: true
+            - name: Reboot system
+              shell: sleep 10 && shutdown -r now "Ansible triggered reboot" &
+              ignore_errors: true
+
+      always:
+        - name: Print Task Result
+          ansible.builtin.debug:
+            var: task_results

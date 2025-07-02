@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content.ImportContentRuleRenamingTestCase-20250630235212" tests="2" file="api/tests/test_import_content.py" time="0.265" timestamp="2025-06-30T23:52:23" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content.ImportContentRuleRenamingTestCase" name="test_fixture_matches_test_data" time="0.007" timestamp="2025-06-30T23:52:23" file="advisor/api/tests/test_import_content.py" line="1449"/>
+	<testcase classname="api.tests.test_import_content.ImportContentRuleRenamingTestCase" name="test_rule_renaming" time="0.258" timestamp="2025-06-30T23:52:23" file="advisor/api/tests/test_import_content.py" line="1478"/>
+</testsuite>

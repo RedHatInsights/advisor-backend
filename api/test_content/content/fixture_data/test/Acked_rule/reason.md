@@ -1,0 +1,1 @@
+Acked rule content with {{=pydata.acked}} DoT information

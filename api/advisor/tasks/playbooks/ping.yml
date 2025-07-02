@@ -1,0 +1,41 @@
+- name: ping
+  hosts: localhost
+  vars:
+    insights_signature_exclude: /hosts,/vars/insights_signature
+    insights_signature: !!binary |
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
+      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU20xWlkxZEZRVUZ2U2tWTmRuYzFPRVFyYWpWd1Rq
+      RnFRVkFyZDFjdmRVaHFaMFYyTVdjeWMxWTNWREowWW1WaFdUY0tUSGRHTkd0NWRXcDBPRGxyVW10
+      NFFUZFZMMHhYWW5kSWNsVldXWEppZEc5TGNtOVZhRWh2TmpSa1NHOVdaVXBTVjNBNFYzVXZORVpJ
+      V2toNk9IbDRXUXA1WVN0QldEQjZTbkV5T0RGVVYzZG5XbVI0UkdaMFRsQkpTalIyU1hoMlZXSnNN
+      bVp4WTA5TldHUjFXSE01YWxSRWVIUTBhbWxaU3k4ME5HbGpOeTlSQ25kUFNsaHpNbGQzT1RSUFVY
+      UjRSMlo2UkVSdFEyRnVTMVV6UjJ0Ukx5ODJUMEZTZERkUk1WTjNSVWR4U0dac1NWRlFTVnBOZW5o
+      RE5FNW1TMWRGU0VrS2IwTTNSRVoyTUZWbVVHRnhORkJPTWxWUGVIVTNjbWx0UldKSFVtZHFXVmgw
+      Um5CNmNrUmpSMVpITVhwQ1ZHTkxaSEp1YlVsdE0yNU1WVmRwYVRONVdBcHRUVE0wUkZZcmQxRnhR
+      bmMzV1hkc1UzSkZLek14WmtjclZYUTFVVWhFTVZaQmFVbHFlbEZWWVM5S1MwdG5Va2xsVFd4b2F6
+      TTFWVEl4Y0ZsTFVXdGFDa2RuYzJFMVYzUXdjbFp4VjIxcldYQk5hVTloY0RsM01ESnFhRVZOYlho
+      bVNuVm9NVGRFTnk5NmQxVnpZMjlZWkc5MU1HRnFNV0pHY1RSV1V6VnJRMDBLU3pOV0t6SXpTR3RT
+      TkRSaWVHRnNRbTFxYjNZeFVsbzFjV04wVGs0NE16Wk9WbVU1VHpGMVdWTTNSWFZHWTJKTFZ6TmFO
+      WEZaYTNKa2R6Vm9aMlpDTmdwNFdETlRNMVZWYUhOV1QyTjVSRnBvVFdGMFVtdzBSRXRvTkhORU1X
+      NXBNa0ZMUzJsVVVXTjBTRU00VjJoQk4zVk9OVGwwVUZwcVdubGtjMGxJTjFCbkNtTmhabk5KYlZB
+      clUzSnVRMHhyU1ZsQlZWVnRlSEYyVURCYU1UUkRTMkZzZEdkMVdrbEpkR2hCWlU1dGJ6VTBhbEZC
+      UTJaRVdHMHlVMGxUVFdzMU1FVUtTa3hoY20xelJtRlBZU3RMVDJkUldIZHBlVE53YlRkWmIxTndS
+      bUVyVjAxbFYwUnJha2hwUkZOeE1IcE9UVk5vWVc5TlpWSjJORkF5WXpWUFNGVkNhQXBwVEZab1Fs
+      cERNRmgwV2pkQmNrVmxabGRhTmdvOVVqUlpkUW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
+      RkxTMHRMUzBL
+  tasks:
+    - name: ping
+      ansible.builtin.ping:
+      register: ping_output
+      ignore_errors: true
+
+    - name: Set result
+      ansible.builtin.set_fact:
+        task_results:
+          report: "{{ping_output | default('')}}"
+          message: "{{ping_output.ping | default('Error performing ping task')}}"
+          alert: "{{ping_output.failed | default('true')}}"
+
+    - name: Print Task Result
+      ansible.builtin.debug:
+        var: task_results

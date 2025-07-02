@@ -1,0 +1,46 @@
+[{
+    "model": "api.weeklyreportsubscription",
+    "pk": 101,
+    "fields": {
+        "username": "first-acct-user",
+        "account": "2000001",
+        "org_id": "2000001",
+        "autosub": false
+    }
+},{
+    "model": "api.weeklyreportsubscription",
+    "pk": 102,
+    "fields": {
+        "username": "secnd-acct-user",
+        "account": "2000002",
+        "org_id": "2000002",
+        "autosub": false
+    }
+},{
+    "model": "api.weeklyreportsubscription",
+    "pk": 103,
+    "fields": {
+        "username": "test-deleted-user",
+        "account": "1234567",
+        "org_id": "9876543",
+        "autosub": false
+    }
+},{
+    "model": "api.weeklyreportsubscription",
+    "pk": 104,
+    "fields": {
+        "username": "denied-user",
+        "account": "1234567",
+        "org_id": "9876543",
+        "autosub": false
+    }
+},{
+    "model": "api.weeklyreportsubscription",
+    "pk": 105,
+    "fields": {
+        "username": "test-user-no-systems",
+        "account": "1928374",
+        "org_id": "1928374",
+        "autosub": false
+    }
+}]

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_settings_view.SettingsTestCase-20250630054001" tests="2" file="api/tests/test_settings_view.py" time="0.007" timestamp="2025-06-30T05:40:46" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_settings_view.SettingsTestCase" name="test_settings_ddf_view" time="0.003" timestamp="2025-06-30T05:40:46" file="advisor/api/tests/test_settings_view.py" line="38"/>
+	<testcase classname="api.tests.test_settings_view.SettingsTestCase" name="test_settings_update" time="0.004" timestamp="2025-06-30T05:40:46" file="advisor/api/tests/test_settings_view.py" line="52"/>
+</testsuite>

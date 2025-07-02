@@ -1,0 +1,1 @@
+This rule is {{=pydata.deleted}} and should not be fixed

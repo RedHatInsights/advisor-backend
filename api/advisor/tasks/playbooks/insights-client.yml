@@ -1,0 +1,93 @@
+- name: run insights
+  hosts: localhost
+  become: true
+  gather_facts: false
+  vars:
+    insights_signature_exclude: /hosts,/vars/insights_signature,/vars/content_vars
+    insights_signature: !!binary |
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
+      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU200NE1UaG1RVUZ2U2tWTmRuYzFPRVFyYWpWd1Rq
+      WXljMUF2TWs1alpIaE1XbGswTW1jeWNtUnFOVWR1YmxaelVVRUtXRGRrTVZSNldWcEdaWFp0UTFS
+      VFJrSTRNVzlMVW1sRGRXUlVSMVY0UTJ3NWNrOVNabTlMVjNwek0xWkVaV3g0VWpCdWVFaGpXVUV6
+      WmtOR1MxUlRUd3BhT1hsRGVtSkpSRk5yZDA1SGMwTnliRlozYjNkeU1tRXhkVlJtVWxaRFZYUmha
+      MHh0TlRJeWRXUnJlVGc1ZERWeGJHWTVZVUZKVVZOSFRuTkRhRE5FQ25OdU4wVlpPRlUyU21WR1FX
+      RTRMM1pIZDFsVVFVVnFSV3B5V200M2FrczVRMkZUU2toUFdtVk5Za3hFT0hVeE0yazVXSGxvYUVW
+      b1ZHdFVhRk5GV20wS1IxZFBVMGRoVUM5Q1JWRm9URVZVZFU0MlNVbDBVbTVYUldSWVltOVNaV2R0
+      Y0dGb1JIaHBTbmR0S3pkUE1UaHhWV1F6YjI1R1pUWjRXR05CZUZaMVJBb3JUMk5NUVhSRE5tRlNT
+      MjFPV201MmFGQlFORmhzUkhodVYzWk1OVkpzTkVsd2FTdHdUbE5HZGs0eU1FWk9UeXRLTmtoMVdE
+      ZGpSVnBWT0RWalVuaENDbXRoUkRaR1dtRkdXR3htUldWVFRUWlFhSE5NZWpBd09UUmFNMk5SU1V4
+      SWFrRlRjakJGZEhCeVdVZFllRmRqVjBkM1NWTktWMDVKTm1OVVNsRk5TVWNLUld3NFUyRnpTazFY
+      WW1sWGVFbHRWR3AwYURKc1luQnJSV3BsVjBSRGRsaFVjV1pzTnpVd01rbzFSR2htVVhvdk16WktN
+      MHBVYVVwU09GTnlMMGd6U0FwSGQwUmlkRk5tU0dsdFRHcGxaalpGU2psbUx6TTNaRkJFZUdwbU9X
+      aGlaSGR1ZVdaSEszVnRRMGN5TUdjeVF6SktTV3RXT1RWTE1XRjROMGhxWlc5RkNtbE9haTlKWlZk
+      aFlVd3ZTbWRFUlhCcFkyZENXVk54ZFVKdldtMVZNVkJuU1doblFrNTZVV3c1WlZGTGFEWXZXRFp3
+      UVZRMlJIcDBhRXROV0ZaWFpGVUtVWGsyVFZOS2VGZHRUVU4yUVVkb1MyMHpkRTVVZDBGS1RsZFNR
+      bTVIVFhWa2NUWnVhamRWV21ablVsTm9lbkphT0RkR1dtVkxibUlyVUV4cFJWZHlPQW92Y1RGeVVY
+      SmFiWEZHVWpaWlRrRndNalZOWkFvOVRVbzBPUW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
+      RkxTMHRMUzBL
+    insights_client_command: insights-client
+    content_vars:
+# insight-client switches that may be set via task parameters
+      collector: "None"
+      show_results: "False"
+      status: "False"
+      test_connection: "False"
+      verbose: "False"
+      keep_archive: "False"
+
+  tasks:
+    - name: Add --collector switch if collector variable is not none
+      set_fact:
+        insights_client_command: "{{ insights_client_command }} --collector {{ content_vars.collector }}"
+      when: content_vars.collector is defined and content_vars.collector not in ["None", "none", "", None]
+
+    - name: Add --show-results switch if show_results variable is true
+      set_fact:
+        insights_client_command: "{{ insights_client_command }} --show-results"
+      when: content_vars.show_results is defined and content_vars.show_results in ["True", "true", True]
+
+    - name: Add --status switch if status variable is true
+      set_fact:
+        insights_client_command: "{{ insights_client_command }} --status"
+      when: content_vars.status is defined and content_vars.status in ["True", "true", True]
+
+    - name: Add --test-connection switch if test_connection variable is true
+      set_fact:
+        insights_client_command: "{{ insights_client_command }} --test-connection"
+      when: content_vars.test_connection is defined and content_vars.test_connection in ["True", "true", True]
+
+    - name: Add --verbose switch if verbose variable is true
+      set_fact:
+        insights_client_command: "{{ insights_client_command }} --verbose"
+      when: content_vars.verbose is defined and content_vars.verbose in ["True", "true", True]
+
+    - name: Add --keep-archive switch if keep_archive is true
+      set_fact:
+        insights_client_command: "{{ insights_client_command }} --keep-archive"
+      when: content_vars.keep_archive is defined and content_vars.keep_archive in ["True", "true", True]
+
+    - name: run insights
+      shell: "NO_COLOR=1 {{ insights_client_command }} 2>&1"
+      register: insights_client_output
+      no_log: true
+      ignore_errors: true
+
+    - when: insights_client_output.rc != 0
+      name: Set result for failure
+      ansible.builtin.set_fact:
+        task_results:
+          report: "{{insights_client_output.stdout}}\n{{insights_client_output.stderr}}"
+          message: "insights-client failed. Expand for details."
+          alert: true
+
+    - when: task_results is not defined
+      name: Set result for completed successfully
+      ansible.builtin.set_fact:
+        task_results:
+          report: "{{insights_client_output}}"
+          message: "{{insights_client_output.stdout}}"
+          alert: false
+
+    - name: Print Task Result
+      ansible.builtin.debug:
+        var: task_results

@@ -1,0 +1,1 @@
+Secondary rule resolution content with {{=pydata.second}} engaged

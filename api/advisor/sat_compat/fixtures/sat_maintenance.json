@@ -1,0 +1,82 @@
+[
+    {
+        "model": "sat_compat.satmaintenance",
+        "pk": 1,
+        "fields": {
+            "account": "1234567",
+            "org_id": "9876543",
+            "branch_id": "AABBCCDD-EEFF-FFEE-DDCC-001122334455",
+            "name": "Test plan",
+            "description": "Describe your test plan here",
+            "suggestion": "A",
+            "created_by": "testing",
+            "created_at": "2020-11-02T22:14:00Z",
+            "updated_at": "2020-11-02T22:14:00Z",
+            "silenced": false,
+            "hidden": false,
+            "allow_reboot": true
+        }
+    }, {
+        "model": "sat_compat.satmaintenance",
+        "pk": 2,
+        "fields": {
+            "account": "1234567",
+            "org_id": "9876543",
+            "branch_id": "AABBCCDD-EEFF-FFEE-DDCC-001122334455",
+            "name": "Dummy plan",
+            "description": "Play to delete in Mocha testing",
+            "suggestion": "A",
+            "created_by": "testing",
+            "created_at": "2020-11-02T22:14:00Z",
+            "updated_at": "2020-11-02T22:14:00Z",
+            "silenced": false,
+            "hidden": false,
+            "allow_reboot": true
+        }
+    }, {
+
+        "model": "sat_compat.satmaintenanceaction",
+        "pk": 1,
+        "fields": {
+            "plan_id": 1,
+            "rule_id": 1,
+            "host_id": "00112233-4455-6677-8899-012345678901"
+        }
+    }, {
+        "model": "sat_compat.satmaintenanceaction",
+        "pk": 2,
+        "fields": {
+            "plan_id": 1,
+            "rule_id": 5,
+            "host_id": "00112233-4455-6677-8899-012345678901",
+            "playbook_id": 1
+        }
+    }, {
+        "model": "sat_compat.satmaintenanceaction",
+        "pk": 3,
+        "fields": {
+            "plan_id": 1,
+            "rule_id": 5,
+            "host_id": "00112233-4455-6677-8899-012345678909",
+            "playbook_id": 1
+        }
+    }, {
+        "model": "sat_compat.satmaintenanceaction",
+        "pk": 4,
+        "fields": {
+            "plan_id": 1,
+            "rule_id": 4,
+            "host_id": "00112233-4455-6677-8899-012345678901",
+            "playbook_id": 1
+        }
+    }, {
+        "model": "sat_compat.satmaintenanceaction",
+        "pk": 5,
+        "fields": {
+            "plan_id": 1,
+            "rule_id": 3,
+            "host_id": "00112233-4455-6677-8899-012345678901",
+            "playbook_id": 1
+        }
+    }
+]

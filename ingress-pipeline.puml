@@ -1,0 +1,32 @@
+@startuml
+title Advisor Pipeline
+!include <C4/C4_Component>
+
+Person(system, "system")
+
+System_Boundary(osd, "Openshift Dedicated") {
+    Container(ingress, "Ingress", "service", "Receives all uploads")
+    Container(puptoo, "Puptoo", "processor", "Archive pre-processing")
+    Container(inventory, "Host Inventory", "processor", "Serves all host/system information")
+    Container(engine, "Insights Engine", "processor", "Executes Insights rules against upload")
+    Container(advisor, "Advisor", "processor", "User-facing service that serves rule results")
+    Container(3scale, "3Scale Gateway", "service", "Performs routing and auth for all API requests")
+}
+
+System_Ext(s3, "Amazon S3", "Object Storage")
+System_Ext(akamai, "Akamai", "CDN and TLS termination point")
+
+Rel_R(ingress, s3, "Stores archive for transaction")
+Rel(ingress, puptoo, "Sends upload for processing via kafka")
+Rel_R(puptoo, inventory, "Sends host info via kafka")
+Rel_R(inventory, engine, "Notifies of host update via kafka")
+Rel_R(engine, advisor, "Sends rule results via kafka")
+Rel(puptoo, s3, "Fetches archive from")
+Rel(inventory, s3, "Fetches archive from")
+Rel(engine, s3, "Fetches archive from")
+
+Rel(system, akamai, "Sends upload using TLS mutual auth")
+Rel(akamai, 3scale, "Forwards API requests to 3scale")
+Rel(3scale, ingress, "Route upload requests")
+
+@enduml

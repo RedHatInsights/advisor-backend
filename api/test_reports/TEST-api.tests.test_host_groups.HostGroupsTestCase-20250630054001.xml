@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_host_groups.HostGroupsTestCase-20250630054001" tests="8" file="api/tests/test_host_groups.py" time="1.905" timestamp="2025-06-30T05:40:10" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_bad_host_group_data" time="0.003" timestamp="2025-06-30T05:40:08" file="advisor/api/tests/test_host_groups.py" line="109">
+		<!--
+        find_host_groups includes a number of tests to avoid failure when
+        walking through the RBAC permission data.  We need to test those, for
+        coverage - but if we go through the 'correct' route we have to invoke
+        an authentication class that uses `has_rbac_permission` to make a
+        HTTP request to RBAC.  Or we can just munge RBAC-like data into
+        `find_host_groups` and check for the `host_group_attr` attribute on
+        the attached object, which is much easier.  `find_host_groups` doesn't
+        care where the data comes from and it doesn't check any other part of
+        the request object.  But we do need to set attributes on it, and a
+        request object is the easiest way to set that up.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match" time="0.216" timestamp="2025-06-30T05:40:08" file="advisor/api/tests/test_host_groups.py" line="292"/>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match_group_string" time="0.285" timestamp="2025-06-30T05:40:09" file="advisor/api/tests/test_host_groups.py" line="563"/>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match_include_all" time="0.273" timestamp="2025-06-30T05:40:09" file="advisor/api/tests/test_host_groups.py" line="730"/>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match_kessel_enabled_recom_read_only" time="0.073" timestamp="2025-06-30T05:40:09" file="advisor/api/tests/test_host_groups.py" line="127"/>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match_null_group" time="0.362" timestamp="2025-06-30T05:40:09" file="advisor/api/tests/test_host_groups.py" line="639"/>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match_query_param" time="0.299" timestamp="2025-06-30T05:40:10" file="advisor/api/tests/test_host_groups.py" line="386"/>
+	<testcase classname="api.tests.test_host_groups.HostGroupsTestCase" name="test_groups_match_several_ihr_entries" time="0.395" timestamp="2025-06-30T05:40:10" file="advisor/api/tests/test_host_groups.py" line="472"/>
+</testsuite>

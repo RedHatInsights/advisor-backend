@@ -1,0 +1,640 @@
+[{
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-012345678901",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system01.example.com",
+      "tags": [],
+      "groups": [{
+        "id": "00112233-4455-6677-8899-010101010101",
+        "name": "group01"
+      }],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-04T05:15:38Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E01", "E02"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC01",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221101"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-012345678903",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system03.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-09-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "innotek Gmbh",
+          "bios_version": "Virtualbox", "bios_release_date": "01/01/2011",
+          "number_of_sockets": 2, "infrastructure_type": "virtual",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14", "cores_per_socket": 8,
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC03",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221103"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-012345678904",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system04.example.com",
+      "tags": [{
+        "key": "satellite_instance_id",
+        "value": "82148fc8-afba-44ba-8d48-1d497f4b3b11",
+        "namespace": "satellite"
+      },{
+        "key": "organization_id",
+        "value": "1",
+        "namespace": "satellite"
+      }],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-10T23:32:13Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E02", "E04"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "4f34fdbf-dae6-46fc-a85d-bdd4872587e9",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221104"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-012345678905",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system05.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-10T23:32:15Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E04", "E08"],
+          "os_release": "CentOS Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "CentOS Linux", "major": 7, "minor": 9}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221105"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-012345678906",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "stale-warn.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2019-04-05T14:30:00Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14",
+          "os_release": "Red Hat Enterprise Linux Server",
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC06",
+          "operating_system": {"name": "RHEL", "major": 8, "minor": 6}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221106"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-012345678908",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "stale-hide.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2020-02-18T02:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E08", "E16"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC08",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221108"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-01234567890A",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "stale-hide-2.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-06-25T06:00:00Z",
+      "updated": "2020-06-25T07:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E16", "E32"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110A"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-01234567890B",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "centos.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2023-07-06T06:00:00Z",
+      "updated": "2023-07-06T07:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 4,
+          "number_of_sockets": 1, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed": false,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14",
+          "os_release": "CentOS",
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC0B",
+          "operating_system": {"name": "CentOS", "major": 8, "minor": 6}
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110B"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "00112233-4455-6677-8899-0123456789E1",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "edge01.example.com",
+      "tags": [{
+        "key": "satellite_instance_id",
+        "value": "aabbccdd-eeff-ffee-ddcc-aabbccddeee1",
+        "namespace": "satellite"
+      },{
+        "key": "organization_id",
+        "value": "1",
+        "namespace": "satellite"
+      }],
+      "groups": [],
+      "created": "2020-06-25T06:00:00Z",
+      "updated": "2020-06-25T07:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed": true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E16", "E32"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 9, "minor": 2},
+          "host_type": "edge"
+      },
+      "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-5544332211E1"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "02468135-7902-4681-3579-024681357902",
+    "fields": {
+      "account": "1122334",
+      "org_id": "9988776",
+      "display_name": "system02.example.org",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-05-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14",
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 6, "minor": 8},
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC04"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221102"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "02468135-7902-4681-3579-024681357907",
+    "fields": {
+      "account": "1122334",
+      "org_id": "9988776",
+      "display_name": "system07.example.org",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2019-05-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E02", "E03"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 9, "minor": 4},
+          "bootc_status": {
+            "booted": {
+              "image": "192.168.124.1:5000/bootc-insights:latest",
+              "image_digest": "sha256:a96d35cc9bc3152d309bd302a7f73d449630fe3b62a9c3c9295300566fcad654"
+            }
+          },
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC07"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221107"
+    }
+}, {
+    "model": "tasks.Host",
+    "pk": "02468135-7902-4681-3579-024681357914",
+    "fields": {
+      "account": "1122334",
+      "org_id": "9988776",
+      "display_name": "rhelai.example.org",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2019-05-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.1.415-9", "sap_system": true,
+          "insights_client_version":"3.1.4", "sap_sids": [],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 9, "minor": 4},
+          "bootc_status": {
+            "booted": {
+              "image": "registry.redhat.io/rhelai1/bootc-aws-nvidia-rhel9:1.4",
+              "image_digest": "sha256:a96d35cc9bc3152d309bd302a7f73d449630fe3b62a9c3c9295300566fcad914"
+            }
+          },
+          "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCC914"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221914"
+    }
+}, {
+
+    "model": "tasks.Task", "pk": 1, "fields": {
+        "slug": "log4shell", "title": "Log4Shell vulnerability detection",
+        "description": "Detection of log4j usage on a server and whether it may be vulnerable to the 'log4shell' vulnerability",
+        "publish_date": "2022-04-11T03:59:54Z",
+        "playbook": "---\n- name: ping\n  hosts: localhost\n  tasks:\n    - ping:\n",
+        "active": true, "type": "A", "filters": []
+    }
+}, {
+    "model": "tasks.Task", "pk": 2, "fields": {
+        "slug": "draft", "title": "Unpublished draft task",
+        "description": "This is a test task to see if filtering on active status works",
+        "publish_date": "2022-04-11T03:59:54Z",
+        "playbook": "---\n- name: ping\n  hosts: localhost\n  tasks:\n    - ping:\n",
+        "active": false, "type": "A", "filters": []
+    }
+},{
+    "model": "tasks.Task", "pk": 3, "fields": {
+        "slug": "bash-script", "title": "Bash Task Title",
+        "description": "Bash Task Description",
+        "publish_date": "2022-04-11T03:59:54Z",
+        "playbook": "#!/bin/bash\necho 'Hello World'\n",
+        "active": false, "type": "S", "filters": []
+  }
+},{
+    "model": "tasks.Task", "pk": 4, "fields": {
+        "slug": "convert2rhel_check", "title": "Use Convert2RHEL to check a system for conversion",
+        "description": "Produce a report to check what needs to be done to convert a set of systems to RHEL",
+        "publish_date": "2023-05-29T23:47:21Z",
+        "playbook": "---\n- name: convert2rhel\n  vars:\n    key: value\n  hosts: localhost\n  tasks:\n    - convert2rhel:\n",
+        "active": true, "type": "A",
+        "filter_message": "Only eligible CentOS 7 systems are shown",
+        "filters": ["centos", "os_v7"]
+    }
+}, {
+    "model": "tasks.TaskParameter", "pk": 1, "fields": {
+        "task_id": 4, "key": "extra_repositories", "default": "false",
+        "description": "Should extra repositories be enabled?",
+        "required": false, "values": ["true", "false"],
+        "title": "Enable Extra Repositories",
+        "multi_valued": false,
+        "index": 1
+    }
+}, {
+    "model": "tasks.TaskParameter", "pk": 2, "fields": {
+        "task_id": 4, "key": "repository_names", "default": null,
+        "description": "Names of extra repositories to include",
+        "required": false, "values": ["els", "epel", "extra", ""],
+        "title": "Extra Repository Names",
+        "multi_valued": true,
+        "index": 4
+    }
+}, {
+    "model": "tasks.TaskParameter", "pk": 3, "fields": {
+        "task_id": 4, "key": "has_internet_access", "default": "true",
+        "description": "Should convert2rhel check the internet for updates?",
+        "required": true, "values": ["true", "false"],
+        "title": "Check for Updates Online",
+        "multi_valued": false,
+        "index": 3
+    }
+}, {
+    "model": "tasks.TaskParameter", "pk": 4, "fields": {
+        "task_id": 4, "key": "organisation_id", "default": null,
+        "description": "Organisation ID for subscription checks",
+        "required": true, "values": ["1248", "1369", "1720"],
+        "title": "Organisation ID",
+        "multi_valued": false,
+        "index": 2
+    }
+}, {
+
+    "model": "tasks.ExecutedTask", "pk": 1, "fields": {
+        "name": "My Named Task for Log4Shell vulnerability detection",
+        "task_id": 1, "org_id": "9876543", "initiated_by": "testing",
+        "is_org_admin": true, "start_time": "2022-04-11T04:01:26Z",
+        "status": 1, "token": "00112233-4455-6677-8899-aabbccddee01"
+    }
+}, {
+    "model": "tasks.ExecutedTask", "pk": 2, "fields": {
+        "name": "Log4Shell vulnerability detection", "task_id": 1,
+        "org_id": "9988776", "initiated_by": "testing",
+        "start_time": "2022-06-12T23:57:26Z", "status": 4,
+        "token": "00112233-4455-6677-8899-aabbccddee02"
+    }
+}, {
+    "model": "tasks.ExecutedTask", "pk": 3, "fields": {
+        "name": "Log4Shell vulnerability detection", "task_id": 1,
+        "org_id": "9876543", "initiated_by": "testing",
+        "start_time": "2022-08-26T04:44:46Z", "status": 3,
+        "token": "00112233-4455-6677-8899-aabbccddee03"
+    }
+}, {
+    "model": "tasks.ExecutedTask", "pk": 4, "fields": {
+        "name": "Bash Task Title", "task_id": 3, "org_id": "9876543",
+        "initiated_by": "testing", "start_time": "2023-07-18T02:33:07Z",
+        "status": 2, "token": "00112233-4455-6677-8899-aabbccddee04"
+    }
+}, {
+    "model": "tasks.ExecutedTask", "pk": 5, "fields": {
+        "name": "Use Convert2RHEL to check a system for conversion",
+        "task_id": 4, "org_id": "9876543", "initiated_by": "testing",
+        "start_time": "2023-05-30T00:25:09Z", "status": 4,
+        "token": "00112233-4455-6677-8899-aabbccddee05"
+    }
+}, {
+
+    "model": "tasks.ExecutedTaskParameter", "pk": 1, "fields": {
+        "executed_task_id": 5, "parameter_id": 1, "value": "true"
+    }
+}, {
+    "model": "tasks.ExecutedTaskParameter", "pk": 2, "fields": {
+        "executed_task_id": 5, "parameter_id": 2, "value": "els,epel"
+    }
+}, {
+    "model": "tasks.ExecutedTaskParameter", "pk": 3, "fields": {
+        "executed_task_id": 5, "parameter_id": 3, "value": "true"
+    }
+}, {
+    "model": "tasks.ExecutedTaskParameter", "pk": 4, "fields": {
+        "executed_task_id": 5, "parameter_id": 4, "value": "1248"
+    }
+}, {
+
+    "model": "tasks.Job", "pk": 1, "fields": {
+        "executed_task_id": 1, "system_id": "00112233-4455-6677-8899-012345678901",
+        "status": 1, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "run_id": "00112233-4455-6677-8899-52554E494401",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494401"
+    }
+}, {
+    "model": "tasks.Job", "pk": 2, "fields": {
+        "executed_task_id": 1, "system_id": "00112233-4455-6677-8899-012345678903",
+        "status": 2, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "stdout": "TASK [detect problems]\nFailed at step 1",
+        "run_id": "00112233-4455-6677-8899-52554E494403",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494403"
+    }
+}, {
+    "model": "tasks.Job", "pk": 3, "fields": {
+        "executed_task_id": 3, "system_id": "00112233-4455-6677-8899-012345678901",
+        "status": 2, "results": {"alert": true}, "updated_on": "2022-04-11T04:01:26Z",
+        "stdout": "TASK [detect problems]\nDetected one error\nTASK [print results] *\nok: \"task_results\": {\n    \"msg\": \"{\\\"message\\\": \\\"Vulnerable files found\\\", \\\"alert\\\": true, \\\"files\\\": [\\\"/home/dkuc/Videos/log4j-core-2.0-tests.jar\\\", \\\"/home/dkuc/Videos/log4j-core-2.0.jar\\\"]}\"\n}\nPLAY RECAP *",
+        "run_id": "00112233-4455-6677-8899-52554E494431",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494431"
+    }
+}, {
+    "model": "tasks.Job", "pk": 4, "fields": {
+        "executed_task_id": 3, "system_id": "00112233-4455-6677-8899-012345678903",
+        "status": 2, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "stdout": "TASK [detect problems]\nDetected one error\nTASK [print results] *\nok: \"task_results\": {\n    \"msg\": \"{\\\"message\\\": \\\"Vulnerable files found\\\", \\\"alert\\\": true, \\\"files\\\": [\\\"/home/dkuc/Videos/log4j-core-2.0-tests.jar\\\", \\\"/home/dkuc/Videos/log4j-core-2.0.jar\\\"]}\"\n}\nPLAY RECAP *",
+        "run_id": "00112233-4455-6677-8899-52554E494433",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494433"
+    }
+},{
+    "model": "tasks.Job", "pk": 5, "fields": {
+        "executed_task_id": 3, "system_id": "00112233-4455-6677-8899-012345678904",
+        "status": 3, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "run_id": "00112233-4455-6677-8899-52554E494434",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494434"
+    }
+}, {
+    "model": "tasks.Job", "pk": 6, "fields": {
+        "executed_task_id": 2, "system_id": "00112233-4455-6677-8899-012345678902",
+        "status": 3, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "run_id": "00112233-4455-6677-8899-52554e494422",
+        "rhc_client_id": "00112233-4455-6677-8899-52554e494422"
+    }
+}, {
+    "model": "tasks.Job", "pk": 7, "fields": {
+        "executed_task_id": 4, "system_id": "00112233-4455-6677-8899-012345678904",
+        "status": 2, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "stdout": "TASK [detect problems]\nDetected one error\nTASK [print results] *\nok: \"task_results\": {\n    \"msg\": \"{\\\"message\\\": \\\"Vulnerable files found\\\", \\\"alert\\\": true, \\\"files\\\": [\\\"/home/dkuc/Videos/log4j-core-2.0-tests.jar\\\", \\\"/home/dkuc/Videos/log4j-core-2.0.jar\\\"]}\"\n}\nPLAY RECAP *",
+        "run_id": "00112233-4455-6677-8899-52554E494444",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494444"
+    }
+}, {
+    "model": "tasks.Job", "pk": 8, "fields": {
+        "executed_task_id": 5, "system_id": "00112233-4455-6677-8899-012345678904",
+        "status": 4, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "run_id": "00112233-4455-6677-8899-52554E494454",
+        "rhc_client_id": "00112233-4455-6677-8899-52554E494454"
+    }
+}, {
+    "model": "tasks.Job", "pk": 9, "fields": {
+        "executed_task_id": 1, "system_id": "00112233-4455-6677-8899-012345678904",
+        "status": 3, "results": {}, "updated_on": "2022-04-11T04:01:26Z",
+        "run_id": "00000000-0000-0000-0000-000000000000"
+    }
+}, {
+
+    "model": "tasks.JobLog", "pk": 1, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 1,
+        "is_ok": true, "line": "Job dispatched to Playbook Dispatcher"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 2, "fields": {
+        "created_at": "2023-12-19T22:43:00Z", "job_id": 9,
+        "is_ok": true, "line": "Job dispatched to Playbook Dispatcher"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 3, "fields": {
+        "created_at": "2023-12-19T22:43:10Z", "job_id": 9,
+        "is_ok": false, "line": "Playbook Dispatcher returned status code 404"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 4, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 2,
+        "is_ok": true, "line": "Job dispatched to Playbook Dispatcher"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 5, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 3,
+        "is_ok": true, "line": "Job dispatched to Playbook Dispatcher"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 6, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 4,
+        "is_ok": true, "line": "Job dispatched to Playbook Dispatcher"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 7, "fields": {
+        "created_at": "2023-12-19T22:42:18Z", "job_id": 2,
+        "is_ok": true, "line": "Job completed for executed task"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 8, "fields": {
+        "created_at": "2023-12-19T22:42:18Z", "job_id": 3,
+        "is_ok": true, "line": "Job completed for executed task"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 9, "fields": {
+        "created_at": "2023-12-19T22:42:18Z", "job_id": 4,
+        "is_ok": true, "line": "Job completed for executed task"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 10, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 5,
+        "is_ok": true, "line": "Job dispatched to Cloud Connector"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 11, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 5,
+        "is_ok": false, "line": "Error parsing results data in stdout"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 12, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 8,
+        "is_ok": true, "line": "Job dispatched to Cloud Connector"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 13, "fields": {
+        "created_at": "2023-12-19T22:43:01Z", "job_id": 8,
+        "is_ok": false, "line": "Job timed out after 3600 seconds"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 14, "fields": {
+        "created_at": "2023-12-19T22:42:17Z", "job_id": 7,
+        "is_ok": true, "line": "Job dispatched to Playbook Dispatcher"
+    }
+}, {
+    "model": "tasks.JobLog", "pk": 15, "fields": {
+        "created_at": "2023-12-19T22:42:18Z", "job_id": 7,
+        "is_ok": true, "line": "Job completed for executed task"
+    }
+}, {
+
+    "model": "tasks.SatelliteRhc",
+    "pk": "82148fc8-afba-44ba-8d48-1d497f4b3b11",
+    "fields": {
+      "source_id": 123,
+      "rhc_client_id": "b698ded4-9798-48d9-b1c0-6f30e8fdd815"
+    }
+}, {
+    "model": "tasks.SatelliteRhc",
+    "pk": "aabbccdd-eeff-ffee-ddcc-aabbccddeee1",
+    "fields": {
+      "source_id": 124,
+      "rhc_client_id": "FFEEDDCC-BBAA-9988-7766-5544332211e1"
+    }
+}]

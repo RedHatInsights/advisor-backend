@@ -1,0 +1,16 @@
+category: Performance
+description: Rule that hasn't yet been activated
+impact: Best Practice
+likelihood: 1
+node_id: ''
+product_code: rhel
+publish_date: null
+python_module: test_rules
+reboot_required: false
+resolution_risk: Adjust Service Status
+role: host
+status: inactive
+tags:
+- not-yet-active
+- testing
+- xfs

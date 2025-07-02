@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_inventory_host_model.InventoryHostTestCase-20250630235212" tests="3" file="api/tests/test_inventory_host_model.py" time="0.006" timestamp="2025-06-30T23:53:51" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_inventory_host_model.InventoryHostTestCase" name="test_host_properties" time="0.002" timestamp="2025-06-30T23:53:51" file="advisor/api/tests/test_inventory_host_model.py" line="33"/>
+	<testcase classname="api.tests.test_inventory_host_model.InventoryHostTestCase" name="test_host_tag_filter" time="0.002" timestamp="2025-06-30T23:53:51" file="advisor/api/tests/test_inventory_host_model.py" line="74"/>
+	<testcase classname="api.tests.test_inventory_host_model.InventoryHostTestCase" name="test_rhel_version" time="0.002" timestamp="2025-06-30T23:53:51" file="advisor/api/tests/test_inventory_host_model.py" line="59"/>
+</testsuite>

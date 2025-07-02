@@ -1,0 +1,14 @@
+[{
+    "model": "api.uploadsource",
+    "pk": 1,
+    "fields": {
+        "name": "insights-client"
+    }
+}, {
+    "model": "api.uploadsource",
+    "pk": 2,
+    "fields": {
+        "name": "ai-operations-client"
+    }
+}]
+

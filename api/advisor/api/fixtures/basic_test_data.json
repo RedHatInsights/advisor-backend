@@ -1,0 +1,1223 @@
+[{
+    "model": "api.tag", "pk": 1, "fields": {"name": "active"}
+},{
+    "model": "api.tag", "pk": 2, "fields": {"name": "acked"}
+},{
+    "model": "api.tag", "pk": 3, "fields": {"name": "idm"}
+},{
+    "model": "api.tag", "pk": 4, "fields": {"name": "testing"}
+},{
+    "model": "api.tag", "pk": 5, "fields": {"name": "kernel"}
+},{
+    "model": "api.tag", "pk": 6, "fields": {"name": "deleted"}
+},{
+    "model": "api.tag", "pk": 7, "fields": {"name": "docker"}
+},{
+    "model": "api.tag", "pk": 8, "fields": {"name": "inactive"}
+},{
+    "model": "api.tag", "pk": 9, "fields": {"name": "satellite"}
+},{
+    "model": "api.tag", "pk": 10, "fields": {"name": "not-yet-active"}
+},{
+    "model": "api.tag", "pk": 11, "fields": {"name": "xfs"}
+},{
+    "model": "api.tag", "pk": 12, "fields": {"name": "second"}
+},{
+    "model": "api.tag", "pk": 13, "fields": {"name": "anonymous"}
+},{
+    "model": "api.tag", "pk": 14, "fields": {"name": "highest"}
+},{
+    "model": "api.tag", "pk": 15, "fields": {"name": "security"}
+},{
+    "model": "api.tag", "pk": 16, "fields": {"name": "incident"}
+},{
+    "model": "api.tag", "pk": 17, "fields": {"name": "autoack"}
+},{
+
+    "model": "api.rule",
+    "pk": 1,
+    "fields": {
+        "created_at": "2018-05-22T06:06:47Z",
+        "updated_at": "2018-05-22T06:06:47Z",
+        "deleted_at": null,
+        "ruleset": 1,
+        "rule_id": "test|Active_rule",
+        "description": "Active rule",
+        "total_risk": 1,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 3,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048576",
+        "summary": "markdown can include:\n\n* bullet lists\n* block quotations:\n\n    Shall I compare thee to a summer's day?\n\n* *italic* and **bold** markup.\n\n~~~\n10 PRINT 'FENCED CODE'\n20 GOTO 10\n~~~\n",
+        "generic": "markdown can include:\n\n* bullet lists\n* block quotations:\n\n    Shall I compare thee to a summer's day?\n\n* *italic* and **bold** markup.\n\n~~~\n10 PRINT 'FENCED CODE'\n20 GOTO 10\n~~~\n",
+        "reason": "This rule has\n DoT syntax object {{=pydata.active}} still *embedded* in HTML",
+        "more_info": "DoT {{=pydata.active}} active and **mark-up**\n\n* list 1\n  ~~~\n  Code block inside indent\n  ~~~\n* list 2\n",
+        "tags": [1, 4, 5],
+        "pathway_id": 1
+    }
+},{
+    "model": "api.rule",
+    "pk": 2,
+    "fields": {
+        "created_at": "2018-05-22T06:06:47Z",
+        "updated_at": "2018-05-22T06:06:47Z",
+        "deleted_at": null,
+        "ruleset": 1,
+        "rule_id": "test|Inactive_rule",
+        "description": "Inactive rule",
+        "total_risk": 1,
+        "active": false,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 2,
+        "node_id": "1048577",
+        "summary": "Inactive rule",
+        "generic": "Inactive rule",
+        "reason": "Inactive rule should have {{=pydata.inactive}} inactive content",
+        "more_info": "",
+        "tags": [8, 9, 4],
+        "pathway_id": 2
+    }
+},{
+    "model": "api.rule",
+    "pk": 3,
+    "fields": {
+        "created_at": "2018-05-22T06:06:47Z",
+        "updated_at": "2018-05-22T06:06:47Z",
+        "deleted_at": null,
+        "ruleset": 1,
+        "rule_id": "test|Acked_rule",
+        "description": "Acked rule",
+        "total_risk": 1,
+        "active": true,
+        "reboot_required": true,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 3,
+        "node_id": "1048578",
+        "summary": "Acked rule",
+        "generic": "Acked rule",
+        "reason": "Acked rule content with {{=pydata.acked}} DoT information",
+        "more_info": "",
+        "tags": [1, 2, 3, 4],
+        "pathway_id": 1
+    }
+},{
+    "model": "api.rule",
+    "pk": 4,
+    "fields": {
+        "created_at": "2018-05-22T06:06:47Z",
+        "updated_at": "2018-05-22T06:06:47Z",
+        "deleted_at": "2018-08-16T04:44:29Z",
+        "ruleset": 1,
+        "rule_id": "test|Deleted_rule",
+        "description": "Deleted rule",
+        "total_risk": 1,
+        "active": false,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 3,
+        "node_id": "1048579",
+        "summary": "Deleted rule",
+        "generic": "Deleted rule",
+        "reason": "Deleted rule with {{=pydata.deleted}} deleted content",
+        "more_info": "",
+        "tags": [6, 7, 4]
+    }
+},{
+    "model": "api.rule",
+    "pk": 5,
+    "fields": {
+        "created_at": "2018-09-22T06:06:47Z",
+        "updated_at": "2018-09-22T06:06:47Z",
+        "ruleset": 1,
+        "rule_id": "test|Second_rule",
+        "description": "Second rule, which has no node_id",
+        "total_risk": 1,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-09-23 15:38:55+00:00",
+        "category": 4,
+        "node_id": "",
+        "summary": "This rule should apply to one system but not another",
+        "generic": "This rule should apply to one system but not another",
+        "reason": "Rule data {{=pydata.second}} with ūñïċøđê",
+        "more_info": "DoT {{=pydata.second}} second and **mark-up**",
+        "tags": [1, 12, 5, 4]
+    }
+},{
+    "model": "api.rule",
+    "pk": 6,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|Rule_not_yet_activated",
+        "description": "Rule that hasn't yet been activated",
+        "total_risk": 1,
+        "active": false,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": null,
+        "category": 4,
+        "node_id": "",
+        "summary": "A rule that hasn't yet been activated, and with no node ID",
+        "generic": "A rule that hasn't yet been activated, and with no node ID",
+        "reason": "Not yet activated rule with {{=pydata.notactivated}} content",
+        "more_info": "",
+        "tags": [10, 11, 4]
+    }
+},{
+
+    "model": "api.ruleimpact",
+    "pk": 1,
+    "fields": {
+        "name": "Best Practice",
+        "impact": 1
+    }
+},{
+    "model": "api.ruleimpact",
+    "pk": 2,
+    "fields": {
+        "name": "Database Inconsistency",
+        "impact": 4
+    }
+},{
+    "model": "api.ruleimpact",
+    "pk": 3,
+    "fields": {
+        "name": "Invalid Configuration",
+        "impact": 1
+    }
+},{
+    "model": "api.ruleimpact",
+    "pk": 4,
+    "fields": {
+        "name": "null",
+        "impact": 1
+    }
+},{
+
+    "model": "api.ruletopic",
+    "pk": 1,
+    "fields": {
+        "created_at": "2019-04-01T04:51:37Z",
+        "updated_at": "2019-04-01T04:51:37Z",
+        "name": "Active rules",
+        "slug": "Active",
+        "description": "The set of active rules (including acked rules)",
+        "tag": 1,
+        "enabled": true
+    }
+},{
+    "model": "api.ruletopic",
+    "pk": 2,
+    "fields": {
+        "created_at": "2019-04-01T04:51:37Z",
+        "updated_at": "2019-04-01T04:51:37Z",
+        "name": "'A' rules",
+        "slug": "A",
+        "description": "The set of rules featuring 'A' in their title",
+        "tag": 13,
+        "enabled": true
+    }
+},{
+    "model": "api.ruletopic",
+    "pk": 3,
+    "fields": {
+        "created_at": "2019-10-21T04:29:11Z",
+        "updated_at": "2019-10-21T04:29:11Z",
+        "name": "Disabled topic",
+        "slug": "Disabled",
+        "description": "A disabled topic that has no tags or rules",
+        "tag": 10,
+        "enabled": false
+    }
+},{
+
+    "model": "api.rulerating",
+    "pk": 1,
+    "fields": {
+        "created_at": "2019-10-21T04:29:11Z",
+        "updated_at": "2019-10-21T04:29:11Z",
+        "rule": 1,
+        "rated_by": "rhn-support-test",
+        "account": "1234567",
+        "org_id": "9876543",
+        "rating": 1
+    }
+},{
+    "model": "api.rulerating",
+    "pk": 2,
+    "fields": {
+        "created_at": "2019-10-21T04:29:12Z",
+        "updated_at": "2019-10-21T04:29:12Z",
+        "rule": 3,
+        "rated_by": "rhn-support-test",
+        "account": "1234567",
+        "org_id": "9876543",
+        "rating": -1
+    }
+},{
+    "model": "api.rulerating",
+    "pk": 3,
+    "fields": {
+        "created_at": "2019-10-21T04:29:11Z",
+        "updated_at": "2019-10-21T04:29:11Z",
+        "rule": 1,
+        "rated_by": "testing",
+        "account": "1234567",
+        "org_id": "9876543",
+        "rating": 1
+    }
+},{
+    "model": "api.rulerating",
+    "pk": 4,
+    "fields": {
+        "created_at": "2019-10-21T04:29:12Z",
+        "updated_at": "2019-10-21T04:29:12Z",
+        "rule": 3,
+        "rated_by": "testing",
+        "account": "1234567",
+        "org_id": "9876543",
+        "rating": -1
+    }
+},{
+
+    "model": "api.resolution",
+    "pk": 1,
+    "fields": {
+        "rule": 1,
+        "system_type": 105,
+        "resolution": "In order to fix this problem, {{=pydata.active}} must equal **bar**",
+        "resolution_risk": 1
+    }
+},{
+    "model": "api.resolution",
+    "pk": 2,
+    "fields": {
+        "rule": 2,
+        "system_type": 105,
+        "resolution": "This rule is inactive and can no longer be resolved by {{=pydata.inactive}}",
+        "resolution_risk": 1
+    }
+},{
+    "model": "api.resolution",
+    "pk": 3,
+    "fields": {
+        "rule": 3,
+        "system_type": 105,
+        "resolution": "In order to fix this problem, {{=pydata.acked}} must equal **baz**",
+        "resolution_risk": 1
+    }
+},{
+    "model": "api.resolution",
+    "pk": 4,
+    "fields": {
+        "rule": 4,
+        "system_type": 105,
+        "resolution": "This rule is {{=pydata.deleted}} and should not be fixed",
+        "resolution_risk": 1
+    }
+},{
+    "model": "api.resolution",
+    "pk": 5,
+    "fields": {
+        "rule": 5,
+        "system_type": 89,
+        "resolution": "Secondary rule resolution content with {{=pydata.second}} engaged",
+        "resolution_risk": 1
+    }
+},{
+    "model": "api.resolution",
+    "pk": 6,
+    "fields": {
+        "rule": 6,
+        "system_type": 105,
+        "resolution": "This rule has {{=pydata.notactivated}} yet",
+        "resolution_risk": 1
+    }
+},{
+
+    "model": "api.resolutionrisk",
+    "pk": 1,
+    "fields": {
+        "name": "Adjust Service Status",
+        "risk": 1
+    }
+},{
+    "model": "api.resolutionrisk",
+    "pk": 2,
+    "fields": {
+        "name": "BIOS Parameter Adjustment",
+        "risk": 2
+    }
+},{
+    "model": "api.resolutionrisk",
+    "pk": 3,
+    "fields": {
+        "name": "Hardware Vendor Firmware Update",
+        "risk": 3
+    }
+},{
+    "model": "api.resolutionrisk",
+    "pk": 4,
+    "fields": {
+        "name": "Activate SELinux",
+        "risk": 4
+    }
+},{
+
+    "model": "api.pathway",
+    "pk":1,
+    "fields": {
+      "slug": "test-component-1",
+      "name": "test component 1",
+      "description": "Testing Component 1",
+      "component": "test1",
+      "resolution_risk_name": "Adjust Service Status",
+      "publish_date": "2018-05-23 15:38:55+00:00"
+    }
+},{
+    "model": "api.pathway",
+    "pk":2,
+      "fields": {
+        "slug": "test-component-2",
+        "name": "test component 2",
+        "description": "Testing Component 2",
+        "component": "test2",
+        "resolution_risk_name": "Adjust Service Status",
+        "publish_date": "2018-05-23 15:38:55+00:00"
+      }
+},{
+
+    "model": "api.playbook",
+    "pk": 1,
+    "fields": {
+        "resolution": 1,
+        "type": "fixit",
+        "description": "Fix for Active_rule on rhel/host",
+        "path": "/tmp/playbooks/Active_rule/fixit.yaml",
+        "play": "- name: Fix for Active_rule on rhel/host\n  become: true",
+        "version": "f592d01dca6aca063f2c3b2f7f4c261cef9fe114"
+    }
+},{
+
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-012345678901",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system01.example.com",
+      "tags": [],
+      "groups": [{"name": "group_1", "id": "11111111-1111-1111-1111-111111111111"}],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-04T05:15:38Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E01", "E02"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "system_update_method": "dnf"
+      },
+      "per_reporter_staleness": {"puptoo": {"stale_timestamp": "3020-01-01T06:00:00Z"}},
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221101"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-012345678903",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system03.example.com",
+      "tags": [],
+      "groups": [{"name": "group_2", "id": "11111111-1111-1111-1111-222222222222"}],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-09-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "innotek Gmbh",
+          "bios_version": "Virtualbox", "bios_release_date": "01/01/2011",
+          "number_of_sockets": 2, "infrastructure_type": "virtual",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14", "cores_per_socket": 8,
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221103"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-012345678904",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system04.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-10T23:32:13Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":false,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E02", "E04"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "4f34fdbf-dae6-46fc-a85d-bdd4872587e9",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "system_update_method": "yum"
+      },
+      "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221104"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-012345678905",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system05.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-10T23:32:15Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E04", "E08"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 1},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221105"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-012345678906",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "stale-warn.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2019-04-05T14:30:00Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14",
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221106"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-012345678908",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "stale-hide.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2020-02-18T02:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E08", "E16"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221108"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-01234567890A",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "stale-hide-2.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-06-25T06:00:00Z",
+      "updated": "2020-06-25T07:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E16", "E32"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110A"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "00112233-4455-6677-8899-0123456789E1",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "edge01.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-06-25T06:00:00Z",
+      "updated": "2020-06-25T07:56:27Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed": true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E16", "E32"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+          "host_type": "edge", "system_update_method": "rpm-ostree"
+      },
+      "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-5544332211E1"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "02468135-7902-4681-3579-024681357902",
+    "fields": {
+      "account": "1122334",
+      "org_id": "9988776",
+      "display_name": "system02.example.org",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-05-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14",
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 6, "minor": 8},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221102"
+    }
+  },
+  {
+    "model": "api.InventoryHost",
+    "pk": "02468135-7902-4681-3579-024681357907",
+    "fields": {
+      "account": "1122334",
+      "org_id": "9988776",
+      "display_name": "system07.example.org",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2019-05-22T02:00:51Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.",
+          "bios_version": "2.8.0", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":true,
+          "insights_egg_version": "3.0.182-1", "sap_system": true,
+          "insights_client_version":"3.0.14", "sap_sids": ["E02", "E03"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "operating_system": {"name": "RHEL", "major": 6, "minor": 8},
+          "system_update_method": "yum"
+      },
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221107"
+    }
+  },{
+
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678901",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543",
+        "satellite_id": "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE01",
+        "branch_id": "AABBCCDD-EEFF-FFEE-DDCC-001122334455"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678903",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543",
+        "satellite_id": "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE03",
+        "branch_id": "AABBCCDD-EEFF-FFEE-DDCC-001122334455"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678904",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678905",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543",
+        "satellite_id": "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE05",
+        "branch_id": "AABBCCDD-EEFF-FFEE-DDCC-001122334455"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678906",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678908",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-012345678909",
+    "fields": {
+        "created_at": "2020-06-04T17:55:32Z",
+        "updated_at": "2020-06-04T17:55:32Z",
+        "account": "1234567",
+        "org_id": "9876543",
+        "satellite_id": "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE09",
+        "branch_id": "AABBCCDD-EEFF-FFEE-DDCC-001122334455"
+    }
+},{
+    "model": "api.host",
+    "pk": "00112233-4455-6677-8899-01234567890A",
+    "fields": {
+        "created_at": "2020-06-25T06:00:00Z",
+        "updated_at": "2020-06-25T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "02468135-7902-4681-3579-024681357902",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1122334",
+        "org_id": "9988776"
+    }
+},{
+    "model": "api.host",
+    "pk": "02468135-7902-4681-3579-024681357907",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1122334",
+        "org_id": "9988776"
+    }
+},{
+
+    "model": "api.ack",
+    "pk": 1,
+    "fields": {
+        "created_at": "2018-05-22T02:00:51Z",
+        "updated_at": "2018-05-22T02:00:51Z",
+        "rule": 3,
+        "account": "1234567",
+        "org_id": "9876543",
+        "justification": "Account 1234567 acks test|Acked_rule",
+        "created_by": "test_data"
+    }
+},{
+    "model": "api.ack",
+    "pk": 2,
+    "fields": {
+        "created_at": "2018-05-22T02:00:51Z",
+        "updated_at": "2018-05-22T02:00:51Z",
+        "rule": 3,
+        "account": "1122334",
+        "org_id": "9988776",
+        "justification": "Account 1122334 acks test|Acked_rule",
+        "created_by": "test_data"
+    }
+},{
+    "model": "api.ack",
+    "pk": 3,
+    "fields": {
+        "created_at": "2018-05-22T02:00:51Z",
+        "updated_at": "2018-05-22T02:00:51Z",
+        "rule": 5,
+        "account": "1122334",
+        "org_id": "9988776",
+        "justification": "Account 1122334 acks test|Second_rule",
+        "created_by": "test_data"
+    }
+},{
+    "model": "api.ack",
+    "pk": 4,
+    "fields": {
+        "created_at": "2018-05-22T02:00:51Z",
+        "updated_at": "2018-05-22T02:00:51Z",
+        "rule": 2,
+        "account": "1234567",
+        "org_id": "9876543",
+        "justification": "Dummy ack for deleting in sat-compat tests",
+        "created_by": "test_data"
+    }
+},{
+
+    "model": "api.hostack",
+    "pk": 1,
+    "fields": {
+        "created_at": "2018-05-22T02:00:51Z",
+        "updated_at": "2018-05-22T02:00:51Z",
+        "rule": 5,
+        "account": "1234567",
+        "org_id": "9876543",
+        "host_id": "00112233-4455-6677-8899-012345678901",
+        "justification": "Account 1234567 acks test|Second_rule on system 01",
+        "created_by": "test_data"
+    }
+},{
+
+    "model": "api.upload",
+    "pk": 1,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-05-22T02:00:51Z",
+        "current": false
+    }
+},{
+    "model": "api.upload",
+    "pk": 2,
+    "fields": {
+        "host_id": "02468135-7902-4681-3579-024681357902",
+        "system_type": 105,
+        "source": 1,
+        "account": "1122334",
+        "org_id": "9988776",
+        "checked_on": "2018-05-22T02:00:51Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 3,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678903",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-09-22T02:00:51Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 4,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-12-04T05:10:36Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 5,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678904",
+        "system_type": 89,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-12-09T23:32:10Z",
+        "current": false
+    }
+},{
+    "model": "api.upload",
+    "pk": 6,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678904",
+        "system_type": 89,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-12-10T23:32:13Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 7,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678905",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-12-09T23:32:15Z",
+        "current": false
+    }
+},{
+    "model": "api.upload",
+    "pk": 8,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678905",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-12-10T23:32:15Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 9,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 2,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-12-04T05:15:38Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 10,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678906",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2019-04-05T04:59:27Z",
+        "current": false
+    }
+},{
+    "model": "api.upload",
+    "pk": 11,
+    "fields": {
+        "host_id": "02468135-7902-4681-3579-024681357907",
+        "system_type": 105,
+        "source": 1,
+        "account": "1122334",
+        "org_id": "9988776",
+        "checked_on": "2019-05-22T02:00:51Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 12,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678906",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2019-04-05T14:30:00Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 13,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678908",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2020-02-17T02:56:27Z",
+        "current": false
+    }
+},{
+    "model": "api.upload",
+    "pk": 14,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-012345678908",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2020-02-18T02:56:27Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 15,
+    "fields": {
+        "host_id": "00112233-4455-6677-8899-01234567890A",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2020-06-25T07:56:27Z",
+        "current": true
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 4,
+    "fields": {
+        "rule": 1,
+        "upload": 2,
+        "host": "02468135-7902-4681-3579-024681357902",
+        "account": "1122334",
+        "org_id": "9988776",
+        "details": {"error_key": "ACTIVE_RULE", "active": "bar"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 5,
+    "fields": {
+        "rule": 2,
+        "upload": 2,
+        "host": "02468135-7902-4681-3579-024681357902",
+        "account": "1122334",
+        "org_id": "9988776",
+        "details": {"error_key": "INACTIVE_RULE", "inactive": "baz"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 7,
+    "fields": {
+        "rule": 5,
+        "upload": 3,
+        "host": "00112233-4455-6677-8899-012345678903",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "SECOND_RULE", "second": "boing"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 8,
+    "fields": {
+        "rule": 1,
+        "upload": 4,
+        "host": "00112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACTIVE_RULE", "active": "bar"},
+        "impacted_date": "2018-12-04T05:10:36Z"
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 9,
+    "fields": {
+        "rule": 2,
+        "upload": 4,
+        "host": "00112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "INACTIVE_RULE", "inactive": "baz"},
+        "impacted_date": "2018-12-04T05:10:36Z"
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 11,
+    "fields": {
+        "rule": 1,
+        "upload": 6,
+        "host": "00112233-4455-6677-8899-012345678904",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACTIVE_ON_RHEV", "active": "cause_problems"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 12,
+    "fields": {
+        "rule": 5,
+        "upload": 6,
+        "host": "00112233-4455-6677-8899-012345678904",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "SECOND_ON_RHEV", "second": "bar"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 15,
+    "fields": {
+        "rule": 3,
+        "upload": 4,
+        "host": "00112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACKED_RULE", "acked": "acked"},
+        "impacted_date": "2018-12-04T05:10:36Z"
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 16,
+    "fields": {
+        "rule": 3,
+        "upload": 2,
+        "host": "02468135-7902-4681-3579-024681357902",
+        "account": "1122334",
+        "org_id": "9988776",
+        "details": {"error_key": "ACKED_RULE", "acked": "acked"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 17,
+    "fields": {
+        "rule": 1,
+        "upload": 3,
+        "host": "00112233-4455-6677-8899-012345678903",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACTIVE_RULE", "active": "Active_rule for customer 1 system 3"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 19,
+    "fields": {
+        "rule": 1,
+        "upload": 11,
+        "host": "02468135-7902-4681-3579-024681357907",
+        "account": "1122334",
+        "org_id": "9988776",
+        "details": {"error_key": "ACTIVE_RULE", "active": "Active_rule for customer 2 system 7"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 20,
+    "fields": {
+        "rule": 5,
+        "upload": 9,
+        "host": "00112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "SECOND_RULE", "second": "Host acked rule for customer"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 21,
+    "fields": {
+        "rule": 1,
+        "upload": 12,
+        "host": "00112233-4455-6677-8899-012345678906",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACTIVE_RULE", "active": "Active_rule for customer 1 system 6 two uploads on same day"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 23,
+    "fields": {
+        "rule": 1,
+        "upload": 14,
+        "host": "00112233-4455-6677-8899-012345678908",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACTIVE_RULE", "active": "Active_rule for customer 1 stale hide system"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 24,
+    "fields": {
+        "rule": 1,
+        "upload": 15,
+        "host": "00112233-4455-6677-8899-01234567890A",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "ACTIVE_RULE", "active": "Active_rule for customer 1 stale hide system 2"}
+    }
+},{
+
+    "model": "api.weeklyreportsubscription",
+    "pk": 1,
+    "fields": {
+        "username": "test-user",
+        "account": "1234567",
+        "org_id": "9876543",
+        "autosub": false
+    }
+}]

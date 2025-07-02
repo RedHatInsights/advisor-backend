@@ -1,0 +1,1 @@
+This rule is inactive and can no longer be resolved by {{=pydata.inactive}}

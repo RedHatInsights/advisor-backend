@@ -1,0 +1,3 @@
+- name: Fix for Active_rule on rhel/host
+  become: true
+

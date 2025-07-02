@@ -1,0 +1,96 @@
+content_fields:
+    - generic
+    - more_info
+    - reason
+    - resolution
+
+plugin_fields:
+    - name
+
+metadata_fields:
+    - category
+    - description
+    - impact
+    - likelihood
+    - node_id
+    - notif_action
+    - product_code
+    - publish_date
+    - python_module
+    - reboot_required
+    - resolution_risk
+    - role
+    - severity
+    - status
+    - tags
+
+derived_fields:
+    - rule_id
+    - error_key
+    - plugin
+
+interpolated_fields:
+    - reason
+    - resolution
+    - more_info
+
+non_null_fields:
+    - product_code
+    - role
+
+non_blank_fields:
+    - generic
+    - reason
+    - resolution
+
+categories:
+    - Stability
+    - Availability
+    - Security
+    - Performance
+
+severities:
+    - INFO
+    - WARN
+    - ERROR
+    - CRITICAL
+    - NULL
+
+impact:
+    Best Practice: 1
+    Database Inconsistency: 4
+    Invalid Configuration: 1
+    null: 1  # Default for when no impact is set
+
+resolution_risk:
+    Adjust Service Status: 1
+    BIOS Parameter Adjustment: 2
+    Hardware Vendor Firmware Update: 3
+    Activate SELinux: 4
+
+tags:
+    # tags given in values only, not keys
+    test_data:
+        - active
+        - acked
+        - deleted
+        - inactive
+        - second
+        - not-yet-active
+        - security
+        - anonymous
+        - highest
+        - incident
+        - autoack
+        - testing
+    standard:
+        - docker
+        - idm
+        - kernel
+        - xfs
+        - satellite
+
+notif_action:
+    - null
+    - enhance
+    - retire

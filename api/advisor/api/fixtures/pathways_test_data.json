@@ -1,0 +1,568 @@
+[{
+    "model": "api.rule",
+    "pk": 7,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_rule_1",
+        "description": "Pathway Rule 1",
+        "total_risk": 1,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 2,
+        "node_id": "1048579",
+        "summary": "Pathway Rule 1",
+        "generic": "Pathway Rule 1",
+        "reason": "Pathway Rule 1",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 1
+    }
+},{
+    "model": "api.rule",
+    "pk": 8,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_rule_2",
+        "description": "Pathway Rule 2",
+        "total_risk": 2,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway Rule 2",
+        "generic": "Pathway Rule 2",
+        "reason": "Pathway Rule 2",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 2
+    }
+},{
+    "model": "api.rule",
+    "pk": 9,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_rule_3",
+        "description": "Pathway Rule 3",
+        "total_risk": 2,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway Rule 3",
+        "generic": "Pathway Rule 3",
+        "reason": "Pathway Rule 3",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 3
+    }
+},{
+    "model": "api.rule",
+    "pk": 10,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_rule_4",
+        "description": "Pathway Rule 4",
+        "total_risk": 3,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway Rule 4",
+        "generic": "Pathway Rule 4",
+        "reason": "Pathway Rule 4",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 4
+    }
+},{
+    "model": "api.rule",
+    "pk": 11,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_rule_5",
+        "description": "Pathway Rule 5",
+        "total_risk": 4,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway Rule 5",
+        "generic": "Pathway Rule 5",
+        "reason": "Pathway Rule 5",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 5
+    }
+},{
+    "model": "api.rule",
+    "pk": 12,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_rule_6",
+        "description": "Pathway Rule 6",
+        "total_risk": 4,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway Rule 6",
+        "generic": "Pathway Rule 6",
+        "reason": "Pathway Rule 6",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 6
+    }
+},{
+    "model": "api.rule",
+    "pk": 13,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_incident_1",
+        "description": "Pathway incident rule",
+        "total_risk": 4,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 3,
+        "node_id": "1048579",
+        "summary": "Pathway incident rule",
+        "generic": "Pathway incident rule",
+        "reason": "Pathway incident rule",
+        "more_info": "",
+        "tags": [16],
+        "pathway_id": 8
+    }
+},{
+    "model": "api.rule",
+    "pk": 14,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_no_incident_1",
+        "description": "Pathway without incident rule",
+        "total_risk": 1,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway no incident rule",
+        "generic": "Pathway no incident rule",
+        "reason": "Pathway no incident rule",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 9
+    }
+},{
+    "model": "api.rule",
+    "pk": 15,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_reboot_required_1",
+        "description": "Pathway requiring reboot",
+        "total_risk": 4,
+        "active": true,
+        "reboot_required": true,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 2,
+        "node_id": "1048579",
+        "summary": "Pathway requiring reboot",
+        "generic": "Pathway requiring reboot",
+        "reason": "Pathway requiring reboot",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 10
+    }
+},{
+    "model": "api.rule",
+    "pk": 16,
+    "fields": {
+        "created_at": "2018-12-07T09:58:52Z",
+        "updated_at": "2018-12-07T09:58:52Z",
+        "ruleset": 1,
+        "rule_id": "test|pathway_no_reboot_required_1",
+        "description": "Pathway not requiring reboot",
+        "total_risk": 1,
+        "active": true,
+        "reboot_required": false,
+        "impact_id": 1,
+        "likelihood": 1,
+        "publish_date": "2018-05-23 15:38:55+00:00",
+        "category": 1,
+        "node_id": "1048579",
+        "summary": "Pathway not requiring reboot",
+        "generic": "Pathway not requiring reboot",
+        "reason": "Pathway not requiring reboot",
+        "more_info": "",
+        "tags": [],
+        "pathway_id": 11
+    }
+},{
+
+    "model": "api.InventoryHost",
+    "pk": "10112233-4455-6677-8899-012345678901",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system11.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-04T05:15:38Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":false,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14", "sap_sids": ["E03"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "AAAEDDCC-BBAA-9988-7766-554433221101"
+    }
+},{
+    "model": "api.InventoryHost",
+    "pk": "20112233-4455-6677-8899-012345678901",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system12.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-04T05:15:38Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":false,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14", "sap_sids": ["E03"],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "BBBEDDCC-BBAA-9988-7766-554433221101"
+    }
+},{
+    "model": "api.InventoryHost",
+    "pk": "30112233-4455-6677-8899-012345678901",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system13.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-04T05:15:38Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":false,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14", "sap_sids": [],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "CCCEDDCC-BBAA-9988-7766-554433221101"
+    }
+},{
+    "model": "api.InventoryHost",
+    "pk": "40112233-4455-6677-8899-012345678901",
+    "fields": {
+      "account": "1234567",
+      "org_id": "9876543",
+      "display_name": "system14.example.com",
+      "tags": [],
+      "groups": [],
+      "created": "2020-01-01T06:00:00Z",
+      "updated": "2018-12-04T05:15:38Z",
+      "stale_timestamp": "2020-01-01T06:00:00Z",
+      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
+      "culled_timestamp": "2020-01-08T06:00:00Z",
+      "system_profile": {
+          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+          "number_of_sockets": 2, "infrastructure_type": "physical",
+          "system_memory_bytes": 134927265792, "satellite_managed":false,
+          "insights_egg_version": "3.0.182-1", "sap_system": false,
+          "insights_client_version":"3.0.14", "sap_sids": [],
+          "os_release": "Red Hat Enterprise Linux Server",
+          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
+      },
+      "insights_id": "DDDEDDCC-BBAA-9988-7766-554433221101"
+    }
+},{
+
+    "model": "api.host",
+    "pk": "10112233-4455-6677-8899-012345678901",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "20112233-4455-6677-8899-012345678901",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "30112233-4455-6677-8899-012345678901",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+    "model": "api.host",
+    "pk": "40112233-4455-6677-8899-012345678901",
+    "fields": {
+        "created_at": "2020-01-01T06:00:00Z",
+        "updated_at": "2020-01-01T06:00:00Z",
+        "account": "1234567",
+        "org_id": "9876543"
+    }
+},{
+
+    "model": "api.upload",
+    "pk": 16,
+    "fields": {
+        "host_id": "10112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-05-22T02:00:51Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 17,
+    "fields": {
+        "host_id": "20112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-05-22T02:00:51Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 18,
+    "fields": {
+        "host_id": "30112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-05-22T02:00:51Z",
+        "current": true
+    }
+},{
+    "model": "api.upload",
+    "pk": 19,
+    "fields": {
+        "host_id": "40112233-4455-6677-8899-012345678901",
+        "system_type": 105,
+        "source": 1,
+        "account": "1234567",
+        "org_id": "9876543",
+        "checked_on": "2018-05-22T02:00:51Z",
+        "current": true
+    }
+},{
+
+    "model": "api.currentreport",
+    "pk": 25,
+    "fields": {
+        "rule": 7,
+        "upload": 4,
+        "host": "00112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_1"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 26,
+    "fields": {
+        "rule": 9,
+        "upload": 4,
+        "host": "00112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_3"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 27,
+    "fields": {
+        "rule": 7,
+        "upload": 3,
+        "host": "00112233-4455-6677-8899-012345678903",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_1"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 28,
+    "fields": {
+        "rule": 10,
+        "upload": 3,
+        "host": "00112233-4455-6677-8899-012345678903",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_4"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 29,
+    "fields": {
+        "rule": 11,
+        "upload": 3,
+        "host": "00112233-4455-6677-8899-012345678903",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_4"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 30,
+    "fields": {
+        "rule": 8,
+        "upload": 6,
+        "host": "00112233-4455-6677-8899-012345678904",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_2"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 31,
+    "fields": {
+        "rule": 11,
+        "upload": 6,
+        "host": "00112233-4455-6677-8899-012345678904",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_rule_5"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 32,
+    "fields": {
+        "rule": 13,
+        "upload": 16,
+        "host": "10112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_incident_1"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 33,
+    "fields": {
+        "rule": 14,
+        "upload": 17,
+        "host": "20112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_no_incident_1"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 34,
+    "fields": {
+        "rule": 15,
+        "upload": 18,
+        "host": "30112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_reboot_required_1"}
+    }
+},{
+    "model": "api.currentreport",
+    "pk": 35,
+    "fields": {
+        "rule": 16,
+        "upload": 17,
+        "host": "40112233-4455-6677-8899-012345678901",
+        "account": "1234567",
+        "org_id": "9876543",
+        "details": {"error_key": "pathway_no_reboot_required_1"}
+    }
+},{
+
+    "model": "api.weeklyreportsubscription",
+    "pk": 1,
+    "fields": {
+        "username": "test-user",
+        "account": "1234567",
+        "org_id": "9876543",
+        "autosub": false
+    }
+}]

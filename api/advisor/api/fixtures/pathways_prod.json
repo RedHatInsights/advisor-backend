@@ -1,0 +1,74 @@
+[
+  {
+    "model": "api.pathway",
+    "pk": 2,
+    "fields": {
+      "slug": "sysctl-parameter-tuning",
+      "name": "Sysctl parameter tuning",
+      "description": "Avoid issues with system memory, kernel panics, and improve performance of DBs by modifying kernel parameters using sysctl.",
+      "component": "sysctl.vm",
+      "resolution_risk_name": "Sysctl Parameter Tuning",
+      "publish_date": "2022-08-04T10:25:57.294Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 3,
+    "fields": {
+      "slug": "update-kernel-boot-options",
+      "name": "Update kernel boot options",
+      "description": "Stay on top of system boot failures, kernel panics, kdump failures and other issues by updating your kernel boot options.",
+      "component": "grub",
+      "resolution_risk_name": "Update Kernel Boot Options",
+      "publish_date": "2022-08-04T10:25:57.294Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 4,
+    "fields": {
+      "slug": "update-package",
+      "name": "Update Package",
+      "description": "Prevent drops in network performance and network connectivity losses by updating the NetworkManager package.",
+      "component": "NetworkManager",
+      "resolution_risk_name": "Update Package",
+      "publish_date": "2021-07-30T11:15:15.768Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 5,
+    "fields": {
+      "slug": "update-service-configuration",
+      "name": "Update httpd service configuration",
+      "description": "Improve security posture and prevent availability issues by updating the service configuration of httpd.",
+      "component": "httpd",
+      "resolution_risk_name": "Update Service Configuration",
+      "publish_date": "2022-08-04T10:25:57.294Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 6,
+    "fields": {
+      "slug": "upgrade-kernel",
+      "name": "Upgrade kernel",
+      "description": "Upgrade your kernel to avoid problems with boot failures, kernel panic situations, or system performance degradations.",
+      "component": "kernel",
+      "resolution_risk_name": "Upgrade Kernel",
+      "publish_date": "2022-08-04T10:25:57.294Z"
+    }
+  },
+  {
+    "model": "api.pathway",
+    "pk": 7,
+    "fields": {
+      "slug": "upgrade-edge-image-kernel",
+      "name": "Upgrade edge image kernel",
+      "description": "Reduce the risk of kernel panic or performance degradation by upgrading the kernel version in your edge images.",
+      "component": "kernel",
+      "resolution_risk_name": "Upgrade Edge Image Kernel",
+      "publish_date": "2022-12-09T14:55:30.198Z"
+    }
+  }
+]

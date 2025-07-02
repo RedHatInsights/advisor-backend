@@ -1,0 +1,11 @@
+[{
+    "model": "api.ruleset",
+    "pk": 1,
+    "fields": {
+        "created_at": "2018-05-22T02:00:51Z",
+        "updated_at": "2018-05-22T02:00:51Z",
+        "rule_source": "https://localhost/api/test_content/",
+        "description": "Advisor",
+        "module_starts_with": "test_rules"
+    }
+}]

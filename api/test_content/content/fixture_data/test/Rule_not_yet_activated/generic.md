@@ -1,0 +1,1 @@
+A rule that hasn't yet been activated, and with no node ID

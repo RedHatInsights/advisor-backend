@@ -1,0 +1,114 @@
+services:
+  advisor-db:
+    image: quay.io/cloudservices/postgresql-rds:13
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRESQL_DATABASE=insightsapi
+      - POSTGRESQL_USER=insightsapi
+      - POSTGRESQL_PASSWORD=InsightsData
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+  zookeeper:
+    image: docker.io/confluentinc/cp-zookeeper
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=32181
+      - ZOOKEEPER_SERVER_ID=1
+  kafka:
+    image: docker.io/confluentinc/cp-kafka
+    hostname: kafka
+    ports:
+      - 29092:29092
+      - 9092:9092
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_LISTENERS=DOCKER://0.0.0.0:29092,LOCALHOST://0.0.0.0:9092
+      - KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:29092,LOCALHOST://localhost:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,LOCALHOST:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER
+      - KAFKA_BROKER_ID=1
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:32181
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_ALLOW_AUTO_CREATE_TOPICS=true
+  init-kafka:
+    image: confluentinc/cp-kafka
+    depends_on:
+      - kafka
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics --bootstrap-server kafka:29092 --list
+
+      echo -e 'Creating kafka topics'
+      for topic in platform.engine.results \
+                   platform.insights.rule-hits \
+                   platform.inventory.events \
+                   platform.insights.rule-deactivation \
+                   platform.sources.event-stream \
+                   platform.playbook-dispatcher.runs \
+                   platform.upload.announce
+      do
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic $$topic --replication-factor 1 --partitions 3
+      done
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+  advisor-service:
+    depends_on:
+      advisor-api:
+        condition: service_started
+      nginx:
+        condition: service_started
+      zookeeper:
+        condition: service_started
+      kafka:
+        condition: service_started
+      advisor-db:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - ADVISOR_DB_HOST=advisor-db
+    command: python service/service.py
+  advisor-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    environment:
+      - DJANGO_SESSION_KEY
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - ADVISOR_ENV=dev
+      - ADVISOR_DB_HOST=advisor-db
+      - LOG_LEVEL=INFO
+      - USE_DJANGO_WEBSERVER=true
+      - CLOWDER_ENABLED="false"
+      - WEB_CONCURRENCY=2
+      - ENABLE_AUTOSUB="true" # enable auto-subscribe endpoint
+      - TASKS_REWRITE_INTERNAL_URLS=true
+      - TASKS_REWRITE_INTERNAL_URLS_FOR=internal.localhost
+      - ENABLE_INIT_CONTAINER_MIGRATIONS=true
+      - ENABLE_INIT_CONTAINER_IMPORT_CONTENT=true
+      - IMAGE=latest
+      - ADVISOR_BACKEND_DB_SERVICE_HOST=advisor-db
+      - ADVISOR_BACKEND_DB_SERVICE_PORT=5432
+      - ADVISOR_BACKEND_DB_PORT=advisor-db:5432
+    depends_on:
+      zookeeper:
+        condition: service_started
+      kafka:
+        condition: service_started
+      advisor-db:
+        condition: service_healthy
+    command: sh -c "./container_init.sh &&
+                    api/app.sh"

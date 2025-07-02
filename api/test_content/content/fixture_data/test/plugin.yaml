@@ -1,0 +1,9 @@
+category: Stability  # overridden
+component: null  # ignored
+name: Not a rule  # overridden
+node_id: '1020304'  # overridden
+product_code: rhel  # not used
+reboot_required: false  # overridden in some rules
+resolution_risk: Contact Red Hat Support  # overridden
+python_module: test  # overridden
+role: host  # not used
