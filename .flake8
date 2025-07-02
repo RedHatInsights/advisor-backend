@@ -1,0 +1,4 @@
+[flake8]
+ignore = E126,E127,E128,E501,E722,E741,W503,E402
+max-line-length = 101
+exclude = api/advisor/api/scripts,api/advisor/api/management,service/tests,service/api/migrations,service/manual_test,service/settings.py,api/advisor/sat_compat,api/advisor/api/insights/contrib,api/advisor/api/bin,api/advisor/api/docs,api/advisor/api/include,api/advisor/api/lib,api/advisor/api/lib64,api/advisor/api/.git,api/advisor/api/collections.py

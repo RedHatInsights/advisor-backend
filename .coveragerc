@@ -1,0 +1,5 @@
+[run]
+omit =
+    service/tests/*
+    service/manual_test/*
+    service/health.py
