@@ -51,6 +51,6 @@ USER 1001
 COPY ./api ./api
 COPY ./service ./service
 
-COPY container_init.sh refresh_db.sh ./
+COPY container_init.sh container_init.sh
 
 EXPOSE 8000
