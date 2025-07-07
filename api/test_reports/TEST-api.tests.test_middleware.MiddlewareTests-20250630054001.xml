@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_middleware.MiddlewareTests-20250630054001" tests="4" file="api/tests/test_middleware.py" time="0.316" timestamp="2025-06-30T05:40:22" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_middleware.MiddlewareTests" name="test_middleware_response_failure" time="0.226" timestamp="2025-06-30T05:40:22" file="advisor/api/tests/test_middleware.py" line="57"/>
-	<testcase classname="api.tests.test_middleware.MiddlewareTests" name="test_user_account_details_middleware_not_200" time="0.082" timestamp="2025-06-30T05:40:22" file="advisor/api/tests/test_middleware.py" line="45"/>
-	<testcase classname="api.tests.test_middleware.MiddlewareTests" name="test_user_account_details_middleware_not_set" time="0.005" timestamp="2025-06-30T05:40:22" file="advisor/api/tests/test_middleware.py" line="38"/>
-	<testcase classname="api.tests.test_middleware.MiddlewareTests" name="test_user_account_details_request_timeout" time="0.004" timestamp="2025-06-30T05:40:22" file="advisor/api/tests/test_middleware.py" line="77"/>
-</testsuite>

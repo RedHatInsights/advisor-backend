@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase-20250630054001" tests="6" file="api/tests/test_weekly_report_subscription_views.py" time="0.184" timestamp="2025-06-30T05:40:55" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase" name="test_create_list_remove_subscriptions" time="0.112" timestamp="2025-06-30T05:40:55" file="advisor/api/tests/test_weekly_report_subscription_views.py" line="68"/>
-	<testcase classname="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase" name="test_middleware_failure_on_send_email" time="0.015" timestamp="2025-06-30T05:40:55" file="advisor/api/tests/test_weekly_report_subscription_views.py" line="193"/>
-	<testcase classname="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase" name="test_missing_headers" time="0.007" timestamp="2025-06-30T05:40:55" file="advisor/api/tests/test_weekly_report_subscription_views.py" line="250"/>
-	<testcase classname="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase" name="test_missing_post_request_parameter" time="0.010" timestamp="2025-06-30T05:40:55" file="advisor/api/tests/test_weekly_report_subscription_views.py" line="240"/>
-	<testcase classname="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase" name="test_rbac_enabled_and_user_denied" time="0.015" timestamp="2025-06-30T05:40:55" file="advisor/api/tests/test_weekly_report_subscription_views.py" line="164"/>
-	<testcase classname="api.tests.test_weekly_report_subscription_views.WeeklyReportSubscriptionTestCase" name="test_same_username_in_two_accounts" time="0.025" timestamp="2025-06-30T05:40:55" file="advisor/api/tests/test_weekly_report_subscription_views.py" line="208"/>
-</testsuite>

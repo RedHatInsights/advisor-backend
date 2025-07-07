@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_view_auth.RequestToUserNameTestCase-20250630235212" tests="1" file="api/tests/test_view_auth.py" time="0.001" timestamp="2025-06-30T23:54:15" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_view_auth.RequestToUserNameTestCase" name="test_missing_username" time="0.001" timestamp="2025-06-30T23:54:15" file="advisor/api/tests/test_view_auth.py" line="358"/>
-</testsuite>

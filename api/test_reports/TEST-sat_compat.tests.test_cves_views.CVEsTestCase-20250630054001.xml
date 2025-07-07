@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="sat_compat.tests.test_cves_views.CVEsTestCase-20250630054001" tests="2" file="sat_compat/tests/test_cves_views.py" time="0.009" timestamp="2025-06-30T05:40:56" failures="0" errors="0" skipped="0">
-	<testcase classname="sat_compat.tests.test_cves_views.CVEsTestCase" name="test_cves_list" time="0.005" timestamp="2025-06-30T05:40:56" file="advisor/sat_compat/tests/test_cves_views.py" line="35"/>
-	<testcase classname="sat_compat.tests.test_cves_views.CVEsTestCase" name="test_cves_list_cert_auth" time="0.004" timestamp="2025-06-30T05:40:56" file="advisor/sat_compat/tests/test_cves_views.py" line="45"/>
-</testsuite>

@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="sat_compat.tests.test_systems_views.SystemV1ViewTestCase-20250630235212" tests="3" file="sat_compat/tests/test_systems_views.py" time="0.036" timestamp="2025-06-30T23:54:24" failures="0" errors="0" skipped="0">
-	<testcase classname="sat_compat.tests.test_systems_views.SystemV1ViewTestCase" name="test_systems_v1_delete" time="0.011" timestamp="2025-06-30T23:54:24" file="advisor/sat_compat/tests/test_systems_views.py" line="1215"/>
-	<testcase classname="sat_compat.tests.test_systems_views.SystemV1ViewTestCase" name="test_systems_v1_rename" time="0.010" timestamp="2025-06-30T23:54:24" file="advisor/sat_compat/tests/test_systems_views.py" line="1189"/>
-	<testcase classname="sat_compat.tests.test_systems_views.SystemV1ViewTestCase" name="test_v1_retrieve" time="0.015" timestamp="2025-06-30T23:54:24" file="advisor/sat_compat/tests/test_systems_views.py" line="1160"/>
-</testsuite>

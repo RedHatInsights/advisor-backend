@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_view_auth.TestInsightsRBACPermissionKessel-20250630054001" tests="4" file="api/tests/test_view_auth.py" time="0.006" timestamp="2025-06-30T05:40:52" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_identity_object_property_fails" time="0.001" timestamp="2025-06-30T05:40:52" file="advisor/api/tests/test_view_auth.py" line="476"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_resourcescope_host_object_permissions" time="0.004" timestamp="2025-06-30T05:40:52" file="advisor/api/tests/test_view_auth.py" line="511"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_request_has_user_auth" time="0.001" timestamp="2025-06-30T05:40:52" file="advisor/api/tests/test_view_auth.py" line="450"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_view_has_no_scope" time="0.001" timestamp="2025-06-30T05:40:52" file="advisor/api/tests/test_view_auth.py" line="458"/>
-</testsuite>
