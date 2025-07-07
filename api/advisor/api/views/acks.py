@@ -15,8 +15,9 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.conf import settings
-from django.shortcuts import get_object_or_404
 from django.db.models import Count, F
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -43,6 +44,26 @@ class RedHatAllAcksPermission(IsRedHatInternalUser):
 
 # We use a ReadOnlyModelViewSet for the list and retrieve, and then add our
 # own delete and create methods which only need the rule ID.
+@method_decorator(
+    name='list',
+    decorator=extend_schema(
+        summary="List the rules that have been acknowledged (disabled)",
+        description="""
+        Display the list of rules that have been disabled or acknowledged in
+        this account, along with who disabled them and their justification.
+        """,
+    )
+)
+@method_decorator(
+    name='retrieve',
+    decorator=extend_schema(
+        summary="Display a specific acknowledgement (disabling) of a rule",
+        description="""
+        Display who disabled a rule in this account, when, and their
+        justification for disabling it.
+        """,
+    )
+)
 class AckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     """
     Acks acknowledge (and therefore hide) a rule from view in an account.
@@ -170,7 +191,7 @@ class AckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         )
 
 
-class AckCountViewSet(viewsets.ViewSet):
+class AckCountViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Endpoint to retrieve the number of acks for each active rule
 
@@ -179,7 +200,11 @@ class AckCountViewSet(viewsets.ViewSet):
     permission_classes = [IsRedHatInternalUser]
     # No resource_name - not using RBAC permissions
     serializer_class = AckCountSerializer
-    queryset = Rule.objects.filter(active=True).annotate(ack_count=Count('ack')).values('rule_id', 'ack_count')
+    queryset = (
+        Rule.objects.filter(active=True)
+        .annotate(ack_count=Count('ack'))
+        .values('rule_id', 'ack_count')
+    )
     lookup_field = 'rule_id'
 
     def retrieve(self, request, rule_id, format=None):
@@ -188,10 +213,8 @@ class AckCountViewSet(viewsets.ViewSet):
 
         Returns the rule_id and its ack count
         """
-        # Check if the passed in rule_id is valid before performing the query to get its ack count
-        if get_object_or_404(Rule, rule_id=rule_id, active=True):
-            rule_ack_count = self.queryset.get(rule_id=rule_id)
-            return Response(rule_ack_count)
+        rule_ack_count = self.get_object()
+        return Response(rule_ack_count)
 
     def list(self, request, format=None):
         """

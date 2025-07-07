@@ -355,6 +355,11 @@ class RuleSystemsExportSerializer(serializers.Serializer):
 
 
 class AckSerializer(serializers.ModelSerializer):
+    """
+    An 'ack'nowledgement of a rule across an entire organisation.  This hides
+    (or disables) the given rule, so that all systems in this organisation
+    systems do not appear to be affected by the rule.
+    """
     rule = serializers.CharField(source='rule.rule_id')
 
     class Meta:
@@ -394,7 +399,9 @@ class JustificationCountSerializer(serializers.Serializer):
 
 class HostAckSerializer(serializers.ModelSerializer):
     """
-    Ignore reports of this rule on this system for this account.
+    Ignore reports of this rule on this system for this account.  This
+    'ack'nowledges (or hides) this rule from affecting this rule on this
+    system.
     """
     rule = serializers.SlugRelatedField(
         slug_field='rule_id', many=False,
