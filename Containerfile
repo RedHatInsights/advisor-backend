@@ -43,6 +43,9 @@ RUN microdnf -y install python3.12-pip python3.12-devel gcc libpq-devel && \
 # .local, so we need to set the permissions so 1001 can do that here
     chown -R 1001 .cache .local
 
+# Set Django 5.2+ minimum PostgreSQL version to 13
+RUN sed -i s/\(14,\)/\(13,\)/g $(pipenv --venv)/lib/python3.12/site-packages/django/db/backends/postgresql/features.py
+
 # Needed for Prometheus
 RUN install -o 1001 -d /metrics
 
