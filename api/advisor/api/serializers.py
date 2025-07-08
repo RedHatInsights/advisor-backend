@@ -447,6 +447,18 @@ class HostAckJustificationSerializer(serializers.ModelSerializer):
         fields = ('id', 'justification')
 
 
+class DisabledRulesSerializer(serializers.Serializer):
+    """
+    Displays rules which are disabled, either organisation-wide (Ack) or
+    system-specific (HostAck).  The scope field indicates which of these
+    causes this rule to be disabled - 'account' or 'system'.  To find which
+    systems have disabled a rule, use the 'rule_id' query parameter in the
+    hostack/ endpoint.
+    """
+    rule_id = serializers.CharField(max_length=255, source='rule__rule_id')
+    scope = serializers.CharField(max_length=10)
+
+
 def validate_hosts_in_org(hosts, org_id, field_name='systems'):
     """
     Check that the hosts given exist, and they are in this org.  We need to
