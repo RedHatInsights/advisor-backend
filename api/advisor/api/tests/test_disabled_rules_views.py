@@ -52,3 +52,23 @@ class DisabledRulesViewTestCase(TestCase):
         self.assertEqual(disabled_rules[1]['rule_id'], constants.second_rule)
         self.assertEqual(disabled_rules[1]['scope'], 'system')
         self.assertEqual(len(disabled_rules), 2)
+
+    def test_disabled_rules_detail(self):
+        response = self.client.get(
+            reverse('disabled-rules-detail', kwargs={'rule_id': constants.acked_rule}),
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertEqual(response.accepted_media_type, constants.json_mime)
+        disabled_rule = response.json()
+        self.assertIn('rule_id', disabled_rule)
+        self.assertIn('scope', disabled_rule)
+        self.assertEqual(disabled_rule['rule_id'], constants.acked_rule)
+        self.assertEqual(disabled_rule['scope'], 'account')
+
+        # A rule that's not active should give a 404
+        response = self.client.get(
+            reverse('disabled-rules-detail', kwargs={'rule_id': constants.inactive_rule}),
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 404, response.content.decode())

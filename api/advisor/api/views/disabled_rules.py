@@ -14,8 +14,9 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from django.db.models import F, Value
-from rest_framework import viewsets
+from django.db.models import Q, Value
+from rest_framework import status, viewsets
+from rest_framework.response import Response
 
 from api.models import Ack, HostAck
 from api.permissions import (
@@ -34,6 +35,7 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     disabled a rule, use the 'rule_id' query parameter in the hostack/
     endpoint.
     """
+    lookup_field = 'rule_id'
     permission_classes = [InsightsRBACPermission | CertAuthPermission]
     pagination_class = CustomPageNumberPagination
     queryset = Ack.objects.all()
@@ -59,3 +61,25 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         ).distinct('rule__rule_id').order_by('rule__rule_id').values(
             'rule__rule_id', 'scope'
         )).order_by('rule__rule_id', 'scope')
+
+    def retrieve(self, request, rule_id, format=None):
+        """
+        Get the detail on whether the given rule is disabled, and the scope,
+        by rule_id.  A 404 only means that the rule is not disabled - it may
+        also not exist.
+        """
+        # We have to query each queryset explicitly because Unions can't be
+        # queried in Django.
+        org_id = request_to_org(request)
+        filter_q = Q(org_id=org_id, rule__active=True, rule__rule_id=rule_id)
+        try:
+            Ack.objects.get(filter_q)
+            scope = 'account'
+        except Ack.DoesNotExist:
+            hostack = HostAck.objects.filter(filter_q)
+            if not hostack.exists():
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            scope = 'system'
+        return Response(DisabledRulesSerializer({
+            'rule__rule_id': rule_id, 'scope': scope
+        }).data)
