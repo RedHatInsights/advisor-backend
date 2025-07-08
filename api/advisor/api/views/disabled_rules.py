@@ -25,6 +25,7 @@ from api.permissions import (
 )
 from api.serializers import DisabledRulesSerializer
 from api.utils import CustomPageNumberPagination, PaginateMixin
+from tty import IFLAG
 
 
 class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
@@ -66,7 +67,8 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         """
         Get the detail on whether the given rule is disabled, and the scope,
         by rule_id.  A 404 only means that the rule is not disabled - it may
-        also not exist.
+        also not exist.  The account-wide scope will be returned first, if
+        the rule has both an account-wide and a system-specific acknowledgement.
         """
         # We have to query each queryset explicitly because Unions can't be
         # queried in Django.
