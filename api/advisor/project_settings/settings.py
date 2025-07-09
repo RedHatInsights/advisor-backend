@@ -201,6 +201,7 @@ MIDDLEWARE = [
     'middleware.request_storage.request_storage',
     'middleware.tasks_rewrite_internal_urls.rewrite_urls',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
+    'middleware.feature_flags_context.feature_flags_context',
 ]
 
 ROOT_URLCONF = 'project_settings.urls'
@@ -260,7 +261,7 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
-            'HOST': os.getenv('ADVISOR_DB_HOST', ''),  # '' allows local socket connection
+            'HOST': os.getenv('ADVISOR_DB_HOST', 'localhost'),  # '' allows local socket connection
             'PORT': os.getenv('ADVISOR_DB_PORT_NUM', '5432'),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
             'USER': os.getenv('ADVISOR_DB_USER', 'insightsapi'),
@@ -269,7 +270,7 @@ else:
         },
         'readonly': {
             'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
-            'HOST': os.getenv('ADVISOR_DB_READONLY_HOST') or os.getenv('ADVISOR_DB_HOST', ''),
+            'HOST': os.getenv('ADVISOR_DB_READONLY_HOST') or os.getenv('ADVISOR_DB_HOST', 'localhost'),
             'PORT': os.getenv('ADVISOR_DB_PORT_NUM', '5432'),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
             'USER': os.getenv('ADVISOR_DB_USER', 'insightsapi'),
@@ -409,3 +410,21 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 200000  # Content currently about 40000 fields
 
 # Enable Auto-Subscription endpoint
 ENABLE_AUTOSUB = string_to_bool(os.getenv("ENABLE_AUTOSUB", "false"))
+
+# Feature Flags
+if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
+    unleash = LoadedConfig.featureFlags
+    if unleash:
+        UNLEASH_TOKEN = unleash.clientAccessToken
+        UNLEASH_URL = f"{unleash.scheme.value}://{unleash.hostname}:{unleash.port}/api"
+    else:
+        UNLEASH_TOKEN = os.getenv("UNLEASH_TOKEN")
+        UNLEASH_URL = os.getenv("UNLEASH_URL")
+else:
+    UNLEASH_TOKEN = os.getenv("UNLEASH_TOKEN", "*:*.advisor")
+    UNLEASH_URL = os.getenv("UNLEASH_URL", "http://localhost:4242/api")
+
+UNLEASH_APP_NAME = os.getenv("UNLEASH_APP_NAME", APP_NAME)
+UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
+UNLEASH_REFRESH_INTERVAL = os.getenv("UNLEASH_REFRESH_INTERVAL", 5)
+UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
