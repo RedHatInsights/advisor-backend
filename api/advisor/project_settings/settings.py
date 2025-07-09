@@ -215,6 +215,7 @@ MIDDLEWARE = [
     'middleware.sat_compat_deprecated_headers.satellite_compatibility_api_deprecated',
     'middleware.tasks_rewrite_internal_urls.rewrite_urls',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
+    'middleware.feature_flags_context.feature_flags_context',
 ]
 
 ROOT_URLCONF = 'project_settings.urls'
@@ -452,11 +453,3 @@ UNLEASH_APP_NAME = os.getenv("UNLEASH_APP_NAME", APP_NAME)
 UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
 UNLEASH_REFRESH_INTERVAL = os.getenv("UNLEASH_REFRESH_INTERVAL", 5)
 UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
-
-# HBI settings for the logical replication
-HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
-HBI_SUBSCRIPTION = os.getenv("HBI_SUBSCRIPTION", "advisor_hosts_sub_v1_0_2")
-HBI_DROP_SUBSCRIPTION = os.getenv("HBI_DROP_SUBSCRIPTION", "")
-HBI_DROP_TABLES = os.getenv("HBI_DROP_TABLES", "false").lower() == "true"
-HBI_SSL_MODE = os.getenv("HBI_SSL_MODE", "")
-HBI_TABLES_NUM_PARTITIONS = int(os.getenv("HBI_TABLES_NUM_PARTITIONS", 1))
