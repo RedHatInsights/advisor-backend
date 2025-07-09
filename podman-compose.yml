@@ -2,11 +2,12 @@ services:
   advisor-db:
     image: quay.io/cloudservices/postgresql-rds:13
     ports:
-      - 5432:5432
+      - "5432:5432"
     environment:
       - POSTGRESQL_DATABASE=insightsapi
       - POSTGRESQL_USER=insightsapi
       - POSTGRESQL_PASSWORD=InsightsData
+      - POSTGRESQL_ADMIN_PASSWORD=insights
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 3s
@@ -26,15 +27,15 @@ services:
     depends_on:
       - zookeeper
     environment:
-      - KAFKA_LISTENERS=DOCKER://0.0.0.0:29092,LOCALHOST://0.0.0.0:9092
       - KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:29092,LOCALHOST://localhost:9092
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,LOCALHOST:PLAINTEXT
-      - KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER
+      - KAFKA_ALLOW_AUTO_CREATE_TOPICS=true
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_BROKER_ID=1
+      - KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER
+      - KAFKA_LISTENERS=DOCKER://0.0.0.0:29092,LOCALHOST://0.0.0.0:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,LOCALHOST:PLAINTEXT
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:32181
-      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_ALLOW_AUTO_CREATE_TOPICS=true
   init-kafka:
     image: confluentinc/cp-kafka
     depends_on:
@@ -84,25 +85,25 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 8000:8000
+      - "8000:8000"
     environment:
-      - DJANGO_SESSION_KEY
-      - BOOTSTRAP_SERVERS=kafka:29092
-      - ADVISOR_ENV=dev
-      - ADVISOR_DB_HOST=advisor-db
-      - LOG_LEVEL=INFO
-      - USE_DJANGO_WEBSERVER=true
-      - CLOWDER_ENABLED="false"
-      - WEB_CONCURRENCY=2
-      - ENABLE_AUTOSUB="true" # enable auto-subscribe endpoint
-      - TASKS_REWRITE_INTERNAL_URLS=true
-      - TASKS_REWRITE_INTERNAL_URLS_FOR=internal.localhost
-      - ENABLE_INIT_CONTAINER_MIGRATIONS=true
-      - ENABLE_INIT_CONTAINER_IMPORT_CONTENT=true
-      - IMAGE=latest
+      - ADVISOR_BACKEND_DB_PORT=advisor-db:5432
       - ADVISOR_BACKEND_DB_SERVICE_HOST=advisor-db
       - ADVISOR_BACKEND_DB_SERVICE_PORT=5432
-      - ADVISOR_BACKEND_DB_PORT=advisor-db:5432
+      - ADVISOR_DB_HOST=advisor-db
+      - ADVISOR_ENV=dev
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - CLOWDER_ENABLED="false"
+      - DJANGO_SESSION_KEY
+      - ENABLE_AUTOSUB="true" # enable auto-subscribe endpoint
+      - ENABLE_INIT_CONTAINER_IMPORT_CONTENT=true
+      - ENABLE_INIT_CONTAINER_MIGRATIONS=true
+      - IMAGE=latest
+      - LOG_LEVEL=INFO
+      - TASKS_REWRITE_INTERNAL_URLS_FOR=internal.localhost
+      - TASKS_REWRITE_INTERNAL_URLS=true
+      - USE_DJANGO_WEBSERVER=true
+      - WEB_CONCURRENCY=2
     depends_on:
       zookeeper:
         condition: service_started
@@ -112,3 +113,33 @@ services:
         condition: service_healthy
     command: sh -c "./container_init.sh &&
                     api/app.sh"
+  unleash:
+    image: quay.io/cloudservices/unleash-docker:5.6.9
+    ports:
+      - "4242:4242"
+    environment:
+      - CHECK_VERSION=false
+      - DATABASE_HOST=advisor-db
+      - DATABASE_NAME=unleash
+      - DATABASE_PASSWORD=unleash_password
+      - DATABASE_SSL=false
+      - DATABASE_USERNAME=unleash_user
+      - IMPORT_DROP_BEFORE_IMPORT=true
+      - IMPORT_FILE=/.unleash/flags.json
+      - INIT_ADMIN_API_TOKENS=*:*.advisor
+    volumes:
+      - ./.unleash:/.unleash:Z
+    depends_on:
+      unleash-init-db:
+        condition: service_completed_successfully
+
+  unleash-init-db:
+    image: quay.io/cloudservices/postgres:16
+    command: psql -h advisor-db -U postgres -a -f .unleash/init-db.sql
+    environment:
+      PGPASSWORD: insights
+    volumes:
+      - ./.unleash/init-db.sql:/.unleash/init-db.sql:z
+    depends_on:
+      advisor-db:
+        condition: service_healthy
