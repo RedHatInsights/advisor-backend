@@ -69,7 +69,7 @@ elif [ "${ENABLE_INIT_CONTAINER_IMPORT_CONTENT:-false,,}" != "true" ]; then
 fi
 
 # Look for the content files we need
-if [[ ! (
+if [[ -d ${dumped_content_dir} && ! (
     ( -f ${dumped_content_dir}/rule_content.yaml || -f ${dumped_content_dir}/rule_content.yaml.gz ) &&
     ( -f ${dumped_content_dir}/playbook_content.yaml || -f ${dumped_content_dir}/playbook_content.yaml.gz ) &&
     -f ${dumped_content_dir}/config.yaml
