@@ -21,9 +21,9 @@ from rest_framework.routers import APIRootView, DefaultRouter
 # Flake8 doesn't like star imports, and we can't seem to do 'from api import
 # views' and then use views.acks.AckViewSet.  Better solutions welcomed!
 from api.views import (
-    acks, autosubexclusion, export, hostacks, kcs, rule_categories,
-    rule_ratings, rule_topics, rules, pathways, settings, stats, status,
-    swagger, systems, system_types, user_preferences,
+    acks, autosubexclusion, disabled_rules, export, hostacks, kcs,
+    rule_categories, rule_ratings, rule_topics, rules, pathways, settings,
+    stats, status, swagger, systems, system_types, user_preferences,
     weekly_report_subscriptions, weekly_report_auto_subscribe
 )
 
@@ -51,6 +51,7 @@ router = AdvisorRouter()
 router.register(r'ack', acks.AckViewSet)
 router.register(r'ackcount', acks.AckCountViewSet, basename='ackcount')
 router.register(r'autosubexclusion', autosubexclusion.AutosubExclusionViewSet, basename='autosubexclusion')
+router.register(r'disabled-rules', disabled_rules.DisabledRulesViewSet, basename='disabled-rules')
 router.register(r'hostack', hostacks.HostAckViewSet)
 router.register(r'kcs', kcs.KcsViewSet, basename='kcs')
 router.register(r'rating', rule_ratings.RuleRatingViewSet)

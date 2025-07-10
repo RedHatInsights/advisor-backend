@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+from django.utils.decorators import method_decorator
+
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from drf_spectacular.types import OpenApiTypes
@@ -55,11 +57,22 @@ class RedHatAllAcksPermission(IsRedHatInternalUser):
 
 # We use a ReadOnlyModelViewSet for the list and retrieve, and then add our
 # own delete and create methods which only need rule ID, system UUID and account.
+@method_decorator(
+    name='retrieve',
+    decorator=extend_schema(
+        summary="Display a specific acknowledgement (disabling) of a rule on a system",
+        description="""
+        Display who disabled a rule on a system, when, and their justification
+        for disabling it.  Host acks are selected by their ID number.
+        """,
+    )
+)
 class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     """
-    HostAcks acknowledge (and therefore hide) a rule from view in an account for a specific system.
+    HostAcks acknowledge (and therefore hide) a rule from view in an account
+    for a specific system.
 
-    This view handles listing, retrieving, creating and deleting hostacks.
+    This viewset handles listing, retrieving, creating and deleting hostacks.
     """
     queryset = HostAck.objects.filter(rule__deleted_at__isnull=True, rule__active=True)
     permission_classes = [InsightsRBACPermission | CertAuthPermission | RedHatAllAcksPermission]
@@ -96,7 +109,8 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     )
     def list(self, request, format=None):
         """
-        List host acks from this account for a system where the rule is active.
+        HostAcks acknowledge (and therefore hide) a rule from view in an
+        account for a specific system.
 
         Hostacks are retrieved, edited and deleted by the 'id' field.
         """
@@ -156,7 +170,6 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         """
         # This also sets the rh_identity property on the request object so we
         # can look up the user name from it.
-        # hostack = get_object_or_404(HostAck, pk=pk, org_id=request.auth['org_id'])
         hostack = self.get_object()
         store_post_data(request, HostAckJustificationSerializer)
         serdata = HostAckJustificationSerializer(
@@ -181,7 +194,6 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
         Takes the hostack ID (given in the hostack list) as an identifier.
         """
-        # hostack = get_object_or_404(HostAck, pk=pk, org_id=request.auth['org_id'])
         hostack = self.get_object()
         hostack.delete()
         return Response(
