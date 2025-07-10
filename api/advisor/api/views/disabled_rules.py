@@ -18,14 +18,13 @@ from django.db.models import Q, Value
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
-from api.models import Ack, HostAck
+from api.models import Ack, HostAck, Rule
 from api.permissions import (
     InsightsRBACPermission, CertAuthPermission,
     request_to_org, ResourceScope,
 )
 from api.serializers import DisabledRulesSerializer
 from api.utils import CustomPageNumberPagination, PaginateMixin
-from tty import IFLAG
 
 
 class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
@@ -39,7 +38,10 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = 'rule_id'
     permission_classes = [InsightsRBACPermission | CertAuthPermission]
     pagination_class = CustomPageNumberPagination
-    queryset = Ack.objects.all()
+    # Note that the queryset here is not what we return, but is needed so that
+    # DRF can intuit the type of the 'rule_id' lookup field.  If the queryset
+    # refers to Ack or HostAck, rule_id is an int....
+    queryset = Rule.objects.all()
     resource_name = 'disable-recommendations'
     resource_scope = ResourceScope.ORG
     serializer_class = DisabledRulesSerializer
