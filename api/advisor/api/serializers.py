@@ -355,6 +355,11 @@ class RuleSystemsExportSerializer(serializers.Serializer):
 
 
 class AckSerializer(serializers.ModelSerializer):
+    """
+    An 'ack'nowledgement of a rule across an entire organisation.  This hides
+    (or disables) the given rule, so that all systems in this organisation
+    systems do not appear to be affected by the rule.
+    """
     rule = serializers.CharField(source='rule.rule_id')
 
     class Meta:
@@ -394,7 +399,9 @@ class JustificationCountSerializer(serializers.Serializer):
 
 class HostAckSerializer(serializers.ModelSerializer):
     """
-    Ignore reports of this rule on this system for this account.
+    Ignore reports of this rule on this system for this account.  This
+    'ack'nowledges (or hides) this rule from affecting this rule on this
+    system.
     """
     rule = serializers.SlugRelatedField(
         slug_field='rule_id', many=False,
@@ -438,6 +445,18 @@ class HostAckJustificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.HostAck
         fields = ('id', 'justification')
+
+
+class DisabledRulesSerializer(serializers.Serializer):
+    """
+    Displays rules which are disabled, either organisation-wide (Ack) or
+    system-specific (HostAck).  The scope field indicates which of these
+    causes this rule to be disabled - 'account' or 'system'.  To find which
+    systems have disabled a rule, use the 'rule_id' query parameter in the
+    hostack/ endpoint.
+    """
+    rule_id = serializers.CharField(max_length=255, source='rule__rule_id')
+    scope = serializers.CharField(max_length=10)
 
 
 def validate_hosts_in_org(hosts, org_id, field_name='systems'):
