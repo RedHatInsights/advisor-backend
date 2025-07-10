@@ -1,5 +1,5 @@
-Insights Advisor Backend
-========================
+# Insights Advisor Backend
+
 This is the Insights Advisor Backend repository. This repository
 hosts both the Advisor API and the Advisor Service. This is the top-level README
 for both services. To see more detailed information about the API or the
@@ -9,19 +9,18 @@ Service look at their respective READMEs in "api" or "service" directories.
 
 The [Advisor Architecture Document|https://spaces.redhat.com/pages/viewpage.action?spaceKey=RHIN&title=Advisor+Architecture+Document]
 
-Pre-requisites
+# Installation
+
+## Pre-requisites
 --------------
 ```
-pipenv
 python 3.12+
-dnf install libpq-devel gcc python3.12-devel podman podman-compose
+pipenv
+podman and podman-compose
 ```
-`npm` is required for running a small set of tests.  It's possible to run
-almost all of the API without it but if you want to run the Satellite
-Compatibility tests then `npm` and `node` are required.
 
-Setup Python environment
-------------------------
+## Setup Python environment
+
 Setup the Python environment:
 ```
 pipenv shell
@@ -29,8 +28,8 @@ pipenv install
 pipenv install --dev
 ```
 
-Database
----------------------
+## Database
+
 To start the database, run required migrations and load required
 fixtures you will need to run the following commands:
 ```
@@ -153,8 +152,8 @@ to create a user in one of these accounts.
 
 # Notes
 
-Cyndi Considerations
---------------------------
+## Cyndi Considerations
+
 If advisor is running a real openshift environment, the cyndi table/view are
 expected to be created outside of advisor. If you are running advisor
 locally, you may need to mock this out. This can be accomplished with the
@@ -167,8 +166,7 @@ python api/advisor/manage.py mock_cyndi_table
 The tests automatically run this command.  It is only applicable if you are
 running advisor standalone.
 
-Updating Host Stale Timestamps
--------------------------------
+## Updating Host Stale Timestamps
 
 The stale timestamps of the hosts in the DB will need to be updated so they
 are in the futures.  The timestamps in the fixtures are well into the past
@@ -178,8 +176,8 @@ now and need to be updated in the DB so the hosts will show up in queries:
 python api/advisor/manage.py freshen_hosts
 ```
 
-Running the Service with podman-compose
----------------------------------------
+## Running the Service with podman-compose
+
 Start the service
 ```
 podman-compose up advisor-service
@@ -190,9 +188,8 @@ pipenv shell
 python service/manual_test/send_fake_engine_results.py
 ```
 
+## Running the Service manually
 
-Running the Service manually
-----------------------------
 Start Service dependencies. We still use podman-compose here
 but only for the dependencies. This method is meant for
 more rapid development.
@@ -209,9 +206,8 @@ Sending in engine results for processing.
 python service/manual_test/send_fake_engine_results.py
 ```
 
+## Running the API with podman-compose
 
-Running the API with podman-compose
------------------------------------
 Start the API
 ```
 podman-compose up advisor-api
@@ -224,8 +220,8 @@ curl http://localhost:8000/api/insights/v1/status/live
 You should see output corresponding to the request from podman
 as well as your curl command.
 
-Running the API manually
-------------------------
+## Running the API manually
+
 Start API dependencies. We still use podman-compose here
 but only for the dependencies. This method is meant for
 more rapid development.
@@ -238,32 +234,33 @@ Setup the DB (if this is the first time running).
 pipenv shell
 python api/advisor/manage.py migrate
 python api/advisor/manage.py mock_cyndi_table
-python api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources basic_test_data basic_task_test_data
+python api/advisor/manage.py loaddata rulesets rule_categories system_types \
+       upload_sources basic_test_data basic_task_test_data
 ```
 Start the API manually
 ```
 pipenv shell
 python api/advisor/manage.py runserver
 ```
-NOTE: If you are running with a PROMETHEUS_PORT defined other than 8000 then you will need to run Django differently
+NOTE: If you are running with a PROMETHEUS_PORT defined other than 8000 then
+you will need to run Django differently
 ```
 pipenv shell
 python api/advisor/manage.py runserver --noreload
 ```
+NOTE: If you want to enable the Auto-Subscribe endpoint, define the
+`ENABLE_AUTOSUB` environment variable to `true` before running the server.
 
-NOTE: If you want to enable Auto-Subscribe endpoint, define  `ENABLE_AUTOSUB` environment variable to `true` before running the server.
 ```bash
 pipenv shell
 ENABLE_AUTOSUB=true python api/advisor/manage.py runserver
 ```
 
-Testing Tasks API
--------------------
+# Testing Tasks API
 
 Follow the Tasks [README.md](api/advisor/tasks/README.md) file under `tasks` folder.
 
-Using the Swagger UI
---------------------
+# Using the Swagger UI
 
 The local APIs can be accessed via OpenAPI Swagger UIs:
 
@@ -291,8 +288,8 @@ Likewise, if using `curl` then the header can be provided in this way:
 $ curl -H 'x-rh-identity: eyJpZGVudGl0eSI6IHsiYWNjb3VudF9udW1iZXIiOiAiMTIzNDU2NyIsICJvcmdfaWQiOiAiOTg3NjU0MyIsICJ0eXBlIjogIlVzZXIiLCAiYXV0aF90eXBlIjogImp3dCIsICJ1c2VyIjogeyJ1c2VybmFtZSI6ICJ0ZXN0aW5nIiwgImlzX2ludGVybmFsIjogdHJ1ZX19fQo=' http://localhost:8000/api/insights/v1/rule/
 ```
 
-Running tests
--------------
+## Running tests
+
 To run lint tests run the following pipenv script.
 This will lint both the Service and the API
 ```
@@ -314,33 +311,10 @@ To run API Tests
 pipenv run testapi
 ```
 
-Pushes to production/stage
---------------------------
-
-To push to stage:
-
-1. Simply merge your desired MR into the master branch.
-1. Once your MR is merged into master, then the `build_deploy.sh` script is triggered.
-1. You can watch the build happen here: https://ci.int.devshift.net/job/insights-platform-advisor-backend-gl-build-master/
-1. Once the build is complete you can see the new deployment happen in the staging environment.
-
-
-To push to production:
-
-1. Retrieve the image tag for the advisor-backend image in quay.io.
-1. Go to the `app-interface` repository and pull to get it up to date.
-1. Create a branch for the current stable push.
-1. Edit the `data/services/insights/advisor/deploy.yml`
-  1. In the `resourceTemplates` section, under `advisor-backend`, change
-     the `target` `namespace` `IMAGE_TAG` values to be the value of the final
-     hash found above. Make sure you edit the production environment.
-1. Push the new app-interface branch to your own mirror.
-
-
 ![Ingress Pipeline](./ingress-pipeline.png)
 
 Contributing
 --------------------
-All outstanding issues or feature requests should be filed as Issues on this GitLab
+All outstanding issues or feature requests should be filed as Issues on this GitHub
 page. MRs should be submitted against the master branch for any new features or changes,
 and pass ALL testing above.

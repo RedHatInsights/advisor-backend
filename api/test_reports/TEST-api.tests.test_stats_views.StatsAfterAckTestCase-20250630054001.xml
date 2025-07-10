@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_stats_views.StatsAfterAckTestCase-20250630054001" tests="3" file="api/tests/test_stats_views.py" time="0.071" timestamp="2025-06-30T05:40:46" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_stats_views.StatsAfterAckTestCase" name="test_reports_stats_after_ack" time="0.021" timestamp="2025-06-30T05:40:46" file="advisor/api/tests/test_stats_views.py" line="234"/>
-	<testcase classname="api.tests.test_stats_views.StatsAfterAckTestCase" name="test_rules_stats_after_ack" time="0.026" timestamp="2025-06-30T05:40:46" file="advisor/api/tests/test_stats_views.py" line="218"/>
-	<testcase classname="api.tests.test_stats_views.StatsAfterAckTestCase" name="test_systems_stats_after_ack" time="0.024" timestamp="2025-06-30T05:40:46" file="advisor/api/tests/test_stats_views.py" line="255"/>
-</testsuite>

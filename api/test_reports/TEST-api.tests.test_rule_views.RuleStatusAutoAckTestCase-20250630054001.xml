@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_rule_views.RuleStatusAutoAckTestCase-20250630054001" tests="1" file="api/tests/test_rule_views.py" time="0.920" timestamp="2025-06-30T05:40:38" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_rule_views.RuleStatusAutoAckTestCase" name="test_rule_status_with_autoacks" time="0.920" timestamp="2025-06-30T05:40:38" file="advisor/api/tests/test_rule_views.py" line="1875"/>
-</testsuite>
