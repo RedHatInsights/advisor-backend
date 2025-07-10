@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="tasks.tests.test_stale_job_timeout_command.StaleJobTimeoutCommandTestCase-20250630054001" tests="1" file="tasks/tests/test_stale_job_timeout_command.py" time="0.029" timestamp="2025-06-30T05:41:08" failures="0" errors="0" skipped="0">
-	<testcase classname="tasks.tests.test_stale_job_timeout_command.StaleJobTimeoutCommandTestCase" name="test_stale_job_timeout" time="0.029" timestamp="2025-06-30T05:41:08" file="advisor/tasks/tests/test_stale_job_timeout_command.py" line="28"/>
-</testsuite>

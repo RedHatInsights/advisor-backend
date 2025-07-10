@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_delete_stale_api_hosts_command.ImportContentTestCase-20250630235212" tests="1" file="api/tests/test_delete_stale_api_hosts_command.py" time="0.019" timestamp="2025-06-30T23:52:16" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_delete_stale_api_hosts_command.ImportContentTestCase" name="test_delete_hosts_command" time="0.019" timestamp="2025-06-30T23:52:16" file="advisor/api/tests/test_delete_stale_api_hosts_command.py" line="32"/>
-</testsuite>
