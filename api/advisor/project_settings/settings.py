@@ -75,11 +75,6 @@ PLATFORM_BASE_PATH = os.getenv('PLATFORM_BASE_PATH', 'r/insights/platform/')
 ADVISOR_PATH_NAME = os.getenv('ADVISOR_PATH_NAME', 'insights')
 
 API_PATH_PREFIX = f'{API_BASE_PATH}{ADVISOR_PATH_NAME}/v{API_VERSION}/'
-PLATFORM_PATH_PREFIX = f'{PLATFORM_BASE_PATH}{ADVISOR_PATH_NAME}/v{API_VERSION}/'
-SAT_COMPAT_BASE_PATH = 'r/insights'
-SAT_COMPAT_PATH_PREFIX_V1 = f'{SAT_COMPAT_BASE_PATH}/v1/'
-SAT_COMPAT_PATH_PREFIX_V2 = f'{SAT_COMPAT_BASE_PATH}/v2/'
-SAT_COMPAT_PATH_PREFIX_V3 = f'{SAT_COMPAT_BASE_PATH}/v3/'
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", _DEFAULT_ALLOWED_HOSTS).split(",")
 
@@ -188,7 +183,6 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_prometheus',
     'api.apps.ApiConfig',
-    'sat_compat.apps.ApiConfig',
     'tasks.apps.TasksConfig',
 ]
 # Only ask for DRF spectacular sidecar if it's installed
@@ -205,7 +199,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'middleware.request_storage.request_storage',
-    'middleware.sat_compat_deprecated_headers.satellite_compatibility_api_deprecated',
     'middleware.tasks_rewrite_internal_urls.rewrite_urls',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
