@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from os.path import exists
+from os import path
 import yaml
 from django.test import TestCase
 from django.db import connection
@@ -33,9 +33,9 @@ class FlooristQueryTest(TestCase):
         Simple test that runs the floorist queries to ensure each query is valid SQL.
         """
         clowdapp_path = resolve_path('clowdapp.yml')
-        if not exists(clowdapp_path):
+        if not path.exists(clowdapp_path):
             # Need the config to get the SQL queries, otherwise nothing to do
-            return
+            return self.skipTest('Cannot find clowdapp.yml, ignoring Floorist tests')
         with open(clowdapp_path, "r") as stream:
             clowdapp = yaml.safe_load(stream)
 
