@@ -29,10 +29,10 @@ TODO: work on tracking what's changed between the rule content and the model.
 """
 
 from datetime import datetime
-import django
 import os
 from django.conf import settings
 from django.db.models import Count, Exists, OuterRef
+from django.utils.timezone import make_aware
 
 from api import models  # noqa
 from advisor_logging import logger  # noqa
@@ -310,7 +310,7 @@ def update_ruleset_with_content(content):
             for date_format in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d']:
                 try:
                     # Do explicit conversion so we get a timezone-aware object rather than a naive one.
-                    publish_date = django.utils.timezone.make_aware(datetime.strptime(date_value, date_format))
+                    publish_date = make_aware(datetime.strptime(date_value, date_format))
                     break
                 except ValueError:
                     pass
