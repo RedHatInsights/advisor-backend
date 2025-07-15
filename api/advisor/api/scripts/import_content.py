@@ -31,16 +31,9 @@ TODO: work on tracking what's changed between the rule content and the model.
 from datetime import datetime
 import django
 import os
-import sys
 from django.conf import settings
 from django.db.models import Count, Exists, OuterRef
 
-# Need to get the API models, so we set up django environment regardless of
-# whether we're running as a script or being called as a module.  Fortunately,
-# Django is fine with this.
-sys.path.append(os.curdir)
-# Rely on DJANGO_SETTINGS_MODULE env here
-django.setup()
 from api import models  # noqa
 from advisor_logging import logger  # noqa
 from kafka_utils import send_webhook_event  # noqa

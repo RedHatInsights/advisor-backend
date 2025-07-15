@@ -40,7 +40,9 @@ class ImportContentViewSet(viewsets.ViewSet):
         """
         if not ('config' in request.data and 'content' in request.data):
             # Data is not valid for some reason.
-            return HttpResponseBadRequest("Config or content fields were not present")
+            return HttpResponseBadRequest(
+                content=b"Config or content fields were not present"
+            )
 
         if 'application/json' in request.content_type:
             # application/json is the recommended content-type for import content
@@ -51,18 +53,26 @@ class ImportContentViewSet(viewsets.ViewSet):
             try:
                 config_data = loads(request.data['config'])
                 content_data = loads(request.data['content'])
-            except Exception as e:
-                return HttpResponseBadRequest(e)
+            except:
+                return HttpResponseBadRequest(
+                    content=b"Could not read config and content as JSON"
+                )
 
         # Some basic data checks:
         if not isinstance(config_data, dict):
-            return HttpResponseBadRequest(content="Config parses as JSON but isn't a dictionary")
+            return HttpResponseBadRequest(
+                content=b"Config parses as JSON but isn't a dictionary"
+            )
         if 'resolution_risk' not in config_data:
-            return HttpResponseBadRequest(content="Config parses as JSON but doesn't have resolution_risk data")
+            return HttpResponseBadRequest(
+                content=b"Config parses as JSON but doesn't have resolution_risk data"
+            )
         all_rule_apis_are_dicts = all(isinstance(rule_api, dict) for rule_api in content_data)
         all_rule_apis_have_rule_id = all('rule_id' in rule_api for rule_api in content_data)
         if not (isinstance(content_data, list) and all_rule_apis_are_dicts and all_rule_apis_have_rule_id):
-            return HttpResponseBadRequest(content="Content parses as JSON but doesn't look like a list of rules")
+            return HttpResponseBadRequest(
+                content=b"Content parses as JSON but doesn't look like a list of rules"
+            )
         # Rely on the import_content routines to validate the data.
         stats = import_content.import_all(config_data, content_data)
         return Response(ImportStatsSerializer({'stats': stats}).data)
