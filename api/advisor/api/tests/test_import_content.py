@@ -780,7 +780,7 @@ class ImportContentTestCase(TestCase):
         )
         self.assertFalse(rule_model.active)
         self.assertIsNone(rule_model.publish_date)
-        # check the rule's summary field is a copy of the generic field
+        # check the rule's summary field is NOT a copy of the generic field
         self.assertEqual(rule_model.generic, "Updated rule generic information")
         self.assertEqual(rule_model.summary, "Updated rule summary information")
         self.assertEqual(rule_model.resolution_set.count(), 1)

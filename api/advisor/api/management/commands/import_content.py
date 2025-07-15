@@ -14,9 +14,11 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from datetime import datetime
-from os import path, walk
+from datetime import datetime, timedelta
+from dateutil.tz import tzlocal
+from os import path, stat, walk
 import pytz
+import requests
 import subprocess
 import yaml
 import zlib
@@ -892,6 +894,117 @@ def dump_playbooks(repo_path, compress=False):
 
 
 ##############################################################################
+# Fetch from remote URL
+##############################################################################
+
+def fetch_file_from_remote(remote_url, file_name, content_path, check_compressed=False):
+    """
+    The actual logic of detecting the file, supplying its modification date
+    if found, and handling whether or not we also check for a compressed file.
+
+    The compressed file handling is complicated because we have to check
+    whether we have the compressed file or uncompressed file locally, and then
+    check that the remote side has the compressed or the uncompressed version.
+    We don't really want to assume that they always match, either, and we
+    don't want the situation where there's the uncompressed and compressed
+    versions locally.
+    """
+    file_path = path.join(content_path, file_name)
+    # Work out content and last modified time
+    headers = dict()
+    if check_compressed and path.exists(file_path + '.gz'):
+        file_path += '.gz'  # prefer over uncompressed (for now)
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/If-Modified-Since
+    if path.exists(file_path):
+        filedate = datetime.fromtimestamp(stat(file_path).st_mtime, tz=tzlocal())
+        filedate += timedelta(minutes=1)
+        headers['If-Modified-Since'] = filedate.strftime('%a, %d %b %Y %H:%M:%S %Z')
+        logger.info("Have local file %s modified on %s", file_path, headers['If-Modified-Since'])
+    else:
+        logger.info("No local file %s", file_path)
+
+    # Try to get remote content:
+    remote_path = f"{remote_url}{file_name}"
+    # First check if we have a local compressed file, if we expect that
+    if check_compressed:
+        response = requests.get(remote_path + '.gz', headers=headers)
+        if response.status_code == 304:
+            # Local file (compressed or uncompressed) still current
+            logger.info(
+                "Remote compressed file modified on %s, local still current",
+                response.headers['Last-Modified']
+            )
+            return
+        elif response.status_code == 200:
+            # Remote compressed file newer than local, overwrite
+
+            logger.info(
+                "Remote compressed file modified on %s, writing newer",
+                response.headers['Last-Modified']
+            )
+            # Just make sure we're writing with the compressed extension
+            if not file_path.endswith('.gz'):
+                file_path += '.gz'
+            with open(file_path, 'wb') as fh:
+                fh.write(response.content)
+            return
+        elif response.status_code != 404:
+            logger.warn(
+                "Warning: received %s requesting %s: %s",
+                response.status_code, remote_path + '.gz', response.content.decode()
+            )
+            return
+        # Fall through on 404 to check for uncompressed version
+
+    # Now the uncompressed case:
+    response = requests.get(remote_path, headers=headers)
+    if response.status_code == 304:
+        # Local file still current
+        logger.info(
+            "Remote file modified on %s, local still current",
+            response.headers['Last-Modified']
+        )
+        return
+    elif response.status_code == 200:
+        # Remote file newer than local, overwrite
+        logger.info(
+            "Remote file modified on %s, writing newer",
+            response.headers['Last-Modified']
+        )
+        # Just in case, we may need to remove a compressed file now that we've
+        # got a newer uncompressed version.
+        if path.exists(file_path + '.gz'):
+            path.remove(file_path + '.gz')
+        with open(file_path, 'w') as fh:
+            fh.write(response.content.decode())
+        return
+    else:
+        # Everything is an error here.
+        logger.error(
+            "Error: received %s requesting %s: %s",
+            response.status_code, remote_path, response.content.decode()
+        )
+        return
+
+
+def fetch_from_remote(remote_url, content_path):
+    """
+    Check the remote repository for the config, content and playbook files,
+    and downloads the latest versions of each.
+    """
+    # Note that we do not attempt to not load the rules or playbooks if we
+    # get a 304 Not Modified from any of these requests.  In part that's
+    # because the actual import routines have been designed to be pretty
+    # efficient anyway, so that if nothing's changed it's still relatively
+    # quick.  In part that's because I want to keep it simple and not make
+    # assumptions - one of which is that the remote server handles the
+    # If-Modified-Since header correctly.
+    fetch_file_from_remote(remote_url, 'config.yaml', content_path)
+    fetch_file_from_remote(remote_url, RULE_CONTENT_YAML_FILE, content_path, check_compressed=True)
+    fetch_file_from_remote(remote_url, PLAYBOOK_CONTENT_YAML_FILE, content_path, check_compressed=True)
+
+
+##############################################################################
 # Main command
 ##############################################################################
 
@@ -913,6 +1026,10 @@ class Command(BaseCommand):
             help="Dump rule content and playbooks data",
         )
         parser.add_argument(
+            '--remote', '-r', type=str,
+            help="The URL path to check for content, config and playbooks"
+        )
+        parser.add_argument(
             '--compress', '-z', default=False, action='store_true',
             help="Compress dumped content"
         )
@@ -921,22 +1038,34 @@ class Command(BaseCommand):
         """
         Import the content's config, then the content.
         """
+        if options['dump'] and options['remote']:
+            logger.error("Cannot run with --dump and --remote both set")
+            return
         if not options['content_repo_path']:
             logger.error("You need to set a content repo path")
             return
-        if not path.exists(options['content_repo_path']):
-            logger.error(f"Cannot find path {options['content_repo_path']}")
+        content_repo_path = options['content_repo_path']
+        if not path.exists(content_repo_path):
+            logger.error(f"Cannot find path {content_repo_path}")
             return
 
-        playbook_repo_path = options['playbook_repo_path'] or options['content_repo_path']
+        playbook_repo_path = options['playbook_repo_path'] or content_repo_path
+
         if options['dump']:
-            dump_content(options['content_repo_path'], options['compress'])
+            dump_content(content_repo_path, options['compress'])
             dump_playbooks(playbook_repo_path, options['compress'])
 
         else:
-            if not load_config(options['content_repo_path']):
+            if options['remote']:
+                # Check for config and content on the remote URL
+                fetch_from_remote(options['remote'], content_repo_path)
+                # Updates into the base content directory
+                # Do we bother with a 'if nothing got changed, exit early'
+                # test here?  The content check is pretty quick...
+            #
+            if not load_config(content_repo_path):
                 logger.error("Could not load content configuration - exiting")
                 return
             load_database_maps()  # some of which is loaded from config in models.
-            process_content(options['content_repo_path'])
+            process_content(content_repo_path)
             process_playbooks(playbook_repo_path)
