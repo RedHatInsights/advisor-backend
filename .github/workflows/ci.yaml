@@ -89,3 +89,23 @@ jobs:
         with:
           name: test_reports
           path: api/test_reports/
+
+  build-container:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install podman
+
+      - name: Build container
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: advisor-backend
+          tags: ${{ github.sha }}
+          containerfiles: ./Containerfile
