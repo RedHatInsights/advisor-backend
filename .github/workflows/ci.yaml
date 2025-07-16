@@ -56,16 +56,17 @@ jobs:
           done
           echo "PostgreSQL is up!"
 
-      - name: Run tests
-        # Replace 'pytest' with the actual command to run your tests
+      - name: Flake8 tests
+        run: pipenv run flake8 --config .flake8 api service
+      - name: Django API tests
+        env: ADVISOR_DB_HOST=localhost
+        run: pipenv run testapi
+      - name: Service tests
+        env: ADVISOR_DB_HOST=localhost
+        run: pipenv run testservice
+      - name: Tasks tests
+        env: ADVISOR_DB_HOST=localhost
         run: |
-          # Flake8 tests
-          pipenv run flake8 --config .flake8 api service
-          # Django API tests
-          pipenv run testapi
-          # Service tests
-          pipenv run testservice
-          # Tasks tests
           pipenv run testtasks
           echo "All tests passed!"
 
