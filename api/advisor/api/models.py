@@ -737,8 +737,9 @@ class HostAck(ExportModelOperationsMixin('hostack'), TimestampedModel):
     )
 
     def __str__(self):
-        return u'ack for {r} for account {a} by org {o} for {s}'.format(r=self.rule, a=self.account,
-                                                                    o=self.org_id, s=self.host_id)
+        return u'ack for {r} for account {a} by org {o} for {s}'.format(
+            r=self.rule, a=self.account, o=self.org_id, s=self.host_id
+        )
 
     class Meta:
         ordering = ('org_id', 'host', 'rule__rule_id', )

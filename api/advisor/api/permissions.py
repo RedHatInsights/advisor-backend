@@ -17,7 +17,6 @@
 import base64
 from enum import Enum
 import json
-import uuid
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -405,6 +404,7 @@ def get_identity_header(request):
     if auth_header_key not in request.META:
         return None
     # From here, if you have the header then you must get it correct.
+    auth_header = dict()
     try:
         auth_header = json.loads(base64.b64decode(request.META[auth_header_key]))
     except Exception:
@@ -680,13 +680,9 @@ class CertAuthPermission(BasePermission):
                 "'identity.system.cn' is not a string in Cert authentication check"
             )
             return False
-        try:
-            uuid.UUID(identity['system']['cn'])
-        except:
-            self.message = (
-                "'identity.system.cn' is not a UUID in Cert authentication check"
-            )
-            return False
+        # Note: it's possible for Satellite to not supply a UUID for the
+        # identity.system.cn parameter.  We used to check that it was a UUID
+        # but now we need to relax that.
         # Less important - remember what type of certificate this is:
         setattr(request, 'auth_system_type', identity['system'].get('cert_type', 'system'))
 
@@ -1124,7 +1120,7 @@ def auth_header_for_testing(
     org_id=None, account=None, supply_http_header=False,
     username='testing', user_id='123', user_opts={}, system_opts=None, unencoded=False,
     raw=None, service_account=None
-):
+) -> dict:
     """
     Provide a JSON string which can be loaded into the 'x-rh-identity'
     header to provide access for testing.
@@ -1261,7 +1257,7 @@ def turnpike_auth_header_for_testing(**kwargs):
     return {auth_header_key: base64.b64encode(json.dumps(auth_dict).encode())}
 
 
-def auth_to_request(auth_dict):
+def auth_to_request(auth_dict) -> HttpRequest:
     """
     Create a request object from a dictionary, given by either
     `auth_header_for_testing` or `turnpike_auth_header_for_testing`.

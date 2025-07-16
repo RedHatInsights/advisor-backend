@@ -326,17 +326,13 @@ class BadUseOfCertAuthPermission(TestCase):
             cap.message,
             "'identity.system.cn' is not a string in Cert authentication check"
         )
-        # system dict 'cn' value not a UUID
+        # system dict 'cn' value is now allowed just a string, not just a UUID
         request.auth = {
             'org_id': constants.standard_org, 'type': 'System',
             'system': {'cn': constants.host_01_name}
         }
         result = cap.has_permission(request, view)
-        self.assertFalse(result)
-        self.assertEqual(
-            cap.message,
-            "'identity.system.cn' is not a UUID in Cert authentication check"
-        )
+        self.assertTrue(result)
 
         # Finally we should be able to validate with a valid identity
         request.auth = {

@@ -23,7 +23,7 @@ from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing, auth_header_key
 
 
-def bad_header(json_str):
+def bad_header(json_str) -> dict:
     return {auth_header_key: base64.b64encode(json_str.encode())}
 
 
@@ -78,11 +78,15 @@ class CertAuthTestCase(TestCase):
             **bad_header(bad_start + '"type": "System", "system": {"cn": 3}}}'),
         )
         self.assertEqual(response.status_code, 403, "System property has non-string cn check failed")
+        # We now allow the CN value to be anything, not just a UUID.
         response = self.client.get(
             reverse('system-list'),
             **bad_header(bad_start + '"type": "System", "system": {"cn": "banana"}}}'),
         )
-        self.assertEqual(response.status_code, 403, "System property has non-UUID cn check failed")
+        self.assertEqual(
+            response.status_code, 200,
+            "System property has non-UUID cn check should be allowed"
+        )
 
     def test_list_system_satellite(self):
         # Host 03 is the nominal Satellite, so it should see all the systems
