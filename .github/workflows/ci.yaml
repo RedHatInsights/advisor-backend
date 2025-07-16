@@ -1,0 +1,111 @@
+name: CI/CD
+
+on:
+  pull_request:
+    # Triggers the workflow on pull request events, specifically when:
+    # - a pull request is opened
+    # - new commits are pushed to the pull request branch
+    # - a pull request is reopened
+    types: [opened, synchronize, reopened]
+  push:
+    # Optionally, also run on pushes to specific branches (e.g., main)
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: insightsapi
+          POSTGRES_USER: insightsapi
+          POSTGRES_PASSWORD: insightsdata
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Get the code from your repository
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12" # Or the specific Python version your backend uses
+
+      - name: Install dependencies
+        # This will depend on your project's dependency management (e.g., pip, poetry, npm)
+        # Does this need a database container?
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipenv
+          pipenv install -d  # dev environment needed for flake8
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in `seq 1 10`; do
+            nc -z localhost 5432 && break
+            echo "Waiting for PostgreSQL..."
+            sleep 5
+          done
+          echo "PostgreSQL is up!"
+
+      - name: Ugly hack while Foreman upgrades to Postgres 14 or later
+        run: |
+          sed -i s/\(14,\)/\(13,\)/g $(pipenv --venv)/lib/python3.12/site-packages/django/db/backends/postgresql/features.py
+
+      - name: Flake8 tests
+        run: pipenv run flake8 --config .flake8 api service
+      - name: Django API tests
+        env:
+          ADVISOR_DB_HOST: localhost
+          ADVISOR_DB_USER: insightsapi
+          ADVISOR_DB_PASSWORD: insightsdata
+        run: pipenv run testapi
+      - name: Service tests
+        env:
+          ADVISOR_DB_HOST: localhost
+          ADVISOR_DB_USER: insightsapi
+          ADVISOR_DB_PASSWORD: insightsdata
+        run: pipenv run testservice
+      - name: Tasks tests
+        env:
+          ADVISOR_DB_HOST: localhost
+          ADVISOR_DB_USER: insightsapi
+          ADVISOR_DB_PASSWORD: insightsdata
+        run: |
+          pipenv run testtasks
+          echo "All tests passed!"
+
+      # Optional: Publish test results or artifacts
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_reports
+          path: api/test_reports/
+
+  build-container:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install podman
+
+      - name: Build container
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: advisor-backend
+          tags: ${{ github.sha }}
+          containerfiles: ./Containerfile
