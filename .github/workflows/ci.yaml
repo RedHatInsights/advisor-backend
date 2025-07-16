@@ -19,9 +19,9 @@ jobs:
       postgres:
         image: postgres:13
         env:
-          POSTGRES_DB: testdb
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: insightsapi
+          POSTGRES_USER: insightsapi
+          POSTGRES_PASSWORD: insightsdata
         ports:
           - 5432:5432
         options: >-
@@ -61,14 +61,20 @@ jobs:
       - name: Django API tests
         env:
           ADVISOR_DB_HOST: localhost
+          ADVISOR_DB_USER: insightsapi
+          ADVISOR_DB_PASSWORD: insightsdata
         run: pipenv run testapi
       - name: Service tests
         env:
           ADVISOR_DB_HOST: localhost
+          ADVISOR_DB_USER: insightsapi
+          ADVISOR_DB_PASSWORD: insightsdata
         run: pipenv run testservice
       - name: Tasks tests
         env:
           ADVISOR_DB_HOST: localhost
+          ADVISOR_DB_USER: insightsapi
+          ADVISOR_DB_PASSWORD: insightsdata
         run: |
           pipenv run testtasks
           echo "All tests passed!"
