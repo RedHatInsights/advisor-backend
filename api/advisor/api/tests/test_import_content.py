@@ -1232,7 +1232,7 @@ class ImportContentViewTestCase(TestCase):
         })
         self.assertIn("multipart/form-data", response.request['CONTENT_TYPE'])
         self.assertEqual(response.status_code, 400)
-        self.assertIn(b"Expecting property name enclosed in double quotes", response.content)
+        self.assertIn(b"Could not read config and content as JSON", response.content)
 
         # ... but do parse as JSON when using application/json
         # Note that because we're using the Client's data parameter, these
