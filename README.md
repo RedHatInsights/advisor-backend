@@ -12,7 +12,7 @@ The [Advisor Architecture Document|https://spaces.redhat.com/pages/viewpage.acti
 # Installation
 
 ## Pre-requisites
---------------
+
 ```
 python 3.12+
 pipenv
@@ -39,6 +39,16 @@ pipenv shell
 python api/advisor/manage.py migrate
 python api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources basic_test_data
 ```
+
+## Feature Flags
+
+Feature flags are supported by Unleash. Connection to an Unleash server is done
+by a Clowder provided config.
+
+Local development can be done by supplying bootstrapped feature flags via
+`UNLEASH_BOOTSTRAP_FILE` environment variable. `UNLEASH_BOOTSTRAP_FILE` should
+point to a JSON file conforming to Unleash's [API
+/api/client/features](https://docs.getunleash.io/api/client/features).
 
 # Advisor overview
 
