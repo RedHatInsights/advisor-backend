@@ -1228,6 +1228,11 @@ def auth_header_for_testing(
         if username is not None:
             user_section['username'] = username
         if user_id is not None:
+            if not isinstance(user_id, str):
+                raise TypeError(
+                    "'user_id' argument to auth_header_for_testing must be a "
+                    "string"
+                )
             user_section['user_id'] = user_id
         identity['user'] = user_section
         identity['type'] = 'User'
