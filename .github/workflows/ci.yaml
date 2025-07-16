@@ -60,7 +60,7 @@ jobs:
         # Replace 'pytest' with the actual command to run your tests
         run: |
           # Flake8 tests
-          flake8 --config .flake8 api service
+          pipenv run flake8 --config .flake8 api service
           # Django API tests
           pipenv run testapi
           # Service tests
