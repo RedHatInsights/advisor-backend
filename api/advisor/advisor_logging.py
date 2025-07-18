@@ -133,11 +133,9 @@ def update_record_from_request(record, request):
         setattr(record, "request_id", request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'])
     duration = (time.time() - request.start_time) * 1000
     setattr(record, 'duration', int(duration))
+
     # Time spent waiting for RBAC:
     copy_attr_to_record(record, request, 'rbac_elapsed_time_millis')
-
-    copy_attr_to_record(record, request, 'data', 'request_data')
-
     # RBAC Permissions
     copy_attr_to_record(record, request, 'rbac_sought_permission')
     copy_attr_to_record(record, request, 'rbac_matched_permission')
