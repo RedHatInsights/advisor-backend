@@ -38,6 +38,72 @@ class AdvisorStreamHandler(logging.StreamHandler):
         )
 
 
+def modify_gunicorn_logs_record(record, record_args):
+    """
+    The gunicorn 'args' attribute seems to be a dict with LOTS of information.
+    Some of them are in the form of single-letter names; some are duplicated
+    in the headers attribute (set from the request, see in `format` below);
+    some are also in the form "{"name"}"[eio].  We want to pull the things
+    we need into standard names similar to those already kept in the logs.
+
+    Headers include: ACCEPT, HOST, REMOTE-ADDR, USER-AGENT, X-FORWARDED-FOR,
+    X-FORWARDED-HOST and X-RH-IDENTITY.
+
+    After this we delete the 'args' attribute entirely so we don't need to
+    delete things in here.
+    """
+    # Only list the fields that aren't also in the long fields below
+    gunicorn_record_arg_renames = {
+        # 'a': {'long name': 'user agent'},
+        'B': {'long name': 'bytes', 'as': 'int'},
+        # 'b': {'long name': 'bytes', 'as': 'str'},
+        'D': {'long name': 'microseconds'},
+        'f': {'long name': 'url'},
+        'H': {'long name': 'http_version'},
+        # 'h': {'long name': 'host'},
+        'L': {'long name': 'seconds', 'as': 'string float'},
+        # 'l': {},
+        # 'M': {'long name': 'milliseconds'},
+        'm': {'long name': 'method'},
+        # 'p': {'long name': 'process ID?', '=': '"<19945>"'},
+        # 'q': {'long name': 'query args'},
+        # 'r': {'long name': 'request line'},
+        's': {
+            'long name': 'status_code', 'default': '0', 'transform': int
+        },
+        # 'T': {'long name': 'time taken?'},
+        't': {'long name': 'timestamp'},
+        # 'U': {'long name': 'url with no query string'},
+        # 'u': {},
+    }
+    for short_name, rename in gunicorn_record_arg_renames.items():
+        value = record_args.get(short_name, rename.get('default'))
+        if 'transform' in rename:
+            value = rename['transform'](value)
+        setattr(record, rename['method'], value)
+
+    # Now transform the args that look like {name}[ioe] that we care about
+    # and discard the rest.
+    long_fields_to_keep = {
+        'accept', 'accept-encoding', 'accept-language', 'akamai-origin-hop',
+        'allow', 'cache-control', 'content-length', 'content-type', 'cookie',
+        'cross-origin-opener-policy', 'csrf_cookie', 'forwarded', 'host',
+        'referer', 'referrer-policy', 'remote_addr', 'remote_port',
+        'request_method', 'server_software', 'strict-transport-security',
+        'true-client-ip', 'user-agent', 'vary', 'via', 'wsgi.errors',
+        'x-content-type-options', 'x-forwarded-for', 'x-forwarded-host',
+        'x-forwarded-port', 'x-frame-options', 'x-real-ip',
+        'x-rh-edge-reference-id', 'x-rh-edge-request-id',
+        'x-rh-frontend-origin', 'x-rh-identity', 'x-rh-insights-request-id'
+    }
+    for arg_name, arg_value in record_args.items():
+        if arg_name[0] == '{' and arg_name[-2] == '}' and arg_name[-1] in "eio":
+            true_arg_name = arg_name[1:-2]
+            if true_arg_name in long_fields_to_keep:
+                setattr(record, true_arg_name, arg_value)
+            del record_args[arg_name]
+
+
 class OurFormatter(LogstashFormatterV1):
 
     def format(self, record):
@@ -83,13 +149,16 @@ class OurFormatter(LogstashFormatterV1):
                     setattr(record, 'method', args[0])
                     setattr(record, 'url', args[1])
             elif record_name == 'gunicorn.access' and record_args:
-                setattr(record, 'method', record_args.get('m'))
-                setattr(record, 'url', record_args.get('U'))
-                setattr(record, 'status_code', int(record_args.get('s', '0')))
+                modify_gunicorn_logs_record(record, record_args)
+                # We've now put everything we want in the record, we can
+                # remove the args entirely
+                delattr(record, "args")
 
         post = thread_storage.get_value('post')
         if post is not None:
             setattr(record, 'post', post)
+            # Clear afterward, now that we're long-lived
+            thread_storage.set_value('post', dict())
 
         exc = getattr(record, "exc_info")
         if exc:
