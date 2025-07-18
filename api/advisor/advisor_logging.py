@@ -104,55 +104,65 @@ def modify_gunicorn_logs_record(record, record_args):
             del record_args[arg_name]
 
 
+def copy_attr_to_record(record, request, name, new_name=None):
+    if new_name is None:
+        new_name = name
+    value = getattr(request, name)
+    if value:
+        setattr(record, new_name, value)
+
+
+def update_record_from_request(record, request):
+    headers = {k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
+               for (k, v) in request.META.items() if k in LOG_HTTP_HEADER_FIELDS}
+    setattr(record, "headers", headers)
+    if headers.get('X-RH-IDENTITY'):
+        try:
+            identity_header = json.loads(b64decode(headers['X-RH-IDENTITY']))
+            if 'account_number' in identity_header['identity']:
+                setattr(record, 'account_number', identity_header['identity']['account_number'])
+            if 'org_id' in identity_header['identity']:
+                setattr(record, 'org_id', identity_header['identity']['org_id'])
+            username = identity_header['identity'].get('user', {}).get('username', '')
+            if username:
+                setattr(record, 'username', username)
+        except:
+            pass  # ignore broken decode and JSON just in case
+
+    if 'HTTP_X_RH_INSIGHTS_REQUEST_ID' in request.META:
+        setattr(record, "request_id", request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'])
+    duration = (time.time() - request.start_time) * 1000
+    setattr(record, 'duration', int(duration))
+    # Time spent waiting for RBAC:
+    copy_attr_to_record(record, request, 'rbac_elapsed_time_millis')
+
+    copy_attr_to_record(record, request, 'data', 'request_data')
+
+    # RBAC Permissions
+    copy_attr_to_record(record, request, 'rbac_sought_permission')
+    copy_attr_to_record(record, request, 'rbac_matched_permission')
+    copy_attr_to_record(record, request, 'rbac_match_type')
+
+    record_name = getattr(record, "name")
+    record_args = getattr(record, "args")
+    if record_name in ('django.request', 'django.server') and record_args:
+        args = record_args[0].split()
+        if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
+            setattr(record, 'method', args[0])
+            setattr(record, 'url', args[1])
+    elif record_name == 'gunicorn.access' and record_args:
+        modify_gunicorn_logs_record(record, record_args)
+        # We've now put everything we want in the record, we can
+        # remove the args entirely
+        delattr(record, "args")
+
+
 class OurFormatter(LogstashFormatterV1):
 
     def format(self, record):
         request = thread_storage.get_value('request')
         if request is not None:
-            headers = {k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
-                       for (k, v) in request.META.items() if k in LOG_HTTP_HEADER_FIELDS}
-            setattr(record, "headers", headers)
-            if headers.get('X-RH-IDENTITY'):
-                identity_header = json.loads(b64decode(headers['X-RH-IDENTITY']))
-                if 'account_number' in identity_header['identity']:
-                    setattr(record, 'account_number', identity_header['identity']['account_number'])
-                if 'org_id' in identity_header['identity']:
-                    setattr(record, 'org_id', identity_header['identity']['org_id'])
-                username = identity_header['identity'].get('user', {}).get('username', '')
-                if username:
-                    setattr(record, 'username', username)
-
-            if 'HTTP_X_RH_INSIGHTS_REQUEST_ID' in request.META:
-                setattr(record, "request_id", request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'])
-            duration = (time.time() - request.start_time) * 1000
-            setattr(record, 'duration', int(duration))
-            # Time spent waiting for RBAC:
-            if hasattr(request, 'rbac_elapsed_time_millis'):
-                setattr(record, 'rbac_elapsed_time_millis', request.rbac_elapsed_time_millis)
-
-            if hasattr(request, 'data'):
-                setattr(record, 'request_data', request.data)
-
-            # RBAC Permissions
-            if hasattr(request, 'rbac_sought_permission'):
-                setattr(record, 'rbac_sought_permission', request.rbac_sought_permission)
-            if hasattr(request, 'rbac_matched_permission'):
-                setattr(record, 'rbac_matched_permission', request.rbac_matched_permission)
-            if hasattr(request, 'rbac_match_type'):
-                setattr(record, 'rbac_match_type', request.rbac_match_type)
-
-            record_name = getattr(record, "name")
-            record_args = getattr(record, "args")
-            if record_name in ('django.request', 'django.server') and record_args:
-                args = record_args[0].split()
-                if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
-                    setattr(record, 'method', args[0])
-                    setattr(record, 'url', args[1])
-            elif record_name == 'gunicorn.access' and record_args:
-                modify_gunicorn_logs_record(record, record_args)
-                # We've now put everything we want in the record, we can
-                # remove the args entirely
-                delattr(record, "args")
+            update_record_from_request(record, request)
 
         post = thread_storage.get_value('post')
         if post is not None:
