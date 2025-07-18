@@ -22,7 +22,7 @@ from rest_framework.routers import APIRootView, DefaultRouter
 # views' and then use views.acks.AckViewSet.  Better solutions welcomed!
 from api.views import (
     acks, autosubexclusion, disabled_rules, export, hostacks, kcs,
-    rule_categories, rule_ratings, rule_topics, rules, pathways, settings,
+    rule_categories, rule_ratings, rule_topics, rules, pathways,
     stats, status, swagger, systems, system_types, user_preferences,
     weekly_report_subscriptions, weekly_report_auto_subscribe
 )
@@ -58,7 +58,6 @@ router.register(r'rating', rule_ratings.RuleRatingViewSet)
 router.register(r'rule', rules.RuleViewSet)
 router.register(r'pathway', pathways.PathwayViewSet, basename='pathway')
 router.register(r'rulecategory', rule_categories.RuleCategoryViewSet)
-router.register(r'settings', settings.SettingsViewSet, basename='settings')
 router.register(r'stats', stats.StatsViewSet, basename='stats')
 router.register(r'status', status.StatusViewSet, basename='status')
 router.register(r'system', systems.SystemViewSet, basename='system')
