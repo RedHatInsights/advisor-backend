@@ -38,58 +38,135 @@ class AdvisorStreamHandler(logging.StreamHandler):
         )
 
 
+def modify_gunicorn_logs_record(record, record_args):
+    """
+    The gunicorn 'args' attribute seems to be a dict with LOTS of information.
+    Some of them are in the form of single-letter names; some are duplicated
+    in the headers attribute (set from the request, see in `format` below);
+    some are also in the form "{"name"}"[eio].  We want to pull the things
+    we need into standard names similar to those already kept in the logs.
+
+    Headers include: ACCEPT, HOST, REMOTE-ADDR, USER-AGENT, X-FORWARDED-FOR,
+    X-FORWARDED-HOST and X-RH-IDENTITY.
+
+    After this we delete the 'args' attribute entirely so we don't need to
+    delete things in here.
+    """
+    # Only list the fields that aren't also in the long fields below
+    gunicorn_record_arg_renames = {
+        # 'a': {'long name': 'user agent'},
+        'B': {'long name': 'bytes', 'as': 'int'},
+        # 'b': {'long name': 'bytes', 'as': 'str'},
+        'D': {'long name': 'microseconds'},
+        'f': {'long name': 'url'},
+        'H': {'long name': 'http_version'},
+        # 'h': {'long name': 'host'},
+        'L': {'long name': 'seconds', 'as': 'string float'},
+        # 'l': {},
+        # 'M': {'long name': 'milliseconds'},
+        'm': {'long name': 'method'},
+        # 'p': {'long name': 'process ID?', '=': '"<19945>"'},
+        # 'q': {'long name': 'query args'},
+        # 'r': {'long name': 'request line'},
+        's': {
+            'long name': 'status_code', 'default': '0', 'transform': int
+        },
+        # 'T': {'long name': 'time taken?'},
+        't': {'long name': 'timestamp'},
+        # 'U': {'long name': 'url with no query string'},
+        # 'u': {},
+    }
+    for short_name, rename in gunicorn_record_arg_renames.items():
+        value = record_args.get(short_name, rename.get('default'))
+        if 'transform' in rename:
+            value = rename['transform'](value)
+        setattr(record, rename['method'], value)
+
+    # Now transform the args that look like {name}[ioe] that we care about
+    # and discard the rest.
+    long_fields_to_keep = {
+        'accept', 'accept-encoding', 'accept-language', 'akamai-origin-hop',
+        'allow', 'cache-control', 'content-length', 'content-type', 'cookie',
+        'cross-origin-opener-policy', 'csrf_cookie', 'forwarded', 'host',
+        'referer', 'referrer-policy', 'remote_addr', 'remote_port',
+        'request_method', 'server_software', 'strict-transport-security',
+        'true-client-ip', 'user-agent', 'vary', 'via', 'wsgi.errors',
+        'x-content-type-options', 'x-forwarded-for', 'x-forwarded-host',
+        'x-forwarded-port', 'x-frame-options', 'x-real-ip',
+        'x-rh-edge-reference-id', 'x-rh-edge-request-id',
+        'x-rh-frontend-origin', 'x-rh-identity', 'x-rh-insights-request-id'
+    }
+    for arg_name, arg_value in record_args.items():
+        if arg_name[0] == '{' and arg_name[-2] == '}' and arg_name[-1] in "eio":
+            true_arg_name = arg_name[1:-2]
+            if true_arg_name in long_fields_to_keep:
+                setattr(record, true_arg_name, arg_value)
+            del record_args[arg_name]
+
+
+def copy_attr_to_record(record, request, name, new_name=None):
+    if new_name is None:
+        new_name = name
+    value = getattr(request, name)
+    if value:
+        setattr(record, new_name, value)
+
+
+def update_record_from_request(record, request):
+    headers = {k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
+               for (k, v) in request.META.items() if k in LOG_HTTP_HEADER_FIELDS}
+    setattr(record, "headers", headers)
+    if headers.get('X-RH-IDENTITY'):
+        try:
+            identity_header = json.loads(b64decode(headers['X-RH-IDENTITY']))
+            if 'account_number' in identity_header['identity']:
+                setattr(record, 'account_number', identity_header['identity']['account_number'])
+            if 'org_id' in identity_header['identity']:
+                setattr(record, 'org_id', identity_header['identity']['org_id'])
+            username = identity_header['identity'].get('user', {}).get('username', '')
+            if username:
+                setattr(record, 'username', username)
+        except:
+            pass  # ignore broken decode and JSON just in case
+
+    if 'HTTP_X_RH_INSIGHTS_REQUEST_ID' in request.META:
+        setattr(record, "request_id", request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'])
+    duration = (time.time() - request.start_time) * 1000
+    setattr(record, 'duration', int(duration))
+
+    # Time spent waiting for RBAC:
+    copy_attr_to_record(record, request, 'rbac_elapsed_time_millis')
+    # RBAC Permissions
+    copy_attr_to_record(record, request, 'rbac_sought_permission')
+    copy_attr_to_record(record, request, 'rbac_matched_permission')
+    copy_attr_to_record(record, request, 'rbac_match_type')
+
+    record_name = getattr(record, "name")
+    record_args = getattr(record, "args")
+    if record_name in ('django.request', 'django.server') and record_args:
+        args = record_args[0].split()
+        if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
+            setattr(record, 'method', args[0])
+            setattr(record, 'url', args[1])
+    elif record_name == 'gunicorn.access' and record_args:
+        modify_gunicorn_logs_record(record, record_args)
+        # We've now put everything we want in the record, we can
+        # remove the args entirely
+        delattr(record, "args")
+
+
 class OurFormatter(LogstashFormatterV1):
 
     def format(self, record):
         request = thread_storage.get_value('request')
         if request is not None:
-            headers = {k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
-                       for (k, v) in request.META.items() if k in LOG_HTTP_HEADER_FIELDS}
-            setattr(record, "headers", headers)
-            if headers.get('X-RH-IDENTITY'):
-                identity_header = json.loads(b64decode(headers['X-RH-IDENTITY']))
-                if 'account_number' in identity_header['identity']:
-                    setattr(record, 'account_number', identity_header['identity']['account_number'])
-                if 'org_id' in identity_header['identity']:
-                    setattr(record, 'org_id', identity_header['identity']['org_id'])
-                username = identity_header['identity'].get('user', {}).get('username', '')
-                if username:
-                    setattr(record, 'username', username)
-
-            if 'HTTP_X_RH_INSIGHTS_REQUEST_ID' in request.META:
-                setattr(record, "request_id", request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'])
-            duration = (time.time() - request.start_time) * 1000
-            setattr(record, 'duration', int(duration))
-            # Time spent waiting for RBAC:
-            if hasattr(request, 'rbac_elapsed_time_millis'):
-                setattr(record, 'rbac_elapsed_time_millis', request.rbac_elapsed_time_millis)
-
-            if hasattr(request, 'data'):
-                setattr(record, 'request_data', request.data)
-
-            # RBAC Permissions
-            if hasattr(request, 'rbac_sought_permission'):
-                setattr(record, 'rbac_sought_permission', request.rbac_sought_permission)
-            if hasattr(request, 'rbac_matched_permission'):
-                setattr(record, 'rbac_matched_permission', request.rbac_matched_permission)
-            if hasattr(request, 'rbac_match_type'):
-                setattr(record, 'rbac_match_type', request.rbac_match_type)
-
-            record_name = getattr(record, "name")
-            record_args = getattr(record, "args")
-            if record_name in ('django.request', 'django.server') and record_args:
-                args = record_args[0].split()
-                if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
-                    setattr(record, 'method', args[0])
-                    setattr(record, 'url', args[1])
-            elif record_name == 'gunicorn.access' and record_args:
-                setattr(record, 'method', record_args.get('m'))
-                setattr(record, 'url', record_args.get('U'))
-                setattr(record, 'status_code', int(record_args.get('s', '0')))
+            update_record_from_request(record, request)
 
         post = thread_storage.get_value('post')
         if post is not None:
             setattr(record, 'post', post)
+            # Clear afterward, now that we're long-lived
+            thread_storage.set_value('post', dict())
 
         exc = getattr(record, "exc_info")
         if exc:
