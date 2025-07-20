@@ -20,6 +20,7 @@ pytest-cov = "*"
 pytest-server-fixtures = {extras = ["http"],version = "*"}
 pytest-django = "*"
 unittest-xml-reporting = "*"
+django-stubs = "*"
 
 [packages]
 app-common-python = "*"
