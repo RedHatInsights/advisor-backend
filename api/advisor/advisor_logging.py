@@ -58,7 +58,7 @@ def modify_gunicorn_logs_record(record, record_args):
         'B': {'long name': 'bytes', 'as': 'int'},
         # 'b': {'long name': 'bytes', 'as': 'str'},
         'D': {'long name': 'microseconds'},
-        'f': {'long name': 'url'},
+        # 'f': {'long name': '?', 'is': '-'},
         'H': {'long name': 'http_version'},
         # 'h': {'long name': 'host'},
         'L': {'long name': 'seconds', 'as': 'string float'},
@@ -66,21 +66,21 @@ def modify_gunicorn_logs_record(record, record_args):
         # 'M': {'long name': 'milliseconds'},
         'm': {'long name': 'method'},
         # 'p': {'long name': 'process ID?', '=': '"<19945>"'},
-        # 'q': {'long name': 'query args'},
+        'q': {'long name': 'query_params'},
         # 'r': {'long name': 'request line'},
         's': {
             'long name': 'status_code', 'default': '0', 'transform': int
         },
         # 'T': {'long name': 'time taken?'},
         't': {'long name': 'timestamp'},
-        # 'U': {'long name': 'url with no query string'},
-        # 'u': {},
+        'U': {'long name': 'url'},
+        # 'u': {'is': '-'},
     }
     for short_name, rename in gunicorn_record_arg_renames.items():
         value = record_args.get(short_name, rename.get('default'))
         if 'transform' in rename:
             value = rename['transform'](value)
-        setattr(record, rename['method'], value)
+        setattr(record, rename['long name'], value)
 
     # Now transform the args that look like {name}[ioe] that we care about
     # and discard the rest.
@@ -88,7 +88,7 @@ def modify_gunicorn_logs_record(record, record_args):
         'accept', 'accept-encoding', 'accept-language', 'akamai-origin-hop',
         'allow', 'cache-control', 'content-length', 'content-type', 'cookie',
         'cross-origin-opener-policy', 'csrf_cookie', 'forwarded', 'host',
-        'referer', 'referrer-policy', 'remote_addr', 'remote_port',
+        'raw_uri', 'referer', 'referrer-policy', 'remote_addr', 'remote_port',
         'request_method', 'server_software', 'strict-transport-security',
         'true-client-ip', 'user-agent', 'vary', 'via', 'wsgi.errors',
         'x-content-type-options', 'x-forwarded-for', 'x-forwarded-host',
@@ -101,7 +101,6 @@ def modify_gunicorn_logs_record(record, record_args):
             true_arg_name = arg_name[1:-2]
             if true_arg_name in long_fields_to_keep:
                 setattr(record, true_arg_name, arg_value)
-            del record_args[arg_name]
 
 
 def copy_attr_to_record(record, request, name, new_name=None):
@@ -113,8 +112,16 @@ def copy_attr_to_record(record, request, name, new_name=None):
 
 
 def update_record_from_request(record, request):
-    headers = {k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
-               for (k, v) in request.META.items() if k in LOG_HTTP_HEADER_FIELDS}
+    """
+    This adds data from the request structure into the log record.
+
+    Modifies the record object in situ; should leave the request untouched.
+    """
+    headers = {
+        k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
+        for (k, v) in request.META.items()
+        if k in LOG_HTTP_HEADER_FIELDS
+    }
     setattr(record, "headers", headers)
     if headers.get('X-RH-IDENTITY'):
         try:
@@ -141,19 +148,6 @@ def update_record_from_request(record, request):
     copy_attr_to_record(record, request, 'rbac_matched_permission')
     copy_attr_to_record(record, request, 'rbac_match_type')
 
-    record_name = getattr(record, "name")
-    record_args = getattr(record, "args")
-    if record_name in ('django.request', 'django.server') and record_args:
-        args = record_args[0].split()
-        if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
-            setattr(record, 'method', args[0])
-            setattr(record, 'url', args[1])
-    elif record_name == 'gunicorn.access' and record_args:
-        modify_gunicorn_logs_record(record, record_args)
-        # We've now put everything we want in the record, we can
-        # remove the args entirely
-        delattr(record, "args")
-
 
 class OurFormatter(LogstashFormatterV1):
 
@@ -162,8 +156,23 @@ class OurFormatter(LogstashFormatterV1):
         if request is not None:
             update_record_from_request(record, request)
 
+        record_name = getattr(record, "name")
+        record_args = getattr(record, "args")
+        if record_name in ('django.request', 'django.server') and record_args:
+            # args="GET /api/insights/v1/... HTTP/1.1, 200, 603"
+            args = record_args[0].split()
+            if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
+                setattr(record, 'method', args[0])
+                setattr(record, 'url', args[1])
+                setattr(record, 'http_version', args[2])
+        elif record_name == 'gunicorn.access' and record_args:
+            modify_gunicorn_logs_record(record, record_args)
+            # We've now put everything we want in the record, we can
+            # remove the args entirely
+            delattr(record, "args")
+
         post = thread_storage.get_value('post')
-        if post is not None:
+        if post:
             setattr(record, 'post', post)
             # Clear afterward, now that we're long-lived
             thread_storage.set_value('post', dict())
@@ -183,11 +192,11 @@ class OurFormatter(LogstashFormatterV1):
 
             # Reduce size of gunicorn's message field
             if record.name == 'gunicorn.access' and hasattr(record, 'message'):
-                # Not sure why we're splitting this and only selecting
-                # the fifth through tenth words here.
-                messages = record.message.split()
-                if len(messages) >= 10:
-                    record.message = ' '.join(messages[5:10])
+                if isinstance(record.message, str):
+                    # 127.0.0.1 - - [21/Jul/2025:22:57:29 +0000] "GET /api/insights/v1/... HTTP/1.1" 200 419 "<referer>" "<user agent>"
+                    messages = record.message.split()
+                    if len(messages) >= 10:
+                        record.message = ' '.join(messages[5:10])
 
         return super(OurFormatter, self).format(record)
 
