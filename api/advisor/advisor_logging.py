@@ -25,9 +25,18 @@ import thread_storage
 import project_settings.settings as settings
 from os import getenv
 LOG_LEVEL = getenv('LOG_LEVEL', 'INFO').upper()
-LOG_HTTP_HEADER_FIELDS = {'CONTENT_LENGTH', 'CONTENT_TYPE', 'HTTP_ACCEPT',
-                          'HTTP_USER_AGENT', 'HTTP_X_RH_IDENTITY', 'HTTP_X_FORWARDED_FOR',
-                          'HTTP_X_FORWARDED_HOST', 'REMOTE_ADDR', 'REMOTE_HOST', 'HTTP_HOST'}
+LOG_HTTP_HEADER_FIELDS = {
+    'CONTENT_LENGTH': 'CONTENT-LENGTH',
+    'CONTENT_TYPE': 'CONTENT-TYPE',
+    'HTTP_ACCEPT': 'ACCEPT',
+    'HTTP_USER_AGENT': 'USER-AGENT',
+    'HTTP_X_RH_IDENTITY': 'X-RH-IDENTITY',
+    'HTTP_X_FORWARDED_FOR': 'X-FORWARDED-FOR',
+    'HTTP_X_FORWARDED_HOST': 'X-FORWARDED-HOST',
+    'REMOTE_ADDR': 'REMOTE-ADDR',
+    'REMOTE_HOST': 'REMOTE-HOST',
+    'HTTP_HOST': 'HOST'
+}
 
 
 class AdvisorStreamHandler(logging.StreamHandler):
@@ -106,7 +115,7 @@ def modify_gunicorn_logs_record(record, record_args):
 def copy_attr_to_record(record, request, name, new_name=None):
     if new_name is None:
         new_name = name
-    value = getattr(request, name)
+    value = getattr(request, name, None)
     if value:
         setattr(record, new_name, value)
 
@@ -117,10 +126,11 @@ def update_record_from_request(record, request):
 
     Modifies the record object in situ; should leave the request untouched.
     """
+    # Substitute nicer field names and only use the ones we want.
     headers = {
-        k[5:].replace('_', '-') if 'HTTP_' in k else k.replace('_', '-'): v
-        for (k, v) in request.META.items()
-        if k in LOG_HTTP_HEADER_FIELDS
+        subst: request.META[header]
+        for header, subst in LOG_HTTP_HEADER_FIELDS.items()
+        if header in request.META
     }
     setattr(record, "headers", headers)
     if headers.get('X-RH-IDENTITY'):
