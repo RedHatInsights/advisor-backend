@@ -14,9 +14,12 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import time
 from types import SimpleNamespace
 
 from django.test import TestCase
+
+from api.permissions import request_object_for_testing
 
 import advisor_logging
 
@@ -170,3 +173,27 @@ class AdvisorLoggingTestCase(TestCase):
                 getattr(record, field_name), gunicorn_args.get(field),
                 f"Field {field_name} didn't get copied from {field} to record attribute"
             )
+
+    def test_update_record_from_request(self):
+        request = request_object_for_testing()
+        # Make sure the identity header has been set by the helper
+        self.assertIn('HTTP_X_RH_IDENTITY', request.META)
+        request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'] = 'request_id'
+        request.META['NOT_FOUND'] = 'yes'
+        request.start_time = time.time()
+        request.rbac_elapsed_time_millis = 123
+        record = SimpleNamespace()
+        advisor_logging.update_record_from_request(record, request)
+
+        self.assertEqual(record.headers['REMOTE-ADDR'], 'test')
+        self.assertEqual(record.account_number, '1234567')
+        self.assertEqual(record.org_id, '9876543')
+        self.assertEqual(record.username, 'testing')
+        self.assertEqual(record.request_id, 'request_id')
+        self.assertEqual(record.rbac_elapsed_time_millis, 123)
+
+        request.META['HTTP_X_RH_IDENTITY'] = 'Not a Base64 string'
+        advisor_logging.update_record_from_request(record, request)
+        self.assertEqual(
+            record.headers['X-RH-IDENTITY'], 'Not a Base64 string'
+        )
