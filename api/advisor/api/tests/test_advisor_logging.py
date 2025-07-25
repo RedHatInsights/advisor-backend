@@ -207,7 +207,9 @@ class AdvisorLoggingTestCase(TestCase):
         log line in normal operation is hard to set up AFAICS.
         """
         fmtr = advisor_logging.OurFormatter()
-        # No request in thread storage yet.
+        # No request or post data in thread storage yet.
+        thread_storage.set_value('request', None)
+        thread_storage.set_value('post', None)
         record = SimpleNamespace()
         record.name = 'django.server'
         record.args = "GET /api/insights/v1/... HTTP/1.1, 200, 603"
@@ -273,7 +275,9 @@ class AdvisorLoggingTestCase(TestCase):
         log line in normal operation is hard to set up AFAICS.
         """
         fmtr = advisor_logging.OurFormatter()
-        # No request in thread storage yet.
+        # No request or post data in thread storage yet.
+        thread_storage.set_value('request', None)
+        thread_storage.set_value('post', None)
         record = SimpleNamespace()
         record.name = 'gunicorn.access'
         record.args = gunicorn_args
