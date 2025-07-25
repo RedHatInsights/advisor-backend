@@ -134,6 +134,8 @@ def update_record_from_request(record, request):
     }
     setattr(record, "headers", headers)
     if headers.get('X-RH-IDENTITY'):
+        # For speed and to reduce dependencies we don't use the identity
+        # parsing routines in permissions.py
         try:
             identity_header = json.loads(b64decode(headers['X-RH-IDENTITY']))
             if 'account_number' in identity_header['identity']:
@@ -170,11 +172,11 @@ class OurFormatter(LogstashFormatterV1):
         record_args = getattr(record, "args")
         if record_name in ('django.request', 'django.server') and record_args:
             # args="GET /api/insights/v1/... HTTP/1.1, 200, 603"
-            args = record_args[0].split()
+            args = record_args.split()
             if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
                 setattr(record, 'method', args[0])
                 setattr(record, 'url', args[1])
-                setattr(record, 'http_version', args[2])
+                setattr(record, 'http_version', args[2][:-1])  # minus comma
         elif record_name == 'gunicorn.access' and record_args:
             modify_gunicorn_logs_record(record, record_args)
             # We've now put everything we want in the record, we can
