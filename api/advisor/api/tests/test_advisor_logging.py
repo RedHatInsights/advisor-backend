@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import json
+import thread_storage
 import time
 from types import SimpleNamespace
 
@@ -186,14 +188,168 @@ class AdvisorLoggingTestCase(TestCase):
         advisor_logging.update_record_from_request(record, request)
 
         self.assertEqual(record.headers['REMOTE-ADDR'], 'test')
+        self.assertEqual(record.headers['X-RH-IDENTITY'], request.META['HTTP_X_RH_IDENTITY'])
         self.assertEqual(record.account_number, '1234567')
         self.assertEqual(record.org_id, '9876543')
         self.assertEqual(record.username, 'testing')
         self.assertEqual(record.request_id, 'request_id')
         self.assertEqual(record.rbac_elapsed_time_millis, 123)
 
-        request.META['HTTP_X_RH_IDENTITY'] = 'Not a Base64 string'
+        request.META['HTTP_X_RH_IDENTITY'] = b'Not a Base64 string'
         advisor_logging.update_record_from_request(record, request)
         self.assertEqual(
-            record.headers['X-RH-IDENTITY'], 'Not a Base64 string'
+            record.headers['X-RH-IDENTITY'], b'Not a Base64 string'
+        )
+
+    def test_format_method_django_server(self):
+        """
+        This is going to be a bit of a hack as actually getting to format a
+        log line in normal operation is hard to set up AFAICS.
+        """
+        fmtr = advisor_logging.OurFormatter()
+        # No request in thread storage yet.
+        record = SimpleNamespace()
+        record.name = 'django.server'
+        record.args = "GET /api/insights/v1/... HTTP/1.1, 200, 603"
+        record.exc_info = None
+
+        formatted = fmtr.format(record)
+        self.assertIsInstance(formatted, str)
+        formatted_rec = json.loads(formatted)
+        self.assertIn('@timestamp', formatted_rec)
+        self.assertEqual(formatted_rec["@version"], 1)
+        self.assertIn('source_host', formatted_rec)
+        self.assertEqual(formatted_rec["name"], record.name)
+        self.assertEqual(formatted_rec["args"], record.args)
+        self.assertEqual(formatted_rec['method'], 'GET')
+        self.assertEqual(formatted_rec['url'], '/api/insights/v1/...')
+        self.assertEqual(formatted_rec['http_version'], 'HTTP/1.1')
+        # Check that other fields are not here because they haven't been
+        # set in e.g. the request or post data
+        self.assertNotIn('headers', formatted_rec)
+        self.assertNotIn('post', formatted_rec)
+
+        # Now set some thread storage data
+        request = request_object_for_testing()
+        self.assertIn('HTTP_X_RH_IDENTITY', request.META)
+        request.META['HTTP_X_RH_INSIGHTS_REQUEST_ID'] = 'request_id'
+        request.META['NOT_FOUND'] = 'yes'
+        request.start_time = time.time()
+        request.rbac_elapsed_time_millis = 123
+        thread_storage.set_value('request', request)
+        post_data = {
+            'justification': 'Test system disabled rules',
+            'rule': 'test|Active_rule'
+        }
+        thread_storage.set_value('post', post_data)
+        # Fields to be deleted by unneeded field pruning
+        record.filename = __file__
+        record.lineno = 246
+        # Do we really want to womp up an exception structure?
+        # Run the formatting
+        formatted = fmtr.format(record)
+        self.assertIsInstance(formatted, str)
+        formatted_rec = json.loads(formatted)
+        self.assertIn('headers', formatted_rec)
+        self.assertEqual(formatted_rec['headers']['REMOTE-ADDR'], 'test')
+        # The identity header is bytes, formatted as a b'' string...
+        self.assertEqual(
+            formatted_rec['headers']['X-RH-IDENTITY'],
+            str(request.META['HTTP_X_RH_IDENTITY'])
+        )
+        # Fields derived from that:
+        self.assertEqual(formatted_rec['account_number'], '1234567')
+        self.assertEqual(formatted_rec['org_id'], '9876543')
+        self.assertEqual(formatted_rec['username'], 'testing')
+        self.assertEqual(formatted_rec['request_id'], 'request_id')
+        self.assertEqual(formatted_rec['rbac_elapsed_time_millis'], 123)
+        self.assertEqual(formatted_rec['post'], post_data)
+        self.assertNotIn('filename', formatted_rec)
+        self.assertNotIn('lineno', formatted_rec)
+
+    def test_format_method_gunicorn(self):
+        """
+        This is going to be a bit of a hack as actually getting to format a
+        log line in normal operation is hard to set up AFAICS.
+        """
+        fmtr = advisor_logging.OurFormatter()
+        # No request in thread storage yet.
+        record = SimpleNamespace()
+        record.name = 'gunicorn.access'
+        record.args = gunicorn_args
+        record.exc_info = None
+        # Message should be pruned:
+        record.message = (
+            '127.0.0.1 - - [21/Jul/2025:22:57:29 +0000] "GET '
+            '/api/insights/v1/... HTTP/1.1" 200 419 "<referer>" "<user agent>"'
+        )
+
+        formatted = fmtr.format(record)
+        self.assertIsInstance(formatted, str)
+        formatted_rec = json.loads(formatted)
+        self.assertIsInstance(formatted_rec, dict)
+        self.assertIn('@timestamp', formatted_rec)
+        self.assertEqual(formatted_rec['@version'], 1)
+        self.assertIn('source_host', formatted_rec)
+        self.assertEqual(formatted_rec['name'], record.name)
+        for gunicorn_arg_key in gunicorn_args.keys():
+            # We modify all of these, should find no originals remaining
+            self.assertNotIn(gunicorn_arg_key, formatted_rec)
+        # Testing by pure value here
+        self.assertEqual(formatted_rec['bytes'], 33509)
+        self.assertEqual(formatted_rec['microseconds'], 194467)
+        self.assertEqual(formatted_rec['http_version'], 'HTTP/1.1')
+        self.assertEqual(formatted_rec['seconds'], "0.194467")
+        self.assertEqual(formatted_rec['method'], 'GET')
+        self.assertEqual(formatted_rec['query_params'], 'category=1')
+        self.assertEqual(formatted_rec['status_code'], 200)
+        self.assertEqual(formatted_rec['timestamp'], "[21/Jul/2025:23:04:02 +0000]")
+        self.assertEqual(formatted_rec['url'], '/api/insights/v1/rule/')
+        self.assertEqual(formatted_rec['x-real-ip'], '127.0.0.1')
+        self.assertEqual(formatted_rec['host'], 'insights-advisor-api.local:8000')
+        self.assertEqual(formatted_rec['accept'], 'application/json')
+        self.assertEqual(formatted_rec['user-agent'], 'OpenAPI-Generator/1.0.0/python')
+        self.assertEqual(formatted_rec['true-client-ip'], '1.2.3.4')
+        self.assertEqual(formatted_rec['accept-encoding'], 'gzip')
+        self.assertEqual(formatted_rec['akamai-origin-hop'], "2")
+        self.assertEqual(
+            formatted_rec['via'],
+            '1.1 v1-akamaitech.net(ghost) (AkamaiGHost), 1.1 akamai.net(ghost) (AkamaiGHost)'
+        )
+        self.assertEqual(formatted_rec['x-forwarded-for'], '2.3.4.5')
+        self.assertEqual(formatted_rec['cache-control'], 'no-cache, max-age=0')
+        self.assertEqual(formatted_rec['x-rh-edge-request-id'], '28b2f019')
+        self.assertEqual(
+            formatted_rec['x-rh-edge-reference-id'], "0.9368dc17.1753139042.28b2f019"
+        )
+        self.assertEqual(formatted_rec['x-forwarded-host'], 'console.local')
+        self.assertEqual(formatted_rec['x-forwarded-port'], '443')
+        self.assertEqual(
+            formatted_rec['forwarded'], 'for=2.3.4.5;host=insights.local;proto=https'
+        )
+        self.assertEqual(
+            formatted_rec['x-rh-insights-request-id'], "4f7bd84302004684ba96dd5e8759f64c"
+        )
+        self.assertEqual(formatted_rec['content-type'], 'application/json')
+        self.assertEqual(formatted_rec['vary'], 'Accept')
+        self.assertEqual(formatted_rec['allow'], 'GET, HEAD, OPTIONS')
+        self.assertEqual(formatted_rec['x-frame-options'], 'DENY')
+        self.assertEqual(formatted_rec['content-length'], '33509')
+        self.assertEqual(
+            formatted_rec['strict-transport-security'], 'max-age=31536000; includeSubDomains'
+        )
+        self.assertEqual(formatted_rec['x-content-type-options'], 'nosniff')
+        self.assertEqual(formatted_rec['referrer-policy'], 'same-origin')
+        self.assertEqual(formatted_rec['cross-origin-opener-policy'], 'same-origin')
+        self.assertEqual(
+            formatted_rec['wsgi.errors'],
+            '<gunicorn.http.wsgi.WSGIErrorsWrapper object at 0x7f64fc2845b0>'
+        )
+        self.assertEqual(formatted_rec['request_method'], 'GET')
+        self.assertEqual(formatted_rec['server_software'], 'gunicorn/23.0.0')
+        self.assertEqual(formatted_rec['raw_uri'], '/api/insights/v1/rule/?category=1')
+        self.assertEqual(formatted_rec['remote_addr'], '10.1.2.3')
+        self.assertEqual(formatted_rec['remote_port'], '45722')
+        self.assertEqual(
+            formatted_rec['message'], '"GET /api/insights/v1/... HTTP/1.1" 200 419'
         )
