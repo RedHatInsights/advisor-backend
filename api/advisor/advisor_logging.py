@@ -142,9 +142,11 @@ def update_record_from_request(record, request):
                 setattr(record, 'account_number', identity_header['identity']['account_number'])
             if 'org_id' in identity_header['identity']:
                 setattr(record, 'org_id', identity_header['identity']['org_id'])
-            username = identity_header['identity'].get('user', {}).get('username', '')
-            if username:
-                setattr(record, 'username', username)
+            user_record = identity_header['identity'].get('user', {})
+            if 'username' in user_record:
+                setattr(record, 'username', user_record['username'])
+            if 'user_id' in user_record:
+                setattr(record, 'user_id', user_record['user_id'])
         except:
             pass  # ignore broken decode and JSON just in case
 
