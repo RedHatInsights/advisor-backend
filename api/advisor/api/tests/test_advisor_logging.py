@@ -192,6 +192,7 @@ class AdvisorLoggingTestCase(TestCase):
         self.assertEqual(record.account_number, '1234567')
         self.assertEqual(record.org_id, '9876543')
         self.assertEqual(record.username, 'testing')
+        self.assertEqual(record.user_id, '123')
         self.assertEqual(record.request_id, 'request_id')
         self.assertEqual(record.rbac_elapsed_time_millis, 123)
 
@@ -263,6 +264,7 @@ class AdvisorLoggingTestCase(TestCase):
         self.assertEqual(formatted_rec['account_number'], '1234567')
         self.assertEqual(formatted_rec['org_id'], '9876543')
         self.assertEqual(formatted_rec['username'], 'testing')
+        self.assertEqual(formatted_rec['user_id'], '123')
         self.assertEqual(formatted_rec['request_id'], 'request_id')
         self.assertEqual(formatted_rec['rbac_elapsed_time_millis'], 123)
         self.assertEqual(formatted_rec['post'], post_data)
