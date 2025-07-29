@@ -93,8 +93,8 @@ LOGGING = {
     },
 }
 
-if USE_CLOUDWATCH_LOGGING == 'true':
 
+def load_cloudwatch_logging():
     if CLOWDER_ENABLED:
         cw = cfg.logging.cloudwatch
         AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', cw.accessKeyId)
@@ -132,6 +132,10 @@ if USE_CLOUDWATCH_LOGGING == 'true':
         }
         for logger in LOGGING['loggers']:
             LOGGING['loggers'][logger]['handlers'].append('cloudwatch')
+
+
+if USE_CLOUDWATCH_LOGGING == 'true':
+    load_cloudwatch_logging()
 
 
 # Used by gunicorn's --config option

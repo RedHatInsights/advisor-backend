@@ -14,7 +14,9 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+from contextlib import contextmanager
 import json
+from os import environ
 import thread_storage
 import time
 from types import SimpleNamespace
@@ -121,6 +123,23 @@ gunicorn_args = {
     "{path_info}e": "/api/insights/v1/rule/",
     "{script_name}e": ""
 }
+
+
+@contextmanager
+def override_environment(**kwargs):
+    original_values = dict()
+    for key, new_val in kwargs.items():
+        original_values[key] = environ.get(key)
+        environ[key] = new_val
+
+    try:
+        yield
+    finally:
+        for key, orig_val in original_values.items():
+            if orig_val is None:
+                del environ[key]
+            else:
+                environ[key] = orig_val
 
 
 class AdvisorLoggingTestCase(TestCase):
@@ -359,3 +378,34 @@ class AdvisorLoggingTestCase(TestCase):
         self.assertEqual(
             formatted_rec['message'], '"GET /api/insights/v1/... HTTP/1.1" 200 419'
         )
+
+    def test_logging_conf_cloudwatch_enabled(self):
+        """
+        The 'logging_conf' module defines USE_CLOUDWATCH_LOGGING at the
+        module level, and the code that relies on it also at the module level.
+        importlib.reimport doesn't cause the code to be re-evaluated though?
+        So we've put the code we want to test into a function we can call.
+        """
+        with override_environment(
+            AWS_ACCESS_KEY_ID='test access key id',
+            AWS_SECRET_ACCESS_KEY='test secret access key',
+            HOSTNAME='test host'
+        ):
+            import logging_conf
+            logging_conf.USE_CLOUDWATCH_LOGGING = 'true'
+            logging_conf.load_cloudwatch_logging()
+
+            # The only effect is if we get to installing a cloudwatch handler.
+            self.assertIn('cloudwatch', logging_conf.LOGGING['handlers'])
+            self.assertEqual(
+                logging_conf.LOGGING['handlers']['cloudwatch']['log_group'],
+                'platform-dev'
+            )
+            self.assertEqual(
+                logging_conf.LOGGING['handlers']['cloudwatch']['stream_name'],
+                'test host'
+            )
+            self.assertEqual(
+                logging_conf.LOGGING['handlers']['cloudwatch']['formatter'],
+                'json'
+            )
