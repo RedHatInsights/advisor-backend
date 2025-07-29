@@ -48,8 +48,10 @@ responses = "*"
 setuptools = "*"
 typing-extensions = "*"
 tzdata = "*"
-UnleashClient = "*"
 watchtower = "*"
+unleashclient = "==5.12.2"
+rpds-py = "==0.23.1"
+jsonschema = "==4.24.0"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"
