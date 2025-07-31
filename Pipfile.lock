@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ddcca315a0a899a8967a7eadb34a65b06540bbac7a2cf52ec1bec75c589a8e83"
+            "sha256": "da46937813d3cee02e9b874b0a88f66b4516ce3167c9df82c5dca8d5afb3edca"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1254,6 +1254,23 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==5.2.1"
+        },
+        "django-stubs": {
+            "hashes": [
+                "sha256:2a04b510c7a812f88223fd7e6d87fb4ea98717f19c8e5c8b59691d83ad40a8a6",
+                "sha256:79bd0fdbc78958a8f63e0b062bd9d03f1de539664476c0be62ade5f063c9e41e"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10'",
+            "version": "==5.2.2"
+        },
+        "django-stubs-ext": {
+            "hashes": [
+                "sha256:8833bbe32405a2a0ce168d3f75a87168f61bd16939caf0e8bf173bccbd8a44c5",
+                "sha256:d9d151b919fe2438760f5bd938f03e1cb08c84d0651f9e5917f1313907e42683"
+            ],
+            "markers": "python_version >= '3.10'",
+            "version": "==5.2.2"
         },
         "drf-spectacular-sidecar": {
             "hashes": [
