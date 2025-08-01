@@ -183,7 +183,7 @@ class OurFormatter(LogstashFormatterV1):
             modify_gunicorn_logs_record(record, record_args)
             # We've now put everything we want in the record, we can
             # remove the args entirely
-            delattr(record, "args")
+            record.args = {}
 
         post = thread_storage.get_value('post')
         if post:
