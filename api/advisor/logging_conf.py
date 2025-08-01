@@ -35,13 +35,13 @@ def hide_metrics(record):
         return True
 
     # otherwise do not
-    record_name = getattr(record, "name")
-    record_args = getattr(record, "args")
-    if record_name in ('django.request', 'django.server') and record_args:
-        args = record_args[0].split()
+    record_name = getattr(record, "name", 'none')
+    record_args = getattr(record, "args", None)
+    if record_name in ('django.request', 'django.server') and record_args and isinstance(record_args, str):
+        args = record_args.split()
         if len(args) > 1 and args[0] == 'GET' and args[1] == '/metrics':
             return False
-    elif record_name == 'gunicorn.access' and record_args and record_args.get('U') == '/metrics':
+    elif record_name == 'gunicorn.access' and record_args and isinstance(record_args, dict) and record_args.get('U') == '/metrics':
         return False
     return True
 
