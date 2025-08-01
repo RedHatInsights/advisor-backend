@@ -26,6 +26,7 @@ from django.test import TestCase
 from api.permissions import request_object_for_testing
 
 import advisor_logging
+import logging_conf
 
 gunicorn_args = {
     "h": "10.1.2.3",
@@ -391,7 +392,6 @@ class AdvisorLoggingTestCase(TestCase):
             AWS_SECRET_ACCESS_KEY='test secret access key',
             HOSTNAME='test host'
         ):
-            import logging_conf
             logging_conf.USE_CLOUDWATCH_LOGGING = 'true'
             logging_conf.load_cloudwatch_logging()
 
@@ -409,3 +409,63 @@ class AdvisorLoggingTestCase(TestCase):
                 logging_conf.LOGGING['handlers']['cloudwatch']['formatter'],
                 'json'
             )
+
+    def test_hide_metrics(self):
+        """
+        Test all the code paths through hide_metrics, including failure modes.
+        """
+        record = SimpleNamespace()
+
+        # No properties at all, should be True.
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # Random record name should return True.
+        record.name = "Foo"
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # Django record with no args should return True.
+        record.name = "django.request"
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # Django record with args as not a string should return True.
+        record.args = {'args': "GET /api/insights/v1/... HTTP/1.1, 200, 603"}
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # Django record with args but not a GET of /metrics should return True.
+        record.args = "GET /api/insights/v1/... HTTP/1.1, 200, 603"
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # Django record with args but not a GET of /metrics should return False.
+        record.args = "GET /metrics HTTP/1.1, 200, 603"
+        self.assertFalse(logging_conf.hide_metrics(record))
+
+        # GUnicorn with no args should return True.
+        record.name = "gunicorn.access"
+        delattr(record, 'args')
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # GUnicorn record with args but not a dict should return True.
+        record.args = "GET /metrics HTTP/1.1, 200, 603"
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # GUnicorn record with args as dict but not of /metrics should return True.
+        record.args = {'U': '/api/insights/v1/rule/'}
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # GUnicorn record with args dict U=/metrics should return False.
+        record.args = {'U': '/metrics'}
+        self.assertFalse(logging_conf.hide_metrics(record))
+
+        # LOG_LEVEL=DEBUG should always return true
+        prev_level = logging_conf.LOG_LEVEL
+        logging_conf.LOG_LEVEL = 'DEBUG'
+        # Only test the paths that would return False
+        record.name = "django.request"
+        record.args = "GET /metrics HTTP/1.1, 200, 603"
+        self.assertTrue(logging_conf.hide_metrics(record))
+        record.name = "gunicorn.access"
+        record.args = {'U': '/metrics'}
+        self.assertTrue(logging_conf.hide_metrics(record))
+
+        # Set debug level back
+        logging_conf.LOG_LEVEL = prev_level

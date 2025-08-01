@@ -47,6 +47,9 @@ def rewrite_urls(get_response):
             return response
 
         full_url = request.build_absolute_uri()
+        if "/api/tasks/v1/" not in full_url:
+            return response
+
         logger.info(f'Rewriting internal URLs in html document: {full_url}')
         url_components = urlparse(full_url)
         url_location = url_components.scheme + '://' + url_components.netloc
