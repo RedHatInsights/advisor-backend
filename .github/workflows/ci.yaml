@@ -94,7 +94,7 @@ jobs:
           path: api/test_reports/
 
   build-container:
-    name: Build the container using podman from Containerfile
+    name: podman build from Containerfile
     runs-on: ubuntu-latest
 
     steps:
@@ -115,7 +115,7 @@ jobs:
           containerfiles: ./Containerfile
 
   podman-build-container:
-    name: Build the container using podman-compose
+    name: podman-compose build
     runs-on: ubuntu-latest
     # needs: [build-and-test] # This job will run after lint and unit tests pass
 
