@@ -56,10 +56,6 @@ jobs:
           done
           echo "PostgreSQL is up!"
 
-      - name: Ugly hack while Foreman upgrades to Postgres 14 or later
-        run: |
-          sed -i s/\(14,\)/\(13,\)/g $(pipenv --venv)/lib/python3.12/site-packages/django/db/backends/postgresql/features.py
-
       - name: Flake8 tests
         run: pipenv run flake8 --config .flake8 api service
       - name: Django API tests
@@ -109,3 +105,31 @@ jobs:
           image: advisor-backend
           tags: ${{ github.sha }}
           containerfiles: ./Containerfile
+
+  podman-build-container:
+    name: Build container with Podman
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit] # This job will run after lint and unit tests pass
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Podman and Podman Compose
+        run: |
+          # Install Podman
+          sudo apt-get update
+          sudo apt-get install -y podman
+
+          # Install podman-compose, which is a Python package
+          sudo apt-get install -y python3-pip
+          pip3 install podman-compose
+      - name: Build the advisor-api container
+        # Run the podman compose build command.
+        # This assumes your podman-compose.yml is in the root directory.
+        run: |
+          podman compose build advisor-api
