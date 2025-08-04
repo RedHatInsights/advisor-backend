@@ -172,18 +172,22 @@ class OurFormatter(LogstashFormatterV1):
 
         record_name = getattr(record, "name")
         record_args = getattr(record, "args")
-        if record_name in ('django.request', 'django.server') and record_args:
+        if record_name in ('django.request', 'django.server') and record_args and isinstance(record_args, str):
             # args="GET /api/insights/v1/... HTTP/1.1, 200, 603"
             args = record_args.split()
             if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
                 setattr(record, 'method', args[0])
                 setattr(record, 'url', args[1])
                 setattr(record, 'http_version', args[2][:-1])  # minus comma
-        elif record_name == 'gunicorn.access' and record_args:
+        elif record_name == 'gunicorn.access' and record_args and isinstance(record_args, dict):
             modify_gunicorn_logs_record(record, record_args)
-            # We've now put everything we want in the record, we can
-            # remove the args entirely
-            delattr(record, "args")
+            # record.args is used in % with the message of:
+            # "%(h)s %(l)s %(u)s %(t)s \"%(r)s\" %(s)s %(b)s \"%(f)s\" \"%(a)s\"
+            # so we need to include those keys and only those keys.
+            record.args = {
+                key: record_args[key]
+                for key in ('h', 'l', 'u', 't', 'r', 's', 'b', 'f', 'a')
+            }
 
         post = thread_storage.get_value('post')
         if post:
