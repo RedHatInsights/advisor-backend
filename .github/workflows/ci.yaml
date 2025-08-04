@@ -128,4 +128,4 @@ jobs:
         # Run the podman compose build command.
         # This assumes your podman-compose.yml is in the root directory.
         run: |
-          podman compose build advisor-api
+          podman-compose build advisor-api
