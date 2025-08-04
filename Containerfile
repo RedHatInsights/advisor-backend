@@ -9,10 +9,10 @@ USER root
 ADD https://copr.fedorainfracloud.org/coprs/g/insights/postgresql-16/repo/epel-9/group_insights-postgresql-16-epel-9.repo group_insights-postgresql-16-epel-9.repo
 # Install & upgrade RHEL packages
 RUN (microdnf module enable -y postgresql:16 || \
-     cp group_insights-postgresql-16-epel-9.repo /etc/yum.repos.d/postgresql.repo \
+    cp group_insights-postgresql-16-epel-9.repo /etc/yum.repos.d/postgresql.repo \
     ) && \
     microdnf -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install \
-      python3.12 postgresql git-core && \
+    python3.12 postgresql git-core && \
     microdnf -y upgrade && \
     microdnf clean all && \
     rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
@@ -34,14 +34,14 @@ RUN microdnf -y install python3.12-pip python3.12-devel gcc libpq-devel && \
     pip3 -q install pipenv && \
     pipenv install && \
     microdnf remove -y python3.12-devel gcc libpq-devel \
-      acl binutils binutils-gold cpp \
-      elfutils-debuginfod-client elfutils-default-yama-scope elfutils-libelf \
-      elfutils-libs libxcrypt-devel glibc-devel make libgomp libmpc \
-      libpkgconf pkgconf pkgconf-pkg-config \
-      glibc-headers kernel-headers && \
+    acl binutils binutils-gold cpp \
+    elfutils-debuginfod-client elfutils-default-yama-scope elfutils-libelf \
+    elfutils-libs libxcrypt-devel glibc-devel make libgomp libmpc \
+    libpkgconf pkgconf pkgconf-pkg-config \
+    glibc-headers kernel-headers && \
+    chown -R 1001 .cache .local
 # The unit tests need to install --dev packages, which needs to write to
 # .local, so we need to set the permissions so 1001 can do that here
-    chown -R 1001 .cache .local
 
 # Set Django 5.2+ minimum PostgreSQL version to 13
 RUN sed -i s/\(14,\)/\(13,\)/g $(pipenv --venv)/lib/python3.12/site-packages/django/db/backends/postgresql/features.py
@@ -57,6 +57,6 @@ USER 1001
 COPY ./api ./api
 COPY ./service ./service
 
-COPY container_init.sh container_init.sh
+COPY container_init.sh cgroup-limits ./
 
 EXPOSE 8000
