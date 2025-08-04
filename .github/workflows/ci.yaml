@@ -14,6 +14,7 @@ on:
 
 jobs:
   build-and-test:
+    name: Run flake8 and all unit tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -56,6 +57,12 @@ jobs:
           done
           echo "PostgreSQL is up!"
 
+      - name: Ugly hack while Foreman upgrades to Postgres 14 or later
+        run: |
+          sed -i s/\(14,\)/\(13,\)/g $(
+            pipenv --venv
+          )/lib/python3.12/site-packages/django/db/backends/postgresql/features.py
+
       - name: Flake8 tests
         run: pipenv run flake8 --config .flake8 api service
       - name: Django API tests
@@ -87,6 +94,7 @@ jobs:
           path: api/test_reports/
 
   build-container:
+    name: Build the container using podman from Containerfile
     runs-on: ubuntu-latest
 
     steps:
@@ -107,7 +115,7 @@ jobs:
           containerfiles: ./Containerfile
 
   podman-build-container:
-    name: Build container with Podman
+    name: Build the container using podman-compose
     runs-on: ubuntu-latest
     # needs: [build-and-test] # This job will run after lint and unit tests pass
 
