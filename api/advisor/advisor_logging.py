@@ -87,7 +87,7 @@ def modify_gunicorn_logs_record(record, record_args):
     }
     for short_name, rename in gunicorn_record_arg_renames.items():
         if short_name in record_args:
-            value = record_args.[short_name]
+            value = record_args[short_name]
             if 'transform' in rename:
                 value = rename['transform'](value)
             setattr(record, rename['long name'], value)
@@ -121,6 +121,8 @@ def modify_gunicorn_logs_record(record, record_args):
     if record.url == '-':
         if '?' in record.raw_uri:
             record.url, record.query_params = record.raw_uri.split('?', 1)
+        else:
+            record.url = record.raw_uri
 
 
 def copy_attr_to_record(record, request, name, new_name=None):
