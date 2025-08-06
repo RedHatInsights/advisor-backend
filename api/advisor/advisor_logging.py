@@ -71,7 +71,7 @@ def modify_gunicorn_logs_record(record, record_args):
         'H': {'long name': 'http_version'},
         # 'h': {'long name': 'host'},
         'L': {'long name': 'seconds', 'as': 'string float'},
-        # 'l': {},
+        # 'l': {'long name': 'apache remote host identifier', 'is': '-'},
         # 'M': {'long name': 'milliseconds'},
         'm': {'long name': 'method'},
         # 'p': {'long name': 'process ID?', '=': '"<19945>"'},
@@ -83,7 +83,7 @@ def modify_gunicorn_logs_record(record, record_args):
         # 'T': {'long name': 'time taken?'},
         't': {'long name': 'timestamp'},
         'U': {'long name': 'url'},
-        # 'u': {'is': '-'},
+        # 'u': {'long name': 'user', 'is': 'not provided, usually "-"'},
     }
     for short_name, rename in gunicorn_record_arg_renames.items():
         if short_name in record_args:
@@ -197,6 +197,8 @@ class OurFormatter(LogstashFormatterV1):
             # record.args is used in % with the message of:
             # "%(h)s %(l)s %(u)s %(t)s \"%(r)s\" %(s)s %(b)s \"%(f)s\" \"%(a)s\"
             # so we need to include those keys and only those keys.
+            # This translates roughly to:
+            # "127.0.0.1 - - [06/Aug/2025:05:38:55 +0000] \"GET /api/insights/v1/rule/ HTTP/1.1\" 200 26439 \"-\" \"Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0\""
             record.args = {
                 key: record_args[key]
                 for key in ('h', 'l', 'u', 't', 'r', 's', 'b', 'f', 'a')
