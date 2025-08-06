@@ -67,11 +67,11 @@ def modify_gunicorn_logs_record(record, record_args):
         'B': {'long name': 'bytes', 'as': 'int'},
         # 'b': {'long name': 'bytes', 'as': 'str'},
         'D': {'long name': 'microseconds'},
-        # 'f': {'long name': '?', 'is': '-'},
+        'f': {'long name': '?', 'is': '-'},
         'H': {'long name': 'http_version'},
         # 'h': {'long name': 'host'},
         'L': {'long name': 'seconds', 'as': 'string float'},
-        # 'l': {},
+        # 'l': {'long name': 'apache remote host identifier', 'is': '-'},
         # 'M': {'long name': 'milliseconds'},
         'm': {'long name': 'method'},
         # 'p': {'long name': 'process ID?', '=': '"<19945>"'},
@@ -83,13 +83,16 @@ def modify_gunicorn_logs_record(record, record_args):
         # 'T': {'long name': 'time taken?'},
         't': {'long name': 'timestamp'},
         'U': {'long name': 'url'},
-        # 'u': {'is': '-'},
+        # 'u': {'long name': 'user', 'is': 'not provided, usually "-"'},
     }
     for short_name, rename in gunicorn_record_arg_renames.items():
-        value = record_args.get(short_name, rename.get('default'))
-        if 'transform' in rename:
-            value = rename['transform'](value)
-        setattr(record, rename['long name'], value)
+        if short_name in record_args:
+            value = record_args[short_name]
+            if 'transform' in rename:
+                value = rename['transform'](value)
+            setattr(record, rename['long name'], value)
+        elif 'default' in rename:
+            setattr(record, rename['long name'], rename['default'])
 
     # Now transform the args that look like {name}[ioe] that we care about
     # and discard the rest.
@@ -110,6 +113,16 @@ def modify_gunicorn_logs_record(record, record_args):
             true_arg_name = arg_name[1:-2]
             if true_arg_name in long_fields_to_keep:
                 setattr(record, true_arg_name, arg_value)
+
+    # Last ditch effort to find a URL and method - normally we expect them in
+    # the short arguments but maybe those are '-'?
+    if record.method == '-':
+        record.method = record.request_method
+    if record.url == '-':
+        if '?' in record.raw_uri:
+            record.url, record.query_params = record.raw_uri.split('?', 1)
+        else:
+            record.url = record.raw_uri
 
 
 def copy_attr_to_record(record, request, name, new_name=None):
@@ -184,6 +197,8 @@ class OurFormatter(LogstashFormatterV1):
             # record.args is used in % with the message of:
             # "%(h)s %(l)s %(u)s %(t)s \"%(r)s\" %(s)s %(b)s \"%(f)s\" \"%(a)s\"
             # so we need to include those keys and only those keys.
+            # This translates roughly to:
+            # "127.0.0.1 - - [06/Aug/2025:05:38:55 +0000] \"GET /api/insights/v1/rule/ HTTP/1.1\" 200 26439 \"-\" \"Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0\""
             record.args = {
                 key: record_args[key]
                 for key in ('h', 'l', 'u', 't', 'r', 's', 'b', 'f', 'a')
