@@ -67,7 +67,7 @@ def modify_gunicorn_logs_record(record, record_args):
         'B': {'long name': 'bytes', 'as': 'int'},
         # 'b': {'long name': 'bytes', 'as': 'str'},
         'D': {'long name': 'microseconds'},
-        # 'f': {'long name': '?', 'is': '-'},
+        'f': {'long name': '?', 'is': '-'},
         'H': {'long name': 'http_version'},
         # 'h': {'long name': 'host'},
         'L': {'long name': 'seconds', 'as': 'string float'},
@@ -86,10 +86,13 @@ def modify_gunicorn_logs_record(record, record_args):
         # 'u': {'is': '-'},
     }
     for short_name, rename in gunicorn_record_arg_renames.items():
-        value = record_args.get(short_name, rename.get('default'))
-        if 'transform' in rename:
-            value = rename['transform'](value)
-        setattr(record, rename['long name'], value)
+        if short_name in record_args:
+            value = record_args.[short_name]
+            if 'transform' in rename:
+                value = rename['transform'](value)
+            setattr(record, rename['long name'], value)
+        elif 'default' in rename:
+            setattr(record, rename['long name'], rename['default'])
 
     # Now transform the args that look like {name}[ioe] that we care about
     # and discard the rest.
@@ -110,6 +113,14 @@ def modify_gunicorn_logs_record(record, record_args):
             true_arg_name = arg_name[1:-2]
             if true_arg_name in long_fields_to_keep:
                 setattr(record, true_arg_name, arg_value)
+
+    # Last ditch effort to find a URL and method - normally we expect them in
+    # the short arguments but maybe those are '-'?
+    if record.method == '-':
+        record.method = record.request_method
+    if record.url == '-':
+        if '?' in record.raw_uri:
+            record.url, record.query_params = record.raw_uri.split('?', 1)
 
 
 def copy_attr_to_record(record, request, name, new_name=None):
