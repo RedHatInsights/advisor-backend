@@ -23,7 +23,7 @@ if [ "${USE_DJANGO_WEBSERVER,,}" == "true" ]; then
 else
     # Guess the number of workers according to the number of cores
     function get_default_web_concurrency() {
-      limit_vars=$(cgroup-limits)
+      limit_vars=$($HOME/cgroup-limits)
       local $limit_vars
       if [ -z "${NUMBER_OF_CORES:-}" ]; then
         echo 1
