@@ -15,13 +15,18 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
+from dateutil import tz
 import functools
-from os import remove, rename
+from os import remove, rename, stat
 from os.path import exists, join
+import pytz
 import random
 import re
-from shutil import copyfile
+import responses
+from shutil import copyfile, copystat
+from typing import Any, Dict
 import yaml
+import zlib
 
 from django.conf import settings
 from django.core.management import call_command
@@ -119,13 +124,32 @@ class FileModifier(object):
     the more useful...
 
     Each modification links a file to a pipeline which modifies its content.
+
+    If the `leave_originals` flag is left at False, then the original file
+    is moved out of the way to a temporary name, and the modified content is
+    written in its place.  This is normally used when you want to pretend that
+    the modified file is as found on the file system.  When leaving the
+    context, the modified files are removed and the original files renamed
+    back into place.
+
+    If the `leave_originals` flag is set to True, then the original file is
+    left as is and the modified content is written to the temporary file name.
+    When leaving the context, the modified file is removed.  This allows
+    content to be modified and the modifications removed afterward.  In this
+    case you will want to capture the dictionary of temporary names returned
+    by the context, e.g.:
+
+    with FileModifier((('this_file.txt', modifier_fn),), leave_originals=True) as temp_filename_for:
+        with open(temp_filename_for['this_file.txt'], 'r') as fh:
+            fh.read()
     """
-    def __init__(self, *modifier_tuples):
+    def __init__(self, *modifier_tuples, leave_originals=False):
         """
         Given a list of tuples of (file to modify, modifier function),
         prepare a temporary name for the given file.
         """
         self.modifier_tuples = modifier_tuples
+        self.leave_originals = leave_originals
         # Precalculate the temp file paths
         self.temp_file_paths = {
             file_path: temp_file(file_path, 6)
@@ -136,24 +160,40 @@ class FileModifier(object):
         # Go through each modifier, read the file, rename the file out of the
         # way, and write its modified content into place.
         for file_path, pipeline in self.modifier_tuples:
+            # Rough hack for zipped file reading and writing.
+            read_mode, write_mode = (
+                ('rb', 'wb') if file_path.endswith('.gz')
+                else ('r', 'w')
+            )
             temp_file_path = self.temp_file_paths[file_path]
             # Read the original content, possibly from our cache
             if file_path not in file_content_cache:
-                with open(file_path, 'r') as fh:
+                with open(file_path, read_mode) as fh:
                     file_content_cache[file_path] = fh.read()
             content = file_content_cache[file_path]
-            # Rename the original file out of the way (leaves dates intact)
-            rename(file_path, temp_file_path)
-            # Write the modified content - in text mode.
-            with open(file_path, 'w') as fh:
-                new_content = pipeline(content)
-                fh.write(new_content)
+            if self.leave_originals:
+                # Write the modified content - in text mode.
+                with open(temp_file_path, write_mode) as fh:
+                    new_content = pipeline(content)
+                    fh.write(new_content)
+            else:
+                # Rename the original file out of the way (leaves dates intact)
+                rename(file_path, temp_file_path)
+                # Write the modified content - in text mode.
+                with open(file_path, write_mode) as fh:
+                    new_content = pipeline(content)
+                    fh.write(new_content)
+        # The context returns the temporary file paths
+        return self.temp_file_paths
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for file_path, _ in self.modifier_tuples:
             temp_file_path = self.temp_file_paths[file_path]
-            remove(file_path)
-            rename(temp_file_path, file_path)
+            if self.leave_originals:
+                remove(temp_file_path)
+            else:
+                remove(file_path)
+                rename(temp_file_path, file_path)
 
         # Context manager raises exceptions if we don't suppress:
         return False
@@ -162,7 +202,7 @@ class FileModifier(object):
 def modifies_file(file_path, pipeline):
     """
     A decorator applied to a test method, which takes an absolute file path
-    and some 'modifier' function (see below) that acts on the content of
+    and some 'modifier' function(s) (see below) that acts on the content of
     that file.  The contents of the file are read, and the modified contents
     are written back.
     """
@@ -241,6 +281,83 @@ def modify_text(*modifiers):
         ) + ('\n' if trailing_newline else '')
 
     return modify_text_def
+
+
+def modify_compressed(modifier):
+    """
+    Modify a compressed text file by taking bytes, decompressing them,
+    modifying them with the given modifier function, and re-compressing them
+    on the fly.
+    """
+    def encabulator(in_bytes):
+        decompressed_bytes = zlib.decompress(in_bytes, wbits=25)
+        changed_bytes = modifier(decompressed_bytes.decode('utf-8')).encode('utf-8')
+        return zlib.compress(changed_bytes, level=9, wbits=25)
+
+    return encabulator
+
+
+def parse_modified_datetime(modified_str: str) -> datetime:
+    """
+    For reasons beyond mortal comprehension, datetime.strptime does NOT normally
+    recognise the '%Z' part like 'UTC' in the time string.  So we do our best
+    to recognise it here and return a timezone-aware datetime.
+
+    Examples:
+
+    'Wed, 25 Jun 2025 00:58:45 UTC'
+    """
+    # The string without timezone is 25 characters long.
+    assert len(modified_str) >= 25
+    std_format = '%a, %d %b %Y %H:%M:%S'
+    naive_dt = datetime.datetime.strptime(modified_str[:25], std_format)
+    # Then try and guess the timezone
+    timezone = (
+        modified_str[26:]
+        if len(modified_str) > 26
+        else 'UTC'
+    )
+    if timezone not in pytz.common_timezones:
+        timezone = 'UTC'
+    return naive_dt.astimezone(pytz.timezone(timezone))
+
+
+def modified_since_callback(request, file_path: str):
+    """
+    The callback partial for checking whether the request's 'If-Modified-Since'
+    date is NO LATER than the given date.  If so, it returns a 304 status with
+    no content; if not it returns a 200 with the content.  You don't need to
+    set the 'Last-Modified' header in the response.  Use this as:
+
+    callback=functools.partial(
+        modified_since_callback, file_path=config_file_path
+    )
+    """
+    # Remember, this is from the perspective of the server, so the file_date
+    # is the file we're going to serve and the request_date is the date of
+    # the file on the client.
+
+    # We have to have a file to serve, so get its date
+    assert exists(file_path)
+    file_date = datetime.datetime.fromtimestamp(
+        stat(file_path).st_mtime, tz=tz.tzlocal()
+    )
+    file_header = {
+        'Last-Modified': file_date.strftime('%a, %d %b %Y %H:%M:%S %Z')
+    }
+    # Get request's 'If-Modified-Since' date, or epoch if not present.
+    req_date = (
+        parse_modified_datetime(request.headers['If-Modified-Since'])
+        if 'If-Modified-Since' in request.headers
+        else datetime.datetime(1970, 1, 1, 0, 0, 0).astimezone(tz.tzlocal())
+    )
+    # Compare and give the appropriate response (status, headers, body):
+    if file_date < req_date:
+        return (304, file_header, b'')  # No body
+    else:
+        with open(file_path, 'rb') as fh:
+            file_content = fh.read()
+        return (200, file_header, file_content)
 
 
 # The actual tests
@@ -542,6 +659,194 @@ class ImportContentTestCase(TestCase):
         # Neither of these should exist afterward either
         self.assertFalse(exists(content_yaml_file))
         self.assertFalse(exists(playbook_yaml_file))
+
+    @responses.activate()
+    def test_content_load_from_remote(self):
+        """
+        We want to test that when the import content command reads from a
+        remote URL, it gets updated content.  This should override the
+        (compressed or uncompressed) content files it expects to see, if they
+        exist.  So the test matrix is:
+
+        source files in content directory | remote files            | tested
+        ----------------------------------+-------------------------+-------
+        don't exist                       | uncompressed            | test 1
+        don't exist                       | compressed
+        uncompressed                      | uncompressed, not later
+        uncompressed                      | uncompressed, later
+        uncompressed                      | compressed, not later
+        uncompressed                      | compressed, later
+        compressed                        | uncompressed, not later
+        compressed                        | uncompressed, later
+        compressed                        | compressed, not later
+        compressed                        | compressed, later
+
+        Ideally we also care that the content is actually loaded.  Maybe this
+        should be better checked with no data, but ideally when we modify the
+        content file this should change the file date, which in turn should
+        modify the header's 'Last-Modified' date.
+        """
+        # Note: a fair number of the asserts in here are to make sure that
+        # the test environment doesn't have file artefacts from its own
+        # tests left lying around.  Use of FileDeleter and FileModifier
+        # context managers needs to be pretty strict.
+
+        def response_lookup() -> Dict[str | None, Any]:
+            # Translate the list of requests and responses into a dict
+            return {
+                call.request.url: call.response
+                for call in responses.calls
+                if call.request.url
+            }
+
+        CONTENT_SERVER_BASE_URL = 'http://localhost/content/advisor/'
+        rules_url_path = CONTENT_SERVER_BASE_URL + 'rule_content.yaml'
+        playbook_url_path = CONTENT_SERVER_BASE_URL + 'playbook_content.yaml'
+        config_url_path = CONTENT_SERVER_BASE_URL + 'config.yaml'
+
+        # Generate and dump the content to files
+        content_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'rule_content.yaml')
+        playbook_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'playbook_content.yaml')
+        config_file = join(PATH_TO_TEST_CONTENT_REPO, 'content/config.yaml')
+        base_config_file = join(PATH_TO_TEST_CONTENT_REPO, 'config.yaml')
+
+        with FileDeleter(
+            content_yaml_file, playbook_yaml_file
+        ):
+            self.assertFalse(exists(content_yaml_file))
+            self.assertFalse(exists(playbook_yaml_file))
+            # The config file is a property of the repository itself...
+            self.assertTrue(exists(config_file))
+            call_command(
+                'import_content', '-c', PATH_TO_TEST_CONTENT_REPO,
+                '--dump',
+            )
+            self.assertTrue(exists(content_yaml_file))
+            self.assertTrue(exists(playbook_yaml_file))
+
+            # Now set up our responses server:
+            responses.add_callback(
+                responses.GET, url=rules_url_path,
+                callback=functools.partial(
+                    modified_since_callback, file_path=content_yaml_file
+                )
+            )
+            responses.add_callback(
+                responses.GET, url=playbook_url_path,
+                callback=functools.partial(
+                    modified_since_callback, file_path=playbook_yaml_file
+                )
+            )
+            responses.add_callback(
+                responses.GET, url=config_url_path,
+                callback=functools.partial(
+                    modified_since_callback, file_path=config_file
+                )
+            )
+            # Because it will try to search for compressed content we need
+            # to return 404s on that explicitly
+            responses.get(rules_url_path + '.gz', status=404)
+            responses.get(playbook_url_path + '.gz', status=404)
+
+            # Uncompressed content files, no repository dump available
+            # Delete stuff to check that read works...
+            Playbook.objects.all().delete()  # delete before rules
+            Rule.objects.all().delete()  # surprisingly this works...
+            # Because we use '-c /tmp' here, files are put into /tmp, so we
+            # need to make sure they're removed later.
+            with FileDeleter('/tmp/config.yaml', '/tmp/rule_content.yaml', '/tmp/playbook_content.yaml'):
+                self.assertFalse(exists('/tmp/config.yaml'))
+                self.assertFalse(exists('/tmp/rule_content.yaml'))
+                self.assertFalse(exists('/tmp/playbook_content.yaml'))
+                # Now try to import content, with a base directory that does not
+                # contain any content or playbook repositories.
+                call_command(
+                    'import_content', '-c', '/tmp',
+                    '--remote', CONTENT_SERVER_BASE_URL
+                )
+            # Basic content checks
+            self.assertGreater(Rule.objects.count(), 0)
+            self.assertGreater(Playbook.objects.count(), 0)
+            # Of course we can't check the requests object directly here, but
+            # Responses should have responded to those requests.
+            response_for_url = response_lookup()
+            self.assertIn(rules_url_path, response_for_url)
+            self.assertEqual(response_for_url[rules_url_path].status_code, 200)
+            self.assertIn(playbook_url_path, response_for_url)
+            self.assertEqual(response_for_url[playbook_url_path].status_code, 200)
+            self.assertIn(config_url_path, response_for_url)
+            self.assertEqual(response_for_url[config_url_path].status_code, 200)
+            # The compressed files were requested first but not found
+            self.assertIn(rules_url_path + '.gz', response_for_url)
+            self.assertEqual(response_for_url[rules_url_path + '.gz'].status_code, 404)
+            self.assertIn(playbook_url_path + '.gz', response_for_url)
+            self.assertEqual(response_for_url[playbook_url_path + '.gz'].status_code, 404)
+
+            responses.reset()
+
+            # Uncompressed content, already existing files, no modification.
+            # Unfortunately the responses library is not clever enough to
+            # respond to the 'If-Modified-Since' header even if
+            responses.add_callback(
+                responses.GET, url=rules_url_path,
+                callback=functools.partial(
+                    modified_since_callback, file_path=content_yaml_file
+                )
+            )
+            responses.add_callback(
+                responses.GET, url=playbook_url_path,
+                callback=functools.partial(
+                    modified_since_callback, file_path=playbook_yaml_file
+                )
+            )
+            responses.add_callback(
+                responses.GET, url=config_url_path,
+                callback=functools.partial(
+                    modified_since_callback, file_path=config_file
+                )
+            )
+            # Because it will try to search for compressed content we need
+            # to return 404s on that explicitly
+            responses.get(rules_url_path + '.gz', status=404)
+            responses.get(playbook_url_path + '.gz', status=404)
+
+            # Delete stuff to check that read works...
+            Playbook.objects.all().delete()  # delete before rules
+            Rule.objects.all().delete()  # surprisingly this works...
+            # Note that import_content will check the -c path for config.yaml
+            # before content/config.yaml, so we should copy that into the
+            # test content repo directory
+            with FileDeleter(base_config_file):
+                # Copy config including access and modification times
+                copyfile(config_file, base_config_file)
+                copystat(config_file, base_config_file)
+                call_command(
+                    'import_content', '-c', PATH_TO_TEST_CONTENT_REPO,
+                    '--remote', CONTENT_SERVER_BASE_URL
+                )
+            # Here we don't expect the content
+            # Responses should have responded to those requests.
+            response_for_url = response_lookup()
+            self.assertIn(rules_url_path, response_for_url)
+            self.assertEqual(response_for_url[rules_url_path].status_code, 304)
+            self.assertIn(playbook_url_path, response_for_url)
+            self.assertEqual(response_for_url[playbook_url_path].status_code, 304)
+            self.assertIn(config_url_path, response_for_url)
+            self.assertEqual(response_for_url[config_url_path].status_code, 304)
+            # The compressed files were requested first but not found
+            self.assertIn(rules_url_path + '.gz', response_for_url)
+            self.assertEqual(response_for_url[rules_url_path + '.gz'].status_code, 404)
+            self.assertIn(playbook_url_path + '.gz', response_for_url)
+            self.assertEqual(response_for_url[playbook_url_path + '.gz'].status_code, 404)
+
+            # with FileModifier(
+            #     ((content_file, modifiers), (playbook_file, modifiers)),
+            #     leave_originals=True
+            # ) as temp_file_names:
+            #     call_command(
+            #         'import_content', '-c', PATH_TO_TEST_CONTENT_REPO,
+            #         '--remote', CONTENT_SERVER_BASE_URL
+            #     )
 
 
 class NoDataImportContentTestCase(ImportContentTestCase):
