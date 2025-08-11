@@ -272,16 +272,16 @@ def update_ruleset_with_content(content):
     have changed or are new.
     """
     logger.info("*** Updating rules from content")
-    fields_we_might_change = (
-        'description', 'reboot_required', 'publish_date',
-        'generic', 'reason', 'more_info', 'active', 'category',
-        'impact', 'likelihood', 'node_id', 'total_risk',
-    )
     # Fields which can be copied as is.  Everything else needs some kind of
     # special handling.
     standard_fields = ('description', 'reboot_required', 'summary', )
     # Fields where nulls are converted to ''
     null_to_blank_fields = ('generic', 'reason', 'more_info', 'node_id')
+    # So the fields we actually need to track are:
+    fields_we_might_change = standard_fields + null_to_blank_fields + (
+        'publish_date', 'active', 'category',
+        'impact', 'likelihood', 'total_risk',
+    )
     # Note that we never delete a rule here.  We assume that old rules get
     # deactivated instead.  It's using a Paranoid model anyway.
     stats = {'added': 0, 'updated': 0, 'same': 0, 'deleted': 0}
