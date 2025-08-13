@@ -409,6 +409,7 @@ def get_identity_header(request):
         auth_header = json.loads(base64.b64decode(request.META[auth_header_key]))
     except Exception:
         error_and_deny(f"Unparseable {auth_header_key} data", str(request.META[auth_header_key]))
+        return None  # noqa: mainly here to improve code analysis
     if not isinstance(auth_header, dict):
         error_and_deny(f"{auth_header_key} is not a structure", f"({auth_header})")
 
@@ -506,6 +507,11 @@ class RHIdentityAuthentication(BaseAuthentication):
         if len(org_id) > 50:
             self.message = f"Org ID '{org_id}' greater than 50 characters"
             return None
+
+        if settings.KESSEL_ENABLED:
+            if 'user_id' not in identity['user']:
+                self.message = "'user_id' property not found in 'user' section of identity"
+                return None
 
         # Set the org_id
         setattr(request, 'org_id', org_id)
