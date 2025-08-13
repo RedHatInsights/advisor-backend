@@ -361,8 +361,10 @@ def has_kessel_permission(
 
     try:
         # print(f"Checking {identity} has {permission} in {scope}...")
+        logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
             # print(f"... for org {identity['org_id']}")
+            logger.info("KESSEL: checking access for org %s", identity['org_id'])
             # TODO: run check against org somehow (org itself, default, or root?)
             result, elapsed = kessel.client.check(
                 kessel.OrgId(identity['org_id']).to_ref(),
@@ -370,6 +372,7 @@ def has_kessel_permission(
                 kessel.identity_to_subject(identity))
         elif scope == ResourceScope.WORKSPACE:
             # print("... for workspace")
+            logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.lookupResources(
                 kessel.ObjectType("rbac", "workspace"),
@@ -382,6 +385,7 @@ def has_kessel_permission(
                 raise ValueError("TODO")
 
             # print(f"... for host {host_id}")
+            logger.info("KESSEL: checking access to host %s", host_id)
             result, elapsed = kessel.client.check(
                 kessel.HostId(str(host_id)).to_ref(),
                 kessel.rbac_permission_to_relation(permission),
@@ -389,6 +393,7 @@ def has_kessel_permission(
             )
 
         # print(f"... returned {result} in {elapsed}s")
+        logger.info("KESSEL: returned %s in %s", result, elapsed)
         return result, elapsed
     except Exception as e:
         # TODO elapsed time
