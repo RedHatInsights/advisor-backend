@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "b55c7a8cf9f504c3a1e9edee6943032570223ab751be8f1b7bfedd682b08b762"
+            "sha256": "c4bd00f9b9fd7dcc6a359e2900bbaf511221ff46a8b40dc4d86f75b50b77ab9d"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -59,20 +59,20 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:62959010dfd3d24157f73a8183fca7619ec97fb42ac400477006f7ecb9548d06",
-                "sha256:9f55edd8e2eb5cd86e1c972b5250f9ab0a9555f84632506a2ed131e4a82ea23a"
+                "sha256:516f5e3f7552b2a7ca4d2c89b338fb4684998c676b11b906e2ab694c91716ba6",
+                "sha256:af3f77a548b3dd7db5046609598a28a9ad5d062437b1783da9b526cc67c38b79"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==1.40.8"
+            "version": "==1.40.9"
         },
         "botocore": {
             "hashes": [
-                "sha256:7f0327e08d7c061aaa03e32459e56bcf6daa29cd946e95b1c06be14d61a9a94d",
-                "sha256:954fa6e36020ebf58898de80a8f864ba13b74dc26994cf20ccfff2966724b0b9"
+                "sha256:d4960a39aab9658bcd0272490003001cb4a8d12b89bb297ccef994ee023fb638",
+                "sha256:f4a9c6ed08e8637138e1b5534f89d38c02650974b6458a07690493130e295f68"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==1.40.8"
+            "version": "==1.40.9"
         },
         "cel-python": {
             "hashes": [
