@@ -755,7 +755,7 @@ class SystemSerializer(serializers.ModelSerializer):
     # Fields now based on InventoryHost
     system_uuid = serializers.UUIDField(source='pk')
     hits = serializers.IntegerField(read_only=True)
-    last_seen = serializers.DateTimeField(source='updated', read_only=True)
+    last_seen = serializers.DateTimeField(read_only=True)  # from annotation
     stale_at = serializers.DateTimeField(source='stale_timestamp', read_only=True)
     rhel_version = serializers.CharField()
     critical_hits = serializers.IntegerField(read_only=True)
