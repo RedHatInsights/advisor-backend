@@ -251,7 +251,7 @@ def transform_hits(report):
             report['inventory__system_profile']
         ),
         'uuid': str(report['host_id']),
-        'last_seen': report['inventory__updated'].isoformat(),
+        'last_seen': report['inventory__per_reporter_staleness__puptoo__last_check_in'],
         'title': report['rule__description'],
         'solution_url': (
             f"https://access.redhat.com/node/{report['rule__node_id']}"
@@ -260,7 +260,7 @@ def transform_hits(report):
         'total_risk': report['rule__total_risk'],
         'likelihood': report['rule__likelihood'],
         'publish_date': report['rule__publish_date'].isoformat(),
-        'stale_at': report['inventory__stale_timestamp'].isoformat(),
+        'stale_at': report['inventory__per_reporter_staleness__puptoo__stale_timestamp'],
         'results_url': "{base}/{rule_id}/{sys_id}/".format(
             base='https://console.redhat.com/insights/advisor/recommendations',
             rule_id=report['rule__rule_id'].replace('|', '%7C'),
@@ -295,8 +295,10 @@ class HitsViewSet(ExportViewSet):
             'rule__rule_id', 'rule__description', 'rule__node_id',
             'rule__total_risk', 'rule__likelihood', 'rule__publish_date',
             'rule__category__name', 'inventory__updated', 'host_id',
+            'inventory__per_reporter_staleness__puptoo__last_check_in',
+            'inventory__per_reporter_staleness__puptoo__stale_timestamp',
             'inventory__display_name', 'inventory__system_profile',  # for rhel_version
-            'inventory__stale_timestamp', 'rule__reboot_required',
+            'rule__reboot_required',
         )
         if request.query_params:
             # Process parameters in alphabetical order, not because it should
