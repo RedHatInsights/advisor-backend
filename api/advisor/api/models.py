@@ -216,7 +216,7 @@ def get_systems_queryset(request):
 
     last_seen_upload_qs = Upload.objects.filter(
         host_id=OuterRef('id'), source_id=1, current=True
-    ).values('checked_on')
+    ).order_by().values('checked_on')
 
     systems = InventoryHost.objects.for_account(request).annotate(
         hits=Subquery(report_counts),
