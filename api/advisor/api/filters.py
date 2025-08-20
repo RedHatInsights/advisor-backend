@@ -30,6 +30,8 @@ from rest_framework.serializers import ValidationError
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
+from feature_flags import feature_flag_is_enabled, FLAG_INVENTORY_HOSTS_DB_LOGICAL_REPLICATION
+
 
 def flatten(list_of_lists):
     """Flatten one level of nesting"""
@@ -340,6 +342,26 @@ def filter_multi_param(
                 {param_name: "The parameter is incorrectly formatted"}
             )
         filter_parts = m.group('brackets')[1:-1].split('][')
+        
+        # Handle workloads field redirection for schema compatibility
+        if (filter_prefix == 'system_profile' and 
+            feature_flag_is_enabled(FLAG_INVENTORY_HOSTS_DB_LOGICAL_REPLICATION) and
+            len(filter_parts) >= 1):
+
+            field_name = filter_parts[0]
+            if field_name == 'sap_system':
+                # Redirect sap_system -> workloads.sap.sap_system
+                filter_parts = ['workloads', 'sap', 'sap_system'] + filter_parts[1:]
+            elif field_name == 'sap_sids':
+                # Redirect sap_sids -> workloads.sap.sids
+                filter_parts = ['workloads', 'sap', 'sids'] + filter_parts[1:]
+            elif field_name == 'ansible':
+                # Redirect ansible -> workloads.ansible
+                filter_parts = ['workloads', 'ansible'] + filter_parts[1:]
+            elif field_name == 'mssql':
+                # Redirect mssql -> workloads.mssql
+                filter_parts = ['workloads', 'mssql'] + filter_parts[1:]
+        
         # Keep the filter prefix here though
         operator = filter_parts[-1]
         # Convert comparator if necessary
