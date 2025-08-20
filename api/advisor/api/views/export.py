@@ -37,7 +37,8 @@ from api.filters import (
     update_method_query_param,
 )
 from api.models import (
-    InventoryHost, Resolution, Rule, Tag, get_reports_subquery, Playbook,
+    InventoryHost, Playbook, Resolution, Rule, Tag, Upload,
+    get_reports_subquery,
 )
 from api.permissions import (
     InsightsRBACPermission, CertAuthPermission, ResourceScope
@@ -93,9 +94,11 @@ def filter_on_incident(request):
 
     # If there are no incident rules the results of the Subquery will be (NULL)
     # And NOT IN (NULL) behaves unexpectedly, so coalesce the NULL to a 0 to get more expected behaviour
-    incident_tag_subquery = Subquery(Tag.objects.filter(name='incident')
-                                                .annotate(incident_rule_ids=Coalesce('rules__id', 0))
-                                                .values('incident_rule_ids'))
+    incident_tag_subquery = Subquery(
+        Tag.objects.filter(name='incident')
+        .annotate(incident_rule_ids=Coalesce('rules__id', 0))
+        .values('incident_rule_ids')
+    )
     if incident_param:
         return Q(rule__in=incident_tag_subquery)
     else:
@@ -251,7 +254,7 @@ def transform_hits(report):
             report['inventory__system_profile']
         ),
         'uuid': str(report['host_id']),
-        'last_seen': report['inventory__per_reporter_staleness__puptoo__last_check_in'],
+        'last_seen': report['last_upload'].isoformat(),
         'title': report['rule__description'],
         'solution_url': (
             f"https://access.redhat.com/node/{report['rule__node_id']}"
@@ -289,13 +292,19 @@ class HitsViewSet(ExportViewSet):
         the hosts. The accepted content type supplied in the request headers
         is used to determine the supplied content type.
         """
+        last_seen_upload_qs = Upload.objects.filter(
+            host_id=OuterRef('host_id'), source_id=1, current=True
+        ).values('checked_on')
+
         reports = get_reports_subquery(request, use_joins=True).order_by(
             'host', 'rule__rule_id'
+        ).annotate(
+            last_upload=Subquery(last_seen_upload_qs)
         ).values(  # also acts as a select_related
             'rule__rule_id', 'rule__description', 'rule__node_id',
             'rule__total_risk', 'rule__likelihood', 'rule__publish_date',
             'rule__category__name', 'inventory__updated', 'host_id',
-            'inventory__per_reporter_staleness__puptoo__last_check_in',
+            'last_upload',
             'inventory__per_reporter_staleness__puptoo__stale_timestamp',
             'inventory__display_name', 'inventory__system_profile',  # for rhel_version
             'rule__reboot_required',
