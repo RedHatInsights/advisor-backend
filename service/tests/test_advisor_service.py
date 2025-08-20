@@ -1130,10 +1130,10 @@ def test_rhel6_system_filtering(db, service, mocker, sample_rhel6_engine_results
     # Both rules will be saved in the DB for the currentreport for this host
     reports = models.CurrentReport.objects.filter(
         host=sample_rhel6_engine_results['input']['host']['id'],
-    ).annotate(rule_name=models.F('rule__rule_id'))
+    )
     assert reports.count() == 2
-    assert reports.filter(rule_name="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
-    assert reports.filter(rule_name="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
+    assert reports.filter(rule__rule_id="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
+    assert reports.filter(rule__rule_id="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
 
     # Now filter the matched rules for RHEL6 rules only
     mocker.patch.object(service.settings, "FILTER_OUT_RHEL6", True)
@@ -1144,7 +1144,7 @@ def test_rhel6_system_filtering(db, service, mocker, sample_rhel6_engine_results
     # Now only the RHEL6 rule is saved in the DB for the currentreport for this host
     reports = models.CurrentReport.objects.filter(
         host=sample_rhel6_engine_results['input']['host']['id'],
-    ).annotate(rule_name=models.F('rule__rule_id'))
+    )
     assert reports.count() == 1
-    assert reports.filter(rule_name="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
-    assert not reports.filter(rule_name="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
+    assert reports.filter(rule__rule_id="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
+    assert not reports.filter(rule__rule_id="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
