@@ -17,7 +17,7 @@
 from django.core.exceptions import FieldError, ValidationError
 from django.db import models
 from django.db.models import (
-    F, Q, Subquery, OuterRef, Exists, Count, FilteredRelation,
+    Q, Subquery, OuterRef, Exists, Count, FilteredRelation,
     Case, When, Value
 )
 from django.db.models.functions import Cast
@@ -214,9 +214,13 @@ def get_systems_queryset(request):
     def hits_risk_count(value):
         return Subquery(convert_to_count_query(reports_q.filter(rule__total_risk=value)))
 
+    last_seen_upload_qs = Upload.objects.filter(
+        host_id=OuterRef('id'), source_id=1, current=True
+    ).values('checked_on')
+
     systems = InventoryHost.objects.for_account(request).annotate(
         hits=Subquery(report_counts),
-        last_seen=F('per_reporter_staleness__puptoo__last_check_in'),  # for sorting
+        last_seen=Subquery(last_seen_upload_qs),
         critical_hits=hits_risk_count(4),
         important_hits=hits_risk_count(3),
         moderate_hits=hits_risk_count(2),
@@ -289,9 +293,10 @@ class Relationship(models.ForeignObject):
 def stale_systems_q(org_id, field='host_id'):
     """
     Returns a subquery filter that removes all stale systems.
-    The account parameter while not necessary for correctness, does increase performance.
+    The org_id parameter while not necessary for correctness, does increase performance.
     """
-    return Q(**{field + '__in': models.Subquery(
+    field_in = field + '__in'
+    return Q(**{field_in: models.Subquery(
         InventoryHost.objects.annotate(
             puptoo_stale_timestamp=Cast(Cast(
                 'per_reporter_staleness__puptoo__stale_warning_timestamp',
