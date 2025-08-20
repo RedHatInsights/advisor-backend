@@ -294,7 +294,7 @@ class HitsViewSet(ExportViewSet):
         """
         last_seen_upload_qs = Upload.objects.filter(
             host_id=OuterRef('host_id'), source_id=1, current=True
-        ).values('checked_on')
+        ).order_by().values('checked_on')
 
         reports = get_reports_subquery(request, use_joins=True).order_by(
             'host', 'rule__rule_id'
