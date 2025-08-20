@@ -216,7 +216,7 @@ def get_systems_queryset(request):
 
     systems = InventoryHost.objects.for_account(request).annotate(
         hits=Subquery(report_counts),
-        last_seen=F('updated'),  # for sorting
+        last_seen=F('per_reporter_staleness__puptoo__last_check_in'),  # for sorting
         critical_hits=hits_risk_count(4),
         important_hits=hits_risk_count(3),
         moderate_hits=hits_risk_count(2),
