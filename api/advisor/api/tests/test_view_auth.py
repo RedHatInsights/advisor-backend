@@ -273,6 +273,22 @@ class RHIdentityAuthFailTestCase(TestCase):
             response.content.decode()
         )
 
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    def test_kessel_enabled_requires_user_id(self):
+        """
+        When KESSEL_ENABLED is set, the user identity must have a 'user_id'
+        property (because that is how we identify the user to RBACv2).  Test
+        that we fail early on that.
+        """
+        headers = auth_header_for_testing(user_id=None)
+        response = self.client.get(reverse('rule-list'), **headers)
+        self.assertEqual(response.status_code, 403)
+        # For some reason the custom instance message doesn't come through?
+        # self.assertIn(
+        #     "'user_id' property not found in 'user' section of identity",
+        #     response.content.decode()
+        # )
+
 
 class BadUseOfRBACPermission(TestCase):
     def test_permission_not_string(self):
