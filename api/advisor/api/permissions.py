@@ -361,8 +361,10 @@ def has_kessel_permission(
 
     try:
         # print(f"Checking {identity} has {permission} in {scope}...")
+        logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
             # print(f"... for org {identity['org_id']}")
+            logger.info("KESSEL: checking access for org %s", identity['org_id'])
             # TODO: run check against org somehow (org itself, default, or root?)
             result, elapsed = kessel.client.check(
                 kessel.OrgId(identity['org_id']).to_ref(),
@@ -370,6 +372,7 @@ def has_kessel_permission(
                 kessel.identity_to_subject(identity))
         elif scope == ResourceScope.WORKSPACE:
             # print("... for workspace")
+            logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.lookupResources(
                 kessel.ObjectType("rbac", "workspace"),
@@ -382,6 +385,7 @@ def has_kessel_permission(
                 raise ValueError("TODO")
 
             # print(f"... for host {host_id}")
+            logger.info("KESSEL: checking access to host %s", host_id)
             result, elapsed = kessel.client.check(
                 kessel.HostId(str(host_id)).to_ref(),
                 kessel.rbac_permission_to_relation(permission),
@@ -389,6 +393,7 @@ def has_kessel_permission(
             )
 
         # print(f"... returned {result} in {elapsed}s")
+        logger.info("KESSEL: returned %s in %s", result, elapsed)
         return result, elapsed
     except Exception as e:
         # TODO elapsed time
@@ -409,6 +414,7 @@ def get_identity_header(request):
         auth_header = json.loads(base64.b64decode(request.META[auth_header_key]))
     except Exception:
         error_and_deny(f"Unparseable {auth_header_key} data", str(request.META[auth_header_key]))
+        return None  # noqa: mainly here to improve code analysis
     if not isinstance(auth_header, dict):
         error_and_deny(f"{auth_header_key} is not a structure", f"({auth_header})")
 
@@ -506,6 +512,11 @@ class RHIdentityAuthentication(BaseAuthentication):
         if len(org_id) > 50:
             self.message = f"Org ID '{org_id}' greater than 50 characters"
             return None
+
+        if settings.KESSEL_ENABLED:
+            if 'user_id' not in identity['user']:
+                self.message = "'user_id' property not found in 'user' section of identity"
+                return None
 
         # Set the org_id
         setattr(request, 'org_id', org_id)
