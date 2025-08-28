@@ -24,7 +24,6 @@ django-stubs = "*"
 
 [packages]
 app-common-python = "*"
-authzed = "*"
 boto3 = "*"
 cel-python = "==0.3.0"
 django = "*"
