@@ -17,6 +17,7 @@
 from datetime import datetime
 from os import path, walk
 import pytz
+import requests
 import subprocess
 import yaml
 import zlib
@@ -70,6 +71,22 @@ def load_previous_dump(yaml_filename):
             # wbits=25 means expect the gzip header here.
             dump_data = zlib.decompress(dump_data, wbits=25)
         return yaml.load(dump_data.decode('utf-8'), yaml.Loader)
+
+
+def load_previous_dump_from_url(url):
+    """
+    Load data from a previously dumped YAML file from a remote URL,
+    decompressing it if it ends with the .gz extension.
+    """
+    response = requests.get(url)
+    if response.status_code != 200:
+        # We can't really return anything here, so we raise an exception.
+        raise Exception(f"Failed to load dump from URL: {url}")
+    dump_data = response.content
+    if url.endswith('.gz'):
+        # wbits=25 means expect the gzip header here.
+        dump_data = zlib.decompress(dump_data, wbits=25)
+    return yaml.load(dump_data.decode('utf-8'), yaml.Loader)
 
 
 def dump_yaml(content, yaml_filename):
@@ -249,23 +266,10 @@ def transform_config(config_dict, value_field):
     }
 
 
-def load_config(repo_path):
+def import_config(config):
     """
-    Load the configuration file, and update the models we get from that.
+    Load the various config-based models.
     """
-    config_file = path.join(repo_path, 'content/config.yaml')
-    if not path.exists(config_file):
-        config_file = path.join(repo_path, 'config.yaml')
-        if not path.exists(config_file):
-            logger.error(
-                f"Path '{repo_path}' does not contain config.yaml in main or "
-                f"content/ directories")
-            return
-
-    with open(config_file, 'r') as fh:
-        config = yaml.load(fh, yaml.Loader)
-    logger.info(f"Loaded {len(config.keys())} keys from config.yaml from {repo_path}")
-
     # The impact config has one 'null' key, which we do not allow.
     if None in config['impact']:
         del config['impact'][None]
@@ -295,6 +299,41 @@ def load_config(repo_path):
     global resolution_risk_to_risk
     resolution_risk_to_risk = config['resolution_risk']
     return True
+
+
+def load_config_from_file(repo_path):
+    """
+    Load the configuration file, and update the models we get from that.
+    """
+    config_file = path.join(repo_path, 'content/config.yaml')
+    if not path.exists(config_file):
+        config_file = path.join(repo_path, 'config.yaml')
+        if not path.exists(config_file):
+            logger.error(
+                f"Path '{repo_path}' does not contain config.yaml in main or "
+                f"content/ directories")
+            return False
+
+    with open(config_file, 'r') as fh:
+        config = yaml.safe_load(fh)
+    logger.info(f"Loaded {len(config.keys())} keys from config.yaml from {repo_path}")
+
+    return import_config(config)
+
+
+def load_config_from_url(base_url):
+    """
+    Load the configuration file from a URL, and update the models we get from that.
+    """
+    url = base_url + 'config.yaml'
+    response = requests.get(url)
+    if response.status_code != 200:
+        logger.error(f"Failed to load config from URL: {url}")
+        return False
+    config = yaml.safe_load(response.content)
+    logger.info(f"Loaded {len(config.keys())} keys from config.yaml from {url}")
+
+    return import_config(config)
 
 
 ##############################################################################
@@ -670,17 +709,28 @@ def load_all_autoacks(rule_content):
     )
 
 
-def process_content(repo_path):
+def import_content(rule_content):
+    """
+    Feed that to all the functions that put that data into the database; they
+    should not change the rule content.  Each should have a 'fast path' that
+    does a bulk insert if there is no existing data in the database.
+    """
+    load_all_rules(rule_content)
+    load_rule_id_map()  # Must happen after rules are loaded!
+    load_all_rule_tags(rule_content)
+    load_all_autoacks(rule_content)
+    load_all_resolutions(rule_content)
+    return True
+
+
+def process_content_from_path(repo_path):
     """
     Load the ruleset and rules data.  The old content import used to be given
     a nice list of rule data, but now we have to traverse the file system and
     get all that data ourselves.
 
     Once that's done we have a complete collection of the rule content in
-    memory.  We then feed that to all the functions that put that data into
-    the database; they should not change the rule content.  Each should have
-    a 'fast path' that does a bulk insert if there is no existing data in the
-    database.
+    memory.  We then
     """
     # We want to organise this into as few database operations as possible.
     # That means that we do our complete scan of the content directory first,
@@ -692,11 +742,7 @@ def process_content(repo_path):
     else:
         logger.info("Reading content directory at %s", repo_path)
         rule_content = generate_rule_content(repo_path)
-    load_all_rules(rule_content)
-    load_rule_id_map()  # Must happen after rules are loaded!
-    load_all_rule_tags(rule_content)
-    load_all_autoacks(rule_content)
-    load_all_resolutions(rule_content)
+    return import_content(rule_content)
 
 
 def dump_content(repo_path, compress=False):
@@ -706,6 +752,20 @@ def dump_content(repo_path, compress=False):
     dump_filename = filename_for_dump(repo_path, RULE_CONTENT_YAML_FILE, compress)
     rule_content = generate_rule_content(repo_path)
     dump_yaml(rule_content, dump_filename)
+
+
+def process_content_from_url(base_url):
+    """
+    Process content from a URL, kind of like getting it from a dump.
+    """
+    rule_content = load_previous_dump_from_url(base_url + 'content.yaml.gz')
+    if not rule_content:
+        logger.error("Failed to load compressed content from %s", base_url)
+        rule_content = load_previous_dump_from_url(base_url + 'content.yaml')
+    if not rule_content:
+        logger.error("Failed to load content from %s", base_url)
+        return False
+    return import_content(rule_content)
 
 
 ##############################################################################
@@ -862,9 +922,10 @@ def load_all_playbooks(all_playbook_data):
         ), all_playbook_data, 'rule_id_type',
         transformer=playbook_transformer
     )
+    return True
 
 
-def process_playbooks(repo_path):
+def process_playbooks_from_path(repo_path):
     """
     Load the playbook data, in much the same way that we process content.
     """
@@ -877,7 +938,7 @@ def process_playbooks(repo_path):
     else:
         logger.info("Reading playbook content in %s", repo_path)
         playbook_content = generate_playbook_content(repo_path)
-    load_all_playbooks(playbook_content)
+    return load_all_playbooks(playbook_content)
 
 
 def dump_playbooks(repo_path, compress=False):
@@ -889,6 +950,21 @@ def dump_playbooks(repo_path, compress=False):
     )
     playbook_content = generate_playbook_content(repo_path)
     dump_yaml(playbook_content, dump_filename)
+
+
+def process_playbooks_from_url(base_url):
+    """
+    Load the playbook data from a URL.
+    """
+    logger.info("Reading playbook content from %s", base_url)
+    playbook_content = load_previous_dump_from_url(base_url + 'content.yaml.gz')
+    if not playbook_content:
+        logger.error("Failed to load compressed playbook content from %s", base_url)
+        playbook_content = load_previous_dump_from_url(base_url + 'content.yaml')
+    if not playbook_content:
+        logger.error("Failed to load content from %s", base_url)
+        return False
+    return load_all_playbooks(playbook_content)
 
 
 ##############################################################################
@@ -905,12 +981,16 @@ class Command(BaseCommand):
             help='The path to the Insights content repository',
         )
         parser.add_argument(
+            '--dump', '-d', default=False, action='store_true',
+            help="Dump rule content and playbooks data",
+        )
+        parser.add_argument(
             '--playbook-repo-path', '-p', type=str,
             help='The path to the Insights playbook repository',
         )
         parser.add_argument(
-            '--dump', '-d', default=False, action='store_true',
-            help="Dump rule content and playbooks data",
+            '--remote-url', '-u', type=str,
+            help="Remote base URL to import content/playbooks from",
         )
         parser.add_argument(
             '--compress', '-z', default=False, action='store_true',
@@ -921,6 +1001,31 @@ class Command(BaseCommand):
         """
         Import the content's config, then the content.
         """
+        if options['remote_url']:
+            if not options['remote_url'].endswith('/'):
+                options['remote_url'] += '/'
+            logger.info("Importing content from remote URL")
+            if options['compress']:
+                logger.info("Ignoring '--compress' option when using remote URL")
+            if options['dump']:
+                logger.info("Ignoring '--dump' option when using remote URL")
+            # We expect to get the config, content and playbooks from the
+            # remote URL base path, possibly with .gz extensions.
+            if not load_config_from_url(options['remote_url']):
+                logger.error(
+                    "Could not load content configuration from remote URL - "
+                    "exiting"
+                )
+                return
+            load_database_maps()
+            if not process_content_from_url(options['remote_url']):
+                logger.error("Could not process content from URL - exiting")
+                return
+            if not process_playbooks_from_url(options['remote_url']):
+                logger.error("Could not process playbooks from URL - exiting")
+                return
+            return
+
         if not options['content_repo_path']:
             logger.error("You need to set a content repo path")
             return
@@ -934,9 +1039,13 @@ class Command(BaseCommand):
             dump_playbooks(playbook_repo_path, options['compress'])
 
         else:
-            if not load_config(options['content_repo_path']):
+            if not load_config_from_file(options['content_repo_path']):
                 logger.error("Could not load content configuration - exiting")
                 return
             load_database_maps()  # some of which is loaded from config in models.
-            process_content(options['content_repo_path'])
-            process_playbooks(playbook_repo_path)
+            if not process_content_from_path(options['content_repo_path']):
+                logger.error("Could not process content from file - exiting")
+                return
+            if not process_playbooks_from_path(playbook_repo_path):
+                logger.error("Could not process playbooks from file - exiting")
+                return
