@@ -15,12 +15,18 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
+import grpc
 import time
 from types import SimpleNamespace
 from typing import Tuple
 
-from authzed.api.v1 import InsecureClient
-import authzed.api.v1 as zed
+from kessel.inventory.v1beta2 import (
+    inventory_service_pb2_grpc,
+    check_request_pb2,
+    resource_reference_pb2,
+    reporter_reference_pb2,
+    subject_reference_pb2,
+)
 
 from django.conf import settings
 
@@ -130,20 +136,19 @@ class add_zed_response(object):
         return wrapper
 
 
-class TestZedClient(InsecureClient):
+class TestClient(object):
     """
-    An authzed client that can store up and then send responses to permission
+    An gRPC client that can store up and then send responses to permission
     and resource lookup requests.  Based, very roughly, on the `responses`
     library for handling tests whose code uses `requests`.
     """
 
-    def __init__(self, allow_writes: bool = False) -> None:
+    def __init__(self) -> None:
         self.permission_check_responses = dict()
         self.lookup_resources_responses = dict()
-        self.allow_writes = allow_writes
 
     def add_permission_check_response(
-        self, permission: zed.CheckPermissionRequest, response_int: int
+        self, permission: check_request_pb2.CheckRequest, response_int: int
     ) -> None:
         """
         When this permission is requested, send this response.
@@ -170,7 +175,7 @@ class TestZedClient(InsecureClient):
         ]
         self.lookup_resources_responses[lookup_str] = response_objs
 
-    def del_permission_check_response(self, permission: zed.CheckPermissionRequest):
+    def del_permission_check_response(self, permission: check_request_pb2.CheckRequest):
         """
         Delete the associated response for this permission
         """
@@ -184,7 +189,7 @@ class TestZedClient(InsecureClient):
         lookup_str = str(lookup)
         del self.lookup_resources_responses[lookup_str]
 
-    def CheckPermission(self, request: zed.CheckPermissionRequest) -> object:
+    def Check(self, request: check_request_pb2.CheckRequest) -> object:
         """
         Attempt the permission check, or raise a failure?
         """
@@ -208,55 +213,54 @@ class TestZedClient(InsecureClient):
         else:
             raise NotImplementedError(f"Response for lookup {request_str} not implemented")
 
-    def WriteRelationships(self, *args, **kwargs):
-        """
-        Pass through any writes, if allowed.
-        """
-        # Ultimately what would be cool here would be to actually store these
-        # relationships, and then be able to answer questions of them in
-        # the CheckPermission or LookupResources calls.  But they need too
-        # much knowledge of the internals of authzed and how our particular
-        # RBACv2 implements things.
-        if self.allow_writes:
-            self.up_client.WriteRelationships(*args, **kwargs)
-        else:
-            pass
-            # print(f"WriteRelationships ({args=}, {kwargs=})")
-            # raise ZedClientWritesNotAllowed(f"Write of ({args=}, {kwargs=}) not allowed")
-
 
 class Kessel:
     """
-    A very dumbed-down fake version of the Kessel graph check for POC purposes.
+    A wrapper around the gRPC Kessel Inventory service.
     """
 
     PERMISSIONSHIP_HAS_PERMISSION = zed.CheckPermissionResponse.PERMISSIONSHIP_HAS_PERMISSION
 
     def __init__(self) -> None:
         """
-        Use the TestZedClient to allow 'interception' of requests during
+        Use the TestClient to allow 'interception' of requests during
         testing.
         """
+        self.reporter = reporter_reference_pb2.ReporterReference(type="rbac")
         # We assume here that the host name 'device under test' means that we
         # only allow access via the TestZedClient.
         if settings.KESSEL_SERVER_NAME == 'device under test':
-            self.client = TestZedClient()
+            self.client = TestClient()
         else:
-            self.client = InsecureClient(
-                f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
-                settings.KESSEL_SERVER_PASSWORD
+            self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
+                grpc.insecure_channel(
+                    f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
+                    settings.KESSEL_SERVER_PASSWORD
+                )
             )
 
     def check(self, resource: ObjectRef, relation: Relation, subject: SubjectRef) -> Tuple[bool, float]:
         start = time.time()
-        zed_resource = resource.to_zed()
-        zed_subject = subject.to_zed()
-        response = self.client.CheckPermission(
-            zed.CheckPermissionRequest(
-                resource=zed_resource, permission=relation, subject=zed_subject
+        subject_ref = subject_reference_pb2.SubjectReference(
+            resource=resource_reference_pb2.ResourceReference(
+                reporter=self.reporter,
+                resource_id=subject.identity.user_id,
+                resource_type="principal"
+            ),
+        )
+        resource_ref = resource_reference_pb2.ResourceReference(
+            reporter=self.reporter,
+            resource_id=resource,
+            resource_type="workspace"
+        )
+        response = self.client.Check(
+            check_request_pb2.CheckRequest(
+                subject=subject_ref,
+                relation=relation,
+                object=resource_ref,
             )
         )
-        result = response.permissionship == self.PERMISSIONSHIP_HAS_PERMISSION
+        result = response.allowed
         return result, time.time() - start
 
     def lookupResources(self, resource_type: ObjectType, relation: Relation, subject: SubjectRef):
