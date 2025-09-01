@@ -42,7 +42,8 @@ class constants(object):
     standard_org = '9876543'
     alternate_org = '9988776'
     host_tag_org = '1000000'
-    standard_user_id = '123'
+    test_username = 'testing'
+    test_user_id = '01234567-0123-0123-0123-0123456789ab'
 
     service_account = {
         'client_id': '10203040-5060-7080-90a0-b0c0d0e0f000',
@@ -288,9 +289,9 @@ class constants(object):
     # kessel_std_principal = {'object': {'object_type': 'rbac/principal', 'object_id': '123'}}
     kessel_std_principal = kessel.ObjectType("rbac", "principal")
     kessel_std_user_id = kessel.SubjectRef(kessel.ObjectRef(
-        type=kessel_std_principal, id=standard_user_id
+        type=kessel_std_principal, id=test_user_id
     )).to_zed()
-    kessel_std_user_identity_dict = {'user': {'user_id': standard_user_id}}
+    kessel_std_user_identity_dict = {'user': {'user_id': test_user_id}}
     kessel_std_workspace = kessel.ObjectType('rbac', 'workspace').to_zed()
     kessel_host_01_ref = kessel.HostId(host_01_uuid).to_ref().to_zed()
 
