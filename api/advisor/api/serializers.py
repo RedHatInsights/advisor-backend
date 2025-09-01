@@ -288,7 +288,7 @@ class ExportHitsSerializer(serializers.Serializer):
     hostname = serializers.CharField()
     rhel_version = serializers.CharField()
     uuid = serializers.UUIDField()
-    last_seen = serializers.DateTimeField()
+    last_seen = serializers.DateTimeField(allow_null=True)
     title = serializers.CharField()
     solution_url = serializers.URLField(allow_blank=True)
     total_risk = serializers.IntegerField()
@@ -755,7 +755,7 @@ class SystemSerializer(serializers.ModelSerializer):
     # Fields now based on InventoryHost
     system_uuid = serializers.UUIDField(source='pk')
     hits = serializers.IntegerField(read_only=True)
-    last_seen = serializers.DateTimeField(read_only=True)  # from annotation
+    last_seen = serializers.DateTimeField(read_only=True, allow_null=True)
     stale_at = serializers.DateTimeField(source='stale_timestamp', read_only=True)
     rhel_version = serializers.CharField()
     critical_hits = serializers.IntegerField(read_only=True)
