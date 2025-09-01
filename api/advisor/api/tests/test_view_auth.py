@@ -449,7 +449,7 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
             'account_number': constants.standard_acct,
             'org_id': constants.standard_org,
             'type': 'User',
-            'user': {'user_id': '123', 'username': 'testing'}
+            'user': {'user_id': constants.test_user_id, 'username': constants.test_username}
         }})
 
     def test_system_and_user_auth(self):
@@ -514,7 +514,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
         # Identity has no 'username'
         request.auth = {
             'org_id': constants.standard_org, 'type': 'User',
-            'user': {'id': constants.standard_user_id}
+            'user': {'id': constants.test_user_id}
         }
         self.assertFalse(irbp.has_permission(request, view))
         # Identity 'username' key is not a string
@@ -529,14 +529,14 @@ class TestInsightsRBACPermissionKessel(TestCase):
         # Set up the various permissions objects
         rhia = RHIdentityAuthentication()
         request = request_object_for_testing()
-        user_id, _ = rhia.authenticate(request)
+        org_id, _ = rhia.authenticate(request)
         self.assertFalse(hasattr(request, 'user'))
-        request.user = user_id
+        request.user = org_id
         request.auth = {
             'org_id': constants.standard_org, 'type': 'User',
-            'user': {'username': 'Barry Jones', 'user_id': constants.standard_user_id}
+            'user': {'username': 'Barry Jones', 'user_id': constants.test_user_id}
         }
-        self.assertEqual(user_id, constants.standard_org)
+        self.assertEqual(org_id, constants.standard_org)
         self.assertTrue(hasattr(request, 'auth'))
         view = FakeView()
         setattr(view, 'resource_name', 'recommendation_results')

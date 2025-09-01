@@ -1132,10 +1132,10 @@ def request_to_org(request):
 
 
 def auth_header_for_testing(
-    org_id=None, account=None, supply_http_header=False,
-    username='testing', user_id='123', user_opts={}, system_opts=None, unencoded=False,
-    raw=None, service_account=None
-):
+    org_id=None, account=None, supply_http_header=False, username='testing',
+    user_id='01234567-0123-0123-0123-0123456789ab', user_opts={},
+    system_opts=None, unencoded=False, raw=None, service_account=None
+) -> dict[str, str]:
     """
     Provide a JSON string which can be loaded into the 'x-rh-identity'
     header to provide access for testing.
@@ -1239,10 +1239,14 @@ def auth_header_for_testing(
         if username is not None:
             user_section['username'] = username
         if user_id is not None:
-            if not isinstance(user_id, str):
-                raise TypeError(
+            # Don't actually store the user_id as a UUID, just validate that
+            # it is one.
+            try:
+                uuid.UUID(user_id)
+            except ValueError:
+                raise ValueError(
                     "'user_id' argument to auth_header_for_testing must be a "
-                    "string"
+                    "valid UUID"
                 )
             user_section['user_id'] = user_id
         identity['user'] = user_section
