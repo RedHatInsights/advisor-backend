@@ -24,6 +24,7 @@ from types import SimpleNamespace
 from django.test import TestCase
 
 from api.permissions import request_object_for_testing
+from api.tests import constants
 
 import advisor_logging
 import logging_conf
@@ -209,10 +210,10 @@ class AdvisorLoggingTestCase(TestCase):
 
         self.assertEqual(record.headers['REMOTE-ADDR'], 'test')
         self.assertEqual(record.headers['X-RH-IDENTITY'], request.META['HTTP_X_RH_IDENTITY'])
-        self.assertEqual(record.account_number, '1234567')
-        self.assertEqual(record.org_id, '9876543')
-        self.assertEqual(record.username, 'testing')
-        self.assertEqual(record.user_id, '123')
+        self.assertEqual(record.account_number, constants.standard_acct)
+        self.assertEqual(record.org_id, constants.standard_org)
+        self.assertEqual(record.username, constants.test_username)
+        self.assertEqual(record.user_id, constants.test_user_id)
         self.assertEqual(record.request_id, 'request_id')
         self.assertEqual(record.rbac_elapsed_time_millis, 123)
 
@@ -281,10 +282,10 @@ class AdvisorLoggingTestCase(TestCase):
             str(request.META['HTTP_X_RH_IDENTITY'])
         )
         # Fields derived from that:
-        self.assertEqual(formatted_rec['account_number'], '1234567')
-        self.assertEqual(formatted_rec['org_id'], '9876543')
-        self.assertEqual(formatted_rec['username'], 'testing')
-        self.assertEqual(formatted_rec['user_id'], '123')
+        self.assertEqual(formatted_rec['account_number'], constants.standard_acct)
+        self.assertEqual(formatted_rec['org_id'], constants.standard_org)
+        self.assertEqual(formatted_rec['username'], constants.test_username)
+        self.assertEqual(formatted_rec['user_id'], constants.test_user_id)
         self.assertEqual(formatted_rec['request_id'], 'request_id')
         self.assertEqual(formatted_rec['rbac_elapsed_time_millis'], 123)
         self.assertEqual(formatted_rec['post'], post_data)
