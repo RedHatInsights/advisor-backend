@@ -20,11 +20,8 @@ from django_prometheus import exports
 
 from project_settings import settings
 
-from api.urls import router, urlpatterns
+from api.urls import urlpatterns
 from tasks.urls import urlpatterns as tasks_urlpatterns
-from sat_compat.urls import v1router, v2router, v3urlpatterns
-from sat_compat.views.me import MeView
-from sat_compat.views.ping import PingViewSet
 
 urlpatterns = [
     # Regular path for Advisor API:
@@ -32,24 +29,6 @@ urlpatterns = [
 
     # Regular path for Tasks API:
     path(settings.TASKS_PATH_PREFIX, include(tasks_urlpatterns)),
-
-    # Satellite compatibility paths:
-    # NB: For paths that aren't included in the routers, the basename field
-    # needs to be supplied but isn't used; set name= on the path().
-    path(settings.SAT_COMPAT_BASE_PATH,
-        PingViewSet.as_view({'get': 'list'}, basename='sat-compat-ping')),
-    path(settings.SAT_COMPAT_BASE_PATH + '/',
-        PingViewSet.as_view({'get': 'list'}, basename='sat-compat-ping')),
-    # Just in case...
-    path(settings.SAT_COMPAT_BASE_PATH + '//',
-        PingViewSet.as_view({'get': 'list'}, basename='sat-compat-ping')),
-    path(settings.SAT_COMPAT_BASE_PATH + '/me',
-        MeView.as_view({'get': 'list'}, basename='sat-compat-me')),
-    path(settings.SAT_COMPAT_PATH_PREFIX_V1, include(v1router.urls)),
-    path(settings.SAT_COMPAT_PATH_PREFIX_V2, include(v2router.urls)),
-    path(settings.SAT_COMPAT_PATH_PREFIX_V3, include(v3urlpatterns)),
-    # Special path for platform to cope with Satellite proxy path restrictions
-    path(settings.PLATFORM_PATH_PREFIX, include(router.urls)),
 
     # Other paths
     path(settings.PROMETHEUS_PATH, exports.ExportToDjangoView, name="prometheus-django-metrics"),
