@@ -445,12 +445,15 @@ def update_ruleset_with_content(content):
             continue
 
         # OK, does the rule exist in our database?
-        logger.debug("Processing rule '%s' from the content ...", rule_api['rule_id'])
+        logger.info("Processing rule '%s' from the content ...", rule_api['rule_id'])
         rule_search = models.Rule.objects.filter(
             ruleset=ruleset_model, rule_id=rule_api['rule_id']
         )
         if rule_search.exists():
-            logger.debug("Found rule '%s' in the database", rule_search[0].rule_id)
+            logger.info(
+                "Found %s rules for rule_id '%s' in the database",
+                rule_search.count(), rule_search[0].rule_id
+            )
             # Yes - OK, fetch and check if it needs updating.  If only we had some
             # way to find out only those rules that had been updated since the
             # last time we looked...
