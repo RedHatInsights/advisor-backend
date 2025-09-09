@@ -21,7 +21,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from api import kessel
-from api.models import Ack, InventoryHost
+from api.models import Ack, InventoryHost, Upload
 from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing
 
@@ -558,6 +558,19 @@ class SystemViewTestCase(TestCase):
             }), **auth_header_for_testing()
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_get_system_with_no_upload(self):
+        # In situations where the system has no upload, we should see the
+        # system details but the 'last_seen' field should be None.
+        Upload.objects.filter(host_id=constants.host_04_uuid).delete()
+        response = self.client.get(
+            reverse('system-detail', kwargs={
+                'uuid': constants.host_04_uuid
+            }), **auth_header_for_testing()
+        )
+        system = self._response_is_good(response)
+        self.assertEqual(system['system_uuid'], constants.host_04_uuid)
+        self.assertEqual(system['last_seen'], None)
 
     def test_get_system_from_outside_account(self):
         response = self.client.get(
