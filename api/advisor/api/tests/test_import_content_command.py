@@ -20,6 +20,7 @@ from os import remove, rename
 from os.path import exists, join
 import random
 import re
+import responses
 from shutil import copyfile
 import yaml
 
@@ -33,6 +34,11 @@ from api.models import (
 )
 from api.tests import constants
 from api.utils import resolve_path
+
+# Mainly for coverage tests
+from api.management.commands.import_content import (
+    update_model_from_config, load_config_from_file
+)
 
 
 PATH_TO_TEST_CONTENT_REPO = resolve_path('api/test_content')
@@ -48,6 +54,7 @@ ACKED_RULE_RESOLUTION_FILE = join(
     PATH_TO_TEST_CONTENT_REPO,
     'content/fixture_data/test/Acked_rule/resolution.md'
 )
+CONTENT_URL_BASE = 'http://example.com/advisor_content/'
 
 
 def temp_file(name, len):
@@ -319,6 +326,14 @@ class ImportContentTestCase(TestCase):
         notyetactive_rule = Rule.objects.get(rule_id=constants.notyetactive_rule)
         self.assertFalse(notyetactive_rule.active)
 
+        # There is a 'summary.md' file in the main plugin.yaml directory, but
+        # all rules should override it with their own summary content.  This
+        # is here mainly for coverage testing.
+        self.assertEqual(
+            Rule.objects.filter(summary='Summary not appearing in any rule').count(),
+            0
+        )
+
     def test_autoack_import(self):
         standard_ack_ids = set(Ack.objects.values_list('id', flat=True))
         # Tests won't work if there are no hosts, ergo no org_ids, to create acks for
@@ -465,8 +480,6 @@ class ImportContentTestCase(TestCase):
 
             # We should now have the entire content written out in a yaml file.
             self.assertTrue(exists(content_yaml_file))
-            # with open(content_yaml_file, 'r') as fh:
-            #     print(f"Content from {content_yaml_file=}: {fh.read()}")
             # Because this directory contains playbooks as well...
             self.assertTrue(exists(playbook_yaml_file))
 
@@ -543,6 +556,184 @@ class ImportContentTestCase(TestCase):
         self.assertFalse(exists(content_yaml_file))
         self.assertFalse(exists(playbook_yaml_file))
 
+    @responses.activate
+    def test_content_dump_load_from_url(self):
+        content_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'rule_content.yaml')
+        playbook_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'playbook_content.yaml')
+        config_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'content/config.yaml')
+        # None of these should exist beforehand
+        self.assertFalse(exists(content_yaml_file))
+        self.assertFalse(exists(playbook_yaml_file))
+        self.assertTrue(exists(config_yaml_file))
+
+        # We need this context so that if any test fails, we still remove
+        # the files we create.  Otherwise other tests see content they
+        # probably shouldn't.
+        with FileDeleter(
+            content_yaml_file, playbook_yaml_file
+        ):
+            call_command(
+                'import_content', '-c', PATH_TO_TEST_CONTENT_REPO,
+                '--dump'
+            )
+
+            # We should now have the entire content written out in a yaml file.
+            self.assertTrue(exists(content_yaml_file))
+            self.assertTrue(exists(playbook_yaml_file))
+
+            # Serve content from those files.  Because reading from the URL
+            # takes precedence over reading local files, we can leave the dump
+            # file in place.
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'config.yaml',
+                body=open(config_yaml_file, 'r').read(), status=200
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'rule_content.yaml',
+                body=open(content_yaml_file, 'r').read(), status=200
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'playbook_content.yaml',
+                body=open(playbook_yaml_file, 'r').read(), status=200
+            )
+            # Because the remote-url import searches for the content.yaml file
+            # in compressed format, we need to at least answer this query.
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'rule_content.yaml.gz',
+                status=404
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'playbook_content.yaml.gz',
+                status=404
+            )
+
+            # Delete stuff to check that read works...
+            Playbook.objects.all().delete()  # delete before rules
+            Rule.objects.all().delete()  # surprisingly this works...
+            # Should be now able to read the content and config from the
+            # base path.
+            call_command(
+                'import_content', '-u', CONTENT_URL_BASE,
+            )
+            # NoData tests have zero rules before, but we should have
+            # loaded some now...
+            self.assertGreater(Rule.objects.count(), 0)
+            self.assertGreater(Playbook.objects.count(), 0)
+
+        # Neither of these should exist afterward either
+        self.assertFalse(exists(content_yaml_file))
+        self.assertFalse(exists(playbook_yaml_file))
+
+    @responses.activate
+    def test_content_dump_load_compressed_from_url(self):
+        content_yaml_gz_file = join(PATH_TO_TEST_CONTENT_REPO, 'rule_content.yaml.gz')
+        playbook_yaml_gz_file = join(PATH_TO_TEST_CONTENT_REPO, 'playbook_content.yaml.gz')
+        config_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'content/config.yaml')
+        # None of these should exist beforehand
+        self.assertFalse(exists(content_yaml_gz_file))
+        self.assertFalse(exists(playbook_yaml_gz_file))
+        self.assertTrue(exists(config_yaml_file))
+
+        # We need this context so that if any test fails, we still remove
+        # the files we create.  Otherwise other tests see content they
+        # probably shouldn't.
+        with FileDeleter(
+            content_yaml_gz_file, playbook_yaml_gz_file
+        ):
+            call_command(
+                'import_content', '-c', PATH_TO_TEST_CONTENT_REPO,
+                '--dump', '--compress'
+            )
+
+            # We should now have the entire content written out in a yaml file.
+            self.assertTrue(exists(content_yaml_gz_file))
+            self.assertTrue(exists(playbook_yaml_gz_file))
+
+            # Serve content from those files.  Because reading from the URL
+            # takes precedence over reading local files, we can leave the dump
+            # file in place.
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'config.yaml',
+                body=open(config_yaml_file, 'r').read(), status=200
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'rule_content.yaml.gz',
+                body=open(content_yaml_gz_file, 'rb').read(), status=200
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'playbook_content.yaml.gz',
+                body=open(playbook_yaml_gz_file, 'rb').read(), status=200
+            )
+            # We don't add the uncompressed versions here because the
+            # compressed versions take precedence.  If the uncompressed
+            # versions are requested, they should cause a failure.
+
+            # Delete stuff to check that read works...
+            Playbook.objects.all().delete()  # delete before rules
+            Rule.objects.all().delete()  # surprisingly this works...
+            # Should be now able to read the content and config from the
+            # base path.
+            call_command(
+                'import_content', '--remote-url', CONTENT_URL_BASE,
+            )
+            # NoData tests have zero rules before, but we should have
+            # loaded some now...
+            self.assertGreater(Rule.objects.count(), 0)
+            self.assertGreater(Playbook.objects.count(), 0)
+
+        # Neither of these should exist afterward either
+        self.assertFalse(exists(content_yaml_gz_file))
+        self.assertFalse(exists(playbook_yaml_gz_file))
+
+    @responses.activate
+    def test_content_load_from_url_failures(self):
+
+        # First, check that a missing config.yaml is handled.
+        responses.add(
+            responses.GET, CONTENT_URL_BASE + 'config.yaml',
+            status=404
+        )
+        # This should be the only thing that's requested, other URls should
+        # fail here.
+
+        call_command(
+            'import_content', '--remote-url', CONTENT_URL_BASE,
+        )
+        self.assertEqual(len(responses.calls), 1)
+
+        # Test that a server error is handled.
+        responses.reset()
+        responses.add(
+            responses.GET, CONTENT_URL_BASE + 'config.yaml',
+            status=500
+        )
+        call_command(
+            'import_content', '--remote-url', CONTENT_URL_BASE,
+        )
+        self.assertEqual(len(responses.calls), 1)
+
+        # Test that missing content is handled.
+        responses.reset()
+        config_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'content/config.yaml')
+        responses.add(
+            responses.GET, CONTENT_URL_BASE + 'config.yaml',
+            body=open(config_yaml_file, 'r').read(), status=200
+        )
+        responses.add(
+            responses.GET, CONTENT_URL_BASE + 'rule_content.yaml.gz',
+            status=404
+        )
+        responses.add(
+            responses.GET, CONTENT_URL_BASE + 'rule_content.yaml',
+            status=404
+        )
+        # Playbook content should not be requested if rule content is missing.
+
+        call_command(
+            'import_content', '--remote-url', CONTENT_URL_BASE,
+        )
+        self.assertEqual(len(responses.calls), 3)
+
 
 class NoDataImportContentTestCase(ImportContentTestCase):
     """
@@ -552,3 +743,79 @@ class NoDataImportContentTestCase(ImportContentTestCase):
 
     # All the tests of ImportContentTestCase should also work when we do not
     # have the basic_test_data already loaded...
+
+
+class CoverageTestCase(TestCase):
+    """
+    All those tests to ensure we have good code coverage.
+    """
+    def test_update_model_from_config_no_config(self):
+        self.assertIsNone(update_model_from_config(Rule, None, 'rule_id'))
+        # Check log?
+
+    def test_update_model_from_config_empty_config(self):
+        self.assertTrue(update_model_from_config(Rule, {}, 'rule_id'))
+
+    def test_load_config_no_file(self):
+        self.assertFalse(load_config_from_file('/'))
+
+    def test_load_database_maps_failures(self):
+        # Have to set up various tables without loading fixtures.
+        from api.models import RuleCategory, RuleImpact, Pathway, Tag, RuleSet
+        from api.management.commands.import_content import load_database_maps
+
+        # No RuleCategory
+        with self.assertRaisesRegex(Exception, 'Category data is not loaded'):
+            load_database_maps()
+
+        RuleCategory.objects.create(name='Availability', id=1)
+
+        # No RuleImpact
+        with self.assertRaisesRegex(Exception, 'Impact data is not loaded'):
+            load_database_maps()
+
+        RuleImpact.objects.create(name='Critical', id=1)
+
+        # No Pathway data
+        with self.assertRaisesRegex(Exception, 'Pathway data is not loaded'):
+            load_database_maps()
+
+        Pathway.objects.create(resolution_risk_name='Collision of moons', id=1)
+
+        # No Tag data
+        with self.assertRaisesRegex(Exception, 'Rule tag data is not loaded'):
+            load_database_maps()
+
+        Tag.objects.create(name='Tag1')
+
+        # No RuleSet data
+        with self.assertRaisesRegex(Exception, 'Ruleset data is not loaded'):
+            load_database_maps()
+
+        RuleSet.objects.create(module_starts_with='plugins')
+
+        # No SystemType data
+        with self.assertRaisesRegex(Exception, 'System type data is not loaded'):
+            load_database_maps()
+
+        # Success path is tested in other code...
+
+
+class FixtureCoverageTestCase(TestCase):
+    """
+    All those tests to ensure we have good code coverage.
+    """
+    fixtures = [
+        'basic_test_ruleset', 'system_types', 'rule_categories',
+        'upload_sources', 'basic_test_data'
+    ]
+
+    def test_update_model_from_config_transformer_returns_none(self):
+        # Set up a transformer that just returns a None; this should be
+        # skipped in the import loop.
+        def transformer(data):
+            return None
+
+        self.assertIsNone(update_model_from_config(
+            Rule, {'id': 'rule_id'}, 'rule_id', transformer
+        ))
