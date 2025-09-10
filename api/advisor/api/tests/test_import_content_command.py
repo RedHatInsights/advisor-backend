@@ -17,7 +17,7 @@
 import datetime
 import functools
 from os import remove, rename
-from os.path import exists, join
+from os.path import basename, exists, join
 import random
 import re
 import responses
@@ -799,6 +799,68 @@ class CoverageTestCase(TestCase):
             load_database_maps()
 
         # Success path is tested in other code...
+
+    def test_read_playbook_failures(self):
+        playbook_file = join(PATH_TO_TEST_CONTENT_REPO, 'playbook.yaml')
+        from api.management.commands.import_content import read_playbook
+        with FileDeleter(playbook_file):
+            # First: no name but first task is named
+            playbook_content = [{
+                'tasks': [{'name': 'test'}]
+            }]
+            yaml.dump(playbook_content, open(playbook_file, 'w'))
+            _, name = read_playbook(PATH_TO_TEST_CONTENT_REPO, 'playbook.yaml')
+            self.assertEqual(name, 'test')
+
+            # Second: no name and no tasks
+            playbook_content = [{
+                'tasks': [{'module': 'test'}]
+            }]
+            yaml.dump(playbook_content, open(playbook_file, 'w'))
+            _, name = read_playbook(PATH_TO_TEST_CONTENT_REPO, 'playbook.yaml')
+            self.assertEqual(name, 'Unknown playbook')
+
+            # Third: no name and no tasks
+            playbook_content = [{
+                'tasks': [{'module': 'test'}]
+            }]
+            yaml.dump(playbook_content, open(playbook_file, 'w'))
+            _, name = read_playbook(PATH_TO_TEST_CONTENT_REPO, 'playbook.yaml')
+            self.assertEqual(name, 'Unknown playbook')
+
+    def test_generate_playbook_failures(self):
+        from api.management.commands.import_content import generate_playbook_content
+        from tempfile import TemporaryDirectory
+        from os import mkdir
+
+        with TemporaryDirectory() as temp_dir:
+            # Step 1: no 'playbooks' directory
+            self.assertIsNone(generate_playbook_content(temp_dir))
+
+            playbooks_dir = join(temp_dir, 'playbooks')
+            mkdir(playbooks_dir)
+            playbook_dir = join(playbooks_dir, 'rhel_host')
+            mkdir(playbook_dir)
+            # Step 2: file walk finds file not ending with fixit.yml
+            yaml.dump([{'name': 'step 2'}], open(join(playbook_dir, 'playbook.yml'), 'w'))
+            # Step 3: fix_type() finds a file not ending with _fixit.yml
+            yaml.dump([{'name': 'step 3'}], open(join(playbook_dir, 'fixit.yml'), 'w'))
+
+            playbooks = generate_playbook_content(temp_dir)
+            # The way this test is constructed, the temp_dir name is included
+            # in the playbook rule ID, so we don't control that.  Instead,
+            # just look at the only playbook that we should have got there...
+            rule_id = f'{basename(temp_dir)}|playbooks'
+            rule_fix = rule_id + 'fix'
+            self.assertIn(rule_fix, playbooks)
+            playbook_3 = playbooks[rule_fix]
+            self.assertEqual(playbook_3['description'], 'step 3')
+            self.assertEqual(playbook_3['play'], '- name: step 3\n')
+            self.assertEqual(playbook_3['path'], '/playbooks/rhel_host/fixit.yml')
+            # rule_id contains the temp_dir name
+            self.assertEqual(playbook_3['rule_id'], rule_id)
+            self.assertEqual(playbook_3['type'], 'fix')
+            self.assertIsNone(playbook_3['version'])
 
 
 class FixtureCoverageTestCase(TestCase):
