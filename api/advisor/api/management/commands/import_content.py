@@ -76,14 +76,23 @@ def load_previous_dump(yaml_filename):
 def load_previous_dump_from_url(url):
     """
     Load data from a previously dumped YAML file from a remote URL,
-    decompressing it if it ends with the .gz extension.
+    including searching for a .gz compressed file.  Returns None if neither
+    file is available.
     """
-    response = requests.get(url)
+    compressed = True
+    response = requests.get(url + '.gz')
+    if response.status_code == 404:
+        compressed = False
+        response = requests.get(url)
     if response.status_code != 200:
-        # We can't really return anything here, so we raise an exception.
-        raise Exception(f"Failed to load dump from URL: {url}")
+        # Log the actual message returned here.
+        logger.error(
+            f"Failed to load dump from {url} ({compressed=}):"
+            f"{response.status_code} {response.reason}"
+        )
+        return None
     dump_data = response.content
-    if url.endswith('.gz'):
+    if compressed:
         # wbits=25 means expect the gzip header here.
         dump_data = zlib.decompress(dump_data, wbits=25)
     return yaml.load(dump_data.decode('utf-8'), yaml.Loader)
@@ -398,6 +407,8 @@ def load_database_maps():
         str(st): st.id
         for st in SystemType.objects.all()
     }
+    if not system_type_to_id:
+        raise Exception("System type data is not loaded - do `loaddata system_types`")
 
 
 def load_rule_id_map():
@@ -756,14 +767,12 @@ def dump_content(repo_path, compress=False):
 
 def process_content_from_url(base_url):
     """
-    Process content from a URL, kind of like getting it from a dump.
+    Process content from a URL, kind of like getting it from a dump.  This
+    also attempts to find a compressed version at that URL.
     """
-    rule_content = load_previous_dump_from_url(base_url + 'content.yaml.gz')
+    rule_content = load_previous_dump_from_url(base_url + 'rule_content.yaml')
     if not rule_content:
-        logger.error("Failed to load compressed content from %s", base_url)
-        rule_content = load_previous_dump_from_url(base_url + 'content.yaml')
-    if not rule_content:
-        logger.error("Failed to load content from %s", base_url)
+        logger.error("Failed to load rule content from %s", base_url)
         return False
     return import_content(rule_content)
 
@@ -954,15 +963,13 @@ def dump_playbooks(repo_path, compress=False):
 
 def process_playbooks_from_url(base_url):
     """
-    Load the playbook data from a URL.
+    Load the playbook data from a URL.  This includes searching for compressed
+    content at that URL.
     """
     logger.info("Reading playbook content from %s", base_url)
-    playbook_content = load_previous_dump_from_url(base_url + 'content.yaml.gz')
+    playbook_content = load_previous_dump_from_url(base_url + 'playbook_content.yaml')
     if not playbook_content:
-        logger.error("Failed to load compressed playbook content from %s", base_url)
-        playbook_content = load_previous_dump_from_url(base_url + 'content.yaml')
-    if not playbook_content:
-        logger.error("Failed to load content from %s", base_url)
+        logger.error("Failed to load playbook content from %s", base_url)
         return False
     return load_all_playbooks(playbook_content)
 
