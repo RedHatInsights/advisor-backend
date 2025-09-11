@@ -922,15 +922,12 @@ class CoverageTestCase(TestCase):
                 )
             # Check that it actually logs the right messages
             self.assertIn(
-                "ERROR:api.management.commands.import_content:Path "
-                "'/home/pwayper/Code/insights/advisor-backend/api/test_content' does not contain "
-                "config.yaml in main or content/ directories",
-                logs.output
+                " does not contain config.yaml in main or content/ directories",
+                logs.output[0]
             )
             self.assertIn(
-                'ERROR:api.management.commands.import_content:Could not load '
-                'content configuration - exiting',
-                logs.output
+                'Could not load content configuration - exiting',
+                logs.output[1]
             )
 
 
