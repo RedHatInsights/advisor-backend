@@ -15,7 +15,6 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
-import functools
 from os import remove, rename
 from os.path import basename, exists, join
 import random
