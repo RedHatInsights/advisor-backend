@@ -931,7 +931,6 @@ def load_all_playbooks(all_playbook_data):
         ), all_playbook_data, 'rule_id_type',
         transformer=playbook_transformer
     )
-    return True
 
 
 def process_playbooks_from_path(repo_path):
@@ -947,7 +946,7 @@ def process_playbooks_from_path(repo_path):
     else:
         logger.info("Reading playbook content in %s", repo_path)
         playbook_content = generate_playbook_content(repo_path)
-    return load_all_playbooks(playbook_content)
+    load_all_playbooks(playbook_content)
 
 
 def dump_playbooks(repo_path, compress=False):
@@ -1050,9 +1049,7 @@ class Command(BaseCommand):
                 logger.error("Could not load content configuration - exiting")
                 return
             load_database_maps()  # some of which is loaded from config in models.
-            if not process_content_from_path(options['content_repo_path']):
-                logger.error("Could not process content from file - exiting")
-                return
-            if not process_playbooks_from_path(playbook_repo_path):
-                logger.error("Could not process playbooks from file - exiting")
-                return
+            # These don't return 'false' if it fails - check the logs for
+            # individual things loading or not loading.
+            process_content_from_path(options['content_repo_path'])
+            process_playbooks_from_path(playbook_repo_path)
