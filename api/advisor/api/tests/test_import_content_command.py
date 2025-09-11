@@ -166,24 +166,6 @@ class FileModifier(object):
         return False
 
 
-def modifies_file(file_path, pipeline):
-    """
-    A decorator applied to a test method, which takes an absolute file path
-    and some 'modifier' function (see below) that acts on the content of
-    that file.  The contents of the file are read, and the modified contents
-    are written back.
-    """
-    def modifies_decorator(fn):
-        @functools.wraps(fn)
-        def fn_to_modify(*args, **kwargs):
-            with FileModifier((file_path, pipeline)):
-                return fn(*args, **kwargs)
-
-        return fn_to_modify
-
-    return modifies_decorator
-
-
 # YAML modifier
 
 def modify_yaml(**kwargs):
@@ -671,15 +653,59 @@ class ImportContentTestCase(TestCase):
             # Delete stuff to check that read works...
             Playbook.objects.all().delete()  # delete before rules
             Rule.objects.all().delete()  # surprisingly this works...
-            # Should be now able to read the content and config from the
-            # base path.
             call_command(
                 'import_content', '--remote-url', CONTENT_URL_BASE,
             )
-            # NoData tests have zero rules before, but we should have
-            # loaded some now...
+            self.assertEqual(len(responses.calls), 3)
             self.assertGreater(Rule.objects.count(), 0)
             self.assertGreater(Playbook.objects.count(), 0)
+
+            # Coverage test - rule content available but not playbooks.
+            responses.reset()
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'config.yaml',
+                body=open(config_yaml_file, 'r').read(), status=200
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'rule_content.yaml.gz',
+                body=open(content_yaml_gz_file, 'rb').read(), status=200
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'playbook_content.yaml.gz',
+                status=404
+            )
+            responses.add(
+                responses.GET, CONTENT_URL_BASE + 'playbook_content.yaml',
+                status=404
+            )
+
+            # Delete stuff to check that read works...
+            Playbook.objects.all().delete()  # delete before rules
+            Rule.objects.all().delete()  # surprisingly this works...
+            # Also test that URL without trailing slash is handled.
+            self.assertEqual(CONTENT_URL_BASE[-1], '/')
+            # And test that --compress and --dump are ignored with --remote-url
+            with self.assertLogs('api.management.commands.import_content', level='INFO') as logs:
+                call_command(
+                    'import_content', '--remote-url', CONTENT_URL_BASE[:-1],
+                    '--compress', '--dump'
+                )
+                self.assertIn(
+                    "Importing content from remote URL",
+                    logs.output[0]
+                )
+                self.assertIn(
+                    "Ignoring '--compress' option when using remote URL",
+                    logs.output[1]
+                )
+                self.assertIn(
+                    "Ignoring '--dump' option when using remote URL",
+                    logs.output[2]
+                )
+            self.assertEqual(len(responses.calls), 4)
+            self.assertGreater(Rule.objects.count(), 0)
+            self.assertEqual(Playbook.objects.count(), 0)
+            # not a great result but better than a crash
 
         # Neither of these should exist afterward either
         self.assertFalse(exists(content_yaml_gz_file))
@@ -800,6 +826,17 @@ class CoverageTestCase(TestCase):
 
         # Success path is tested in other code...
 
+    def test_ruleset_not_found(self):
+        from api.models import RuleSet
+        from api.management.commands.import_content import find_ruleset_model
+        self.assertEqual(RuleSet.objects.count(), 0)
+        with self.assertRaisesRegex(ValueError, "No ruleset found with a prefix for 'foo'"):
+            find_ruleset_model({'python_module': 'foo'})
+
+    def test_rule_tags_not_found(self):
+        from api.management.commands.import_content import load_all_rule_tags
+        self.assertFalse(load_all_rule_tags([{'tags': ['foo']}]))
+
     def test_read_playbook_failures(self):
         playbook_file = join(PATH_TO_TEST_CONTENT_REPO, 'playbook.yaml')
         from api.management.commands.import_content import read_playbook
@@ -847,6 +884,7 @@ class CoverageTestCase(TestCase):
             yaml.dump([{'name': 'step 3'}], open(join(playbook_dir, 'fixit.yml'), 'w'))
 
             playbooks = generate_playbook_content(temp_dir)
+            self.assertIsNotNone(playbooks)
             # The way this test is constructed, the temp_dir name is included
             # in the playbook rule ID, so we don't control that.  Instead,
             # just look at the only playbook that we should have got there...
@@ -861,6 +899,40 @@ class CoverageTestCase(TestCase):
             self.assertEqual(playbook_3['rule_id'], rule_id)
             self.assertEqual(playbook_3['type'], 'fix')
             self.assertIsNone(playbook_3['version'])
+
+    def test_command_no_repo_path(self):
+        # Check that it actually logs the right messages
+        with self.assertLogs('api.management.commands.import_content', level='INFO') as logs:
+            call_command('import_content')
+        self.assertIn('You need to set a content repo path', logs.output[0])
+        with self.assertLogs('api.management.commands.import_content', level='INFO') as logs:
+            call_command('import_content', '-c', '/foo')
+        self.assertIn('Cannot find path /foo', logs.output[0])
+
+    def test_command_load_failures(self):
+        config_yaml_file = join(PATH_TO_TEST_CONTENT_REPO, 'content/config.yaml')
+        # None of these should exist beforehand
+        self.assertTrue(exists(config_yaml_file))
+
+        # Missing config file.
+        # Not sure why but
+        with FileMisplacer(config_yaml_file):
+            with self.assertLogs('api.management.commands.import_content', level='INFO') as logs:
+                call_command(
+                    'import_content', '-c', PATH_TO_TEST_CONTENT_REPO,
+                )
+            # Check that it actually logs the right messages
+            self.assertIn(
+                "ERROR:api.management.commands.import_content:Path "
+                "'/home/pwayper/Code/insights/advisor-backend/api/test_content' does not contain "
+                "config.yaml in main or content/ directories",
+                logs.output
+            )
+            self.assertIn(
+                'ERROR:api.management.commands.import_content:Could not load '
+                'content configuration - exiting',
+                logs.output
+            )
 
 
 class FixtureCoverageTestCase(TestCase):
