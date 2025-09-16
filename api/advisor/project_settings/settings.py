@@ -235,6 +235,13 @@ WSGI_APPLICATION = 'project_settings.wsgi.application'
 # This allows us to insert the application name for metadata
 DJANGO_DB_OPTIONS = {'application_name': APP_NAME}
 
+# Add SSL configuration from environment variables
+if os.getenv('ADVISOR_DB_SSL_MODE'):
+    DJANGO_DB_OPTIONS["sslmode"] = os.getenv('ADVISOR_DB_SSL_MODE')
+
+if os.getenv('ADVISOR_DB_SSL_CA'):
+    DJANGO_DB_OPTIONS["sslrootcert"] = os.getenv('ADVISOR_DB_SSL_CA')
+
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 db = LoadedConfig.database

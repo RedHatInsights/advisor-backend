@@ -49,6 +49,13 @@ APP_NAME = "insights-advisor-service"
 # This allows us to insert the application name for metadata
 DJANGO_DB_OPTIONS = {'application_name': APP_NAME}
 
+# Add SSL configuration from environment variables
+if os.environ.get('ADVISOR_DB_SSL_MODE'):
+    DJANGO_DB_OPTIONS["sslmode"] = os.environ.get('ADVISOR_DB_SSL_MODE')
+
+if os.environ.get('ADVISOR_DB_SSL_CA'):
+    DJANGO_DB_OPTIONS["sslrootcert"] = os.environ.get('ADVISOR_DB_SSL_CA')
+
 # Toggle for Clowder
 if CLOWDER_ENABLED:
     db = cfg.database
