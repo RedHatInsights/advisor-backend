@@ -52,11 +52,14 @@ class ResourceScope(Enum):
     ORG scope indicates the resource is "org wide" or not.
 
     An "org wide" resource is one which is scoped to the entire organization,
-    and effectively an operation on the organization itself.
+    and effectively an operation on the organization itself.  This equates to
+    the 'root workspace'.
 
-    For example, ack-ing a Rule is org_wide.
+    For example, ack-ing a Rule is org_wide.  Host-acks, however, are scoped
+    to a specific host.
 
-    Ack-ing a rule for a specific host is not. This would be HOST scoped.
+    Between the two, a 'workspace' scope at this stage is just used for host
+    groups.
     """
     ORG = 1
     WORKSPACE = 2
@@ -136,6 +139,13 @@ class RBACPermission(object):
 
     def __repr__(self):
         return self.string
+
+    def as_kessel_permission(self):
+        # Note that neither the resource nor method will be '*' here, because
+        # we are converting a specific permission to a relation, not a 'general
+        # scope' permission.  This saves us doing two full replaces on the
+        # entire rendered string.
+        return f"{self.app}_{self.resource.replace('-', '_')}_{self.method}"
 
 
 def find_host_groups(role_list, request):
@@ -363,12 +373,13 @@ def has_kessel_permission(
         # print(f"Checking {identity} has {permission} in {scope}...")
         logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
+            # We actually translate this into the root workspace of that org.
             # print(f"... for org {identity['org_id']}")
             logger.info("KESSEL: checking access for org %s", identity['org_id'])
             # TODO: run check against org somehow (org itself, default, or root?)
             result, elapsed = kessel.client.check(
-                kessel.OrgId(identity['org_id']).to_ref(),
-                kessel.rbac_permission_to_relation(permission),
+                kessel.Workspace(identity['org_id']).to_ref(),
+                permission.as_kessel_permission(),
                 kessel.identity_to_subject(identity))
         elif scope == ResourceScope.WORKSPACE:
             # print("... for workspace")
@@ -376,7 +387,7 @@ def has_kessel_permission(
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.lookupResources(
                 kessel.ObjectType("rbac", "workspace"),
-                kessel.rbac_permission_to_relation(permission),
+                permission.as_kessel_permission(),
                 kessel.identity_to_subject(identity))
         else:
             # Scope is a specific host.

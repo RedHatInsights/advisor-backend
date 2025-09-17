@@ -25,7 +25,7 @@ from api.permissions import (
     has_rbac_permission
 )
 from api import permissions  # for rbac_perm_cache
-from api.kessel import add_zed_response
+from api.kessel import add_kessel_response
 from api.tests import constants, update_stale_dates, rbac_data
 
 TEST_RBAC_URL = 'http://rbac.svc/'
@@ -587,7 +587,7 @@ class KesselTestCase(TestCase):
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
     def test_kessel_host_check_ok(self):
-        with add_zed_response(
+        with add_kessel_response(
             permission_checks=constants.kessel_zedrsp_allow_host_01_read
         ):
             kessel_response, time = permissions.has_kessel_permission(

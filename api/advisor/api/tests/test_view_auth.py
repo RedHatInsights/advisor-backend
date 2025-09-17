@@ -20,7 +20,7 @@ from django.urls import reverse
 
 from rest_framework.exceptions import AuthenticationFailed
 
-from api.kessel import add_zed_response
+from api.kessel import add_kessel_response
 from api.models import InventoryHost
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
@@ -564,7 +564,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
         ):
             irbp.has_object_permission(request, view, irbp)
         # Finally we actually get to do a has_kessel_permission check
-        with add_zed_response(
+        with add_kessel_response(
             permission_checks=constants.kessel_zedrsp_allow_host_01_read
         ):
             self.assertTrue(irbp.has_object_permission(request, view, host))
