@@ -340,6 +340,17 @@ def filter_multi_param(
                 {param_name: "The parameter is incorrectly formatted"}
             )
         filter_parts = m.group('brackets')[1:-1].split('][')
+
+        # Handle workloads field redirection for schema compatibility
+        if filter_prefix == 'system_profile' and len(filter_parts) >= 2:
+            field_name = filter_parts[1]
+            if field_name == 'sap_system':
+                filter_parts = [filter_prefix, 'workloads', 'sap'] + filter_parts[1:]
+            elif field_name == 'sap_sids':
+                filter_parts = [filter_prefix, 'workloads', 'sap', 'sids'] + filter_parts[2:]
+            elif field_name in ('ansible', 'mssql'):
+                filter_parts = [filter_prefix, 'workloads'] + filter_parts[1:]
+
         # Keep the filter prefix here though
         operator = filter_parts[-1]
         # Convert comparator if necessary
@@ -696,6 +707,15 @@ def filter_on_host_tags(request, field_name='host_id'):
         value = unescape(value)
 
         tag_query &= Q(tags__contains=[{"namespace": namespace, "key": key, "value": value}])
+
+    # Add org_id to the filter for partition pruning
+    # Need to import this here to avoid circular import error
+    from api.permissions import request_to_org
+
+    org_id = request_to_org(request)
+
+    if org_id:
+        tag_query &= Q(org_id=org_id)
 
     # Getting InventoryHost via apps to avoid circular import on models
     InventoryHost = apps.get_model('api', 'InventoryHost')
