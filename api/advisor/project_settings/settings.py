@@ -254,7 +254,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
         DJANGO_DB_OPTIONS["sslrootcert"] = LoadedConfig.rds_ca()
     DATABASES = {
         'default': {
-            'ENGINE': 'django_prometheus.db.backends.postgresql',
+            'ENGINE': 'db_backends',
             'HOST': db.hostname,
             'PORT': db.port,  # PORT_NUM to avoid name collision in Openshift
             'NAME': db.name,
@@ -263,7 +263,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
             'OPTIONS': DJANGO_DB_OPTIONS
         },
         'readonly': {
-            'ENGINE': 'django_prometheus.db.backends.postgresql',
+            'ENGINE': 'db_backends',
             'HOST': db.hostname,
             'PORT': db.port,  # PORT_NUM to avoid name collision in Openshift
             'NAME': db.name,
@@ -277,7 +277,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
 else:
     DATABASES = {
         'default': {
-            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
+            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'db_backends'),
             'HOST': os.getenv('ADVISOR_DB_HOST', ''),  # '' allows local socket connection
             'PORT': os.getenv('ADVISOR_DB_PORT_NUM', ''),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
@@ -286,7 +286,7 @@ else:
             'OPTIONS': DJANGO_DB_OPTIONS
         },
         'readonly': {
-            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
+            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'db_backends'),
             'HOST': os.getenv('ADVISOR_DB_READONLY_HOST') or os.getenv('ADVISOR_DB_HOST', ''),
             'PORT': os.getenv('ADVISOR_DB_PORT_NUM', ''),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
@@ -445,3 +445,11 @@ UNLEASH_APP_NAME = os.getenv("UNLEASH_APP_NAME", APP_NAME)
 UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
 UNLEASH_REFRESH_INTERVAL = os.getenv("UNLEASH_REFRESH_INTERVAL", 5)
 UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
+
+# HBI settings for the logical replication
+HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
+HBI_SUBSCRIPTION = os.getenv("HBI_SUBSCRIPTION", "advisor_hosts_sub_v1_0_2")
+HBI_DROP_SUBSCRIPTION = os.getenv("HBI_DROP_SUBSCRIPTION", "")
+HBI_DROP_TABLES = os.getenv("HBI_DROP_TABLES", "false").lower() == "true"
+HBI_SSL_MODE = os.getenv("HBI_SSL_MODE", "")
+HBI_TABLES_NUM_PARTITIONS = int(os.getenv("HBI_TABLES_NUM_PARTITIONS", 1))
