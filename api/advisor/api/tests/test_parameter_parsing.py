@@ -460,7 +460,7 @@ class MultiParamParsingTestCase(TestCase):
         rq.query_params.appendlist('filter[system_profile][sap_sids][contains]', 'E04')
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__sap_sids__contains='E24') & Q(system_profile__sap_sids__contains='E04')
+            Q(system_profile__workloads__sap__sids__contains='E24') & Q(system_profile__workloads__sap__sids__contains='E04')
         )
 
     def test_multi_in_operators(self):
@@ -636,7 +636,7 @@ class MultiParamParsingTestCase(TestCase):
         # Note that AND comparisons on Q objects are order dependent.
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__sap_system=True) & Q(system_profile__bios_vendor__isnull=True)
+            Q(system_profile__workloads__sap__sap_system=True) & Q(system_profile__bios_vendor__isnull=True)
         )
         # One parameter doesn't match the filter prefix, the other does
         rq = self._make_request_obj('filter[system_profile][sap_system]', 'true')
@@ -644,5 +644,5 @@ class MultiParamParsingTestCase(TestCase):
         # Note that AND comparisons on Q objects are order dependent.
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__sap_system=True)
+            Q(system_profile__workloads__sap__sap_system=True)
         )
