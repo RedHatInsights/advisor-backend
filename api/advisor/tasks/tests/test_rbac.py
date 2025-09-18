@@ -24,7 +24,7 @@ from django.urls import reverse
 
 from api.permissions import auth_header_for_testing
 
-TEST_RBAC_URL = 'http://rbac.svc/'
+TEST_RBAC_V1_URL = 'http://rbac.svc/'
 
 raw_insights_qa_identity = ''.join("""
 eyJlbnRpdGxlbWVudHMiOnsib3BlbnNoaWZ0Ijp
@@ -62,10 +62,10 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_allowed(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={'data': [{'permission': 'advisor:*:*'}, {'permission': 'tasks:*:*'}]}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in ('tasks-executedtask-list', 'tasks-system-list', 'tasks-task-list'):
                 response = self._get_view(view_name, auth_args={'is_org_admin': True})
                 request = responses.calls[0].request
@@ -79,7 +79,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_allowed_full_response(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={
                 "meta": {
                     "count": 1,
@@ -101,7 +101,7 @@ class RBACTestCase(TestCase):
             },
             status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in ('tasks-executedtask-list', 'tasks-system-list', 'tasks-task-list'):
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -121,10 +121,10 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_denied(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={'data': [{'permission': 'advisor:*:*'}]}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in ('tasks-executedtask-list', 'tasks-system-list', 'tasks-task-list'):
                 response = self._get_view(view_name)
                 self.assertEqual(

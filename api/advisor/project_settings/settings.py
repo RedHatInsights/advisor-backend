@@ -98,7 +98,11 @@ PDAPI_PSK = os.getenv('PDAPI_PSK')
 
 # RBAC settings
 RBAC_ENABLED = string_to_bool(os.getenv("RBAC_ENABLED", "false"))
-RBAC_URL = os.getenv("RBAC_URL")
+if RBAC_ENABLED:
+    RBAC_URL = os.getenv('RBAC_URL')
+    assert RBAC_URL, 'RBAC_URL environment variable is not set but RBAC_ENABLED is True'
+    RBAC_V1_URL = RBAC_URL + '/api/rbac/v1'
+    RBAC_V2_URL = RBAC_URL + '/api/rbac/v2'
 RBAC_PSK = os.getenv("RBAC_PSK")
 RBAC_CLIENT_ID = os.getenv("RBAC_CLIENT_ID", "advisor")
 KESSEL_ENABLED = string_to_bool(os.getenv("KESSEL_ENABLED", "false"))
@@ -147,7 +151,8 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
     INVENTORY_SERVER_URL = f"{build_endpoint_url(inv_host)}/api/inventory/v1"
 
     rbac_host = endpoints['rbac']
-    RBAC_URL = f"{build_endpoint_url(rbac_host)}/api/rbac/v1/access/?application=advisor,tasks,inventory"
+    RBAC_V1_URL = f"{build_endpoint_url(rbac_host)}/api/rbac/v1"
+    RBAC_V2_URL = f"{build_endpoint_url(rbac_host)}/api/rbac/v2"
 
     pd_host = endpoints.get('playbook-dispatcher')
     if pd_host:
@@ -268,8 +273,8 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
-            'HOST': os.getenv('ADVISOR_DB_HOST', 'localhost'),  # '' allows local socket connection
-            'PORT': os.getenv('ADVISOR_DB_PORT_NUM', '5432'),  # PORT_NUM to avoid name collision in Openshift
+            'HOST': os.getenv('ADVISOR_DB_HOST', ''),  # '' allows local socket connection
+            'PORT': os.getenv('ADVISOR_DB_PORT_NUM', ''),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
             'USER': os.getenv('ADVISOR_DB_USER', 'insightsapi'),
             'PASSWORD': os.getenv('ADVISOR_DB_PASSWORD', 'InsightsData'),
@@ -277,8 +282,8 @@ else:
         },
         'readonly': {
             'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
-            'HOST': os.getenv('ADVISOR_DB_READONLY_HOST') or os.getenv('ADVISOR_DB_HOST', 'localhost'),
-            'PORT': os.getenv('ADVISOR_DB_PORT_NUM', '5432'),  # PORT_NUM to avoid name collision in Openshift
+            'HOST': os.getenv('ADVISOR_DB_READONLY_HOST') or os.getenv('ADVISOR_DB_HOST', ''),
+            'PORT': os.getenv('ADVISOR_DB_PORT_NUM', ''),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
             'USER': os.getenv('ADVISOR_DB_USER', 'insightsapi'),
             'PASSWORD': os.getenv('ADVISOR_DB_PASSWORD', 'InsightsData'),

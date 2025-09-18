@@ -154,7 +154,7 @@ class WeeklyReportEmailTest(TestCase):
         responses.add_callback(responses.GET, 'http://rbac.svc', callback=lookup_rbac_permissions)
 
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_V1_URL="http://rbac.svc", RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             out = StringIO()
@@ -332,7 +332,7 @@ class WeeklyReportEmailTest(TestCase):
         mail.outbox = []
         reset_last_email_at()
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_V1_URL="http://rbac.svc", RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -343,7 +343,7 @@ class WeeklyReportEmailTest(TestCase):
         mail.outbox = []
         reset_last_email_at()
         with self.settings(
-            RBAC_ENABLED=True, RBAC_URL="http://rbac.svc?app=insights",
+            RBAC_ENABLED=True, RBAC_V1_URL="http://rbac.svc?app=insights",
             RBAC_PSK="007", MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -358,7 +358,7 @@ class WeeklyReportEmailTest(TestCase):
         mail.outbox = []
         reset_last_email_at()
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_V1_URL="http://rbac.svc", RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -368,14 +368,14 @@ class WeeklyReportEmailTest(TestCase):
         reset_last_email_at()
         # Repeat test using Advisor PSK
         with self.settings(
-            RBAC_URL="http://rbac.svc?app=insights", RBAC_PSK="007",
+            RBAC_V1_URL="http://rbac.svc?app=insights", RBAC_PSK="007",
             RBAC_ENABLED=True, MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
         self.assertEqual(len(mail.outbox), 0)
         user_permissions_table = former_user_permissions_table
 
-        # Testing RBAC_ENABLED is set but RBAC_URL isn't - expect an exception
+        # Testing RBAC_ENABLED is set but RBAC_V1_URL isn't - expect an exception
         with self.settings(RBAC_ENABLED=True, MIDDLEWARE_HOST_URL=test_middleware_url):
             self.assertRaisesMessage(Exception, "RBAC enabled but no URL specified.",
                                      has_rbac_permission, 'user', 'acct123')
@@ -392,7 +392,7 @@ class WeeklyReportEmailTest(TestCase):
         # Initially the users have permissions - expect emails to be sent
         # Test using identity headers
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_V1_URL="http://rbac.svc", RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', '--delete-expired', stdout=out)
@@ -416,7 +416,7 @@ class WeeklyReportEmailTest(TestCase):
         # Trigger the email sending
         mail.outbox = []
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_V1_URL="http://rbac.svc", RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', '--org-id=7654321', stdout=out)
@@ -433,7 +433,7 @@ class WeeklyReportEmailTest(TestCase):
         # Trigger the email sending
         mail.outbox = []
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_V1_URL="http://rbac.svc", RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', '--org-id=1234567', stdout=out)

@@ -28,7 +28,7 @@ from api import permissions  # for rbac_perm_cache
 from api.kessel import add_kessel_response
 from api.tests import constants, update_stale_dates, rbac_data
 
-TEST_RBAC_URL = 'http://rbac.svc/'
+TEST_RBAC_V1_URL = 'http://rbac.svc/'
 
 
 class RBACTestCase(TestCase):
@@ -167,9 +167,9 @@ class RBACTestCase(TestCase):
         View should return a 403 with RBAC enabled and a bad response from RBAC
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=500
+            responses.GET, TEST_RBAC_V1_URL, status=500
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.std_auth_views | self.internal_views:
                 response = self._get_view(view_name)
                 # 500 error in RBAC -> permission denied
@@ -190,9 +190,9 @@ class RBACTestCase(TestCase):
         View should return a 403 with RBAC enabled and denying us access to it
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=403
+            responses.GET, TEST_RBAC_V1_URL, status=403
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.std_auth_views | self.internal_views:
                 response = self._get_view(view_name)
                 # 403 error in RBAC -> permission denied
@@ -213,9 +213,9 @@ class RBACTestCase(TestCase):
         View should return a 403 with RBAC enabled and connection failure from RBAC
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL, body=ConnectionError("Test raises an exception")
+            responses.GET, TEST_RBAC_V1_URL, body=ConnectionError("Test raises an exception")
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.std_auth_views | self.internal_views:
                 response = self._get_view(view_name)
                 # 500 error in RBAC -> permission denied
@@ -236,9 +236,9 @@ class RBACTestCase(TestCase):
         View should return a 403 with RBAC enabled and no timely response from RBAC
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL, body=Timeout()
+            responses.GET, TEST_RBAC_V1_URL, body=Timeout()
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.std_auth_views | self.internal_views:
                 response = self._get_view(view_name)
                 # 500 error in RBAC -> permission denied
@@ -259,10 +259,10 @@ class RBACTestCase(TestCase):
         View should return 403 with RBAC enabled and bad permissions
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={'nonsense': 'complete'}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.no_auth_views:
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -282,9 +282,9 @@ class RBACTestCase(TestCase):
         View should return 403 with RBAC enabled and bad permissions
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL, json={'data': []}, status=200
+            responses.GET, TEST_RBAC_V1_URL, json={'data': []}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.no_auth_views:
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -304,10 +304,10 @@ class RBACTestCase(TestCase):
         View should return 200 with RBAC enabled and good permissions
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json=rbac_data(), status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.no_auth_views | self.std_auth_views:
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -333,14 +333,14 @@ class RBACTestCase(TestCase):
         View should return 200 with RBAC enabled and providing good and malformed permissions
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={'data': [
                 {'permission': 'abject failure'},
                 {'no permission': 'do dogs even understand this?'},
                 {'permission': 'advisor:*:*'},
             ]}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.no_auth_views | self.std_auth_views:
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -366,10 +366,10 @@ class RBACTestCase(TestCase):
         View should return 200 with RBAC enabled and read-only permissions
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json=rbac_data('advisor:*:read'), status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.no_auth_views | self.std_auth_views:
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -404,14 +404,14 @@ class RBACTestCase(TestCase):
         View should return 200 with RBAC enabled and read-only permissions
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={'data': [
                 {'permission': 'advisor:recommendation-results:read'},
                 {'permission': 'advisor:*:read'},
                 {'permission': 'vulnerability:*:*'}, {'permission': 'inventory:*:*'},
             ]}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for view_name in self.no_auth_views | self.std_auth_views:
                 response = self._get_view(view_name)
                 self.assertEqual(
@@ -451,7 +451,7 @@ class RBACTestCase(TestCase):
         """
         test_desc = f"with RBAC allowing {resource_name} only"
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json=rbac_data('advisor:' + resource_name + ':' + action),
             status=200
         )
@@ -508,7 +508,7 @@ class RBACTestCase(TestCase):
         RBAC granular permissions for a specific resource only, everything
         else denied.  We use this instead of lots of copy and paste.
         """
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             for resource_name, resource_test_info in self.granular_rbac_data.items():
                 self._test_rbac_granular_rbac_resource(resource_name, resource_test_info)
 
@@ -516,7 +516,7 @@ class RBACTestCase(TestCase):
         """
         RBAC granular permissions for a specific resource that is read only.
         """
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             self._test_rbac_granular_rbac_resource(
                 'recommendation-results',
                 self.granular_rbac_data['recommendation-results'],
@@ -528,7 +528,7 @@ class RBACTestCase(TestCase):
         has_rbac_permission should raise an exception if not given a
         permission in app:resource:action format.
         """
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             with self.assertRaises(ValueError):
                 has_rbac_permission('username', 'org_id', 'fabulous clean!')
 
@@ -539,10 +539,10 @@ class RBACTestCase(TestCase):
         given a semi-valid request object.
         """
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_URL,
             json={'data': [{'permission': 'advisor:*:*'}]}, status=200
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
             permissions.rbac_perm_cache = dict()  # activate cache for this
             rq = request_object_for_testing()
             accepted, elapsed = has_rbac_permission(

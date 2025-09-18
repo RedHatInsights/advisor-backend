@@ -27,8 +27,6 @@ from django_prometheus.models import ExportModelOperationsMixin
 from django.contrib.postgres.fields import ArrayField
 from django.conf import settings
 
-from api import kessel
-from api.kessel import Host
 from api.permissions import (
     request_to_username, request_to_org, host_group_attr
 )
