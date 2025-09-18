@@ -26,6 +26,8 @@ from django.utils.datastructures import MultiValueDict
 from rest_framework.authentication import BaseAuthentication
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 
 from advisor_logging import logger
@@ -135,7 +137,11 @@ class RBACPermission(object):
             return False
         if not (self.resource == other.resource or self.resource == '*'):
             return False
-        return (self.method == other.method or self.method == '*' or (other.method == 'read' and self.method == 'write'))
+        if self.method == "*":
+            return True
+        if self.method == other.method:
+            return True
+        return (other.method == 'read' and self.method == 'write')
 
     def __repr__(self):
         return self.string
@@ -146,7 +152,45 @@ class RBACPermission(object):
         # scope' permission.  This saves us doing two full replaces on the
         # entire rendered string.
         assert self.resource != '*' and self.method != '*'
-        return f"{self.app}_{self.resource.replace('-', '_')}_{self.method}"
+        method = 'edit' if self.method == 'write' else 'view'
+        return f"{self.app}_{self.resource}_{method}"
+
+
+def make_rbac_request(rbac_url, request: Request) -> tuple[Response | None, float]:
+    """
+    Make a request to the RBAC service.  With RBAC v1 we check permissions,
+    with RBAC v2 we check workspaces.
+    """
+    identity = request.auth
+    # This has already been checked in callers to this code so we assume
+    # we can get the org_id and username keys.
+    if settings.RBAC_PSK:
+        rbac_header = {
+            "x-rh-rbac-client-id": settings.RBAC_CLIENT_ID,
+            "x-rh-rbac-psk": settings.RBAC_PSK,
+            "x-rh-rbac-org-id": identity['org_id'],
+        }
+        rbac_url += "&username=" + identity['username']
+    else:
+        # Supply the full x-rh-identity header if we have it, because
+        # that gives is_org_admin and other flags used by RBAC.
+        if request and auth_header_key in request.META:
+            # We don't want the other cruft in request.META...
+            rbac_header = {
+                http_auth_header_key: request.META[auth_header_key]
+            }
+        else:
+            rbac_header = auth_header_for_testing(
+                username=identity['username'], org_id=identity['org_id'],
+                supply_http_header=True, user_opts={
+                    'is_org_admin': identity['user']['is_org_admin']
+                },
+            )
+
+    # Do import here because of preloading of permissions classes - if
+    # we do it in header then Django's test framework imports get confused.
+    from api.utils import retry_request
+    return retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10)
 
 
 def find_host_groups(role_list, request):
@@ -234,9 +278,7 @@ def find_host_groups(role_list, request):
         logger.info(f"User has host groups {host_groups}")
 
 
-def has_rbac_permission(
-    username, org_id, permission='advisor:*:*', request=None, account=None, is_org_admin=False
-):
+def has_rbac_permission(request, permission='advisor:*:*'):
     """
     Check if this user in this account has the required permission.
 
@@ -271,38 +313,18 @@ def has_rbac_permission(
     # for schema generation; instead we just use a local cache dict.  The
     # only values RBAC cares about are the username and account, so that's the
     # key we use.
+    username = request.identity['user']['username']
+    org_id = request.identity['org_id']
     auth_tuple = (username, org_id)
     if rbac_perm_cache is not None and auth_tuple in rbac_perm_cache:
         response = rbac_perm_cache[auth_tuple]
         elapsed = 0.0
     else:
-        # Use PSK if it's defined, otherwise fallback to crafting an identity header for username
-        separator = '&' if '?' in settings.RBAC_URL else '?'
-        rbac_url = settings.RBAC_URL + separator + 'limit=1000'
-        if settings.RBAC_PSK:
-            rbac_header = {"x-rh-rbac-client-id": settings.RBAC_CLIENT_ID,
-                           "x-rh-rbac-psk": settings.RBAC_PSK,
-                           "x-rh-rbac-org-id": org_id,
-                           "x-rh-rbac-account": account}
-            rbac_url += "&username=" + username
-        else:
-            # Supply the full x-rh-identity header if we have it, because
-            # that gives is_org_admin and other flags used by RBAC.
-            if request and auth_header_key in request.META:
-                # We don't want the other cruft in request.META...
-                rbac_header = {
-                    http_auth_header_key: request.META[auth_header_key]
-                }
-            else:
-                rbac_header = auth_header_for_testing(
-                    username=username, account=account, org_id=org_id,
-                    supply_http_header=True, user_opts={'is_org_admin': is_org_admin},
-                )
-
-        # Do import here because of preloading of permissions classes - if
-        # we do it in header then Django's test framework imports get confused.
-        from api.utils import retry_request
-        response, elapsed = retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10)
+        # Use PSK if it's defined, otherwise fallback to crafting an identity
+        # header for username
+        rbac_url = f"{settings.RBAC_V1_URL}/access/"
+        rbac_url += "?application=advisor,tasks,inventory&limit=1000"
+        response, elapsed = make_rbac_request(rbac_url, request)
         if (response is None) or response.status_code == 500:
             # Cannot reach RBAC at all, but should retry...
             return (False, elapsed)
@@ -351,8 +373,19 @@ def has_rbac_permission(
         return (False, elapsed)
 
 
+def get_workspace_id(
+    request: Request, workspace: str = "default"
+) -> tuple[Response | None, float]:
+    """
+    Get the ID of the workspace from the RBAC REST API, for the given
+    identity.
+    """
+    rbac_url = f"{settings.RBAC_V2_URL}/workspace/?type={workspace}"
+    return make_rbac_request(rbac_url, request)
+
+
 def has_kessel_permission(
-    scope: "ResourceScope", permission: RBACPermission, identity: dict,
+    scope: "ResourceScope", permission: RBACPermission, request: Request,
     host_id: str | None = None
 ):
     """
@@ -370,16 +403,32 @@ def has_kessel_permission(
     # We don't use the RBAC cache here because the only time we cache RBAC
     # responses is during unit tests.
 
+    identity = request.auth
+
     try:
         # print(f"Checking {identity} has {permission} in {scope}...")
         logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
-            # We actually translate this into the root workspace of that org.
+            # We actually translate this into the default workspace of that org.
+            response, elapsed = get_workspace_id(request)
+            if not response:
+                logger.error(
+                    "KESSEL: failure during workspace ID retrieval: (NO RESPONSE)"
+                )
+                return (False, 0.0)
+            elif response.status_code != 200:
+                logger.error(
+                    "KESSEL: failure during workspace ID retrieval: %s", response.text
+                )
+                return (False, 0.0)
             # print(f"... for org {identity['org_id']}")
-            logger.info("KESSEL: checking access for org %s", identity['org_id'])
-            # TODO: run check against org somehow (org itself, default, or root?)
+            workspace_id = response.json()['data']['id']
+            logger.info(
+                "KESSEL: checking access for org %s workspace %s",
+                identity['org_id'], workspace_id
+            )
             result, elapsed = kessel.client.check(
-                kessel.Workspace(identity['org_id']).to_ref(),
+                kessel.Workspace(workspace_id).to_ref(),
                 permission.as_kessel_permission(),
                 kessel.identity_to_subject(identity))
         elif scope == ResourceScope.WORKSPACE:
@@ -793,8 +842,6 @@ class InsightsRBACPermission(BasePermission):
             return False
         if not isinstance(identity[type_key]['username'], str):
             return False
-        username = identity[type_key]['username']
-        is_org_admin = identity[type_key].get('is_org_admin', False)
 
         # Have to do this after the auth checks and view method check so that
         # views that deny access to RBAC can return False earlier than this.
@@ -809,13 +856,10 @@ class InsightsRBACPermission(BasePermission):
             action = 'write'
 
         permission = f'{self.app}:{resource}:{action}'
-        # Probably can remove account number now...
-        account_number = identity['account_number'] if 'account_number' in identity else None
 
         if not settings.KESSEL_ENABLED:
             result, elapsed = has_rbac_permission(
-                username, identity['org_id'], permission, request._request,
-                account=account_number, is_org_admin=is_org_admin
+                request, permission
             )
         else:
             if scope == ResourceScope.HOST:
@@ -823,7 +867,7 @@ class InsightsRBACPermission(BasePermission):
                 return True
             else:
                 result, elapsed = has_kessel_permission(
-                    scope, RBACPermission(permission), identity
+                    scope, RBACPermission(permission), request
                 )
                 # ORG level returns a single object, WORKSPACE level returns
                 # a list.  We assume any list returned contains host group IDs.
@@ -842,7 +886,7 @@ class InsightsRBACPermission(BasePermission):
         setattr(request._request, 'rbac_sought_permission', permission)
         return bool(result)
 
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view, obj) -> bool:
         if not settings.KESSEL_ENABLED:
             return True
 
@@ -859,14 +903,13 @@ class InsightsRBACPermission(BasePermission):
             action = 'write'
 
         permission = f'{self.app}:{resource}:{action}'
-        identity = request.auth
 
         # This is assumed to be used on a view that gets InventoryHost objects.
         if not hasattr(obj, "id"):
             raise ValueError("Permission scope is 'Host' but object has no 'id' attribute")
 
         result, elapsed = has_kessel_permission(
-            scope, RBACPermission(permission), identity, host_id=obj.id
+            scope, RBACPermission(permission), request, host_id=obj.id
         )
 
         if elapsed > 0.0:

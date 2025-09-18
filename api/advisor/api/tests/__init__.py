@@ -14,8 +14,9 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-import authzed.api.v1 as zed
 from datetime import timedelta
+
+from kessel.inventory.v1beta2 import check_request_pb2
 
 from django.utils import timezone
 
@@ -282,76 +283,72 @@ class constants(object):
         'org_id': '13155542'
     }
 
+    # KESSELWORKSPACE1
+    kessel_std_workspace_id = '4f574c45-5353-454b-3145-434150534b52'
+
     # Kessel RBAC permission constants
-    # kessel_std_org_obj = {'object_type': 'rbac/tenant', 'object_id': 'localhost/9876543'}
-    # These need to be in zed format, like the above, but prefer the below:
-    kessel_std_org_obj = kessel.OrgId(standard_org).to_ref().to_zed()
-    # kessel_std_principal = {'object': {'object_type': 'rbac/principal', 'object_id': '123'}}
-    kessel_std_principal = kessel.ObjectType("rbac", "principal")
-    kessel_std_user_id = kessel.SubjectRef(kessel.ObjectRef(
-        type=kessel_std_principal, id=test_user_id
-    )).to_zed()
+    kessel_std_org_obj = kessel.Workspace(kessel_std_workspace_id).to_ref().as_pb2()
+    kessel_std_user_id = kessel.SubjectRef(test_user_id, 'rbac/principal').as_pb2()
     kessel_std_user_identity_dict = {'user': {'user_id': test_user_id}}
-    kessel_std_workspace = kessel.ObjectType('rbac', 'workspace').to_zed()
-    kessel_host_01_ref = kessel.HostId(host_01_uuid).to_ref().to_zed()
+    kessel_host_01_ref = kessel.Host(host_01_uuid).to_ref().as_pb2()
 
     # Kessel individual requests
-    kessel_cpr_disable_recom_write = zed.CheckPermissionRequest(
+    kessel_cpr_disable_recom_write = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_disable-recommendations_edit",
+        subject=kessel_std_user_id,
+    )
+    kessel_cpr_disable_recom_read = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_disable-recommendations_view",
+        subject=kessel_std_user_id,
+    )
+    kessel_cpr_read_recom_write = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_recommendation-results_edit",
+        subject=kessel_std_user_id,
+    )
+    kessel_cpr_read_recom_read = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_recommendation-results_view",
+        subject=kessel_std_user_id,
+    )
+    kessel_cpr_host_01_recom_read = check_request_pb2.CheckRequest(
+        object=kessel_host_01_ref,
+        relation="advisor_recommendation-results_view",
+        subject=kessel_std_user_id,
+    )
+    kessel_lur_recom_read = kessel.LookupResourcesRequest(
         resource=kessel_std_org_obj,
-        permission="advisor_disable_recommendations_write",
-        subject=kessel_std_user_id,
-    )
-    kessel_cpr_disable_recom_read = zed.CheckPermissionRequest(
-        resource=kessel_std_org_obj,
-        permission="advisor_disable_recommendations_read",
-        subject=kessel_std_user_id,
-    )
-    kessel_cpr_read_recom_write = zed.CheckPermissionRequest(
-        resource=kessel_std_org_obj,
-        permission="advisor_recommendation_results_write",
-        subject=kessel_std_user_id,
-    )
-    kessel_cpr_read_recom_read = zed.CheckPermissionRequest(
-        resource=kessel_std_org_obj,
-        permission="advisor_recommendation_results_read",
-        subject=kessel_std_user_id,
-    )
-    kessel_cpr_host_01_recom_read = zed.CheckPermissionRequest(
-        resource=kessel_host_01_ref,
-        permission="advisor_recommendation_results_read",
-        subject=kessel_std_user_id,
-    )
-    kessel_lur_recom_read = zed.LookupResourcesRequest(
-        resource_object_type=kessel_std_workspace,
-        permission="advisor_recommendation_results_read",
+        relation="advisor_recommendation-results_view",
         subject=kessel_std_user_id,
     )
 
     # Kessel full permissions grants
     kessel_zedrsp_allow_disable_recom_rw = [(
         kessel_cpr_disable_recom_write,
-        kessel.client.PERMISSIONSHIP_HAS_PERMISSION
+        1
     ), (
         kessel_cpr_disable_recom_read,
-        kessel.client.PERMISSIONSHIP_HAS_PERMISSION
+        1
     )]
     kessel_zedrsp_allow_disable_recom_ro = [(
         kessel_cpr_disable_recom_write,
-        0  # If it's not 2, it's not true :-D
+        0
     ), (
         kessel_cpr_disable_recom_read,
-        kessel.client.PERMISSIONSHIP_HAS_PERMISSION
+        1
     )]
     kessel_zedrsp_allow_recom_read_ro = [(
         kessel_cpr_read_recom_write,
-        0  # If it's not 2, it's not true :-D
+        0
     ), (
         kessel_cpr_read_recom_read,
-        kessel.client.PERMISSIONSHIP_HAS_PERMISSION
+        1
     )]
     kessel_zedrsp_allow_host_01_read = [(
         kessel_cpr_host_01_recom_read,
-        kessel.client.PERMISSIONSHIP_HAS_PERMISSION
+        1
     )]
     # Kessel full permission lookups
     kessel_zedlur_workspace_host_group_1 = [(

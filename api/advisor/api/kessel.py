@@ -31,9 +31,14 @@ from kessel.inventory.v1beta2 import (
 
 from django.conf import settings
 
-from api.permissions import RBACPermission
-
 type Relation = str
+
+
+# Is this needed?
+host_object_type = representation_type_pb2.RepresentationType(
+    resource_type="host",
+    reporter_type="hbi",
+)
 
 
 @dataclass
@@ -91,12 +96,6 @@ class LookupResourcesRequest:
 
 type Resource = Workspace | Host
 type UserId = str
-
-
-host_object_type = representation_type_pb2.RepresentationType(
-    resource_type="host",
-    reporter_type="hbi",
-)
 
 
 def identity_to_subject(identity: dict) -> SubjectRef:
@@ -160,7 +159,7 @@ class TestClient(object):
         property, as a shortcut.
         """
         check_str = str(check)
-        response_obj = SimpleNamespace(permissionship=response_int)
+        response_obj = SimpleNamespace(allowed=response_int)
         self.permission_check_responses[check_str] = response_obj
         return check_str
 
@@ -265,7 +264,7 @@ class Kessel:
         responses = self.client.LookupResources(LookupResourcesRequest(
             subject=subject_ref,
             relation=relation,
-            object=resource_ref,
+            resource=resource_ref,
         ))
         result = [response.resource_object_id for response in responses]
         return result, time.time() - start
