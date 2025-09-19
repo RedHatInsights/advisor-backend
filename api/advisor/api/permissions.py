@@ -407,6 +407,10 @@ def has_kessel_permission(
     if not settings.RBAC_ENABLED:
         return (True, 0.0)
 
+    # Need RBAC_URL for workspace lookup.
+    if not settings.RBAC_URL:
+        raise ValueError("RBAC_URL is not set (for Kessel)")
+
     # We don't use the RBAC cache here because the only time we cache RBAC
     # responses is during unit tests.
 
@@ -429,7 +433,7 @@ def has_kessel_permission(
                 )
                 return (False, 0.0)
             # print(f"... for org {identity['org_id']}")
-            workspace_id = response.json()['data']['id']
+            workspace_id = response.json()['data'][0]['id']
             logger.info(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
