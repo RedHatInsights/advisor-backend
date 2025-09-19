@@ -31,6 +31,8 @@ from kessel.inventory.v1beta2 import (
 
 from django.conf import settings
 
+from advisor_logging import logger
+
 type Relation = str
 
 
@@ -94,13 +96,9 @@ class LookupResourcesRequest:
     resource: ResourceRef
 
 
-type Resource = Workspace | Host
-type UserId = str
-
-
 def identity_to_subject(identity: dict) -> SubjectRef:
     user_id = identity['user']['user_id']
-    return SubjectRef(user_id, 'rbac/principal')
+    return SubjectRef(f"redhat/{user_id}", 'rbac/principal')
 
 
 class add_kessel_response(object):
@@ -121,6 +119,7 @@ class add_kessel_response(object):
         # The client here is the Kessel object, its client is the
         # gRPC Client interface.
         for check, response in self.temporary_permission_checks:
+            logger.debug(f"Adding permission check response for {check} = {response}")
             client.client.add_permission_check_response(check, response)
         for request, response in self.temporary_resource_lookups:
             client.client.add_lookup_resources_response(request, response)
