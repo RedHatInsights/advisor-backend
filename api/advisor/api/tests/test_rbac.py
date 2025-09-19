@@ -567,14 +567,18 @@ class RBACTestCase(TestCase):
 
 class KesselTestCase(TestCase):
     """
-    Specific tests of the kessel functions and classes failure modes.
+    Specific tests of the kessel functions and classes failure modes - see
+    test_kessel.py for actual tests of Kessel permissions.
     """
     @override_settings(RBAC_ENABLED=False)
     def test_kessel_allowed_if_rbac_not_enabled(self):
+        rq = request_object_for_testing(
+            auth_by=permissions.RHIdentityAuthentication
+        )
         kessel_response, time = permissions.has_kessel_permission(
             permissions.ResourceScope.ORG,
-            permissions.RBACPermission('advisor:recommendation-results:*'),
-            'identity', host_id=None
+            permissions.RBACPermission('advisor:recommendation-results:read'),
+            rq, host_id=None
         )
         self.assertTrue(kessel_response)
         self.assertEqual(time, 0.0)
@@ -583,10 +587,13 @@ class KesselTestCase(TestCase):
     def test_kessel_host_none_in_resourcescope_host(self):
         # The ValueError raised is caught by the try/except in there,
         # generates a log message and returns False, 0.0
+        rq = request_object_for_testing(
+            auth_by=permissions.RHIdentityAuthentication
+        )
         kessel_response, time = permissions.has_kessel_permission(
             permissions.ResourceScope.HOST,
-            permissions.RBACPermission('advisor:recommendation-results:*'),
-            'identity', host_id=None
+            permissions.RBACPermission('advisor:recommendation-results:read'),
+            rq, host_id=None
         )
         self.assertFalse(kessel_response)
         self.assertEqual(time, 0.0)
@@ -596,11 +603,13 @@ class KesselTestCase(TestCase):
         with add_kessel_response(
             permission_checks=constants.kessel_zedrsp_allow_host_01_read
         ):
+            rq = request_object_for_testing(
+                auth_by=permissions.RHIdentityAuthentication
+            )
             kessel_response, time = permissions.has_kessel_permission(
                 permissions.ResourceScope.HOST,
                 permissions.RBACPermission('advisor:recommendation-results:read'),
-                constants.kessel_std_user_identity_dict,
-                host_id=constants.host_01_uuid
+                rq, host_id=constants.host_01_uuid
             )
             self.assertTrue(kessel_response)
             self.assertGreater(time, 0.0)
