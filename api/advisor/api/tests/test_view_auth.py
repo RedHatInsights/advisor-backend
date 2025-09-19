@@ -20,7 +20,7 @@ from django.urls import reverse
 
 from rest_framework.exceptions import AuthenticationFailed
 
-from api.kessel import add_zed_response
+from api.kessel import add_kessel_response
 from api.models import InventoryHost
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
@@ -528,8 +528,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
     def test_kessel_resourcescope_host_object_permissions(self):
         # Set up the various permissions objects
         rhia = RHIdentityAuthentication()
-        request = request_object_for_testing()
-        org_id, _ = rhia.authenticate(request)
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
         self.assertFalse(hasattr(request, 'user'))
         request.user = org_id
         request.auth = {
@@ -539,7 +538,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
         self.assertEqual(org_id, constants.standard_org)
         self.assertTrue(hasattr(request, 'auth'))
         view = FakeView()
-        setattr(view, 'resource_name', 'recommendation_results')
+        setattr(view, 'resource_name', 'recommendation-results')
         setattr(view, 'resource_scope', ResourceScope.HOST)
         irbp = InsightsRBACPermission()
 
@@ -564,7 +563,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
         ):
             irbp.has_object_permission(request, view, irbp)
         # Finally we actually get to do a has_kessel_permission check
-        with add_zed_response(
+        with add_kessel_response(
             permission_checks=constants.kessel_zedrsp_allow_host_01_read
         ):
             self.assertTrue(irbp.has_object_permission(request, view, host))

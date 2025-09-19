@@ -510,7 +510,7 @@ class SystemViewTestCase(TestCase):
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
     # Our Test Zed client doesn't allow us to explicitly specify wildcards,
     # because it has no idea what these things are.  It just matches exactly.
-    @kessel.add_zed_response(
+    @kessel.add_kessel_response(
         permission_checks=constants.kessel_zedrsp_allow_disable_recom_rw,
         resource_lookups=constants.kessel_zedlur_workspace_host_group_1
     )
