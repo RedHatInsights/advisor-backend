@@ -527,15 +527,8 @@ class TestInsightsRBACPermissionKessel(TestCase):
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
     def test_kessel_resourcescope_host_object_permissions(self):
         # Set up the various permissions objects
-        rhia = RHIdentityAuthentication()
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
-        self.assertFalse(hasattr(request, 'user'))
-        request.user = org_id
-        request.auth = {
-            'org_id': constants.standard_org, 'type': 'User',
-            'user': {'username': 'Barry Jones', 'user_id': constants.test_user_id}
-        }
-        self.assertEqual(org_id, constants.standard_org)
+        self.assertTrue(hasattr(request, 'user'))
         self.assertTrue(hasattr(request, 'auth'))
         view = FakeView()
         setattr(view, 'resource_name', 'recommendation-results')
