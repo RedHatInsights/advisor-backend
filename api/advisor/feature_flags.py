@@ -21,6 +21,7 @@ from UnleashClient import UnleashClient
 
 # Define actual feature flags here, to be used as module properties.
 FLAG_ADVISOR_KESSEL_ENABLED = "advisor.kessel_enabled"
+FLAG_INVENTORY_HOSTS_DB_LOGICAL_REPLICATION = "advisor.inventory_hosts_db_logical_replication"
 
 
 def setting(name, default=None):

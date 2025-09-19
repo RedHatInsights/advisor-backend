@@ -54,6 +54,17 @@ class InventoryHostTestCase(TestCase):
             'owner_id': '55df28a7-d7ef-48c5-bc57-8967025399b1',
             'system_memory_bytes': 134927265792, 'sap_sids': ['E01', 'E02'],
             'system_update_method': 'dnf',
+            'workloads': {
+                'sap': {
+                    'sap_system': True,
+                    'sids': [
+                        'E01',
+                        'E02'
+                    ],
+                    'instance_number': '00',
+                    'version': '2.00.122.04.1478575636'
+                }
+            }
         })
 
     def test_rhel_version(self):

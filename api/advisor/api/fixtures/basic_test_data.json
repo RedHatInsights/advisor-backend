@@ -437,7 +437,18 @@
           "os_release": "Red Hat Enterprise Linux Server",
           "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "system_update_method": "dnf"
+          "system_update_method": "dnf",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E01",
+                "E02"
+              ],
+              "instance_number": "00",
+              "version": "2.00.122.04.1478575636"
+            }
+          }
       },
       "per_reporter_staleness": {"puptoo": {"stale_timestamp": "3020-01-01T06:00:00Z"}},
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221101"
@@ -467,7 +478,18 @@
           "os_release": "Red Hat Enterprise Linux Server",
           "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": false
+            },
+            "ansible": {
+                "controller_version": "4.5.6",
+                "hub_version": "4.5.6",
+                "catalog_worker_version": "1.2.3",
+                "sso_version": "7.8.9"
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221103"
     }
@@ -496,7 +518,21 @@
           "os_release": "Red Hat Enterprise Linux Server",
           "owner_id": "4f34fdbf-dae6-46fc-a85d-bdd4872587e9",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E02",
+                "E04"
+              ],
+              "instance_number": "01",
+              "version": "2.00.122.04.1478575636"
+            },
+            "mssql": {
+                "version": "15.2.0"
+            }
+          }
       },
       "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221104"
@@ -526,7 +562,22 @@
           "os_release": "Red Hat Enterprise Linux Server",
           "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 1},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E04",
+                "E08"
+              ],
+              "instance_number": "02",
+              "version": "2.00.122.04.1478575636"
+            },
+            "ansible": {
+                "controller_version": "4.2.1",
+                "hub_version": "4.2.1"
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221105"
     }
@@ -554,7 +605,18 @@
           "insights_client_version":"3.0.14",
           "os_release": "Red Hat Enterprise Linux Server",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": false
+            },
+            "mssql": {
+                "version": "14.3.0"
+            },
+            "oracle_db": {
+                "is_running": false
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221106"
     }
@@ -582,7 +644,18 @@
           "insights_client_version":"3.0.14", "sap_sids": ["E08", "E16"],
           "os_release": "Red Hat Enterprise Linux Server",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E08",
+                "E16"
+              ],
+              "instance_number": "05",
+              "version": "2.00.122.04.1478575636"
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221108"
     }
@@ -610,7 +683,18 @@
           "insights_client_version":"3.0.14", "sap_sids": ["E16", "E32"],
           "os_release": "Red Hat Enterprise Linux Server",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E16",
+                "E32"
+              ],
+              "instance_number": "06",
+              "version": "2.00.122.04.1478575636"
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110A"
     }
@@ -638,7 +722,18 @@
           "insights_client_version":"3.0.14", "sap_sids": ["E16", "E32"],
           "os_release": "Red Hat Enterprise Linux Server",
           "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-          "host_type": "edge", "system_update_method": "rpm-ostree"
+          "host_type": "edge", "system_update_method": "rpm-ostree",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E16",
+                "E32"
+              ],
+              "instance_number": "04",
+              "version": "2.00.122.04.1478575636"
+            }
+          }
       },
       "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
       "insights_id": "FFEEDDCC-BBAA-9988-7766-5544332211E1"
@@ -667,7 +762,12 @@
           "insights_client_version":"3.0.14",
           "os_release": "Red Hat Enterprise Linux Server",
           "operating_system": {"name": "RHEL", "major": 6, "minor": 8},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": false
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221102"
     }
@@ -695,7 +795,18 @@
           "insights_client_version":"3.0.14", "sap_sids": ["E02", "E03"],
           "os_release": "Red Hat Enterprise Linux Server",
           "operating_system": {"name": "RHEL", "major": 6, "minor": 8},
-          "system_update_method": "yum"
+          "system_update_method": "yum",
+          "workloads": {
+            "sap": {
+              "sap_system": true,
+              "sids": [
+                "E02",
+                "E03"
+              ],
+              "instance_number": "03",
+              "version": "2.00.122.04.1478575636"
+            }
+          }
       },
       "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221107"
     }
