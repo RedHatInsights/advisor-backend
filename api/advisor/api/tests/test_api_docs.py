@@ -299,12 +299,12 @@ class APIDocsTestCase(ApiDocsTestCaseClass):
 
     @responses.activate
     def test_schema_has_docs_with_rbac(self):
-        TEST_RBAC_V1_URL = 'http://docs-rbac.svc'
+        TEST_RBAC_URL = 'http://docs-rbac.svc'
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL,
+            responses.GET, TEST_RBAC_URL,
             json={'data': [{'permission': 'advisor:*:*'}]}, status=200
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Need to have authentication information, but not internal_user,
             # so we actually make a request to RBAC...
             response = self.client.get(
@@ -339,12 +339,12 @@ class APIDocsTestCase(ApiDocsTestCaseClass):
 
     @responses.activate
     def test_schema_has_is_internal_views(self):
-        TEST_RBAC_V1_URL = 'http://docs-rbac.svc'
+        TEST_RBAC_URL = 'http://docs-rbac.svc'
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL,
+            responses.GET, TEST_RBAC_URL,
             json={'data': [{'permission': 'advisor:*:*'}]}, status=200
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Need to have authentication information, but not test_user,
             # so we actually make a request to RBAC because permissions
             # caches RBAC responses on username and account...

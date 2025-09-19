@@ -100,9 +100,6 @@ PDAPI_PSK = os.getenv('PDAPI_PSK')
 RBAC_ENABLED = string_to_bool(os.getenv("RBAC_ENABLED", "false"))
 if RBAC_ENABLED:
     RBAC_URL = os.getenv('RBAC_URL')
-    assert RBAC_URL, 'RBAC_URL environment variable is not set but RBAC_ENABLED is True'
-    RBAC_V1_URL = RBAC_URL + '/api/rbac/v1'
-    RBAC_V2_URL = RBAC_URL + '/api/rbac/v2'
 RBAC_PSK = os.getenv("RBAC_PSK")
 RBAC_CLIENT_ID = os.getenv("RBAC_CLIENT_ID", "advisor")
 KESSEL_ENABLED = string_to_bool(os.getenv("KESSEL_ENABLED", "false"))
@@ -151,8 +148,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
     INVENTORY_SERVER_URL = f"{build_endpoint_url(inv_host)}/api/inventory/v1"
 
     rbac_host = endpoints['rbac']
-    RBAC_V1_URL = f"{build_endpoint_url(rbac_host)}/api/rbac/v1"
-    RBAC_V2_URL = f"{build_endpoint_url(rbac_host)}/api/rbac/v2"
+    RBAC_URL = build_endpoint_url(rbac_host)
 
     pd_host = endpoints.get('playbook-dispatcher')
     if pd_host:

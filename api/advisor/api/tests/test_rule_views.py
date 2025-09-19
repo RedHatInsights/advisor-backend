@@ -29,7 +29,7 @@ from api.views.rules import (
 )
 from django.utils import timezone
 
-TEST_RBAC_V1_URL = 'http://rbac.svc/'
+TEST_RBAC_URL = 'http://rbac.svc/'
 
 
 class RuleTestCase(TestCase):

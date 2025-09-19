@@ -29,7 +29,7 @@ from api.permissions import (
     find_host_groups, request_object_for_testing
 )
 
-TEST_RBAC_V1_URL = 'http://rbac.svc/'
+TEST_RBAC_URL = 'http://rbac.svc/'
 
 
 class HostGroupsTestCase(TestCase):
@@ -289,11 +289,11 @@ class HostGroupsTestCase(TestCase):
             ['group 1', 'group 2']
         )
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
     def test_groups_match(self):
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, status=200,
+            responses.GET, TEST_RBAC_URL, status=200,
             json=rbac_data(groups=[constants.host_group_1_id])
         )
         #
@@ -363,7 +363,7 @@ class HostGroupsTestCase(TestCase):
             }
         )
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
     @kessel.add_kessel_response(
         permission_checks=constants.kessel_zedrsp_allow_recom_read_ro,
         resource_lookups=constants.kessel_zedlur_workspace_host_group_1
@@ -387,9 +387,9 @@ class HostGroupsTestCase(TestCase):
     def test_groups_match_query_param(self):
         # No groups defined in RBAC, but given as query parameter
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, status=200, json=rbac_data()
+            responses.GET, TEST_RBAC_URL, status=200, json=rbac_data()
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Pathways systems list
             page = self._get_view(
                 'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']},
@@ -481,10 +481,10 @@ class HostGroupsTestCase(TestCase):
             }}]
         })
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, status=200,
+            responses.GET, TEST_RBAC_URL, status=200,
             json=multiple_ihr_entries_rbac
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Pathways systems list
             page = self._get_view(
                 'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
@@ -563,10 +563,10 @@ class HostGroupsTestCase(TestCase):
     @responses.activate
     def test_groups_match_group_string(self):
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, status=200,
+            responses.GET, TEST_RBAC_URL, status=200,
             json=rbac_data(groups=f'["{constants.host_group_1_id}"]')
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Pathways systems list
             page = self._get_view(
                 'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
@@ -639,10 +639,10 @@ class HostGroupsTestCase(TestCase):
     @responses.activate
     def test_groups_match_null_group(self):
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, status=200,
+            responses.GET, TEST_RBAC_URL, status=200,
             json=rbac_data(groups=[constants.host_group_2_id, None])
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Pathways systems list
             page = self._get_view(
                 'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
@@ -735,10 +735,10 @@ class HostGroupsTestCase(TestCase):
             'resourceDefinitions': []
         })
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, status=200,
+            responses.GET, TEST_RBAC_URL, status=200,
             json=multiple_ihr_entries_rbac
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Should be all systems now
             # Pathways systems list
             page = self._get_view(
