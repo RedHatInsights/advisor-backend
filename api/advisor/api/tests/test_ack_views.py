@@ -14,13 +14,22 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import responses
+
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from api import kessel
 # from api.models import sync_kessel_with_model
-from api.permissions import auth_header_for_testing
+from api.permissions import auth_header_for_testing, make_rbac_url
 from api.tests import constants
+
+
+TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspace/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 
 class AckViewTestCase(TestCase):
@@ -144,18 +153,18 @@ class AckViewTestCase(TestCase):
         self.assertEqual(ack_list[2]['justification'], long_justification)
         self.assertEqual(ack_list[2]['created_by'], 'user_name_longer_than_thirty_two_characters')
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     # Our Test Zed client doesn't allow us to explicitly specify wildcards,
     # because it has no idea what these things are.  It just matches exactly.
     @kessel.add_kessel_response(
         permission_checks=constants.kessel_zedrsp_allow_disable_recom_rw
     )
+    @responses.activate
     def test_ack_add_kessel_enabled_full_write(self):
-        # These currently don't work because we don't actually use a Kessel
-        # server in tests.  Keeping them here temporarily because maybe we
-        # can implement something similar?
-        # sync_kessel_with_model()
-        # kessel.client.grant_access_to_org(constants.standard_user_id, "advisor:*:*", [constants.standard_org])
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
 
         # Post with an existing acked rule should return that ack
         response = self.client.post(
@@ -187,13 +196,18 @@ class AckViewTestCase(TestCase):
         self.assertEqual(ack_list[1]['justification'], 'Living on the edge')
         self.assertEqual(ack_list[1]['created_by'], 'testing')
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     # Our Test Zed client doesn't allow us to explicitly specify wildcards,
     # because it has no idea what these things are.  It just matches exactly.
     @kessel.add_kessel_response(
         permission_checks=constants.kessel_zedrsp_allow_disable_recom_ro
     )
+    @responses.activate
     def test_ack_add_kessel_enabled_only_read(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
         # We should be able to see the ack in the list for this account
         response = self.client.get(reverse('ack-list'), **self.default_header)
         self.assertEqual(response.status_code, 200)
