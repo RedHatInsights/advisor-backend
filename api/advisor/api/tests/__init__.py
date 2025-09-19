@@ -288,40 +288,40 @@ class constants(object):
 
     # Kessel RBAC permission constants
     kessel_std_org_obj = kessel.Workspace(kessel_std_workspace_id).to_ref().as_pb2()
-    kessel_std_user_id = kessel.SubjectRef(test_user_id, 'rbac/principal').as_pb2()
     kessel_std_user_identity_dict = {'user': {'user_id': test_user_id}}
-    kessel_host_01_ref = kessel.Host(host_01_uuid).to_ref().as_pb2()
+    kessel_std_user_obj = kessel.identity_to_subject(kessel_std_user_identity_dict).as_pb2()
+    kessel_host_01_obj = kessel.Host(host_01_uuid).to_ref().as_pb2()
 
     # Kessel individual requests
     kessel_cpr_disable_recom_write = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
         relation="advisor_disable-recommendations_edit",
-        subject=kessel_std_user_id,
+        subject=kessel_std_user_obj,
     )
     kessel_cpr_disable_recom_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
         relation="advisor_disable-recommendations_view",
-        subject=kessel_std_user_id,
+        subject=kessel_std_user_obj,
     )
     kessel_cpr_read_recom_write = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
         relation="advisor_recommendation-results_edit",
-        subject=kessel_std_user_id,
+        subject=kessel_std_user_obj,
     )
     kessel_cpr_read_recom_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
         relation="advisor_recommendation-results_view",
-        subject=kessel_std_user_id,
+        subject=kessel_std_user_obj,
     )
     kessel_cpr_host_01_recom_read = check_request_pb2.CheckRequest(
-        object=kessel_host_01_ref,
+        object=kessel_host_01_obj,
         relation="advisor_recommendation-results_view",
-        subject=kessel_std_user_id,
+        subject=kessel_std_user_obj,
     )
     kessel_lur_recom_read = kessel.LookupResourcesRequest(
         resource=kessel_std_org_obj,
         relation="advisor_recommendation-results_view",
-        subject=kessel_std_user_id,
+        subject=kessel_std_user_obj,
     )
 
     # Kessel full permissions grants
