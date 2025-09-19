@@ -437,7 +437,8 @@ def has_kessel_permission(
             result, elapsed = kessel.client.check(
                 kessel.Workspace(workspace_id).to_ref(),
                 permission.as_kessel_permission(),
-                kessel.identity_to_subject(identity))
+                kessel.identity_to_subject(identity)
+            )
         elif scope == ResourceScope.WORKSPACE:
             # print("... for workspace")
             logger.info("KESSEL: checking which workspaces this user has access to")
@@ -445,18 +446,19 @@ def has_kessel_permission(
             result, elapsed = kessel.client.lookupResources(
                 kessel.ObjectType("rbac", "workspace"),
                 permission.as_kessel_permission(),
-                kessel.identity_to_subject(identity))
+                kessel.identity_to_subject(identity)
+            )
         else:
             # Scope is a specific host.
             # Run a check against that host.
             if host_id is None:
-                raise ValueError("TODO")
+                raise ValueError("Host scope requested but host_id not provided")
 
             # print(f"... for host {host_id}")
             logger.info("KESSEL: checking access to host %s", host_id)
             result, elapsed = kessel.client.check(
-                kessel.HostId(str(host_id)).to_ref(),
-                kessel.rbac_permission_to_relation(permission),
+                kessel.Host(str(host_id)).to_ref(),
+                permission.as_kessel_permission(),
                 kessel.identity_to_subject(identity)
             )
 
@@ -465,7 +467,7 @@ def has_kessel_permission(
         return result, elapsed
     except Exception as e:
         # TODO elapsed time
-        logger.warning(f"Warning: TODO error calling kessel for access check {e}'")
+        logger.error(f"Error calling kessel for {scope.name} access check '{e}'")
         return (False, 0.0)
 
 

@@ -243,13 +243,11 @@ class Kessel:
         self, resource: ResourceRef, relation: Relation, subject: SubjectRef
     ) -> Tuple[bool, float]:
         start = time.time()
-        subject_ref = subject.to_ref()
-        resource_ref = resource.to_ref()
         response = self.client.Check(
             check_request_pb2.CheckRequest(
-                subject=subject_ref,
+                subject=subject.as_pb2(),
                 relation=relation,
-                object=resource_ref,
+                object=resource.as_pb2(),
             )
         )
         result = response.allowed
@@ -259,12 +257,10 @@ class Kessel:
         self, resource: ResourceRef, relation: Relation, subject: SubjectRef
     ) -> Tuple[bool, float]:
         start = time.time()
-        subject_ref = subject.to_ref()
-        resource_ref = resource.to_ref()
         responses = self.client.LookupResources(LookupResourcesRequest(
-            subject=subject_ref,
+            subject=subject.as_pb2(),
             relation=relation,
-            resource=resource_ref,
+            object=resource.as_pb2(),
         ))
         result = [response.resource_object_id for response in responses]
         return result, time.time() - start
