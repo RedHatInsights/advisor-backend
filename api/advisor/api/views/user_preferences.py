@@ -57,10 +57,7 @@ class PreferencesViewSet(viewsets.ViewSet):
         # compile settings list
         settings = []
         # Can this be a bit more ... data driven?
-        if has_rbac_permission(
-            username, org_id, 'advisor:weekly-report:*',
-            request=request, account=request.account
-        ):
+        if has_rbac_permission(request, 'advisor:weekly-report:*'):
             # Get weekly report subscription setting
             wrs_qs = WeeklyReportSubscription.objects.filter(username=username, org_id=org_id)
             is_subscribed = wrs_qs.exists()

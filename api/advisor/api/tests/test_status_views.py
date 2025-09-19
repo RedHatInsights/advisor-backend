@@ -24,7 +24,7 @@ from django.urls import reverse
 from api.permissions import auth_header_for_testing
 from api.tests import constants
 
-TEST_RBAC_V1_URL = 'http://rbac.svc/'
+TEST_RBAC_URL = 'http://rbac.svc/'
 
 NORMAL_SETTINGS = {
     'MIDDLEWARE_HOST_URL': 'http://localhost',
@@ -47,12 +47,12 @@ class StatusTestCase(TestCase):
         response = self.client.get(reverse('status-list'), **auth_header_for_testing())
         self.assertEqual(response.status_code, 200)
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
     def test_status_ready_all_good(self):
         # RBAC will respond, but we don't care if it's sensible or not.
         responses.add(
-            responses.GET, settings.RBAC_V1_URL,
+            responses.GET, settings.RBAC_URL,
             json={'nonsense': 'complete'}, status=200
         )
         # No auth required
@@ -78,12 +78,12 @@ class StatusTestCase(TestCase):
         self.assertIn('errors', json_data)
         self.assertEqual(json_data['errors'], [])
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
     def test_status_ready_rbac_timing_out(self):
         # RBAC is taking a really long time
         responses.add(
-            responses.GET, settings.RBAC_V1_URL, body=Timeout()
+            responses.GET, settings.RBAC_URL, body=Timeout()
         )
         # No auth required
         response = self.client.get(reverse('status-ready'))
@@ -117,13 +117,13 @@ class StatusTestCase(TestCase):
     # We don't know what the build environment is going to have set, so
     # specifically undefine things so we can check this is detected.
     @override_settings(
-        RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', MIDDLEWARE_HOST_URL=None,
+        RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', MIDDLEWARE_HOST_URL=None,
         INVENTORY_SERVER_URL=None,
     )
     @responses.activate
     def test_status_ready_environment_not_set(self):
         responses.add(
-            responses.GET, settings.RBAC_V1_URL,
+            responses.GET, settings.RBAC_URL,
             json={'nonsense': 'complete'}, status=200
         )
         # No auth required
@@ -163,11 +163,11 @@ class StatusTestCase(TestCase):
             'Environment error: REMEDIATIONS_URL not set',
         ])
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
     def test_status_ready_rbac_bad_connection(self):
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL, body=ConnectionError("Test raises an exception")
+            responses.GET, TEST_RBAC_URL, body=ConnectionError("Test raises an exception")
         )
         # No auth required
         response = self.client.get(reverse('status-ready'))
@@ -198,12 +198,12 @@ class StatusTestCase(TestCase):
         self.assertIn('errors', json_data)
         self.assertEqual(json_data['errors'], ['Error connecting to RBAC: Test raises an exception'])
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
     def test_status_ready_rbac_failing(self):
         # RBAC is failing (politely at the moment)
         responses.add(
-            responses.GET, settings.RBAC_V1_URL, status=500
+            responses.GET, settings.RBAC_URL, status=500
         )
         # No auth required
         response = self.client.get(reverse('status-ready'))
@@ -234,13 +234,13 @@ class StatusTestCase(TestCase):
         self.assertIn('errors', json_data)
         self.assertEqual(json_data['errors'], ['Connection to RBAC returned 500: '])
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
     def test_status_live_all_good(self):
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true'):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true'):
             # RBAC will respond, but we don't care if it's sensible or not.
             responses.add(
-                responses.GET, settings.RBAC_V1_URL,
+                responses.GET, settings.RBAC_URL,
                 json={'nonsense': 'complete'}, status=200
             )
             # No auth required
@@ -266,12 +266,12 @@ class StatusTestCase(TestCase):
             self.assertIn('errors', json_data)
             self.assertEqual(json_data['errors'], [])
 
-    @override_settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
     def test_status_live_rbac_failing(self):
         # RBAC is failing (politely at the moment)
         responses.add(
-            responses.GET, settings.RBAC_V1_URL, status=500
+            responses.GET, settings.RBAC_URL, status=500
         )
         # No auth required
         response = self.client.get(reverse('status-live'))

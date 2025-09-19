@@ -45,6 +45,13 @@ user_details_key = {
 }
 
 
+def make_rbac_url(path, version=1, rbac_base=None):
+    if rbac_base is None:
+        rbac_base = settings.RBAC_URL
+    sep = '' if rbac_base.endswith('/') else '/'
+    return f'{rbac_base}{sep}api/rbac/v{version}/{path}'
+
+
 ##############################################################################
 # Kessel resource scope definition
 ##############################################################################
@@ -161,6 +168,7 @@ def make_rbac_request(rbac_url, request: Request) -> tuple[Response | None, floa
     Make a request to the RBAC service.  With RBAC v1 we check permissions,
     with RBAC v2 we check workspaces.
     """
+    logger.info(f"RBAC request to {rbac_url}")
     identity = request.auth
     # This has already been checked in callers to this code so we assume
     # we can get the org_id and username keys.
@@ -313,8 +321,8 @@ def has_rbac_permission(request, permission='advisor:*:*'):
     # for schema generation; instead we just use a local cache dict.  The
     # only values RBAC cares about are the username and account, so that's the
     # key we use.
-    username = request.identity['user']['username']
-    org_id = request.identity['org_id']
+    username = request.auth['user']['username']
+    org_id = request.auth['org_id']
     auth_tuple = (username, org_id)
     if rbac_perm_cache is not None and auth_tuple in rbac_perm_cache:
         response = rbac_perm_cache[auth_tuple]
@@ -322,8 +330,7 @@ def has_rbac_permission(request, permission='advisor:*:*'):
     else:
         # Use PSK if it's defined, otherwise fallback to crafting an identity
         # header for username
-        rbac_url = f"{settings.RBAC_V1_URL}/access/"
-        rbac_url += "?application=advisor,tasks,inventory&limit=1000"
+        rbac_url = make_rbac_url("access/?application=advisor,tasks,inventory&limit=1000")
         response, elapsed = make_rbac_request(rbac_url, request)
         if (response is None) or response.status_code == 500:
             # Cannot reach RBAC at all, but should retry...
@@ -380,7 +387,7 @@ def get_workspace_id(
     Get the ID of the workspace from the RBAC REST API, for the given
     identity.
     """
-    rbac_url = f"{settings.RBAC_V2_URL}/workspace/?type={workspace}"
+    rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
     return make_rbac_request(rbac_url, request)
 
 

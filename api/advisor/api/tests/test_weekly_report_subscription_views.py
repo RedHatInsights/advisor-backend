@@ -30,7 +30,7 @@ test_user2_identity_header = auth_header_for_testing(username='test-user2')
 subscribed = {'is_subscribed': True}
 not_subscribed = {'is_subscribed': False}
 test_middleware_url = 'https://middleware.svc/'
-TEST_RBAC_V1_URL = 'http://rbac.svc/'
+TEST_RBAC_URL = 'http://rbac.svc/'
 
 
 class WeeklyReportSubscriptionTestCase(TestCase):
@@ -166,11 +166,11 @@ class WeeklyReportSubscriptionTestCase(TestCase):
         # Test that if the user is denied access to weekly emails by RBAC
         # then they get denied both listing and updating
         responses.add(
-            responses.GET, TEST_RBAC_V1_URL,
+            responses.GET, TEST_RBAC_URL,
             json={'data': [{'permission': 'advisor:recommendation-results:*'}]},
             status=200
         )
-        with self.settings(RBAC_V1_URL=TEST_RBAC_V1_URL, RBAC_ENABLED=True):
+        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
             # Check test-user subscription status - expected is subscribed
             response = self.client.get(
                 reverse('weeklyreportsubscription-list'), **test_user_identity_header
