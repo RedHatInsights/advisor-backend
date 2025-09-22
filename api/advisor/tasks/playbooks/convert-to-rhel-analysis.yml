@@ -3,26 +3,25 @@
 - name: Convert2RHEL Analysis
   vars:
     insights_signature: !!binary |
-      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS1ZtVnljMmx2YmpvZ1IyNTFV
-      RWNnZGpFS0NtbFJTV05DUVVGQ1EwRkJSMEpSU20wNVFuQlFRVUZ2U2tWTmRuYzFPRVFyYWpWd1Rr
-      eHBhMUF2TW5JeE1tSlJPV3RpTW5ObmRETm9Sa0owVjJsa1lUa0tlalozZGxKeFRYaHpiV2RJWVZS
-      bVVVWkllSFV4V0ZaMVRUSkVWWGQwTjBoaFJsUmhTVTk2V1hsSldIQjRkMU5aVGpoWlNVSnVlR052
-      WlZWTWFETjFid295VmtkcGNXZEpUVUUzYWk4M2JIbG1ZVzVZVWxkS1VFOW9VVTVIYUhScU5Wb3pN
-      bTB2VnpaNWVWQjNkbEk0UkZabmNHWmFTbUZwV1U0MFdIa3dVMXBWQ25OTk1uRnBRMkprVUVjeVEz
-      aGFiVFZFUjFKbWRqVTVZUzkzUlhrM1N6ZEVNMWxQTmtSRGNtVlRkRGt5VUhFd2NtbDJibFZEUVRG
-      c1lrRmxZbkpZZUZRS1oxWjRSQzgyZEhaeVNVdHhWbU5QYUd4TWFXMTZZMmQxY3pSeFVVcHNhR1J0
-      YTFWSE9EbENlbkZMUkVoTk16TlpjbUZNUW1vM1pHVXdSbmRKZVZKTE9BcEJWek5TWkVaWWRVNWhl
-      WGQ2V1U1VFozWlFVWE5VTXpsR0x6bFpMemxPU2xrd0wyaG9kMmRzUVRKNWEzTlNUbWxRUjNVd05s
-      cHJiRFZEWTAxcVdURndDazk2YVZkc2JtNU1NV2RFWldkQ1VWZDZNMHRFZFhGTVVtaFBkbWR3V21r
-      dlVWcEpRMGx4TkRKUlZYTkRaVTl1TUdSNmMxcFVlR3R4YzA1SFFXTk1lazhLTWpjeloyRkRVMGRo
-      YWxONWJFUmhkMEZRTm05M00wSmlZblpETjJ0MmFWUnNaSHBoTVVSeWRtOWtVa3d4UzNkUFMwZDJP
-      WFIyV0VWS2VHZDNOWFZ1TWdwNE9ESXhlWEpDU2xCR2FUSkJWWE5xYUU1RlJqaFRTa280Ulc1dVlU
-      YzFNVGRKUWpJeFdIaEtjbkUwUm5sNmJIUnJiRE4xTTNBdloxQkpVa293VW5WR0NtUXJUalF6UzNr
-      NWEwTnFZMHBPZUZKVWJrTlRUUzlEZGpaS1ZtTnRSMFExUlRJM1FsSmhaWEphZGpaS1QyRmtjRGN6
-      Vm1STWNYWTJkalJKUTBWUVUwUUtRVlV5Y1VsRk9XdGFlRmR0TWxsM01qRjNkMGd4ZVhVclVHSllU
-      MG81WWtKS1psaFlWMVJCYURaSlEweDBkU3RoY1hOMlVYSTJTMFYyUmk5UWVFWTFjQW8xVlVGWVNH
-      WTJXWGc0Y1Nzd09TOTNabTFSUmdvOVVVNXNPQW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZK
-      RkxTMHRMUzBL
+      TFMwdExTMUNSVWRKVGlCUVIxQWdVMGxIVGtGVVZWSkZMUzB0TFMwS0NtbFJTV05DUVVGQ1EwRkJS
+      MEpSU204d1YxaG1RVUZ2U2tWTmRuYzFPRVFyYWpWd1RtVnFRVkZCU2xoaFEyOTNVM1p5UW1aU2Mw
+      czBNMEZrVDB0eVpFNEthVEJZZDA0emJuQXJaR05KWldaV1NWWjVjWHB6WnpKeVJVRlZlR0ZsYVN0
+      a1VrVTBaRU5sVmtOclFUWmlSV2xPVkdKc09XUnZSMWRZY1dkM04ya3lRd3BPUkhBMVFWTlVLeXRR
+      TWpCR1ZETlRVVkp1VDA1dmJqbEZMMjAwTUVOTFl6Rk5WV1JEVDNGbFFrRnNTMk55UlVSUmJGaDVV
+      bWxsZERKalduWmFPVWt3Q2pJNE5YZFhXWFJPVTJkaWVqVklRVmhXVjJsQlVubFZUa1J2THpGRFNY
+      Tk5XV0ZCWVc5VlZ6ZGtjRk5VV2sxRU4wMWxWWFpJV2toWE9GQkNha3R3UjJRS2RYbHJUVEpVU1do
+      SU5EZzBjM2RsVW5ZemFsQTFORzFYWlVkWVpHczNUSG95TTJjMlMyVmFOMU5HZW0wdlpEVTVjR3hM
+      UkdRd1F6RXhSRk15YlRCTE5BbzRUbUU1VHpVMFJuRTFPVXhFZUZNMmRrTnFXbkZvWms1dFRIcHRZ
+      MWhFTHpVdlowcEhMMVpYTlZkMVlYUk1kMFVyVkRGb1luQm5Oa04zYWt4S2VIQldDa3RDWlc5bFN6
+      VXhXV1kwUm1sNVdGUlFTRlZGZUhGc1kyNDRMMWRSV2xWRlVrZEdVV2hVZDIxVlNFNU9RMHN6YjJ0
+      RVlUbDZZMHhxZDIwM1NUQlJWRWNLUjFkRk5VdEVTbFZuWVRKeGMyWm9RVUZyUlRZd2JUUTFXQ3RF
+      TUM5M2IxRlljVVJwVmxsTllWTkNOSFl6YlN0bGQyUXhPWFpOV2s5M2ExVkZiRlZZYkFwSGFsZDJP
+      RkJRVldsa1UwcEdZMnQyYjBGR1IyVTBTVEYwUlZOalZFNU9jWHBRZVZwNFdqWldXRUlyUWxKUGIy
+      OUhaakpSTDNCT1kxaEJWVnBQY3pkR0NqQkVaVVk0TTFsS1oyTlhURGN4WjJrMVdIbFpRMFJqVHpO
+      VmNXaFBPV3hRVjBob1kwdDBPRE0xWTJkNFMweFdTMjl2VHpOUmNHMVNUa0pqWlZkUmJrTUtRVUpY
+      TkdGNlJ6aEdaUzlPUkhNM05FUm1SQ3RLZG5adFdDdFlTa3MyYnpsSVYwRlRSeXRGVGsxQmQxSm9W
+      RlZOTjJkUFZ6VnJNR0ZhZURoSGRtY3dWQW8yTnpkV1NUVXJha1UzTlZOWGEyaElXbFZaYXdvOVUz
+      RnVjUW90TFMwdExVVk9SQ0JRUjFBZ1UwbEhUa0ZVVlZKRkxTMHRMUzBL
     insights_signature_exclude: /vars/insights_signature,/vars/content_vars
     interpreter: /usr/bin/python2
     content: |
@@ -522,7 +521,7 @@
 
               .. note::
                   We are checking if file exists here as the textual report is not
-                  that important as the JSON report for the script and for Insights.
+                  that important as the JSON report for the script and for Lightspeed.
                   It's fine if the textual report does not exist, but the JSON one is
                   required.
           """
@@ -729,7 +728,7 @@
           repositories = []
 
           # This will always be represented as either false/true, since this option
-          # comes from the input parameters through Insights UI.
+          # comes from the input parameters through Lightspeed UI.
           els_disabled = json.loads(env.pop("ELS_DISABLED", "false").lower())
           if not bool(els_disabled):
               command.append("--els")
@@ -898,12 +897,12 @@
           """
           Call insights-client to update insights inventory.
           """
-          logger.info("Updating system status in Red Hat Insights.")
+          logger.info("Updating system status in Red Hat Lightspeed.")
           output, returncode = run_subprocess(cmd=["/usr/bin/insights-client"])
 
           if returncode:
               raise ProcessError(
-                  message="Conversion succeeded but update of Insights Inventory by registering the system again failed.",
+                  message="Conversion succeeded but update of Red Hat Lightspeed Inventory by registering the system again failed.",
                   report="insights-client execution exited with code '%s' and output:\n%s"
                   % (returncode, output.rstrip("\n")),
               )
