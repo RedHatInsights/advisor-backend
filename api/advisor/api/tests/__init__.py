@@ -320,23 +320,24 @@ class constants(object):
     )
 
     # Kessel full permissions grants
+
     kessel_allow_disable_recom_rw = [(
-        kessel_cpr_disable_recom_write, 1
+        kessel_cpr_disable_recom_write, kessel.ALLOWED
     ), (
-        kessel_cpr_disable_recom_read, 1
+        kessel_cpr_disable_recom_read, kessel.ALLOWED
     )]
     kessel_allow_disable_recom_ro = [(
-        kessel_cpr_disable_recom_write, 0
+        kessel_cpr_disable_recom_write, kessel.DENIED
     ), (
-        kessel_cpr_disable_recom_read, 1
+        kessel_cpr_disable_recom_read, kessel.ALLOWED
     )]
     kessel_allow_recom_read_ro = [(
-        kessel_cpr_read_recom_write, 0
+        kessel_cpr_read_recom_write, kessel.DENIED
     ), (
-        kessel_cpr_read_recom_read, 1
+        kessel_cpr_read_recom_read, kessel.ALLOWED
     )]
     kessel_allow_host_01_read = [(
-        kessel_cpr_host_01_recom_read, 1
+        kessel_cpr_host_01_recom_read, kessel.ALLOWED
     )]
     # Kessel allow standard user access to host group 1
     kessel_user_in_workspace_host_group_1 = [(
