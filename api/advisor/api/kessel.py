@@ -18,14 +18,20 @@ from dataclasses import dataclass
 import grpc
 import time
 from types import SimpleNamespace
-from typing import Tuple
+from typing import Generator, Optional, Tuple
+from uuid import UUID
 
 from kessel.inventory.v1beta2 import (
-    inventory_service_pb2_grpc,
+    # ClientBuilder,
+    allowed_pb2,
     check_request_pb2,
+    inventory_service_pb2_grpc,
     representation_type_pb2,
+    request_pagination_pb2,
     resource_reference_pb2,
     reporter_reference_pb2,
+    streamed_list_objects_request_pb2,
+    streamed_list_objects_response_pb2,
     subject_reference_pb2,
 )
 
@@ -33,13 +39,24 @@ from django.conf import settings
 
 from advisor_logging import logger
 
-type Relation = str
+#############################################################################
+# Data classes and definitions
+#############################################################################
 
+ALLOWED = allowed_pb2.ALLOWED_TRUE
+DENIED = allowed_pb2.ALLOWED_FALSE
+# Unspecified is treated as denied here.
+
+type Relation = str
 
 # Is this needed?
 host_object_type = representation_type_pb2.RepresentationType(
     resource_type="host",
     reporter_type="hbi",
+)
+workspace_object_type = representation_type_pb2.RepresentationType(
+    resource_type="workspace",
+    reporter_type="rbac",
 )
 
 
@@ -78,7 +95,7 @@ class Workspace:
     value: str
 
     def to_ref(self) -> ResourceRef:
-        return ResourceRef(self.value, "rbac.workspace")
+        return ResourceRef(self.value, "workspace")
 
 
 @dataclass(frozen=True)
@@ -89,16 +106,78 @@ class Host:
         return ResourceRef(self.value, "hbi.host")
 
 
-@dataclass(frozen=True)
-class LookupResourcesRequest:
-    subject: SubjectRef
-    relation: Relation
-    resource: ResourceRef
-
-
 def identity_to_subject(identity: dict) -> SubjectRef:
     user_id = identity['user']['user_id']
-    return SubjectRef(f"redhat/{user_id}", 'rbac/principal')
+    return SubjectRef(f"redhat/{user_id}", 'principal')
+
+
+# Hopefully at some stage we can just import these from the Kessel SDK.
+def get_resources(
+    client_stub: inventory_service_pb2_grpc.KesselInventoryServiceStub,
+    object_type: representation_type_pb2.RepresentationType,
+    relation: str,
+    subject: subject_reference_pb2.SubjectReference,
+    limit: int = 20,
+    fetch_all=True
+) -> Generator[
+    resource_reference_pb2.ResourceReference, None, None
+]:
+    """
+    Get a continuous stream of the object type this subject has this relation
+    to.  Works around the inherent pagination and continuation token handling.
+
+    Object type and subject are the PB2 representations, so your code can
+    translate from your own internal representation.
+
+    E.g.:
+
+    >>> get_resources(
+            client, Workspace('default').as_pb2(), 'member', this_user.as_pb2()
+        )
+    generator object (...)
+
+    """
+    continuation_token = None
+    while (
+        response := _get_resource_page(
+            object_type, relation, subject, limit, continuation_token
+        ) is not None
+    ):
+        for data in response:
+            yield data.object
+        if not fetch_all:
+            # We only want the first page
+            break
+        continuation_token = data.pagination.continuation_token
+        if not continuation_token:
+            # Could just make another request and then get told no more pages,
+            # but it's neater this way...
+            break
+
+
+def _get_resource_page(
+    client_stub: inventory_service_pb2_grpc.KesselInventoryServiceStub,
+    object_type: representation_type_pb2.RepresentationType,
+    relation: str,
+    subject: subject_reference_pb2.SubjectReference,
+    limit: int,
+    continuation_token: Optional[str] = None
+) -> streamed_list_objects_response_pb2.StreamedListObjectsResponse:
+    """
+    Get a single page, of at most limit size, from continuation_token (or
+    start if None).
+    """
+    request = streamed_list_objects_request_pb2.StreamedListObjectsRequest(
+        object_type=object_type,
+        relation=relation,
+        subject=subject,
+        pagination=request_pagination_pb2.RequestPagination(
+            limit=limit,
+            continuation_token=continuation_token
+        )
+    )
+
+    return client_stub.StreamedListObjects(request)
 
 
 class add_kessel_response(object):
@@ -163,16 +242,18 @@ class TestClient(object):
         return check_str
 
     def add_lookup_resources_response(
-        self, lookup: LookupResourcesRequest, response_ids: list[int]
+        self, subject: SubjectRef, response_ids: list[UUID]
     ) -> None:
         """
-        When this resource is looked up, send this response.
-        The list of response integers is converted into a list of objects that
-        have these as the `resource_object_id` property, as a shortcut.
+        When the host groups this user subject can access is requested, return
+        this list of host groups by UUID.  At this stage we only look up
+        the workspaces the user has the 'member' relationship to, so we treat
+        the 'relation' and 'object type' being searched for here as static.
+        Maybe we need to have a 'LookupRequest' namespace object here?
         """
-        lookup_str = str(lookup)
+        lookup_str = str(subject)
         response_objs = [
-            SimpleNamespace(resource_object_id=response_id)
+            SimpleNamespace(resource_id=response_id)
             for response_id in response_ids
         ]
         self.lookup_resources_responses[lookup_str] = response_objs
@@ -184,11 +265,11 @@ class TestClient(object):
         check_str = str(check)
         del self.permission_check_responses[check_str]
 
-    def del_lookup_resources_response(self, lookup: LookupResourcesRequest):
+    def del_lookup_resources_response(self, subject: SubjectRef):
         """
         Delete the associated response for this permission
         """
-        lookup_str = str(lookup)
+        lookup_str = str(subject)
         del self.lookup_resources_responses[lookup_str]
 
     def Check(self, check: check_request_pb2.CheckRequest) -> object:
@@ -196,23 +277,29 @@ class TestClient(object):
         Attempt the permission check, or raise a failure?
         """
         check_str = str(check)
-        # this is faster for empty case than pure 'in' or try/except
-        if self.permission_check_responses and check_str in self.permission_check_responses:
-            # print(f"... Recognised test request, returning {self.permission_check_responses[request_str]}")
+        # We should be checking this when we've been given an override, so
+        # permission_check_responses should not be empty.
+        logger.info(f"Check faked for {check_str}")
+        if check_str in self.permission_check_responses:
             return self.permission_check_responses[check_str]
         else:
             raise NotImplementedError(f"Response for request {check_str} not implemented")
 
-    def LookupResources(self, request: LookupResourcesRequest) -> list:
+    def StreamedListObjects(
+        self, request: streamed_list_objects_request_pb2.StreamedListObjectsRequest
+    ) -> list[UUID]:
         """
-        Attempt the resource lookup, or raise a failure?
+        Find all resources for the given request.  Because at the moment we
+        don't really search for anything other than 'which workspaces is a
+        given user a member of?' we just use the subject of the request.
         """
-        request_str = str(request)
-        # print(f"LookupResources ({request})")
-        if self.lookup_resources_responses and request_str in self.lookup_resources_responses:
-            return self.lookup_resources_responses[request_str]
+        subject = request.subject  # (type coversion?)
+        subject_str = str(subject)
+        logger.info(f"StreamedListObjects faked for {subject_str}")
+        if subject_str in self.lookup_resources_responses:
+            return self.lookup_resources_responses[subject_str]
         else:
-            raise NotImplementedError(f"Response for lookup {request_str} not implemented")
+            raise NotImplementedError(f"Response for lookup {subject_str} not implemented")
 
 
 class Kessel:
@@ -231,6 +318,7 @@ class Kessel:
         if settings.KESSEL_SERVER_NAME == 'device under test':
             self.client = TestClient()
         else:
+            # stub, channel = ClientBuilder(KESSEL_ENDPOINT).insecure().build()
             self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
                 grpc.insecure_channel(
                     f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
@@ -252,16 +340,21 @@ class Kessel:
         result = response.allowed
         return result, time.time() - start
 
-    def lookupResources(
-        self, resource: ResourceRef, relation: Relation, subject: SubjectRef
+    def host_groups_for(
+        self, subject: SubjectRef
     ) -> Tuple[bool, float]:
+        """
+        There may be other uses of get_resources, but at the moment the only
+        one we care about is the host groups for this user.
+        """
         start = time.time()
-        responses = self.client.LookupResources(LookupResourcesRequest(
-            subject=subject.as_pb2(),
-            relation=relation,
-            object=resource.as_pb2(),
-        ))
-        result = [response.resource_object_id for response in responses]
+        result = [
+            response_object.resource_id
+            for response_object in get_resources(
+                self.client, workspace_object_type, 'inventory_host_view', subject
+                # , limit=100?
+            )
+        ]
         return result, time.time() - start
 
 

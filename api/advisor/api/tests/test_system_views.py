@@ -41,7 +41,7 @@ class SystemViewTestCase(TestCase):
         'basic_test_data', 'high_severity_rule',
     ]
 
-    std_auth_header = self.std_auth_header
+    std_auth_header = auth_header_for_testing()
 
     @classmethod
     def setUpClass(cls):
@@ -522,8 +522,8 @@ class SystemViewTestCase(TestCase):
     # Our Test Zed client doesn't allow us to explicitly specify wildcards,
     # because it has no idea what these things are.  It just matches exactly.
     @kessel.add_kessel_response(
-        permission_checks=constants.kessel_zedrsp_allow_disable_recom_rw,
-        resource_lookups=constants.kessel_zedlur_workspace_host_group_1
+        permission_checks=constants.kessel_allow_disable_recom_rw,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
     @responses.activate
     def test_list_system_kessel_on(self):

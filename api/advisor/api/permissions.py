@@ -448,8 +448,8 @@ def has_kessel_permission(
             logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.lookupResources(
-                kessel.ObjectType("rbac", "workspace"),
-                permission.as_kessel_permission(),
+                kessel.Object("rbac", "workspace"),
+                'member',
                 kessel.identity_to_subject(identity)
             )
         else:

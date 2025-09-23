@@ -365,8 +365,8 @@ class HostGroupsTestCase(TestCase):
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
     @kessel.add_kessel_response(
-        permission_checks=constants.kessel_zedrsp_allow_recom_read_ro,
-        resource_lookups=constants.kessel_zedlur_workspace_host_group_1
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
     def test_groups_match_kessel_enabled_recom_read_only(self):
         # No RBACv1 use when Kessel enabled

@@ -557,7 +557,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
             irbp.has_object_permission(request, view, irbp)
         # Finally we actually get to do a has_kessel_permission check
         with add_kessel_response(
-            permission_checks=constants.kessel_zedrsp_allow_host_01_read
+            permission_checks=constants.kessel_allow_host_01_read
         ):
             self.assertTrue(irbp.has_object_permission(request, view, host))
 

@@ -601,7 +601,7 @@ class KesselTestCase(TestCase):
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
     def test_kessel_host_check_ok(self):
         with add_kessel_response(
-            permission_checks=constants.kessel_zedrsp_allow_host_01_read
+            permission_checks=constants.kessel_allow_host_01_read
         ):
             rq = request_object_for_testing(
                 auth_by=permissions.RHIdentityAuthentication

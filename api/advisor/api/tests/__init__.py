@@ -318,35 +318,29 @@ class constants(object):
         relation="advisor_recommendation-results_view",
         subject=kessel_std_user_obj,
     )
-    kessel_lur_recom_read = kessel.LookupResourcesRequest(
-        resource=kessel_std_org_obj,
-        relation="advisor_recommendation-results_view",
-        subject=kessel_std_user_obj,
-    )
 
     # Kessel full permissions grants
-    kessel_zedrsp_allow_disable_recom_rw = [(
+    kessel_allow_disable_recom_rw = [(
         kessel_cpr_disable_recom_write, 1
     ), (
         kessel_cpr_disable_recom_read, 1
     )]
-    kessel_zedrsp_allow_disable_recom_ro = [(
+    kessel_allow_disable_recom_ro = [(
         kessel_cpr_disable_recom_write, 0
     ), (
         kessel_cpr_disable_recom_read, 1
     )]
-    kessel_zedrsp_allow_recom_read_ro = [(
+    kessel_allow_recom_read_ro = [(
         kessel_cpr_read_recom_write, 0
     ), (
         kessel_cpr_read_recom_read, 1
     )]
-    kessel_zedrsp_allow_host_01_read = [(
+    kessel_allow_host_01_read = [(
         kessel_cpr_host_01_recom_read, 1
     )]
-    # Kessel full permission lookups
-    kessel_zedlur_workspace_host_group_1 = [(
-        kessel_lur_recom_read,
-        # A list of host group IDs.  Hoping that the interface decodes this.
+    # Kessel allow standard user access to host group 1
+    kessel_user_in_workspace_host_group_1 = [(
+        kessel_std_user_obj,
         [host_group_1_id]
     )]
     # Note - because these are lists you can use + to join them together to
