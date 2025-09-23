@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import responses
+
 from django.http import HttpRequest
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -28,7 +30,7 @@ from api.permissions import (
     RBACPermission, RHIdentityAuthentication, ResourceScope,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
     auth_to_request, request_object_for_testing, request_to_username,
-    turnpike_auth_header_for_testing
+    turnpike_auth_header_for_testing, make_rbac_url
 )
 from api.tests import constants
 
@@ -38,6 +40,12 @@ import base64
 def b64s(s):
     return base64.b64encode(s.encode())
 
+
+TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspace/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 turnpike_defaults = {
     'Role': [], 'email': 'testuser@redhat.com', 'givenName': 'Test',
@@ -524,8 +532,17 @@ class TestInsightsRBACPermissionKessel(TestCase):
         }
         self.assertFalse(irbp.has_permission(request, view))
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @add_kessel_response(
+        permission_checks=constants.kessel_allow_disable_recom_rw,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
     def test_kessel_resourcescope_host_object_permissions(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
         # Set up the various permissions objects
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
         self.assertTrue(hasattr(request, 'user'))
