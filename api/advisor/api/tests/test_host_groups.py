@@ -26,10 +26,18 @@ from api import kessel
 from api.tests import constants, rbac_data, update_stale_dates
 from api.permissions import (
     host_group_attr, auth_header_for_testing,
-    find_host_groups, request_object_for_testing
+    find_host_groups, make_rbac_url, request_object_for_testing
 )
 
-TEST_RBAC_URL = 'http://rbac.svc/'
+TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V1_ACCESS = make_rbac_url(
+    "access/?application=advisor,tasks,inventory&limit=1000",
+    rbac_base=TEST_RBAC_URL
+)
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspace/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 
 class HostGroupsTestCase(TestCase):
@@ -293,7 +301,7 @@ class HostGroupsTestCase(TestCase):
     @responses.activate
     def test_groups_match(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=200,
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200,
             json=rbac_data(groups=[constants.host_group_1_id])
         )
         #
@@ -368,12 +376,13 @@ class HostGroupsTestCase(TestCase):
         permission_checks=constants.kessel_allow_recom_read_ro,
         resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
+    @responses.activate
     def test_groups_match_kessel_enabled_recom_read_only(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
         # No RBACv1 use when Kessel enabled
-        # Use the add_kessel_response decorator / context handler rather than:
-        # sync_kessel_with_model()
-        # kessel.client.grant_access_to_org(constants.standard_user_id, "advisor:*:*", [constants.standard_org])
-        # kessel.client.grant_access_to_workspace(constants.standard_user_id, "inventory:hosts:read", [constants.host_group_1_id])
         page = self._get_view('rule-list')
         self.assertEqual(page['meta']['count'], 3)
         self.assertEqual(len(page['data']), 3)
@@ -383,92 +392,93 @@ class HostGroupsTestCase(TestCase):
         self.assertEqual(len(page['data']), 1)
         self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
 
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
     def test_groups_match_query_param(self):
         # No groups defined in RBAC, but given as query parameter
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=200, json=rbac_data()
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200, json=rbac_data()
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
-            # Pathways systems list
-            page = self._get_view(
-                'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']},
-                data={'groups': constants.host_group_1_name}
-            )
-            self.assertEqual(page['meta']['count'], 1)  # one system
-            self.assertEqual(len(page['data']), 1)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
-            # Rules list - systems counts will change
-            page = self._get_view(
-                'rule-list', data={'groups': constants.host_group_1_name}
-            )
-            self.assertEqual(page['meta']['count'], 3)
-            self.assertEqual(len(page['data']), 3)
-            self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
-            self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
-            self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
-            self.assertEqual(page['data'][1]['impacted_systems_count'], 1)
-            self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
-            self.assertEqual(page['data'][2]['impacted_systems_count'], 0)
-            # Systems list
-            page = self._get_view(
-                'system-list', data={'groups': constants.host_group_1_name}
-            )
-            self.assertEqual(page['meta']['count'], 1)  # one system
-            self.assertEqual(len(page['data']), 1)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
-            # Systems detail - system not in group
-            response = self.client.get(
-                reverse(
-                    'system-detail', kwargs={'uuid': constants.host_05_uuid}
-                ), data={'groups': constants.host_group_1_name},
-                **auth_header_for_testing()
-            )
-            self.assertEqual(response.status_code, 404, response.content.decode())
-            # Systems detail - system in group
-            page = self._get_view(
-                'system-detail', view_kwargs={'uuid': constants.host_01_uuid},
-                data={'groups': constants.host_group_1_name}
-            )
-            self.assertEqual(page['display_name'], constants.host_01_name)
-            # Export views
-            headers = auth_header_for_testing()
-            headers['HTTP_ACCEPT'] = 'text/csv'
-            response = self.client.get(
-                reverse('export-hits-list'),
-                data={'groups': constants.host_group_1_name}, **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
-            self.assertEqual(row_data[0]['rhel_version'], '7.5')
-            self.assertEqual(row_data[0]['title'], constants.active_title)
-            self.assertEqual(len(row_data), 1)
-            response = self.client.get(
-                reverse('export-systems-list'),
-                data={'groups': constants.host_group_1_name}, **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['display_name'], constants.host_01_name)
-            self.assertEqual(len(row_data), 1)
-            # Stats views
-            stats = self._get_view(
-                'stats-systems', data={'groups': constants.host_group_1_name}
-            )
-            # Systems in account 1234567 in host group 1: system 01
-            self.assertEqual(
-                stats,
-                {
-                    'total': 1,
-                    'category': {
-                        'Availability': 1,
-                        'Performance': 0,
-                        'Security': 0,
-                        'Stability': 0
-                    },
-                    'total_risk': {'1': 1, '2': 0, '3': 0, '4': 0}
-                }
-            )
+        # Pathways systems list
+        page = self._get_view(
+            'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']},
+            data={'groups': constants.host_group_1_name}
+        )
+        self.assertEqual(page['meta']['count'], 1)  # one system
+        self.assertEqual(len(page['data']), 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+        # Rules list - systems counts will change
+        page = self._get_view(
+            'rule-list', data={'groups': constants.host_group_1_name}
+        )
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
+        self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
+        self.assertEqual(page['data'][1]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
+        self.assertEqual(page['data'][2]['impacted_systems_count'], 0)
+        # Systems list
+        page = self._get_view(
+            'system-list', data={'groups': constants.host_group_1_name}
+        )
+        self.assertEqual(page['meta']['count'], 1)  # one system
+        self.assertEqual(len(page['data']), 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+        # Systems detail - system not in group
+        response = self.client.get(
+            reverse(
+                'system-detail', kwargs={'uuid': constants.host_05_uuid}
+            ), data={'groups': constants.host_group_1_name},
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 404, response.content.decode())
+        # Systems detail - system in group
+        page = self._get_view(
+            'system-detail', view_kwargs={'uuid': constants.host_01_uuid},
+            data={'groups': constants.host_group_1_name}
+        )
+        self.assertEqual(page['display_name'], constants.host_01_name)
+        # Export views
+        headers = auth_header_for_testing()
+        headers['HTTP_ACCEPT'] = 'text/csv'
+        response = self.client.get(
+            reverse('export-hits-list'),
+            data={'groups': constants.host_group_1_name}, **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['rhel_version'], '7.5')
+        self.assertEqual(row_data[0]['title'], constants.active_title)
+        self.assertEqual(len(row_data), 1)
+        response = self.client.get(
+            reverse('export-systems-list'),
+            data={'groups': constants.host_group_1_name}, **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['display_name'], constants.host_01_name)
+        self.assertEqual(len(row_data), 1)
+        # Stats views
+        stats = self._get_view(
+            'stats-systems', data={'groups': constants.host_group_1_name}
+        )
+        # Systems in account 1234567 in host group 1: system 01
+        self.assertEqual(
+            stats,
+            {
+                'total': 1,
+                'category': {
+                    'Availability': 1,
+                    'Performance': 0,
+                    'Security': 0,
+                    'Stability': 0
+                },
+                'total_risk': {'1': 1, '2': 0, '3': 0, '4': 0}
+            }
+        )
 
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
     def test_groups_match_several_ihr_entries(self):
         multiple_ihr_entries_rbac = rbac_data(groups=[constants.host_group_1_id])
@@ -481,252 +491,252 @@ class HostGroupsTestCase(TestCase):
             }}]
         })
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=200,
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200,
             json=multiple_ihr_entries_rbac
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
-            # Pathways systems list
-            page = self._get_view(
-                'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
-            )
-            self.assertEqual(page['meta']['count'], 2)  # two systems
-            self.assertEqual(len(page['data']), 2)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
-            self.assertEqual(page['data'][1]['display_name'], constants.host_03_name)
-            # Rules list - systems counts will change
-            page = self._get_view('rule-list')
-            self.assertEqual(page['meta']['count'], 3)
-            self.assertEqual(len(page['data']), 3)
-            self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
-            self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
-            self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
-            self.assertEqual(page['data'][1]['impacted_systems_count'], 2)
-            self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
-            self.assertEqual(page['data'][2]['impacted_systems_count'], 1)
-            # Systems list
-            page = self._get_view('system-list')
-            self.assertEqual(page['meta']['count'], 2)
-            self.assertEqual(len(page['data']), 2)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
-            self.assertEqual(page['data'][1]['display_name'], constants.host_01_name)
-            # Systems detail - system not in group
-            response = self.client.get(
-                reverse(
-                    'system-detail', kwargs={'uuid': constants.host_05_uuid}
-                ),
-                **auth_header_for_testing()
-            )
-            self.assertEqual(response.status_code, 404, response.content.decode())
-            # Systems detail - system in group
-            page = self._get_view(
-                'system-detail', view_kwargs={'uuid': constants.host_01_uuid}
-            )
-            self.assertEqual(page['display_name'], constants.host_01_name)
-            # Export views
-            headers = auth_header_for_testing()
-            headers['HTTP_ACCEPT'] = 'text/csv'
-            response = self.client.get(
-                reverse('export-hits-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
-            self.assertEqual(row_data[0]['title'], constants.active_title)
-            self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
-            self.assertEqual(row_data[1]['title'], constants.active_title)
-            self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
-            self.assertEqual(row_data[2]['title'], constants.second_title)
-            self.assertEqual(len(row_data), 3)
-            response = self.client.get(
-                reverse('export-systems-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
-            self.assertEqual(row_data[1]['display_name'], constants.host_01_name)
-            self.assertEqual(len(row_data), 2)
-            # Stats views
-            stats = self._get_view('stats-systems')
-            # Systems in account 1234567 in host group 1 or 2: system 01, 03
-            self.assertEqual(
-                stats,
-                {
-                    'total': 2,
-                    'category': {
-                        'Availability': 2,
-                        'Performance': 1,
-                        'Security': 0,
-                        'Stability': 0
-                    },
-                    'total_risk': {'1': 2, '2': 0, '3': 0, '4': 0}
-                }
-            )
+        # Pathways systems list
+        page = self._get_view(
+            'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
+        )
+        self.assertEqual(page['meta']['count'], 2)  # two systems
+        self.assertEqual(len(page['data']), 2)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_03_name)
+        # Rules list - systems counts will change
+        page = self._get_view('rule-list')
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
+        self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
+        self.assertEqual(page['data'][1]['impacted_systems_count'], 2)
+        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
+        self.assertEqual(page['data'][2]['impacted_systems_count'], 1)
+        # Systems list
+        page = self._get_view('system-list')
+        self.assertEqual(page['meta']['count'], 2)
+        self.assertEqual(len(page['data']), 2)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_01_name)
+        # Systems detail - system not in group
+        response = self.client.get(
+            reverse(
+                'system-detail', kwargs={'uuid': constants.host_05_uuid}
+            ),
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 404, response.content.decode())
+        # Systems detail - system in group
+        page = self._get_view(
+            'system-detail', view_kwargs={'uuid': constants.host_01_uuid}
+        )
+        self.assertEqual(page['display_name'], constants.host_01_name)
+        # Export views
+        headers = auth_header_for_testing()
+        headers['HTTP_ACCEPT'] = 'text/csv'
+        response = self.client.get(
+            reverse('export-hits-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['title'], constants.active_title)
+        self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[1]['title'], constants.active_title)
+        self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[2]['title'], constants.second_title)
+        self.assertEqual(len(row_data), 3)
+        response = self.client.get(
+            reverse('export-systems-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
+        self.assertEqual(row_data[1]['display_name'], constants.host_01_name)
+        self.assertEqual(len(row_data), 2)
+        # Stats views
+        stats = self._get_view('stats-systems')
+        # Systems in account 1234567 in host group 1 or 2: system 01, 03
+        self.assertEqual(
+            stats,
+            {
+                'total': 2,
+                'category': {
+                    'Availability': 2,
+                    'Performance': 1,
+                    'Security': 0,
+                    'Stability': 0
+                },
+                'total_risk': {'1': 2, '2': 0, '3': 0, '4': 0}
+            }
+        )
 
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
     def test_groups_match_group_string(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=200,
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200,
             json=rbac_data(groups=f'["{constants.host_group_1_id}"]')
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
-            # Pathways systems list
-            page = self._get_view(
-                'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
-            )
-            self.assertEqual(page['meta']['count'], 1)  # one system
-            self.assertEqual(len(page['data']), 1)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
-            # Rules list - systems counts will change
-            page = self._get_view('rule-list')
-            self.assertEqual(page['meta']['count'], 3)
-            self.assertEqual(len(page['data']), 3)
-            self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
-            self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
-            self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
-            self.assertEqual(page['data'][1]['impacted_systems_count'], 1)
-            self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
-            self.assertEqual(page['data'][2]['impacted_systems_count'], 0)
-            # Systems list
-            page = self._get_view('system-list')
-            self.assertEqual(page['meta']['count'], 1)  # one system
-            self.assertEqual(len(page['data']), 1)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
-            # Systems detail - system not in group
-            response = self.client.get(
-                reverse(
-                    'system-detail', kwargs={'uuid': constants.host_05_uuid}
-                ),
-                **auth_header_for_testing()
-            )
-            self.assertEqual(response.status_code, 404, response.content.decode())
-            # Systems detail - system in group
-            page = self._get_view(
-                'system-detail', view_kwargs={'uuid': constants.host_01_uuid}
-            )
-            self.assertEqual(page['display_name'], constants.host_01_name)
-            # Export views
-            headers = auth_header_for_testing()
-            headers['HTTP_ACCEPT'] = 'text/csv'
-            response = self.client.get(
-                reverse('export-hits-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
-            self.assertEqual(row_data[0]['rhel_version'], '7.5')
-            self.assertEqual(row_data[0]['title'], constants.active_title)
-            self.assertEqual(len(row_data), 1)
-            response = self.client.get(
-                reverse('export-systems-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['display_name'], constants.host_01_name)
-            self.assertEqual(len(row_data), 1)
-            # Stats views
-            stats = self._get_view('stats-systems')
-            # Systems in account 1234567 in host group 1: system 01
-            self.assertEqual(
-                stats,
-                {
-                    'total': 1,
-                    'category': {
-                        'Availability': 1,
-                        'Performance': 0,
-                        'Security': 0,
-                        'Stability': 0
-                    },
-                    'total_risk': {'1': 1, '2': 0, '3': 0, '4': 0}
-                }
-            )
+        # Pathways systems list
+        page = self._get_view(
+            'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
+        )
+        self.assertEqual(page['meta']['count'], 1)  # one system
+        self.assertEqual(len(page['data']), 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+        # Rules list - systems counts will change
+        page = self._get_view('rule-list')
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
+        self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
+        self.assertEqual(page['data'][1]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
+        self.assertEqual(page['data'][2]['impacted_systems_count'], 0)
+        # Systems list
+        page = self._get_view('system-list')
+        self.assertEqual(page['meta']['count'], 1)  # one system
+        self.assertEqual(len(page['data']), 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+        # Systems detail - system not in group
+        response = self.client.get(
+            reverse(
+                'system-detail', kwargs={'uuid': constants.host_05_uuid}
+            ),
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 404, response.content.decode())
+        # Systems detail - system in group
+        page = self._get_view(
+            'system-detail', view_kwargs={'uuid': constants.host_01_uuid}
+        )
+        self.assertEqual(page['display_name'], constants.host_01_name)
+        # Export views
+        headers = auth_header_for_testing()
+        headers['HTTP_ACCEPT'] = 'text/csv'
+        response = self.client.get(
+            reverse('export-hits-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['rhel_version'], '7.5')
+        self.assertEqual(row_data[0]['title'], constants.active_title)
+        self.assertEqual(len(row_data), 1)
+        response = self.client.get(
+            reverse('export-systems-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['display_name'], constants.host_01_name)
+        self.assertEqual(len(row_data), 1)
+        # Stats views
+        stats = self._get_view('stats-systems')
+        # Systems in account 1234567 in host group 1: system 01
+        self.assertEqual(
+            stats,
+            {
+                'total': 1,
+                'category': {
+                    'Availability': 1,
+                    'Performance': 0,
+                    'Security': 0,
+                    'Stability': 0
+                },
+                'total_risk': {'1': 1, '2': 0, '3': 0, '4': 0}
+            }
+        )
 
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
     def test_groups_match_null_group(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=200,
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200,
             json=rbac_data(groups=[constants.host_group_2_id, None])
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
-            # Pathways systems list
-            page = self._get_view(
-                'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
-            )
-            self.assertEqual(page['meta']['count'], 3)
-            self.assertEqual(len(page['data']), 3)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_06_name)
-            self.assertEqual(page['data'][1]['display_name'], constants.host_03_name)
-            self.assertEqual(page['data'][2]['display_name'], constants.host_04_name)
-            # Rules list - systems counts will change (most hosts but not group 1)
-            page = self._get_view('rule-list')
-            self.assertEqual(page['meta']['count'], 3)
-            self.assertEqual(len(page['data']), 3)
-            self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
-            self.assertEqual(page['data'][0]['impacted_systems_count'], 0)  # group 1
-            self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
-            self.assertEqual(page['data'][1]['impacted_systems_count'], 3)
-            self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
-            self.assertEqual(page['data'][2]['impacted_systems_count'], 2)
-            # Systems list
-            page = self._get_view('system-list')
-            self.assertEqual(page['meta']['count'], 4)
-            self.assertEqual(len(page['data']), 4)
-            # not host 1 which is in group 1, but hosts which have no group set
-            # Ordered by... display name?
-            self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
-            self.assertEqual(page['data'][1]['display_name'], constants.host_04_name)
-            self.assertEqual(page['data'][2]['display_name'], constants.host_06_name)
-            self.assertEqual(page['data'][3]['display_name'], constants.host_05_name)
-            # Systems detail - system not in group
-            response = self.client.get(
-                reverse(
-                    'system-detail', kwargs={'uuid': constants.host_01_uuid}
-                ),
-                **auth_header_for_testing()
-            )
-            self.assertEqual(response.status_code, 404, response.content.decode())
-            # Systems detail - system in group
-            page = self._get_view(
-                'system-detail', view_kwargs={'uuid': constants.host_05_uuid}
-            )
-            self.assertEqual(page['display_name'], constants.host_05_name)
-            # Export views
-            headers = auth_header_for_testing()
-            headers['HTTP_ACCEPT'] = 'text/csv'
-            response = self.client.get(
-                reverse('export-hits-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['hostname'], constants.host_03_name)
-            self.assertEqual(row_data[0]['rhel_version'], '7.5')
-            self.assertEqual(row_data[0]['title'], constants.active_title)
-            self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
-            self.assertEqual(row_data[1]['title'], constants.second_title)
-            self.assertEqual(row_data[2]['hostname'], constants.host_04_name)
-            self.assertEqual(row_data[2]['title'], constants.active_title)
-            self.assertEqual(row_data[3]['hostname'], constants.host_04_name)
-            self.assertEqual(row_data[3]['title'], constants.second_title)
-            self.assertEqual(row_data[4]['hostname'], constants.host_06_name)
-            self.assertEqual(row_data[4]['title'], constants.active_title)
-            self.assertEqual(len(row_data), 5)
-            response = self.client.get(
-                reverse('export-systems-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
-            self.assertEqual(len(row_data), 4)
-            # Stats views
-            stats = self._get_view('stats-systems')
-            # Systems in account 1234567 not in host group 1: system 3, 4, (5), 6
-            self.assertEqual(
-                stats,
-                {
-                    'total': 3,
-                    'category': {
-                        'Availability': 3,
-                        'Performance': 2,
-                        'Security': 0,
-                        'Stability': 0
-                    },
-                    'total_risk': {'1': 3, '2': 0, '3': 0, '4': 0}
-                }
-            )
+        # Pathways systems list
+        page = self._get_view(
+            'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
+        )
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_06_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_03_name)
+        self.assertEqual(page['data'][2]['display_name'], constants.host_04_name)
+        # Rules list - systems counts will change (most hosts but not group 1)
+        page = self._get_view('rule-list')
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
+        self.assertEqual(page['data'][0]['impacted_systems_count'], 0)  # group 1
+        self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
+        self.assertEqual(page['data'][1]['impacted_systems_count'], 3)
+        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
+        self.assertEqual(page['data'][2]['impacted_systems_count'], 2)
+        # Systems list
+        page = self._get_view('system-list')
+        self.assertEqual(page['meta']['count'], 4)
+        self.assertEqual(len(page['data']), 4)
+        # not host 1 which is in group 1, but hosts which have no group set
+        # Ordered by... display name?
+        self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_04_name)
+        self.assertEqual(page['data'][2]['display_name'], constants.host_06_name)
+        self.assertEqual(page['data'][3]['display_name'], constants.host_05_name)
+        # Systems detail - system not in group
+        response = self.client.get(
+            reverse(
+                'system-detail', kwargs={'uuid': constants.host_01_uuid}
+            ),
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 404, response.content.decode())
+        # Systems detail - system in group
+        page = self._get_view(
+            'system-detail', view_kwargs={'uuid': constants.host_05_uuid}
+        )
+        self.assertEqual(page['display_name'], constants.host_05_name)
+        # Export views
+        headers = auth_header_for_testing()
+        headers['HTTP_ACCEPT'] = 'text/csv'
+        response = self.client.get(
+            reverse('export-hits-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[0]['rhel_version'], '7.5')
+        self.assertEqual(row_data[0]['title'], constants.active_title)
+        self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[1]['title'], constants.second_title)
+        self.assertEqual(row_data[2]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[2]['title'], constants.active_title)
+        self.assertEqual(row_data[3]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[3]['title'], constants.second_title)
+        self.assertEqual(row_data[4]['hostname'], constants.host_06_name)
+        self.assertEqual(row_data[4]['title'], constants.active_title)
+        self.assertEqual(len(row_data), 5)
+        response = self.client.get(
+            reverse('export-systems-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
+        self.assertEqual(len(row_data), 4)
+        # Stats views
+        stats = self._get_view('stats-systems')
+        # Systems in account 1234567 not in host group 1: system 3, 4, (5), 6
+        self.assertEqual(
+            stats,
+            {
+                'total': 3,
+                'category': {
+                    'Availability': 3,
+                    'Performance': 2,
+                    'Security': 0,
+                    'Stability': 0
+                },
+                'total_risk': {'1': 3, '2': 0, '3': 0, '4': 0}
+            }
+        )
 
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
     def test_groups_match_include_all(self):
         multiple_ihr_entries_rbac = rbac_data(groups=[constants.host_group_1_id])
@@ -735,90 +745,89 @@ class HostGroupsTestCase(TestCase):
             'resourceDefinitions': []
         })
         responses.add(
-            responses.GET, TEST_RBAC_URL, status=200,
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200,
             json=multiple_ihr_entries_rbac
         )
-        with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
-            # Should be all systems now
-            # Pathways systems list
-            page = self._get_view(
-                'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
-            )
-            self.assertEqual(page['meta']['count'], 4)
-            self.assertEqual(len(page['data']), 4)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_06_name)
-            self.assertEqual(page['data'][1]['display_name'], constants.host_01_name)
-            self.assertEqual(page['data'][2]['display_name'], constants.host_03_name)
-            self.assertEqual(page['data'][3]['display_name'], constants.host_04_name)
-            # Rules list - systems counts will change
-            page = self._get_view('rule-list')
-            self.assertEqual(page['meta']['count'], 3)
-            self.assertEqual(len(page['data']), 3)
-            self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
-            self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
-            self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
-            self.assertEqual(page['data'][1]['impacted_systems_count'], 4)
-            self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
-            self.assertEqual(page['data'][2]['impacted_systems_count'], 2)
-            # Systems list
-            page = self._get_view('system-list')
-            self.assertEqual(page['meta']['count'], 5)
-            self.assertEqual(len(page['data']), 5)
-            self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
-            self.assertEqual(page['data'][1]['display_name'], constants.host_04_name)
-            self.assertEqual(page['data'][2]['display_name'], constants.host_01_name)
-            self.assertEqual(page['data'][3]['display_name'], constants.host_06_name)
-            self.assertEqual(page['data'][4]['display_name'], constants.host_05_name)
-            # Systems detail - system not in group
-            response = self.client.get(
-                reverse(
-                    'system-detail', kwargs={'uuid': constants.host_e1_uuid}
-                ),
-                **auth_header_for_testing()
-            )
-            self.assertEqual(response.status_code, 404, response.content.decode())
-            # Systems detail - system in group
-            page = self._get_view(
-                'system-detail', view_kwargs={'uuid': constants.host_01_uuid}
-            )
-            self.assertEqual(page['display_name'], constants.host_01_name)
-            # Export views
-            headers = auth_header_for_testing()
-            headers['HTTP_ACCEPT'] = 'text/csv'
-            response = self.client.get(
-                reverse('export-hits-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
-            self.assertEqual(row_data[0]['title'], constants.active_title)
-            self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
-            self.assertEqual(row_data[1]['title'], constants.active_title)
-            self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
-            self.assertEqual(row_data[2]['title'], constants.second_title)
-            self.assertEqual(len(row_data), 6)
-            response = self.client.get(
-                reverse('export-systems-list'), **headers
-            )
-            row_data = self._get_export_view(response)
-            self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
-            self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
-            self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
-            self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
-            self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
-            self.assertEqual(len(row_data), 5)
-            # Stats views
-            stats = self._get_view('stats-systems')
-            # Systems in account 1234567 no host groups filtered: 1, 3, 4, 5, 6
-            self.assertEqual(
-                stats,
-                {
-                    'total': 4,
-                    'category': {
-                        'Availability': 4,
-                        'Performance': 2,
-                        'Security': 0,
-                        'Stability': 0
-                    },
-                    'total_risk': {'1': 4, '2': 0, '3': 0, '4': 0}
-                }
-            )
+        # Should be all systems now
+        # Pathways systems list
+        page = self._get_view(
+            'pathway-systems', view_kwargs={'slug': constants.first_pathway['slug']}
+        )
+        self.assertEqual(page['meta']['count'], 4)
+        self.assertEqual(len(page['data']), 4)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_06_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_01_name)
+        self.assertEqual(page['data'][2]['display_name'], constants.host_03_name)
+        self.assertEqual(page['data'][3]['display_name'], constants.host_04_name)
+        # Rules list - systems counts will change
+        page = self._get_view('rule-list')
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
+        self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
+        self.assertEqual(page['data'][1]['impacted_systems_count'], 4)
+        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
+        self.assertEqual(page['data'][2]['impacted_systems_count'], 2)
+        # Systems list
+        page = self._get_view('system-list')
+        self.assertEqual(page['meta']['count'], 5)
+        self.assertEqual(len(page['data']), 5)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_04_name)
+        self.assertEqual(page['data'][2]['display_name'], constants.host_01_name)
+        self.assertEqual(page['data'][3]['display_name'], constants.host_06_name)
+        self.assertEqual(page['data'][4]['display_name'], constants.host_05_name)
+        # Systems detail - system not in group
+        response = self.client.get(
+            reverse(
+                'system-detail', kwargs={'uuid': constants.host_e1_uuid}
+            ),
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 404, response.content.decode())
+        # Systems detail - system in group
+        page = self._get_view(
+            'system-detail', view_kwargs={'uuid': constants.host_01_uuid}
+        )
+        self.assertEqual(page['display_name'], constants.host_01_name)
+        # Export views
+        headers = auth_header_for_testing()
+        headers['HTTP_ACCEPT'] = 'text/csv'
+        response = self.client.get(
+            reverse('export-hits-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['title'], constants.active_title)
+        self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[1]['title'], constants.active_title)
+        self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[2]['title'], constants.second_title)
+        self.assertEqual(len(row_data), 6)
+        response = self.client.get(
+            reverse('export-systems-list'), **headers
+        )
+        row_data = self._get_export_view(response)
+        self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
+        self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
+        self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
+        self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
+        self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
+        self.assertEqual(len(row_data), 5)
+        # Stats views
+        stats = self._get_view('stats-systems')
+        # Systems in account 1234567 no host groups filtered: 1, 3, 4, 5, 6
+        self.assertEqual(
+            stats,
+            {
+                'total': 4,
+                'category': {
+                    'Availability': 4,
+                    'Performance': 2,
+                    'Security': 0,
+                    'Stability': 0
+                },
+                'total_risk': {'1': 4, '2': 0, '3': 0, '4': 0}
+            }
+        )
