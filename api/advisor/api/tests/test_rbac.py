@@ -583,7 +583,7 @@ class KesselTestCase(TestCase):
         self.assertTrue(kessel_response)
         self.assertEqual(time, 0.0)
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     def test_kessel_host_none_in_resourcescope_host(self):
         # The ValueError raised is caught by the try/except in there,
         # generates a log message and returns False, 0.0
@@ -598,7 +598,7 @@ class KesselTestCase(TestCase):
         self.assertFalse(kessel_response)
         self.assertEqual(time, 0.0)
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     def test_kessel_host_check_ok(self):
         with add_kessel_response(
             permission_checks=constants.kessel_allow_host_01_read
