@@ -137,12 +137,11 @@ def get_resources(
     generator object (...)
 
     """
+    # logger.debug(f"Get resources({object_type}, {relation}, {subject})")
     continuation_token = None
-    while (
-        response := _get_resource_page(
-            object_type, relation, subject, limit, continuation_token
-        ) is not None
-    ):
+    while (response := _get_resource_page(
+        client_stub, object_type, relation, subject, limit, continuation_token
+    )) is not None:
         for data in response:
             yield data.object
         if not fetch_all:
@@ -167,8 +166,9 @@ def _get_resource_page(
     Get a single page, of at most limit size, from continuation_token (or
     start if None).
     """
+    logger.debug(f"Get resource page({object_type}, {relation}, {subject}, {limit})")
     request = streamed_list_objects_request_pb2.StreamedListObjectsRequest(
-        object_type=object_type,
+        object_type=object_type,  # already a PB2 object
         relation=relation,
         subject=subject,
         pagination=request_pagination_pb2.RequestPagination(
@@ -198,16 +198,17 @@ class add_kessel_response(object):
         # The client here is the Kessel object, its client is the
         # gRPC Client interface.
         for check, response in self.temporary_permission_checks:
-            logger.debug(f"Adding permission check response for {check} = {response}")
+            # logger.debug(f"Adding permission check response for {check} = {response}")
             client.client.add_permission_check_response(check, response)
-        for request, response in self.temporary_resource_lookups:
-            client.client.add_lookup_resources_response(request, response)
+        for resource, response in self.temporary_resource_lookups:
+            # logger.debug(f"Adding resource lookup response for {resource} = {response}")
+            client.client.add_lookup_resources_response(resource, response)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for check, _ in self.temporary_permission_checks:
             client.client.del_permission_check_response(check)
-        for request, _ in self.temporary_resource_lookups:
-            client.client.del_lookup_resources_response(request)
+        for resource, _ in self.temporary_resource_lookups:
+            client.client.del_lookup_resources_response(resource)
         return False  # or context manager raises exception
 
     def __call__(self, fn):
@@ -217,7 +218,7 @@ class add_kessel_response(object):
         return wrapper
 
 
-class TestClient(object):
+class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
     """
     A gRPC client that can store up and then send responses to permission
     and resource lookup requests.  Based, very roughly, on the `responses`
@@ -249,11 +250,17 @@ class TestClient(object):
         this list of host groups by UUID.  At this stage we only look up
         the workspaces the user has the 'member' relationship to, so we treat
         the 'relation' and 'object type' being searched for here as static.
-        Maybe we need to have a 'LookupRequest' namespace object here?
+        If we need to more lookups, the things handed in here will need to be
+        more complex.
         """
         lookup_str = str(subject)
         response_objs = [
-            SimpleNamespace(resource_id=response_id)
+            SimpleNamespace(
+                object=SimpleNamespace(resource_id=response_id),
+                pagination=SimpleNamespace(
+                    continuation_token=None
+                )
+            )
             for response_id in response_ids
         ]
         self.lookup_resources_responses[lookup_str] = response_objs
@@ -279,7 +286,7 @@ class TestClient(object):
         check_str = str(check)
         # We should be checking this when we've been given an override, so
         # permission_check_responses should not be empty.
-        logger.info(f"Check faked for {check_str}")
+        # logger.info(f"Check faked for {check_str}")
         if check_str in self.permission_check_responses:
             return self.permission_check_responses[check_str]
         else:
@@ -295,8 +302,11 @@ class TestClient(object):
         """
         subject = request.subject  # (type coversion?)
         subject_str = str(subject)
-        logger.info(f"StreamedListObjects faked for {subject_str}")
         if subject_str in self.lookup_resources_responses:
+            # logger.info(
+            #     "StreamedListObjects faked for %s = %s", subject_str,
+            #     self.lookup_resources_responses[subject_str]
+            # )
             return self.lookup_resources_responses[subject_str]
         else:
             raise NotImplementedError(f"Response for lookup {subject_str} not implemented")
@@ -337,7 +347,8 @@ class Kessel:
                 object=resource.as_pb2(),
             )
         )
-        result = response.allowed
+        # Note: we treat 'UNSPECIFIED' as 'DENIED' for security.
+        result = (response.allowed == ALLOWED)
         return result, time.time() - start
 
     def host_groups_for(
@@ -351,7 +362,8 @@ class Kessel:
         result = [
             response_object.resource_id
             for response_object in get_resources(
-                self.client, workspace_object_type, 'inventory_host_view', subject
+                self.client, workspace_object_type,
+                'inventory_host_view', subject.as_pb2()
                 # , limit=100?
             )
         ]
