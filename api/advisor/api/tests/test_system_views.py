@@ -519,8 +519,6 @@ class SystemViewTestCase(TestCase):
         # Should NOT see stale_hide or stale_hide_2 hosts here.
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
-    # Our Test Zed client doesn't allow us to explicitly specify wildcards,
-    # because it has no idea what these things are.  It just matches exactly.
     @kessel.add_kessel_response(
         permission_checks=constants.kessel_allow_disable_recom_rw,
         resource_lookups=constants.kessel_user_in_workspace_host_group_1
@@ -758,6 +756,8 @@ class SystemHighSevViewTestCase(TestCase):
         'basic_test_data', 'high_severity_rule', 'high_severity_reports',
     ]
 
+    std_auth_header = auth_header_for_testing()
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -790,6 +790,8 @@ class SystemHostTagsViewTestCase(TestCase):
         'basic_test_data', 'host_tag_test_data',
     ]
 
+    tags_auth_header = auth_header_for_testing(account='1000000', org_id='1000000')
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -806,7 +808,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIsInstance(json, dict)
@@ -831,7 +833,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -844,7 +846,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SFO,customer/security=high'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -858,7 +860,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SFO,customer/security=low'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -871,7 +873,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=MSP'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -882,7 +884,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SFO,AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -893,7 +895,7 @@ class SystemHostTagsViewTestCase(TestCase):
         #  Test that tags can be used in both tags=tag1,tag2 as well as tags=tag1&tags=tag2 formats
         response = self.client.get(
             reverse('system-list') + '?tags=AWS/location=SFO,customer/environment=web&tags=customer/security=low',
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
 
         json = self._response_is_good(response)
@@ -906,7 +908,7 @@ class SystemHostTagsViewTestCase(TestCase):
         with self.settings(INVENTORY_TAG_FILTERING=True):
             response = self.client.get(
                 reverse('system-list') + '?tags=AWS/location=SFO,customer/environment=web&tags=customer/security=low',
-                **auth_header_for_testing(account='1000000', org_id='1000000')
+                **self.tags_auth_header
             )
 
             json = self._response_is_good(response)
@@ -920,7 +922,7 @@ class SystemHostTagsViewTestCase(TestCase):
             reverse('system-detail', kwargs={
                 'uuid': constants.host_ht_01_uuid
             }),
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         system = self._response_is_good(response)
         self.assertIn('hits', system)
@@ -938,7 +940,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         system = self._response_is_good(response)
         self.assertIn('system_uuid', system)
@@ -952,7 +954,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SFO'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         # And we should get a 404
         self.assertEqual(response.status_code, 404)
@@ -962,7 +964,7 @@ class SystemHostTagsViewTestCase(TestCase):
             reverse('system-reports', kwargs={
                 'uuid': constants.host_ht_01_uuid
             }),
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         rules = self._response_is_good(response)
         self.assertIsInstance(rules, list)
@@ -977,7 +979,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         rules = self._response_is_good(response)
         self.assertIsInstance(rules, list)
@@ -989,7 +991,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SFO'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         # We don't get a 404, we get no data.
         rules = self._response_is_good(response)
