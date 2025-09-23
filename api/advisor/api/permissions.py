@@ -447,9 +447,7 @@ def has_kessel_permission(
             # print("... for workspace")
             logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
-            result, elapsed = kessel.client.lookupResources(
-                kessel.Object("rbac", "workspace"),
-                'member',
+            result, elapsed = kessel.client.host_groups_for(
                 kessel.identity_to_subject(identity)
             )
         else:
@@ -470,8 +468,7 @@ def has_kessel_permission(
         logger.info("KESSEL: returned %s in %s", result, elapsed)
         return result, elapsed
     except Exception as e:
-        # TODO elapsed time
-        logger.error(f"Error calling kessel for {scope.name} access check '{e}'")
+        logger.error(f"Error calling kessel for {scope.name} access check: {e}")
         return (False, 0.0)
 
 
