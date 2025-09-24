@@ -22,9 +22,13 @@ import responses
 from django.test import TestCase
 from django.urls import reverse
 
-from api.permissions import auth_header_for_testing
+from api.permissions import auth_header_for_testing, make_rbac_url
 
 TEST_RBAC_URL = 'http://rbac.svc/'
+TEST_RBAC_V1_ACCESS = make_rbac_url(
+    "access/?application=advisor,tasks,inventory&limit=1000",
+    rbac_base=TEST_RBAC_URL
+)
 
 raw_insights_qa_identity = ''.join("""
 eyJlbnRpdGxlbWVudHMiOnsib3BlbnNoaWZ0Ijp
@@ -62,7 +66,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_allowed(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_ACCESS,
             json={'data': [{'permission': 'advisor:*:*'}, {'permission': 'tasks:*:*'}]}, status=200
         )
         with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
@@ -79,7 +83,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_allowed_full_response(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_ACCESS,
             json={
                 "meta": {
                     "count": 1,
@@ -121,7 +125,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_denied(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_ACCESS,
             json={'data': [{'permission': 'advisor:*:*'}]}, status=200
         )
         with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
