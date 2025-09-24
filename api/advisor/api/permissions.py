@@ -163,7 +163,7 @@ class RBACPermission(object):
         return f"{self.app}_{self.resource}_{method}"
 
 
-def make_rbac_request(rbac_url, request: Request) -> tuple[Response | None, float]:
+def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
     """
     Make a request to the RBAC service.  With RBAC v1 we check permissions,
     with RBAC v2 we check workspaces.
@@ -178,7 +178,7 @@ def make_rbac_request(rbac_url, request: Request) -> tuple[Response | None, floa
             "x-rh-rbac-psk": settings.RBAC_PSK,
             "x-rh-rbac-org-id": identity['org_id'],
         }
-        rbac_url += "&username=" + identity['username']
+        rbac_url += "&username=" + identity['user']['username']
     else:
         # Supply the full x-rh-identity header if we have it, because
         # that gives is_org_admin and other flags used by RBAC.
