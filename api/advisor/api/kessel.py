@@ -111,6 +111,10 @@ def identity_to_subject(identity: dict) -> SubjectRef:
     return SubjectRef(f"redhat/{user_id}", 'principal')
 
 
+#############################################################################
+# Streaming resource request/response handling
+#############################################################################
+
 # Hopefully at some stage we can just import these from the Kessel SDK.
 def get_resources(
     client_stub: inventory_service_pb2_grpc.KesselInventoryServiceStub,
@@ -180,6 +184,10 @@ def _get_resource_page(
     return client_stub.StreamedListObjects(request)
 
 
+#############################################################################
+# Test decorator
+#############################################################################
+
 class add_kessel_response(object):
     """
     A context manager that inserts specific test data for permission checks
@@ -217,6 +225,10 @@ class add_kessel_response(object):
                 fn(*args, **kwargs)
         return wrapper
 
+
+#############################################################################
+# The test client
+#############################################################################
 
 class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
     """
@@ -310,6 +322,11 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
             return self.lookup_resources_responses[subject_str]
         else:
             raise NotImplementedError(f"Response for lookup {subject_str} not implemented")
+
+
+#############################################################################
+# The interface we provide to the rest of our code.
+#############################################################################
 
 
 class Kessel:
