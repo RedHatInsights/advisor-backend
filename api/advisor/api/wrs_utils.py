@@ -16,6 +16,7 @@
 
 from os import environ
 
+from django.conf import settings
 from django.template.loader import render_to_string
 
 from api.models import WeeklyReportSubscription
@@ -58,14 +59,15 @@ def update_wrs(username, account, sub_desired=True, org_id=None, auto_subscribed
     Subscribe and/or Auto-Subscribe a user for a WeeklyReportSubscription.
 
     Only available if the user has permission to update their weekly report
-    settings.
+    settings (and RBAC enabled, of course).
     """
-    request = request_object_for_testing(
-        auth_by=RHIdentityAuthentication, org_id=org_id, username=username
-    )
-    success, elapsed = has_rbac_permission(request, 'advisor:weekly-report:write')
-    if not success:
-        return
+    if settings.RBAC_ENABLED:
+        request = request_object_for_testing(
+            auth_by=RHIdentityAuthentication, org_id=org_id, username=username
+        )
+        success, elapsed = has_rbac_permission(request, 'advisor:weekly-report:write')
+        if not success:
+            return
 
     sub_qs = WeeklyReportSubscription.objects.filter(
         username=username, org_id=org_id,
@@ -79,4 +81,4 @@ def update_wrs(username, account, sub_desired=True, org_id=None, auto_subscribed
         WeeklyReportSubscription.objects.update_or_create(
             username=username, account=account, org_id=org_id, last_email_at=None, autosub=auto_subscribed
         )
-        send_confirmation_email(request)
+        send_confirmation_email(username)
