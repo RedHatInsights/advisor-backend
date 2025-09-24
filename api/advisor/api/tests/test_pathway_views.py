@@ -248,8 +248,8 @@ class PathwayViewTestCase(TestCase):
         self.assertIn('data', pathway_page)
         self.assertIsInstance(pathway_page['data'], list)
         pathway_list = pathway_page['data']
-        self.assertEqual(len(pathway_list), 3)
-        self.assertEqual(pathway_list[0]['name'], constants.first_pathway['name'])
+        self.assertEqual(len(pathway_list), 7)
+        self.assertEqual(pathway_list[0]['name'], constants.no_reboot_required_pathway['name'])
 
         # test categories
         response = self.client.get(
@@ -421,7 +421,7 @@ class PathwayViewTestCase(TestCase):
         response = self.client.get(
             reverse('pathway-list'),
             data={'filter[system_profile][sap_sids][contains][]': 'E03'},
-            **auth_header_for_testing(org_id="9988776", account="1122334")
+            **auth_header_for_testing()
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -429,8 +429,8 @@ class PathwayViewTestCase(TestCase):
         self.assertIn('data', pathway_page)
         self.assertIsInstance(pathway_page['data'], list)
         pathway_list = pathway_page['data']
-        self.assertEqual(len(pathway_list), 1)
-        self.assertEqual(pathway_list[0]['name'], constants.first_pathway['name'])
+        self.assertEqual(len(pathway_list), 2)
+        self.assertEqual(pathway_list[0]['name'], constants.incident_pathway['name'])
 
         response = self.client.get(
             reverse('pathway-list'),
