@@ -47,15 +47,15 @@ SSL_CERT_FILE = "/etc/db/rdsclientca/rds_cacert"
 def _read_config_files(file_paths: dict) -> dict:
     """Read multiple config files and return their contents."""
     config = {}
-    
+
     if not all(os.path.isfile(path) for path in file_paths.values()):
         missing_files = [path for path in file_paths.values() if not os.path.isfile(path)]
         raise FileNotFoundError(f"Required config files are missing: {missing_files}")
-    
+
     for key, file_path in file_paths.items():
         with open(file_path) as file:
             config[key] = file.read().rstrip()
-    
+
     return config
 
 
@@ -194,6 +194,7 @@ def check_or_create_system_profile_tables():
     """
     _create_partitioned_table_if_missing(INVENTORY_SCHEMA, SYSTEM_PROFILE_DYNAMIC_TABLE_NAME, dynamic_columns_sql, partition_key="org_id")
 
+
 def check_or_create_system_profile_tables_indexes():
     static_indexes = [
         f"CREATE INDEX IF NOT EXISTS system_profiles_static_bootc_status_index ON {INVENTORY_SCHEMA}.{SYSTEM_PROFILE_STATIC_TABLE_NAME} USING btree (bootc_status)",
@@ -304,7 +305,7 @@ def drop_tables():
         SYSTEM_PROFILE_STATIC_TABLE_NAME,
         SYSTEM_PROFILE_DYNAMIC_TABLE_NAME
     ]
-    
+
     for table_name in tables_to_drop:
         drop_sql = f"DROP TABLE IF EXISTS {INVENTORY_SCHEMA}.{table_name} CASCADE"
         with connection.cursor() as cursor:
