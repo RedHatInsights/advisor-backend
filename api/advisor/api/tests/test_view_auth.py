@@ -27,7 +27,7 @@ from api.models import InventoryHost
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
     CertAuthPermission, InsightsRBACPermission, IsRedHatInternalUser,
-    RBACPermission, RHIdentityAuthentication, ResourceScope,
+    RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
     auth_to_request, request_object_for_testing, request_to_username,
     turnpike_auth_header_for_testing, make_rbac_url
@@ -379,21 +379,37 @@ class BadUseOfCertAuthPermission(TestCase):
 
 
 class RequestToUserNameTestCase(TestCase):
-    def test_missing_username(self):
+    def test_missing_fields(self):
+        # First - no username and no auth done yet.
+        request = HttpRequest()
+        self.assertFalse(hasattr(request, 'username'))
+        self.assertFalse(hasattr(request, 'auth'))
+        self.assertFalse(request_to_username(request))
+        # Then check handling of unknown identity type
         request = HttpRequest()
         request.META = {
             auth_header_key: b64s(
-                '{"identity": {"org_id": 9876543, "type": "User", '
+                '{"identity": {"org_id": 9876543, "type": "Certificate", '
                 '"user": {"is_internal": false}}}'
             ),
             'REMOTE_ADDR': 'test'
         }
-
-        with self.assertRaisesMessage(
-            AuthenticationFailed,
-            "'username' property not found in 'identity.user' section",
-        ):
-            request_to_username(request)
+        fake_auth_check(request, RHIdentityAuthentication)
+        self.assertFalse(hasattr(request, 'username'))
+        self.assertTrue(hasattr(request, 'auth'))
+        self.assertFalse(request_to_username(request))
+        # Then check handling when the type key is not in the identity
+        request = HttpRequest()
+        request.META = {
+            auth_header_key: b64s(
+                '{"identity": {"org_id": 9876543, "type": "User", '
+                '"certificate": {"is_internal": false}}}'
+            ),
+            'REMOTE_ADDR': 'test'
+        }
+        fake_auth_check(request, RHIdentityAuthentication)
+        self.assertFalse(hasattr(request, 'username'))
+        self.assertFalse(request_to_username(request))
 
 
 class IsRedHatInternalUserTestCase(TestCase):
@@ -449,6 +465,29 @@ class BaseRedHatUserTestCase(TestCase):
         with self.assertRaises(NotImplementedError):
             x = BaseRedHatUserPermission()
             x.has_red_hat_permission('request', 'view', 'user_data')
+
+
+class OrgPermissionTestCase(TestCase):
+    def test_basic_has_permission_steps(self):
+        orgperm = OrgPermission()
+        view = FakeView()
+        # Firstly, if no auth then false
+        rq = request_object_for_testing()
+        self.assertFalse(hasattr(rq, 'user'))
+        self.assertFalse(orgperm.has_permission(rq, view))
+        # Now for the second stage of the identity check
+        rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        self.assertTrue(hasattr(rq, 'user'))
+        self.assertTrue(hasattr(rq, 'auth'))
+        self.assertIsInstance(rq.auth, dict)
+        # Temporarily remove that...
+        auth_dict = rq.auth
+        rq.auth = None
+        self.assertFalse(orgperm.has_permission(rq, view))
+        # Now put it back and check that we get True if 'org_id' is present.
+        rq.auth = auth_dict
+        self.assertIn('org_id', rq.auth)
+        self.assertTrue(orgperm.has_permission(rq, view))
 
 
 class BadUsesOfAuthHeaderTestCase(TestCase):

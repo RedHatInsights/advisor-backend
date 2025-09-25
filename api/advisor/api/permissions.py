@@ -1138,26 +1138,24 @@ class OrgPermission(BasePermission):
 ##############################################################################
 
 
-def request_to_username(request):
+def request_to_username(request) -> str | bool:
     """
     Get the user name from the current request, in the
     identity['user']['user_name'] field.
     """
     if hasattr(request, 'username') and request.username is not None:
         return request.username
-    # Hack to use the decoder inside RHIdentityAuthentication
-    rh = RHIdentityAuthentication()
-    authentication = rh.authenticate(request)
-    if authentication is None:
-        return None
-    org_id, identity = authentication
+    # Have to have come through authentication first.
+    if not hasattr(request, 'auth'):
+        return False
+    identity = request.auth
     # Because other systems besides the RBACPermission use this function, we
     # have to politely return nothing if we don't have a user section.
     if 'type' not in identity or identity['type'] not in user_details_key:
         return False
     type_key = user_details_key[identity['type']]
     if type_key not in identity:
-        return None
+        return False
     user_data = identity[type_key]
     if 'username' not in user_data:
         error_and_deny(
@@ -1168,27 +1166,15 @@ def request_to_username(request):
     return user_data['username']
 
 
-def request_to_org(request):
+def request_to_org(request) -> str:
     """
     Get the org id from the current request.  This is a string, even
-    though the values are always whole numbers.
-
-    If we cannot get the org id, for whatever reason, we raise a 403
-    (Forbidden).  We don't want to send a WWW-Authenticate header, as this is
-    not something the client can get by itself.
+    though the values are always whole numbers.  This only makes sense if
+    the request has been authenticated.
     """
-    if request and hasattr(request, 'auth'):
-        return request.auth['org_id'] if 'org_id' in request.auth else None
-    # Otherwise decode and return it
-    # Hack to use the decoder inside RHIdentityAuthentication
-    rh = RHIdentityAuthentication()
-    authentication = rh.authenticate(request)
-    if authentication is None:
-        return None
-    org_id, identity = authentication
-    if not org_id:
-        return None
-    return org_id
+    if request and hasattr(request, 'auth') and 'org_id' in request.auth:
+        return request.auth['org_id']
+    return ''
 
 
 ##############################################################################
@@ -1322,7 +1308,7 @@ def auth_header_for_testing(
     return {my_auth_header_key: base64.b64encode(json.dumps(auth_value).encode())}
 
 
-def turnpike_auth_header_for_testing(**kwargs):
+def turnpike_auth_header_for_testing(**kwargs) -> dict[str, str]:
     """
     Construct a dictionary that provides the Base64-encoded JSON string of a
     Turnpike authentication structure.  All arguments given are turned into
