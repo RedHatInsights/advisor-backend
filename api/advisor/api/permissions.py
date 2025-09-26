@@ -53,6 +53,16 @@ def make_rbac_url(path, version=1, rbac_base=None):
 
 
 ##############################################################################
+# Kessel workspace caching
+##############################################################################
+
+# This is a simple cache within the process.  Workspace IDs will remain
+# constant for their lifetime so they can be reused across multiple requests.
+# The key is (org_id, workspace_str), the value is the ID.
+workspace_for_org = dict()
+
+
+##############################################################################
 # Kessel resource scope definition
 ##############################################################################
 
@@ -387,8 +397,13 @@ def get_workspace_id(
     Get the ID of the workspace from the RBAC REST API, for the given
     identity.
     """
+    org_id = request.auth['org_id']
+    if org_id in workspace_for_org:
+        return (workspace_for_org[org_id, workspace], 0.0)
     rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
-    return make_rbac_request(rbac_url, request)
+    workspace_id, elapsed = make_rbac_request(rbac_url, request)
+    workspace_for_org[org_id, workspace] = workspace_id
+    return workspace_id, elapsed
 
 
 def has_kessel_permission(
