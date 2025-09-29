@@ -23,7 +23,7 @@
 },{
     "model": "api.tag", "pk": 12, "fields": {"name": "second"}
 },{
-    "model": "api.tag", "pk": 13, "fields": {"name": "anonymous"}
+    "model": "api.tag", "pk": 13, "fields": {"name": "A"}
 },{
     "model": "api.tag", "pk": 14, "fields": {"name": "highest"}
 },{
@@ -55,7 +55,7 @@
         "generic": "markdown can include:\n\n* bullet lists\n* block quotations:\n\n    Shall I compare thee to a summer's day?\n\n* *italic* and **bold** markup.\n\n~~~\n10 PRINT 'FENCED CODE'\n20 GOTO 10\n~~~\n",
         "reason": "This rule has\n DoT syntax object {{=pydata.active}} still *embedded* in HTML",
         "more_info": "DoT {{=pydata.active}} active and **mark-up**\n\n* list 1\n  ~~~\n  Code block inside indent\n  ~~~\n* list 2\n",
-        "tags": [1, 4, 5],
+        "tags": [1, 4, 5, 13],
         "pathway_id": 1
     }
 },{
@@ -105,7 +105,7 @@
         "generic": "Acked rule",
         "reason": "Acked rule content with {{=pydata.acked}} DoT information",
         "more_info": "",
-        "tags": [1, 2, 3, 4],
+        "tags": [1, 2, 3, 4, 13],
         "pathway_id": 1
     }
 },{

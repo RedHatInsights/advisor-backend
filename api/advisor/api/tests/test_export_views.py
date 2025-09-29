@@ -49,7 +49,7 @@ class ExportViewTestCase(TestCase):
         super().setUpClass()
         update_stale_dates()
 
-    def _response_is_good(self, response, header_list=None):
+    def _response_is_good(self, response, header_list=None) -> list[dict[str, str]]:
         """
         Try to check that the response is good, handling both accepted media
         types and both the standard and streaming HTTP response classes.
@@ -433,6 +433,48 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[0]['uuid'], constants.host_03_uuid)
         self.assertEqual(row_data[1]['uuid'], constants.host_03_uuid)
 
+        # testing rule topic filtering
+        response = self.client.get(
+            reverse('export-hits-list'), data={'topic': 'Active'},
+            **headers
+        )
+        row_data = self._response_is_good(response, hits_headers)
+        # All rules should be in the Active topic...
+        self.assertEqual(len(row_data), 8)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['title'], constants.acked_title)
+        self.assertEqual(row_data[1]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[1]['title'], constants.active_title)
+        self.assertEqual(row_data[2]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[2]['title'], constants.second_title)
+        self.assertEqual(row_data[3]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[3]['title'], constants.active_title)
+        self.assertEqual(row_data[4]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[4]['title'], constants.second_title)
+        self.assertEqual(row_data[5]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[5]['title'], constants.active_title)
+        self.assertEqual(row_data[6]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[6]['title'], constants.second_title)
+        self.assertEqual(row_data[7]['hostname'], constants.host_06_name)
+        self.assertEqual(row_data[7]['title'], constants.active_title)
+        # Fewer in the 'A' topic.
+        response = self.client.get(
+            reverse('export-hits-list'), data={'topic': 'A'},
+            **headers
+        )
+        row_data = self._response_is_good(response, hits_headers)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['title'], constants.acked_title)
+        self.assertEqual(row_data[1]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[1]['title'], constants.active_title)
+        self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[2]['title'], constants.active_title)
+        self.assertEqual(row_data[3]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[3]['title'], constants.active_title)
+        self.assertEqual(row_data[4]['hostname'], constants.host_06_name)
+        self.assertEqual(row_data[4]['title'], constants.active_title)
+        self.assertEqual(len(row_data), 5)
+
     def test_host_and_rule_export_cert_auth(self):
         headers = auth_header_for_testing(
             system_opts=constants.host_03_system_data,
@@ -457,13 +499,15 @@ class ExportViewTestCase(TestCase):
 
         # Testing incident=true
         # No rules are tagged as incidents so it doesn't match any rules, hence no systems
-        response = self.client.get(reverse('export-hits-list'), data={'incident': 'true'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'incident': 'true'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
 
         # Testing incident=false
         # With no incident rules the active and second rule are matched, and therefore all their systems
-        response = self.client.get(reverse('export-hits-list'), data={'incident': 'false'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'incident': 'false'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 6)
         self.assertEqual(row_data[0]['title'], constants.active_title)
@@ -475,38 +519,44 @@ class ExportViewTestCase(TestCase):
         # (Incidental test for code coverage - check tag stringification
         self.assertEqual(str(incident_tag), "incident")
         active_rule.tags.add(incident_tag)
-        response = self.client.get(reverse('export-hits-list'), data={'incident': 'true'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'incident': 'true'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 4)
         self.assertEqual(row_data[0]['title'], constants.active_title)
-        response = self.client.get(reverse('export-hits-list'), data={'incident': 'false'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'incident': 'false'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 2)
         self.assertEqual(row_data[0]['title'], constants.second_title)
 
         # Testing has_playbook=true
         # Matches active rule, and therefore its 4 systems
-        response = self.client.get(reverse('export-hits-list'), data={'has_playbook': 'true'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'has_playbook': 'true'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 4)
         self.assertEqual(row_data[0]['title'], constants.active_title)
 
         # Testing has_playbook=false
         # Matches second rule, and therefore its 2 systems
-        response = self.client.get(reverse('export-hits-list'), data={'has_playbook': 'false'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'has_playbook': 'false'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 2)
         self.assertEqual(row_data[0]['title'], constants.second_title)
 
         # Testing requires_reboot=true
         # Doesn't match any of the active rules, so no systems
-        response = self.client.get(reverse('export-hits-list'), data={'reboot': 'true'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'reboot': 'true'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
 
         # Testing requires_reboot=true
         # Matches active and second rule, and therefore all their systems
-        response = self.client.get(reverse('export-hits-list'), data={'reboot': 'false'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'reboot': 'false'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 6)
         self.assertEqual(row_data[0]['title'], constants.active_title)
@@ -515,7 +565,8 @@ class ExportViewTestCase(TestCase):
         # Test category filter
         # category 4 matches rules 5 & 6.
         # systems01, 03 and 04 have hits for rule 5 (second rule), but system01 is host-acked for rule 5
-        response = self.client.get(reverse('export-hits-list'), data={'category': 4}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'category': 4}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 2)
         self.assertEqual(row_data[0]['hostname'], constants.host_03_name)
@@ -526,7 +577,8 @@ class ExportViewTestCase(TestCase):
         # Test resolution_risk (res_risk) filter
         # All active, non-acked rules (1 & 5) have res_risk 1, so there will be 6 hits across 4 systems
         # system01 has a hit on rule 5 as well, but is host-acked for rule 5
-        response = self.client.get(reverse('export-hits-list'), data={'res_risk': 1}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'res_risk': 1}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 6)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -543,13 +595,15 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[5]['title'], constants.active_title)
 
         # res_risk 2 matches no rules, so no results
-        response = self.client.get(reverse('export-hits-list'), data={'res_risk': 2}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'res_risk': 2}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
 
         # Test text filter
         # Searching for text 'html' matches rule 1 for which systems 01, 03, 04 and 06 have hits
-        response = self.client.get(reverse('export-hits-list'), data={'text': 'html'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'text': 'html'}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 4)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -561,27 +615,34 @@ class ExportViewTestCase(TestCase):
         # Test total_risk filter
         # All active, non-acked rules (1 & 5) have total_risk 1, so all systems that match those rules will have hits
         # system01 has a hit on rule 5 as well, but is host-acked for rule 5
-        response = self.client.get(reverse('export-hits-list'), data={'total_risk': 1}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'total_risk': 1}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 6)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
         self.assertEqual(row_data[0]['title'], constants.active_title)
         self.assertEqual(row_data[5]['hostname'], constants.host_06_name)
         self.assertEqual(row_data[5]['title'], constants.active_title)
-        response = self.client.get(reverse('export-hits-list'), data={'total_risk': 2}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'total_risk': 2}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
-        response = self.client.get(reverse('export-hits-list'), data={'total_risk': 3}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'total_risk': 3}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
-        response = self.client.get(reverse('export-hits-list'), data={'total_risk': 4}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'total_risk': 4}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
 
         # Test total_risk + text filter together
         # All active rules (rules 1 and 5) have total_risk 1, but only rule 5 contains the text 'node_id',
         # Systems 01, 03 and 04 hits for rule 5, but system01 is host-acked
-        response = self.client.get(reverse('export-hits-list'), data={'total_risk': 1, 'text': 'node_id'}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'total_risk': 1, 'text': 'node_id'},
+            **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 2)
         self.assertEqual(row_data[0]['hostname'], constants.host_03_name)
@@ -590,8 +651,12 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[1]['title'], constants.second_title)
 
         # Delete the host-ack for rule 5 on account 1234567 and re-run previous test, system01 should appear now
-        response = self.client.delete(reverse('hostack-detail', kwargs={'pk': '1'}), **auth_header_for_testing())
-        response = self.client.get(reverse('export-hits-list'), data={'total_risk': 1, 'text': 'node_id'}, **headers)
+        response = self.client.delete(
+            reverse('hostack-detail', kwargs={'pk': '1'}), **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'total_risk': 1, 'text': 'node_id'},
+            **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 3)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -603,7 +668,8 @@ class ExportViewTestCase(TestCase):
 
         # Test likelihood filter
         # Likelihood 1 will match all active non-acked rules
-        response = self.client.get(reverse('export-hits-list'), data={'likelihood': 1}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'likelihood': 1}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 7)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -623,9 +689,12 @@ class ExportViewTestCase(TestCase):
 
         # Delete the ack for rule 3 and re-run the previous test
         # Should now get additional hit for system01 on acked rule
-        response = self.client.delete(reverse('ack-detail', kwargs={'rule_id': constants.acked_rule}),
-                                      **auth_header_for_testing())
-        response = self.client.get(reverse('export-hits-list'), data={'likelihood': 1}, **headers)
+        response = self.client.delete(
+            reverse('ack-detail', kwargs={'rule_id': constants.acked_rule}),
+            **headers
+        )
+        response = self.client.get(
+            reverse('export-hits-list'), data={'likelihood': 1}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 8)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -634,25 +703,30 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[1]['title'], constants.active_title)
 
         # Combining likelihood 1 and category 3 should only match the acked rule, so just hit for system01
-        response = self.client.get(reverse('export-hits-list'), data={'likelihood': 1, 'category': 3}, **headers)
+        response = self.client.get(
+            reverse('export-hits-list'), data={'likelihood': 1, 'category': 3},
+            **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 1)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
         self.assertEqual(row_data[0]['title'], constants.acked_title)
 
         # Combining likelihood 1, category 3 & text 'act' should result in no matches
-        response = self.client.get(reverse('export-hits-list'),
-                                   data={'likelihood': 1, 'category': 3, 'text': 'act'},
-                                   **headers)
+        response = self.client.get(
+            reverse('export-hits-list'),
+            data={'likelihood': 1, 'category': 3, 'text': 'act'}, **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
 
         # Testing total_risk=1 & res_risk=1 & impact=1 & likelihood=1 & category=1
         # Will match rule 1 and therefore system01, 03, 04 & 06
-        response = self.client.get(reverse('export-hits-list'),
-                                   data={'total_risk': 1, 'res_risk': 1, 'impact': 1,
-                                         'likelihood': 1, 'category': 1},
-                                   **headers)
+        response = self.client.get(
+            reverse('export-hits-list'),
+            data={'total_risk': 1, 'res_risk': 1, 'impact': 1, 'likelihood': 1, 'category': 1},
+            **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 4)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -662,10 +736,14 @@ class ExportViewTestCase(TestCase):
 
         # Testing total_risk=1 & res_risk=1 & impact=1 & likelihood=1 & category=1 & text=Kernel
         # Doesn't match any rule, so no system hits
-        response = self.client.get(reverse('export-hits-list'),
-                                   data={'total_risk': 1, 'res_risk': 1, 'impact': 1,
-                                         'likelihood': 1, 'category': 1, 'text': 'Kernel'},
-                                   **headers)
+        response = self.client.get(
+            reverse('export-hits-list'),
+            data={
+                'total_risk': 1, 'res_risk': 1, 'impact': 1,
+                'likelihood': 1, 'category': 1, 'text': 'Kernel'
+            },
+            **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 0)
 
@@ -703,9 +781,10 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[2]['title'], constants.active_title)
 
         # test display_name
-        response = self.client.get(reverse('export-hits-list'),
-                                   data={'display_name': constants.host_01_name},
-                                   **headers)
+        response = self.client.get(
+            reverse('export-hits-list'),
+            data={'display_name': constants.host_01_name}, **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 3)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -713,9 +792,10 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[2]['hostname'], constants.host_01_name)
 
         # test host id / inventory uuid
-        response = self.client.get(reverse('export-hits-list'),
-                                   data={'uuid': constants.host_03_uuid},
-                                   **headers)
+        response = self.client.get(
+            reverse('export-hits-list'),
+            data={'uuid': constants.host_03_uuid}, **headers
+        )
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 2)
         self.assertEqual(row_data[0]['uuid'], constants.host_03_uuid)
@@ -752,6 +832,21 @@ class ExportViewTestCase(TestCase):
         })
         self.assertEqual(report_list[0]['impacted_date'], '2018-12-04T05:10:36+00:00')
 
+        response = self.client.get(
+            reverse('export-reports-list'), data={'topic': 'A'}, **headers
+        )
+        report_list = self._response_is_good(response)
+        # Topic A = only A rules = not Second rule
+        self.assertEqual(report_list[0]['rule_id'], constants.active_rule)
+        self.assertEqual(report_list[0]['host_id'], constants.host_01_uuid)
+        self.assertEqual(report_list[1]['rule_id'], constants.active_rule)
+        self.assertEqual(report_list[1]['host_id'], constants.host_03_uuid)
+        self.assertEqual(report_list[2]['rule_id'], constants.active_rule)
+        self.assertEqual(report_list[2]['host_id'], constants.host_04_uuid)
+        self.assertEqual(report_list[3]['rule_id'], constants.active_rule)
+        self.assertEqual(report_list[3]['host_id'], constants.host_06_uuid)
+        self.assertEqual(len(report_list), 4)
+
     def test_rules_export(self):
         """
         Tests of Rules export - JSON only
@@ -778,6 +873,14 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(rule_list[0]['description'], constants.active_title)
         self.assertEqual(rule_list[0]['impacted_systems_count'], 4)
         self.assertEqual(rule_list[0]['reports_shown'], True)
+
+        response = self.client.get(
+            reverse('export-rules-list'), data={'topic': 'A'}, **headers
+        )
+        rule_list = self._response_is_good(response)
+        self.assertEqual(rule_list[0]['rule_id'], constants.active_rule)
+        self.assertEqual(rule_list[1]['rule_id'], constants.acked_rule)
+        self.assertEqual(len(rule_list), 2)
 
     def test_systems_export(self):
         """
@@ -888,7 +991,8 @@ class ExportViewTestCase(TestCase):
         headers = auth_header_for_testing()
         headers['HTTP_ACCEPT'] = 'text/csv'
         response = self.client.get(
-            reverse('export-systems-list'), data={'rule_id': 'test|Second_rule', 'sort': 'display_name'}, **headers
+            reverse('export-systems-list'),
+            data={'rule_id': 'test|Second_rule', 'sort': 'display_name'}, **headers
         )
         row_data = self._response_is_good(response, systems_headers)
         self.assertEqual(len(row_data), 2)  # system01 is host_acked, will not generate a row
@@ -896,7 +1000,8 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
 
         response = self.client.get(
-            reverse('export-systems-list'), data={'display_name': 'system', 'sort': 'display_name'}, **headers
+            reverse('export-systems-list'),
+            data={'display_name': 'system', 'sort': 'display_name'}, **headers
         )
         row_data = self._response_is_good(response, systems_headers)
         self.assertEqual(len(row_data), 4)
@@ -904,6 +1009,18 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[1]['display_name'], constants.host_03_name)
         self.assertEqual(row_data[2]['display_name'], constants.host_04_name)
         self.assertEqual(row_data[3]['display_name'], constants.host_05_name)
+
+        response = self.client.get(
+            reverse('export-systems-list'), data={'topic': 'A'}, **headers
+        )
+        row_data = self._response_is_good(response, systems_headers)
+        # Does the topic being set change which systems are shown?
+        self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
+        self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
+        self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
+        self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
+        self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
+        self.assertEqual(len(row_data), 5)
 
 
 class ExportViewHostTagsTestCase(TestCase):
