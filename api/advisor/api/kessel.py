@@ -146,6 +146,7 @@ def get_resources(
     while (response := _get_resource_page(
         client_stub, object_type, relation, subject, limit, continuation_token
     )) is not None:
+        logger.debug("Got resource page response %s", response)
         for data in response:
             yield data.object
         if not fetch_all:
@@ -346,17 +347,26 @@ class Kessel:
             self.client = TestClient()
         else:
             # stub, channel = ClientBuilder(KESSEL_ENDPOINT).insecure().build()
+            logger.info(
+                "Connecting to Kessel via server %s port %s",
+                settings.KESSEL_SERVER_NAME, settings.KESSEL_SERVER_PORT
+            )
             self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
                 grpc.insecure_channel(
                     f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
                     settings.KESSEL_SERVER_PASSWORD
                 )
             )
+            logger.info("Connected to Kessel, client %s", self.client)
 
     def check(
         self, resource: ResourceRef, relation: Relation, subject: SubjectRef
     ) -> Tuple[bool, float]:
         start = time.time()
+        logger.info(
+            "Checking resource %s with relation %s for subject %s",
+            resource, relation, subject
+        )
         response = self.client.Check(
             check_request_pb2.CheckRequest(
                 subject=subject.as_pb2(),
@@ -376,6 +386,9 @@ class Kessel:
         one we care about is the host groups for this user.
         """
         start = time.time()
+        logger.info(
+            "Getting host groups for subject %s", subject
+        )
         result = [
             response_object.resource_id
             for response_object in get_resources(
