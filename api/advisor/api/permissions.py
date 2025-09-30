@@ -17,6 +17,7 @@
 import base64
 from enum import Enum
 import json
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import uuid
 
 from django.conf import settings
@@ -46,10 +47,13 @@ user_details_key = {
 
 
 def make_rbac_url(path, version=1, rbac_base=None):
+    """
+    Use the settings.RBAC_URL, or the rbac_base and the given path and version
+    number to construct a URL for RBAC.
+    """
     if rbac_base is None:
         rbac_base = settings.RBAC_URL
-    sep = '' if rbac_base.endswith('/') else '/'
-    return f'{rbac_base}{sep}api/rbac/v{version}/{path}'
+    return urljoin(rbac_base, f'/api/rbac/v{version}/{path}')
 
 
 ##############################################################################
@@ -187,7 +191,12 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
             "x-rh-rbac-psk": settings.RBAC_PSK,
             "x-rh-rbac-org-id": identity['org_id'],
         }
-        rbac_url += "&username=" + identity['user']['username']
+        # If there's a simpler way of doing this safely, let me know.
+        urlparts = urlparse(rbac_url)
+        query_params = parse_qs(urlparts.query)
+        query_params['username'] = identity['user']['username']
+        new_query = urlencode(query_params, doseq=True)
+        rbac_url = urlunparse(urlparts._replace(query=new_query))
     else:
         # Supply the full x-rh-identity header if we have it, because
         # that gives is_org_admin and other flags used by RBAC.
