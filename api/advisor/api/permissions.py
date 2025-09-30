@@ -168,7 +168,6 @@ class RBACPermission(object):
         # we are converting a specific permission to a relation, not a 'general
         # scope' permission.  This saves us doing two full replaces on the
         # entire rendered string.
-        assert self.resource != '*' and self.method != '*'
         method = 'edit' if self.method == 'write' else 'view'
         return f"{self.app}_{self.resource}_{method}"
 
