@@ -23,7 +23,7 @@
 },{
     "model": "api.tag", "pk": 12, "fields": {"name": "second"}
 },{
-    "model": "api.tag", "pk": 13, "fields": {"name": "A"}
+    "model": "api.tag", "pk": 13, "fields": {"name": "anonymous"}
 },{
     "model": "api.tag", "pk": 14, "fields": {"name": "highest"}
 },{
@@ -55,7 +55,7 @@
         "generic": "markdown can include:\n\n* bullet lists\n* block quotations:\n\n    Shall I compare thee to a summer's day?\n\n* *italic* and **bold** markup.\n\n~~~\n10 PRINT 'FENCED CODE'\n20 GOTO 10\n~~~\n",
         "reason": "This rule has\n DoT syntax object {{=pydata.active}} still *embedded* in HTML",
         "more_info": "DoT {{=pydata.active}} active and **mark-up**\n\n* list 1\n  ~~~\n  Code block inside indent\n  ~~~\n* list 2\n",
-        "tags": [1, 4, 5, 13],
+        "tags": [1, 4, 5],
         "pathway_id": 1
     }
 },{
@@ -105,7 +105,7 @@
         "generic": "Acked rule",
         "reason": "Acked rule content with {{=pydata.acked}} DoT information",
         "more_info": "",
-        "tags": [1, 2, 3, 4, 13],
+        "tags": [1, 2, 3, 4],
         "pathway_id": 1
     }
 },{
@@ -226,10 +226,10 @@
     "fields": {
         "created_at": "2019-04-01T04:51:37Z",
         "updated_at": "2019-04-01T04:51:37Z",
-        "name": "'A' rules",
-        "slug": "A",
-        "description": "The set of rules featuring 'A' in their title",
-        "tag": 13,
+        "name": "Kernel rules",
+        "slug": "Kernel",
+        "description": "The set of rules working on the kernel",
+        "tag": 5,
         "enabled": true
     }
 },{

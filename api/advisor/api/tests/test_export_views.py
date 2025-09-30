@@ -457,23 +457,34 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[6]['title'], constants.second_title)
         self.assertEqual(row_data[7]['hostname'], constants.host_06_name)
         self.assertEqual(row_data[7]['title'], constants.active_title)
-        # Fewer in the 'A' topic.
+        # Fewer in the 'Kernel' topic.
+        response = self.client.get(
+            reverse('export-hits-list'), data={'topic': 'Kernel'},
+            **headers
+        )
+        row_data = self._response_is_good(response, hits_headers)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[0]['title'], constants.active_title)
+        self.assertEqual(row_data[1]['hostname'], constants.host_01_name)
+        self.assertEqual(row_data[1]['title'], constants.second_title)
+        self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[2]['title'], constants.active_title)
+        self.assertEqual(row_data[3]['hostname'], constants.host_03_name)
+        self.assertEqual(row_data[3]['title'], constants.second_title)
+        self.assertEqual(row_data[4]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[4]['title'], constants.active_title)
+        self.assertEqual(row_data[5]['hostname'], constants.host_04_name)
+        self.assertEqual(row_data[5]['title'], constants.second_title)
+        self.assertEqual(row_data[6]['hostname'], constants.host_06_name)
+        self.assertEqual(row_data[6]['title'], constants.active_title)
+        self.assertEqual(len(row_data), 7)
+        # None in a nonexistent topic.
         response = self.client.get(
             reverse('export-hits-list'), data={'topic': 'A'},
             **headers
         )
         row_data = self._response_is_good(response, hits_headers)
-        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
-        self.assertEqual(row_data[0]['title'], constants.acked_title)
-        self.assertEqual(row_data[1]['hostname'], constants.host_01_name)
-        self.assertEqual(row_data[1]['title'], constants.active_title)
-        self.assertEqual(row_data[2]['hostname'], constants.host_03_name)
-        self.assertEqual(row_data[2]['title'], constants.active_title)
-        self.assertEqual(row_data[3]['hostname'], constants.host_04_name)
-        self.assertEqual(row_data[3]['title'], constants.active_title)
-        self.assertEqual(row_data[4]['hostname'], constants.host_06_name)
-        self.assertEqual(row_data[4]['title'], constants.active_title)
-        self.assertEqual(len(row_data), 5)
+        self.assertEqual(len(row_data), 0)
 
     def test_host_and_rule_export_cert_auth(self):
         headers = auth_header_for_testing(
@@ -833,7 +844,7 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(report_list[0]['impacted_date'], '2018-12-04T05:10:36+00:00')
 
         response = self.client.get(
-            reverse('export-reports-list'), data={'topic': 'A'}, **headers
+            reverse('export-reports-list'), data={'topic': 'Kernel'}, **headers
         )
         report_list = self._response_is_good(response)
         # Topic A = only A rules = not Second rule
@@ -841,11 +852,21 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(report_list[0]['host_id'], constants.host_01_uuid)
         self.assertEqual(report_list[1]['rule_id'], constants.active_rule)
         self.assertEqual(report_list[1]['host_id'], constants.host_03_uuid)
-        self.assertEqual(report_list[2]['rule_id'], constants.active_rule)
-        self.assertEqual(report_list[2]['host_id'], constants.host_04_uuid)
+        self.assertEqual(report_list[2]['rule_id'], constants.second_rule)
+        self.assertEqual(report_list[2]['host_id'], constants.host_03_uuid)
         self.assertEqual(report_list[3]['rule_id'], constants.active_rule)
-        self.assertEqual(report_list[3]['host_id'], constants.host_06_uuid)
-        self.assertEqual(len(report_list), 4)
+        self.assertEqual(report_list[3]['host_id'], constants.host_04_uuid)
+        self.assertEqual(report_list[4]['rule_id'], constants.second_rule)
+        self.assertEqual(report_list[4]['host_id'], constants.host_04_uuid)
+        self.assertEqual(report_list[5]['rule_id'], constants.active_rule)
+        self.assertEqual(report_list[5]['host_id'], constants.host_06_uuid)
+        self.assertEqual(len(report_list), 6)
+        # Nonexistent topic = no rules
+        response = self.client.get(
+            reverse('export-reports-list'), data={'topic': 'A'}, **headers
+        )
+        report_list = self._response_is_good(response)
+        self.assertEqual(len(report_list), 0)
 
     def test_rules_export(self):
         """
@@ -874,13 +895,20 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(rule_list[0]['impacted_systems_count'], 4)
         self.assertEqual(rule_list[0]['reports_shown'], True)
 
+        # Search by topic with only two rules
+        response = self.client.get(
+            reverse('export-rules-list'), data={'topic': 'Kernel'}, **headers
+        )
+        rule_list = self._response_is_good(response)
+        self.assertEqual(rule_list[0]['rule_id'], constants.active_rule)
+        self.assertEqual(rule_list[1]['rule_id'], constants.second_rule)
+        self.assertEqual(len(rule_list), 2)
+        # Search by nonexistent topic
         response = self.client.get(
             reverse('export-rules-list'), data={'topic': 'A'}, **headers
         )
         rule_list = self._response_is_good(response)
-        self.assertEqual(rule_list[0]['rule_id'], constants.active_rule)
-        self.assertEqual(rule_list[1]['rule_id'], constants.acked_rule)
-        self.assertEqual(len(rule_list), 2)
+        self.assertEqual(len(rule_list), 0)
 
     def test_systems_export(self):
         """
@@ -1010,11 +1038,24 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[2]['display_name'], constants.host_04_name)
         self.assertEqual(row_data[3]['display_name'], constants.host_05_name)
 
+        # Topic with only some rules = all systems
+        response = self.client.get(
+            reverse('export-systems-list'), data={'topic': 'Kernel'}, **headers
+        )
+        row_data = self._response_is_good(response, systems_headers)
+        # Should affect the counts of recommendations...
+        self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
+        self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
+        self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
+        self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
+        self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
+        self.assertEqual(len(row_data), 5)
+
+        # Nonexistent topic = all systems
         response = self.client.get(
             reverse('export-systems-list'), data={'topic': 'A'}, **headers
         )
         row_data = self._response_is_good(response, systems_headers)
-        # Does the topic being set change which systems are shown?
         self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
         self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
         self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
