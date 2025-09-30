@@ -401,7 +401,7 @@ def has_rbac_permission(request, permission='advisor:*:*') -> Tuple[bool, float]
 
 def get_workspace_id(
     request: Request, workspace: str = "default"
-) -> tuple[Response | None, float]:
+) -> Tuple[str, float]:
     """
     Get the ID of the workspace from the RBAC REST API, for the given
     identity.
@@ -410,7 +410,54 @@ def get_workspace_id(
     if org_id in workspace_for_org:
         return (workspace_for_org[org_id, workspace], 0.0)
     rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
-    workspace_id, elapsed = make_rbac_request(rbac_url, request)
+    response, elapsed = make_rbac_request(rbac_url, request)
+    if response.status_code != 200:
+        logger.error(
+            "Error: Got status %d from RBAC: '%s'",
+            response.status_code, response.content.decode(),
+        )
+        return (False, elapsed)
+    # Check that the actual content is a list of workspaces
+    page = response.json()
+    if not isinstance(page, dict):
+        logger.error(
+            "Error: Response from RBAC is not a dictionary: '%s'",
+            page,
+        )
+        return (False, elapsed)
+    if 'data' not in page:
+        logger.error(
+            "Error: Response from RBAC is missing 'data' key: '%s'",
+            page,
+        )
+        return (False, elapsed)
+    if not isinstance(page['data'], list):
+        logger.error(
+            "Error: Response from RBAC is not a list: '%s'",
+            page['data'],
+        )
+        return (False, elapsed)
+    if len(page['data']) == 0:
+        logger.error(
+            "Error: Data from RBAC is empty: '%s'",
+            page['data'],
+        )
+        return (False, elapsed)
+    # There should only ever be one workspace with a given name, certainly
+    # for 'default'.
+    if 'id' not in page['data'][0]:
+        logger.error(
+            "Error: First data item from RBAC is missing 'id' key: '%s'",
+            page['data'][0],
+        )
+        return (False, elapsed)
+    workspace_id = page['data'][0]['id']
+    if workspace_id is None:
+        logger.error(
+            "Error: Workspace '%s' not found in RBAC response",
+            workspace,
+        )
+        return (False, elapsed)
     workspace_for_org[org_id, workspace] = workspace_id
     return workspace_id, elapsed
 
@@ -445,19 +492,7 @@ def has_kessel_permission(
         logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
             # We actually translate this into the default workspace of that org.
-            response, elapsed = get_workspace_id(request)
-            if not response:
-                logger.error(
-                    "KESSEL: failure during workspace ID retrieval: (NO RESPONSE)"
-                )
-                return (False, 0.0)
-            elif response.status_code != 200:
-                logger.error(
-                    "KESSEL: failure during workspace ID retrieval: %s", response.text
-                )
-                return (False, 0.0)
-            # print(f"... for org {identity['org_id']}")
-            workspace_id = response.json()['data'][0]['id']
+            workspace_id, elapsed = get_workspace_id(request)
             logger.info(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
