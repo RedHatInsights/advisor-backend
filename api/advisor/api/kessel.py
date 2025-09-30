@@ -319,10 +319,6 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
         subject = request.subject  # (type coversion?)
         subject_str = str(subject)
         if subject_str in self.lookup_resources_responses:
-            # logger.info(
-            #     "StreamedListObjects faked for %s = %s", subject_str,
-            #     self.lookup_resources_responses[subject_str]
-            # )
             return self.lookup_resources_responses[subject_str]
         else:
             raise NotImplementedError(f"Response for lookup {subject_str} not implemented")
