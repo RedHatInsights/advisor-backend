@@ -288,7 +288,9 @@ class constants(object):
 
     # Kessel RBAC permission constants
     kessel_std_org_obj = kessel.Workspace(kessel_std_workspace_id).to_ref().as_pb2()
-    kessel_std_user_identity_dict = {'user': {'user_id': test_user_id}}
+    kessel_std_user_identity_dict = {
+        'type': 'User', 'user': {'user_id': test_user_id}
+    }
     kessel_std_user_obj = kessel.identity_to_subject(kessel_std_user_identity_dict).as_pb2()
     kessel_host_01_obj = kessel.Host(host_01_uuid).to_ref().as_pb2()
 
