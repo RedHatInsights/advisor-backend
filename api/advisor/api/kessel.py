@@ -354,7 +354,6 @@ class Kessel:
             self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
                 grpc.insecure_channel(
                     f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
-                    settings.KESSEL_SERVER_PASSWORD
                 )
             )
             logger.info("Connected to Kessel, client %s", self.client)
