@@ -407,8 +407,9 @@ def get_workspace_id(
     identity.
     """
     org_id = request.auth['org_id']
-    if org_id in workspace_for_org:
-        return (workspace_for_org[org_id, workspace], 0.0)
+    workspace_key = (org_id, workspace)
+    if workspace_key in workspace_for_org:
+        return (workspace_for_org[workspace_key], 0.0)
     # Note that we should really just use the default 'default' value, so
     # we're not doing any work with URL-encoding that string... caveat petens.
     rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
@@ -447,6 +448,12 @@ def get_workspace_id(
         return (False, elapsed)
     # There should only ever be one workspace with a given name, certainly
     # for 'default'.
+    if not isinstance(page['data'][0], dict):
+        logger.error(
+            "Error: First data item from RBAC is not a dictionary: '%s'",
+            page['data'][0],
+        )
+        return (False, elapsed)
     if 'id' not in page['data'][0]:
         logger.error(
             "Error: First data item from RBAC is missing 'id' key: '%s'",
@@ -460,7 +467,7 @@ def get_workspace_id(
             workspace,
         )
         return (False, elapsed)
-    workspace_for_org[org_id, workspace] = workspace_id
+    workspace_for_org[workspace_key] = workspace_id
     return workspace_id, elapsed
 
 

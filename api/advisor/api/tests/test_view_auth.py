@@ -30,7 +30,7 @@ from api.permissions import (
     RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
     auth_to_request, request_object_for_testing, request_to_username,
-    turnpike_auth_header_for_testing, make_rbac_url
+    turnpike_auth_header_for_testing, make_rbac_url, get_workspace_id
 )
 from api.tests import constants
 
@@ -502,6 +502,88 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
     def test_system_and_user_auth(self):
         with self.assertRaises(AuthenticationFailed):
             auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
+
+
+class GetWorkspaceIdTestCase(TestCase):
+    @responses.activate
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_get_workspace_id_failures(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        # Non-200 response
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            status=404,
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)  # This reflects the actual request.
+        # Not a dict
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json='Foo!',
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # No 'data' item in dict
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'foo': 'bar'},
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # Data not a list
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': 'bar'},
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # Data list empty
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': []},
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # Data list does not contain a dictionary
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': ['Foo part 2: Return of Foo']},
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # Data list dictionary does not contain an 'id' element
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'foo': 'bar'}]},
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+
+    @responses.activate
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_workspace_id_cached(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        # Make the first request to cache the workspace ID
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # Make a second request to verify the workspace ID is cached
+        workspace_id, elapsed = get_workspace_id(request)
+        # Only one request made.
+        self.assertEqual(len(responses.calls), 1)
+        self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
+        self.assertEqual(elapsed, 0.0)
 
 
 class TestInsightsRBACPermissionKessel(TestCase):
