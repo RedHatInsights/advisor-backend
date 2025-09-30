@@ -409,6 +409,8 @@ def get_workspace_id(
     org_id = request.auth['org_id']
     if org_id in workspace_for_org:
         return (workspace_for_org[org_id, workspace], 0.0)
+    # Note that we should really just use the default 'default' value, so
+    # we're not doing any work with URL-encoding that string... caveat petens.
     rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
     response, elapsed = make_rbac_request(rbac_url, request)
     if response.status_code != 200:
