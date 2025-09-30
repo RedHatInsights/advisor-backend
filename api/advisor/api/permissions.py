@@ -17,6 +17,7 @@
 import base64
 from enum import Enum
 import json
+from typing import Tuple
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import uuid
 
@@ -304,7 +305,7 @@ def find_host_groups(role_list, request):
         logger.info(f"User has host groups {host_groups}")
 
 
-def has_rbac_permission(request, permission='advisor:*:*'):
+def has_rbac_permission(request, permission='advisor:*:*') -> Tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
 
@@ -381,16 +382,16 @@ def has_rbac_permission(request, permission='advisor:*:*'):
             if rbac_permission == request_permission:
                 # Log and return exact match
                 logger.info(f"RBAC permission '{rbac_permission}' exactly matched sought permission")
-                return ({
-                    'rbac_matched_permission': rbac_permission, 'rbac_match_type': 'exact'
-                }, elapsed)
+                setattr(request._request, 'rbac_matched_permission', rbac_permission)
+                setattr(request._request, 'rbac_match_type', 'exact')
+                return (True, elapsed)
 
             if request_permission in rbac_permission:
                 # Log and return inexact match
                 logger.info(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
-                return ({
-                    'rbac_matched_permission': rbac_permission, 'rbac_match_type': 'pattern'
-                }, elapsed)
+                setattr(request._request, 'rbac_matched_permission', rbac_permission)
+                setattr(request._request, 'rbac_match_type', 'exact')
+                return (True, elapsed)
         logger.info(f"RBAC permissions list {tested_list} did not match sought permission {request_permission}")
         return (False, elapsed)
     else:
@@ -417,7 +418,7 @@ def get_workspace_id(
 def has_kessel_permission(
     scope: "ResourceScope", permission: RBACPermission, request: Request,
     host_id: str | None = None
-):
+) -> Tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
 
@@ -910,12 +911,6 @@ class InsightsRBACPermission(BasePermission):
         # Only record the non-cached response time
         if elapsed > 0.0:
             setattr(request._request, 'rbac_elapsed_time_millis', int(elapsed * 1000))
-        # a rather ugly way of pushing the information about how this user
-        # matched the needed RBAC permissions into the request object for
-        # logging
-        if isinstance(result, dict):
-            for key, val in result.items():
-                setattr(request._request, key, val)
         setattr(request._request, 'rbac_sought_permission', permission)
         return bool(result)
 
