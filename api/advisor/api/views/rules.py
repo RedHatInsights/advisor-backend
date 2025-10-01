@@ -40,8 +40,8 @@ from api.filters import (
     update_method_query_param,
 )
 from api.models import (
-    Ack, CurrentReport, HostAck, Resolution, Rule, Upload,
-    get_systems_queryset, get_reports_subquery
+    Ack, CurrentReport, HostAck, Resolution, Rule,
+    get_systems_queryset, get_reports_subquery, get_reporting_system_ids_queryset
 )
 from api.serializers import (
     RuleForAccountSerializer, RuleUsageStatsSerializer, SystemsForRuleSerializer,
@@ -619,11 +619,10 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         # impacted_systems method.  Have to use the reports_for_account method
         # so that we cope with systems that are host-acked as well as this
         # rule being acked.
-        last_seen_upload_qs = Upload.objects.filter(
-            host_id=OuterRef('host_id'), source_id=1, current=True
-        ).order_by().values('checked_on')
         impacted_systems = (
-            rule.reports_for_account(request)  # CurrentReport
+            get_reporting_system_ids_queryset(
+                request, rule=rule
+            )
             .filter(
                 filter_on_display_name(
                     request, relation='inventory',
@@ -631,11 +630,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
                 ),
                 filter_on_rhel_version(request, relation='inventory'),
             )
-            .annotate(
-                last_upload=Subquery(last_seen_upload_qs)
-            )
             .order_by(*sort_fields, 'host_id')
-            .values_list('host_id', flat=True)
         )
 
         return Response(SystemsForRuleSerializer(

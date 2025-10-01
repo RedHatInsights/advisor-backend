@@ -47,6 +47,51 @@ logger = logging.getLogger(settings.APP_NAME)
 #
 
 
+class SubqueryArray(models.Subquery):
+    """
+    A subquery that allows us to annotate in a list, that we can then query
+    using Django's Postgres recognition of array contains operators.
+
+    From schinkel in #django on irc.freenode.org, via:
+    https://schinckel.net/2019/07/30/subquery-and-subclasses/
+    """
+    # Currently not used, due to raw SQL below, but saved here in case we need
+    # it in future.
+    template = 'ARRAY(%(subquery)s)'
+
+    @property
+    def output_field(self):
+        output_fields = [x.output_field for x in self.get_source_expressions()]
+
+        if len(output_fields) > 1:
+            raise FieldError('More than one column detected')
+
+        return ArrayField(base_field=output_fields[0])
+
+
+class Relationship(models.ForeignObject):
+    """
+    Create a django link between models on a field where a foreign key isn't used.
+    This class allows that link to be realised through a proper relationship,
+    allowing prefetches and select_related.
+
+    Thanks to https://devblog.kogan.com/blog/custom-relationships-in-django
+    and https://schinckel.net/2021/07/14/django-implied-relationship/ for
+    this code.
+    """
+
+    def __init__(self, model, from_fields, to_fields, **kwargs):
+        super().__init__(
+            model, on_delete=models.DO_NOTHING, from_fields=from_fields,
+            to_fields=to_fields, null=True, blank=True, **kwargs,
+        )
+
+    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
+        # override the default to always make it private
+        # this ensures that no additional columns are created
+        super().contribute_to_class(cls, name, private_only=True, **kwargs)
+
+
 def account_minimum_length(value):
     """
     Account numbers must be all digits and must be at least six digits long -
@@ -229,51 +274,6 @@ def get_systems_queryset(request):
     )
 
 
-class SubqueryArray(models.Subquery):
-    """
-    A subquery that allows us to annotate in a list, that we can then query
-    using Django's Postgres recognition of array contains operators.
-
-    From schinkel in #django on irc.freenode.org, via:
-    https://schinckel.net/2019/07/30/subquery-and-subclasses/
-    """
-    # Currently not used, due to raw SQL below, but saved here in case we need
-    # it in future.
-    template = 'ARRAY(%(subquery)s)'
-
-    @property
-    def output_field(self):
-        output_fields = [x.output_field for x in self.get_source_expressions()]
-
-        if len(output_fields) > 1:
-            raise FieldError('More than one column detected')
-
-        return ArrayField(base_field=output_fields[0])
-
-
-class Relationship(models.ForeignObject):
-    """
-    Create a django link between models on a field where a foreign key isn't used.
-    This class allows that link to be realised through a proper relationship,
-    allowing prefetches and select_related.
-
-    Thanks to https://devblog.kogan.com/blog/custom-relationships-in-django
-    and https://schinckel.net/2021/07/14/django-implied-relationship/ for
-    this code.
-    """
-
-    def __init__(self, model, from_fields, to_fields, **kwargs):
-        super().__init__(
-            model, on_delete=models.DO_NOTHING, from_fields=from_fields,
-            to_fields=to_fields, null=True, blank=True, **kwargs,
-        )
-
-    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
-        # override the default to always make it private
-        # this ensures that no additional columns are created
-        super().contribute_to_class(cls, name, private_only=True, **kwargs)
-
-
 def stale_systems_q(org_id, field='host_id'):
     """
     Returns a subquery filter that removes all stale systems.
@@ -418,6 +418,29 @@ def get_reports_subquery(
         ack_filter
     ).exclude(
         Exists(HostAck.objects.filter(org_id=org_id, rule_id=OuterRef('rule_id'), host_id=OuterRef('host')))
+    )
+
+
+def get_reporting_system_ids_queryset(request, **filters):
+    """
+    Some `system` lists only need the host ID; but they need the ability to
+    filter on the report fields, such as rule_id or tag.  This gives a
+    queryset that still has the report-level annotations but uses
+    `values_list(flat=True)` to return just the list of host IDs.
+
+    The query is based on the CurrentReport model so both host and rule
+    models are available.  You need to set your own `distinct` clause as it
+    needs to include all sort fields.
+    """
+    last_seen_upload_qs = Upload.objects.filter(
+        host_id=OuterRef('host_id'), source_id=1, current=True
+    ).order_by().values('checked_on')
+    return (
+        get_reports_subquery(request)
+        .filter(**filters)
+        .annotate(last_upload=Subquery(last_seen_upload_qs))
+        # .distinct('host_id') has to include all sort fields, must do outside
+        .values_list('host_id', flat=True)
     )
 
 
