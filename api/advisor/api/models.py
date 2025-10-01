@@ -180,8 +180,8 @@ def get_host_group_filter(request, relation=None):
 
 def get_systems_queryset(request):
     """
-    A common queryset for both the systems list view here and the exported
-    systems list.
+    A common queryset for both the systems list view, the rule systems view,
+    and the exported systems list.
     """
     # We don't need to filter out stale systems etc because that's
     # done at the host model level.

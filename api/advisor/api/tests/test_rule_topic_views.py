@@ -34,7 +34,7 @@ class RuleTopicViewsTestCase(TestCase):
 
     def _response_is_good(self, response, expected_code=200):
         # Good response status is 200
-        self.assertEqual(response.status_code, expected_code)
+        self.assertEqual(response.status_code, expected_code, response.content.decode())
         # Standard return type is JSON
         self.assertEqual(response.accepted_media_type, constants.json_mime)
         # Test content is decodable as JSON
