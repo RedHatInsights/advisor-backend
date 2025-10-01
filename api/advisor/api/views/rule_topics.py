@@ -32,8 +32,8 @@ from api.filters import (
     update_method_query_param,
 )
 from api.models import (
-    Rule, RuleTopic, Upload,
-    convert_to_count_query, get_reports_subquery
+    Rule, RuleTopic,
+    convert_to_count_query, get_reports_subquery, get_reporting_system_ids_queryset,
 )
 from api.permissions import (
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
@@ -176,19 +176,9 @@ class RuleTopicViewSet(viewsets.ModelViewSet):
         sort_fields = sort_params_to_fields(sort_list, systems_sort_field_map)
         # Because we're possibly seeing the current reports for different
         # rules on the same system, we need to make the sort fields distinct.
-        last_seen_upload_qs = Upload.objects.filter(
-            host_id=OuterRef('host_id'), source_id=1, current=True
-        ).order_by().values('checked_on')
-        impacted_systems = (
-            topic.reports_for_account(request)
-            .distinct('host_id')
-            .annotate(
-                last_upload=Subquery(last_seen_upload_qs)
-            )
-            .order_by(*sort_fields)
-            .values_list('host_id', flat=True)
-            .distinct(*sort_fields)
-        )
+        impacted_systems = get_reporting_system_ids_queryset(
+            request, rule__tags__topic=topic
+        ).order_by(*sort_fields).distinct(*sort_fields)
 
         return Response(SystemsForRuleSerializer(
             {'host_ids': impacted_systems},
