@@ -15,7 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.conf import settings
-from django.db.models import Count, F, Q, Subquery, Exists, OuterRef
+from django.db.models import Count, Exists, F, Q, Subquery, OuterRef
 from django.db.models.functions import Extract, Now
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -40,7 +40,7 @@ from api.filters import (
     update_method_query_param,
 )
 from api.models import (
-    Ack, HostAck, Resolution, Rule, CurrentReport,
+    Ack, CurrentReport, HostAck, Resolution, Rule, Upload,
     get_systems_queryset, get_reports_subquery
 )
 from api.serializers import (
@@ -172,10 +172,9 @@ sort_query_param = OpenApiParameter(
 )
 # Actually based on CurrentReport with fields from InventoryHost
 systems_sort_field_map = {
-    'display_name': 'host__inventory__display_name',
-    'last_seen': 'host__inventory__updated',
-    'stale_at': 'host__inventory__stale_timestamp', 'system_uuid': 'host_id',
-    'updated': 'host__inventory__updated'
+    'display_name': 'inventory__display_name', 'last_seen': 'last_upload',
+    'stale_at': 'inventory__stale_timestamp', 'system_uuid': 'host_id',
+    'updated': 'inventory__updated'
 }
 systems_sort_query_param = OpenApiParameter(
     name='sort', location=OpenApiParameter.QUERY,
@@ -189,6 +188,7 @@ systems_detail_sort_fields = [
     'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
     'impacted_date', 'rhel_version', 'group_name'
 ]
+# last_seen provided as an annotation in get_systems_queryset
 systems_detail_sort_field_map = {
     'rhel_version': [
         'system_profile__operating_system__major',
@@ -616,7 +616,12 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         )
 
         # NOTE: host tags are filtered inside the Rule model's
-        # impacted_systems method.
+        # impacted_systems method.  Have to use the reports_for_account method
+        # so that we cope with systems that are host-acked as well as this
+        # rule being acked.
+        last_seen_upload_qs = Upload.objects.filter(
+            host_id=OuterRef('host_id'), source_id=1, current=True
+        ).order_by().values('checked_on')
         impacted_systems = (
             rule.reports_for_account(request)  # CurrentReport
             .filter(
@@ -625,6 +630,9 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
                     param=systems_detail_name_query_param
                 ),
                 filter_on_rhel_version(request, relation='inventory'),
+            )
+            .annotate(
+                last_upload=Subquery(last_seen_upload_qs)
             )
             .order_by(*sort_fields, 'host_id')
             .values_list('host_id', flat=True)
@@ -663,7 +671,10 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             value_of_param(systems_detail_sort_query_param, request),
             systems_detail_sort_field_map
         )
-        reports = get_reports_subquery(request, exclude_ineligible_hosts=False, host=OuterRef('id'), rule=rule)
+        reports = get_reports_subquery(
+            request, exclude_ineligible_hosts=False, host=OuterRef('id'),
+            rule=rule
+        )
         systems_detail_qs = (
             get_systems_queryset(request)
             .filter(

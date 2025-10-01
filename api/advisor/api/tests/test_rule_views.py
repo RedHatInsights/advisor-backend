@@ -119,7 +119,7 @@ class RuleTestCase(TestCase):
             self.assertEqual(rules[constants.high_sev_rule]['rating'], 0)
 
     def test_rule_list(self):
-        response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
+        response = self.client.get(reverse('rule-list'), **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertEqual(len(rules), 4)
@@ -187,12 +187,12 @@ class RuleTestCase(TestCase):
         self.assertEqual(rules[constants.acked_rule]['rule_status'], 'disabled')
 
     def test_rule_list_page_size(self):
-        response = self.client.get(reverse('rule-list'), {'limit': '1'}, **auth_header_for_testing())
+        response = self.client.get(reverse('rule-list'), {'limit': '1'}, **self.default_header)
         rules = self._response_is_good(response)
         self.assertEqual(len(rules), 1)
 
     def test_rule_list_offset_limit_links(self):
-        response = self.client.get(reverse('rule-list'), {'limit': '2', 'offset': 2}, **auth_header_for_testing())
+        response = self.client.get(reverse('rule-list'), {'limit': '2', 'offset': 2}, **self.default_header)
         rules = self._response_is_good(response)
         self.assertEqual(len(rules), 2)  # Four rules, starting from offset 2
 
@@ -212,7 +212,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_category(self):
         response = self.client.get(reverse('rule-list'), data={
             'category': '4'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the single rule in the performance category
@@ -234,7 +234,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_multiple_categories(self):
         response = self.client.get(reverse('rule-list'), data={
             'category': '4,1'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the single rule in the performance category,
@@ -256,7 +256,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_nonexistent_category(self):
         response = self.client.get(reverse('rule-list'), data={
             'category': '5'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         # Returns a 400 invalid response
         self.assertEqual(response.status_code, 400)
         # Body contains the list of valid categories
@@ -267,7 +267,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_invalid_category(self):
         response = self.client.get(reverse('rule-list'), data={
             'category': 'foo'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         # Returns a 400 invalid response
         self.assertEqual(response.status_code, 400)
         # Body contains the list of valid categories
@@ -277,7 +277,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_res_risk(self):
         response = self.client.get(reverse('rule-list'), data={
             'res_risk': '1'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the three low resolution risk rules, including acked
@@ -299,7 +299,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_multiple_res_risks(self):
         response = self.client.get(reverse('rule-list'), data={
             'res_risk': '1,4'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the three low resolution risk rules, including acked
@@ -322,7 +322,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_res_risk_invalid_risk(self):
         response = self.client.get(reverse('rule-list'), data={
             'res_risk': '9'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         # Returns a 400 invalid response
         self.assertEqual(response.status_code, 400)
         # Body contains the list of valid rule resolution values
@@ -333,7 +333,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_res_risk_no_rules(self):
         response = self.client.get(reverse('rule-list'), data={
             'res_risk': '3'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertEqual(len(rules), 0)
@@ -341,7 +341,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_res_risk_and_category(self):
         response = self.client.get(reverse('rule-list'), data={
             'res_risk': '1', 'category': '4'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # Because performance category is more restrictive than low
@@ -363,7 +363,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_has_tag(self):
         response = self.client.get(reverse('rule-list'), data={
             'has_tag': 'testing'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # All rules have the testing tag, but we should not see the inactive
@@ -386,7 +386,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_has_union_of_tags(self):
         response = self.client.get(reverse('rule-list'), data={
             'has_tag': 'kernel,security'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # All rules have the testing tag, but we should not see the inactive
@@ -409,7 +409,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_has_no_matching_tags(self):
         response = self.client.get(reverse('rule-list'), data={
             'has_tag': 'nfs',
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # No rules have the nfs tag.
@@ -418,7 +418,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_incident(self):
         response = self.client.get(reverse('rule-list'), data={
             'incident': 'true'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # Incident is a tag and only high sev rule has it.
@@ -440,7 +440,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_no_incident(self):
         response = self.client.get(reverse('rule-list'), data={
             'incident': 'false'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # Incident is a tag and only high sev rule has it; so we should see
@@ -464,7 +464,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(reverse('rule-list'), data={
             'incident': 'true',
             'has_tag': 'active',
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # Incident is a tag and only high sev rule has it.  Even the use of
@@ -487,7 +487,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_has_playbook(self):
         response = self.client.get(reverse('rule-list'), data={
             'has_playbook': 'true'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -508,7 +508,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_has_no_playbook(self):
         response = self.client.get(reverse('rule-list'), data={
             'has_playbook': 'false'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertNotIn(constants.active_rule, rules)
@@ -529,7 +529,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_likelihood(self):
         response = self.client.get(reverse('rule-list'), data={
             'likelihood': '1'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the rules we expect to see
@@ -550,7 +550,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_multiple_likelihoods(self):
         response = self.client.get(reverse('rule-list'), data={
             'likelihood': '1,2'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the rules we expect to see
@@ -571,7 +571,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_impact(self):
         response = self.client.get(reverse('rule-list'), data={
             'impact': '1'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see the rules we expect to see
@@ -592,7 +592,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_impact_highest(self):
         response = self.client.get(reverse('rule-list'), data={
             'impact': '4'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # We should see only the high impact rule
@@ -613,7 +613,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_impact_invalid(self):
         response = self.client.get(reverse('rule-list'), data={
             'impact': '9'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         # Returns a 400 invalid response
         self.assertEqual(response.status_code, 400)
         # Body contains the list of valid rule impact values
@@ -624,7 +624,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_impact_no_rules(self):
         response = self.client.get(reverse('rule-list'), data={
             'impact': '3'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertEqual(len(rules), 0)
@@ -633,7 +633,7 @@ class RuleTestCase(TestCase):
         # Test showing only the rules for which reports are enabled
         response = self.client.get(reverse('rule-list'), data={
             'reboot': 'true'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertNotIn(constants.active_rule, rules)
@@ -653,7 +653,7 @@ class RuleTestCase(TestCase):
         # Test showing only the rules for which reports are disabled
         response = self.client.get(reverse('rule-list'), data={
             'reboot': 'false'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -669,7 +669,7 @@ class RuleTestCase(TestCase):
         # Test showing only the rules for which reports are enabled
         response = self.client.get(reverse('rule-list'), data={
             'reports_shown': 'true'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -689,7 +689,7 @@ class RuleTestCase(TestCase):
         # Test showing only the rules for which reports are disabled
         response = self.client.get(reverse('rule-list'), data={
             'reports_shown': 'false'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertNotIn(constants.active_rule, rules)
@@ -704,7 +704,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_impacting(self):
         response = self.client.get(reverse('rule-list'), data={
             'impacting': 'true'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # Active, second and acked rule are impacting systems currently.
@@ -726,7 +726,7 @@ class RuleTestCase(TestCase):
         # be listed.
         response = self.client.get(reverse('rule-list'), data={
             'impacting': 'false'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # Active, second and acked rule are impacting systems currently, but
@@ -743,7 +743,7 @@ class RuleTestCase(TestCase):
         # Search on text in the rule's generic description - a text field
         response = self.client.get(reverse('rule-list'), data={
             'text': 'markdown'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -757,14 +757,14 @@ class RuleTestCase(TestCase):
         # We shouldn't be able to find inactive rules by text
         response = self.client.get(reverse('rule-list'), data={
             'text': 'inactive'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         json_data = response.json()
         self.assertEqual(len(json_data['data']), 0)
 
         # We should be able to search for things with spaces
         response = self.client.get(reverse('rule-list'), data={
             'text': 'This rule'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -779,7 +779,7 @@ class RuleTestCase(TestCase):
         # We should be able to search on resolution description
         response = self.client.get(reverse('rule-list'), data={
             'text': 'In order to fix this problem'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -794,7 +794,7 @@ class RuleTestCase(TestCase):
         # Text searches are case insensitive
         response = self.client.get(reverse('rule-list'), data={
             'text': 'dot syntax'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -808,7 +808,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_topic(self):
         response = self.client.get(reverse('rule-list'), data={
             'topic': 'Active'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
@@ -828,7 +828,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_topic_not_found(self):
         response = self.client.get(reverse('rule-list'), data={
             'topic': 'Sponge'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         # No topic match, no rules
         rules = self._response_is_good(response)
         self.assertEqual(len(rules), 0)
@@ -836,7 +836,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_total_risk(self):
         response = self.client.get(reverse('rule-list'), data={
             'total_risk': '2'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # High severity rule has likelihood 1 and impact 4, giving
@@ -859,7 +859,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_filter_multiple_total_risks(self):
         response = self.client.get(reverse('rule-list'), data={
             'total_risk': '2,1'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         rules = self._response_is_good(response)
 
         # High severity rule has likelihood 1 and impact 4, giving
@@ -883,7 +883,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('rule-list'),
             data={'filter[system_profile][sap_system]': 'True'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         rules = self._response_is_good(response)
 
@@ -907,7 +907,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('rule-list'),
             data={'filter[system_profile][sap_sids][contains][]': 'E02'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         rules = self._response_is_good(response)
 
@@ -929,7 +929,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_sort_correct_ordering(self):
         response = self.client.get(reverse('rule-list'), data={
             'sort': '-total_risk'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         json_data = response.json()
         results = json_data['data']
 
@@ -943,7 +943,7 @@ class RuleTestCase(TestCase):
         # Sort by category should be by name, not by category ID (was a bug)
         response = self.client.get(reverse('rule-list'), data={
             'sort': 'category'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         json_data = response.json()
         results = json_data['data']
 
@@ -959,7 +959,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_multi_sort_correct_ordering(self):
         response = self.client.get(reverse('rule-list'), data={
             'sort': '-total_risk,-impacted_count'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         json_data = response.json()
         results = json_data['data']
 
@@ -973,7 +973,7 @@ class RuleTestCase(TestCase):
     def test_rule_list_sort_impacted_systems_ordering(self):
         response = self.client.get(reverse('rule-list'), data={
             'sort': '-impacted_count'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         json_data = response.json()
         results = json_data['data']
 
@@ -990,7 +990,7 @@ class RuleTestCase(TestCase):
             for field in sort_field_map.keys():
                 response = self.client.get(reverse('rule-list'), data={
                     'sort': direction + field
-                }, **auth_header_for_testing())
+                }, **self.default_header)
                 rules = self._response_is_good(response)
                 # We should see the rules we expect to see
                 self.assertIn(constants.active_rule, rules)
@@ -1009,14 +1009,14 @@ class RuleTestCase(TestCase):
     def test_rule_list_sort_bad_ordering(self):
         response = self.client.get(reverse('rule-list'), data={
             'sort': 'foo'
-        }, **auth_header_for_testing())
+        }, **self.default_header)
         # Returns a 400 invalid response
         self.assertEqual(response.status_code, 400)
 
     def test_rule_detail(self):
         response = self.client.get(reverse(
             'rule-detail', kwargs={'rule_id': constants.active_rule}
-        ), **auth_header_for_testing())
+        ), **self.default_header)
         self.assertEqual(response.status_code, 200)
 
         # Test standard return type is JSON
@@ -1078,7 +1078,7 @@ class RuleTestCase(TestCase):
     def test_rule_detail_acked(self):
         response = self.client.get(reverse(
             'rule-detail', kwargs={'rule_id': constants.acked_rule}
-        ), **auth_header_for_testing())
+        ), **self.default_header)
         self.assertEqual(response.status_code, 200)
 
         # Test standard return type is JSON
@@ -1100,7 +1100,7 @@ class RuleTestCase(TestCase):
         # Standard 'test-user' account should get denied
         response = self.client.get(
             reverse('rule-stats', kwargs={'rule_id': constants.active_rule}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 403)
 
@@ -1157,7 +1157,7 @@ class RuleTestCase(TestCase):
         # Test for account 1234567 org 9876543 - expect to find 4 systems for test|Active_rule rule
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
 
@@ -1179,7 +1179,7 @@ class RuleTestCase(TestCase):
                 response = self.client.get(
                     reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
                     data={'sort': direction + field},
-                    **auth_header_for_testing()
+                    **self.default_header
                 )
                 hosts = response.json()
                 self.assertIn('host_ids', hosts)
@@ -1199,7 +1199,7 @@ class RuleTestCase(TestCase):
         # Test for a non-existent rule - expect Not Found message
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': 'Non_existent_rule'}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"detail": "No Rule matches the given query."})
@@ -1207,7 +1207,7 @@ class RuleTestCase(TestCase):
         # Sort list by other field, e.g. display_name - still get UUIDs.
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
-            data={'sort': 'display_name'}, **auth_header_for_testing()
+            data={'sort': 'display_name'}, **self.default_header
         )
         hosts = response.json()
         self.assertEqual(hosts['host_ids'][0], constants.host_06_uuid)
@@ -1215,13 +1215,24 @@ class RuleTestCase(TestCase):
         self.assertEqual(hosts['host_ids'][2], constants.host_03_uuid)
         self.assertEqual(hosts['host_ids'][3], constants.host_04_uuid)
         self.assertEqual(len(hosts['host_ids']), 4)
+        # Check sorting by 'last_seen' field
+        response = self.client.get(
+            reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
+            data={'sort': '-last_seen'}, **self.default_header
+        )
+        hosts = response.json()
+        self.assertEqual(hosts['host_ids'][0], constants.host_06_uuid)
+        self.assertEqual(hosts['host_ids'][1], constants.host_04_uuid)
+        self.assertEqual(hosts['host_ids'][2], constants.host_01_uuid)
+        self.assertEqual(hosts['host_ids'][3], constants.host_03_uuid)
+        self.assertEqual(len(hosts['host_ids']), 4)
 
     def test_systems_for_a_rule_filtering(self):
         # Test for account 1234567 org id 9876543 system name 01 - expect to find 1 system
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
             data={'name': 'system01'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1235,7 +1246,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
             data={'rhel_version': '7.5', 'sort': 'display_name'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1263,7 +1274,7 @@ class RuleTestCase(TestCase):
 
     def test_systems_for_a_rule_csv(self):
         # Test for account 1234567 org id 9876543 - expect to find 4 systems for test|Active_rule rule
-        headers = auth_header_for_testing()
+        headers = self.default_header
         headers['HTTP_ACCEPT'] = 'text/csv'
 
         response = self.client.get(
@@ -1306,7 +1317,7 @@ class RuleTestCase(TestCase):
         # Test for account 1234567 org id 9876543 - expect to find 4 systems for test|Active_rule rule
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1335,7 +1346,7 @@ class RuleTestCase(TestCase):
                 response = self.client.get(
                     reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
                     data={'sort': direction + field},
-                    **auth_header_for_testing()
+                    **self.default_header
                 )
                 page = response.json()
                 self.assertIn('data', page)
@@ -1355,7 +1366,7 @@ class RuleTestCase(TestCase):
         # Test for a non-existent rule - expect Not Found message
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': 'Non_existent_rule'}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"detail": "No Rule matches the given query."})
@@ -1363,7 +1374,7 @@ class RuleTestCase(TestCase):
         # Sort list by other field, e.g. descending order of hits
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
-            data={'sort': '-hits'}, **auth_header_for_testing()
+            data={'sort': '-hits'}, **self.default_header
         )
         hosts = response.json()['data']
         self.assertEqual(hosts[0]['display_name'], constants.host_03_name)
@@ -1375,7 +1386,7 @@ class RuleTestCase(TestCase):
         # Sort field invalid should return a 400.
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
-            data={'sort': 'invalid'}, **auth_header_for_testing()
+            data={'sort': 'invalid'}, **self.default_header
         )
         self.assertEqual(response.status_code, 400, response.content.decode())
 
@@ -1384,7 +1395,7 @@ class RuleTestCase(TestCase):
         # system01.example.com is affected by acked_rule - but expect to not return any hosts for acked rules
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.acked_rule}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         page = response.json()
@@ -1407,7 +1418,7 @@ class RuleTestCase(TestCase):
         # system01.example.com is affected by second_rule but is hostacked - expect no host details for hostacked rules
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.second_rule}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         page = response.json()
@@ -1422,7 +1433,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
             data={'name': 'system01'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1452,7 +1463,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
             data={'rhel_version': '7.5'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1472,7 +1483,7 @@ class RuleTestCase(TestCase):
         # are other systems with that version
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
-            data={'rhel_version': '8.2'}, **auth_header_for_testing()
+            data={'rhel_version': '8.2'}, **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1486,7 +1497,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
             data={'rhel_version': '7.1,7.2,7.3,7.4,7.5,7.6,7.7,7.8,7.9,7.10,8.10,9.8,10.0,10.2'},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200, response.content.decode())
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1508,7 +1519,7 @@ class RuleTestCase(TestCase):
         # Acked rules should display no systems
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': constants.acked_rule}),
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         hosts = response.json()
@@ -1530,7 +1541,7 @@ class RuleTestCase(TestCase):
                 'systems': systems_list,
                 'justification': justification,
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         new_list = response.json()
@@ -1546,7 +1557,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('hostack-list'),
             data={'rule_id': constants.active_rule},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1569,7 +1580,7 @@ class RuleTestCase(TestCase):
                 'systems': systems_list,
                 'justification': '',
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         new_list = response.json()
@@ -1590,7 +1601,7 @@ class RuleTestCase(TestCase):
             data={
                 'systems': removed_systems_list,
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         new_list = response.json()
@@ -1610,7 +1621,7 @@ class RuleTestCase(TestCase):
         response = self.client.get(
             reverse('hostack-list'),
             data={'rule_id': constants.active_rule},
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1631,7 +1642,7 @@ class RuleTestCase(TestCase):
             data={
                 'systems': removed_systems_list,
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200)
         new_list = response.json()
@@ -1653,7 +1664,7 @@ class RuleTestCase(TestCase):
                 'systems': [constants.remote_branch_uc, constants.host_02_uuid],
                 'justification': 'nonexistent host'
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
@@ -1670,7 +1681,7 @@ class RuleTestCase(TestCase):
                 'systems': [constants.host_01_name],
                 'justification': 'invalid UUID'
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
@@ -1684,7 +1695,7 @@ class RuleTestCase(TestCase):
                 'systems': [constants.host_01_uuid],
                 'justification': 'x' * 500
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
@@ -1699,7 +1710,7 @@ class RuleTestCase(TestCase):
                 'systems': [constants.remote_branch_uc, constants.host_02_uuid],
                 'justification': 'nonexistent host'
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
@@ -1716,7 +1727,7 @@ class RuleTestCase(TestCase):
                 'systems': [constants.host_01_name],
                 'justification': 'invalid UUID'
             },
-            **auth_header_for_testing()
+            **self.default_header
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
@@ -1736,13 +1747,15 @@ class RuleTestCase(TestCase):
         # Testing the RulePathwaySerializer to get pathway info (if it exists) for various rules
         # Active_rule has pathway test component 1
         active_rule = self.client.get(reverse('rule-detail', kwargs={'rule_id': constants.active_rule}),
-                                      **auth_header_for_testing()).json()
+                                      **self.default_header).json()
         self.assertEqual(active_rule['pathway']['name'], 'test component 1')
         self.assertEqual(active_rule['pathway']['resolution_risk']['name'], 'Adjust Service Status')
 
         # Second_rule doesn't have a pathway, so it won't have a pathway key (due to the NonNullModelSerializer)
-        second_rule = self.client.get(reverse('rule-detail', kwargs={'rule_id': constants.second_rule}),
-                                      **auth_header_for_testing()).json()
+        second_rule = self.client.get(
+            reverse('rule-detail', kwargs={'rule_id': constants.second_rule}),
+            **self.default_header
+        ).json()
         self.assertFalse('pathway' in second_rule.keys())
 
 
@@ -1872,6 +1885,8 @@ class RuleStatusAutoAckTestCase(TestCase):
     # Setup the test database with the basic_test_data fixture
     fixtures = ['rulesets', 'system_types', 'rule_categories', 'upload_sources', 'basic_test_data']
 
+    default_header = auth_header_for_testing()
+
     def test_rule_status_with_autoacks(self):
         # Initial setup and import the content
         import json
@@ -1880,10 +1895,10 @@ class RuleStatusAutoAckTestCase(TestCase):
         from api.tests.test_import_content import BASIC_TEST_DATA_CONFIG, BASIC_TEST_DATA_CONTENT
 
         rtc = RuleTestCase()
-        accounts_orgs = [{'account': '1234567',
-                          'org_id': '9876543'},
-                         {'account': '1122334',
-                          'org_id': '9988776'}]
+        accounts_orgs = [
+            {'account': '1234567', 'org_id': '9876543'},
+            {'account': '1122334', 'org_id': '9988776'}
+        ]
 
         # Get model instances for Active, Acked and Second rules
         active_rule = Rule.objects.get(rule_id="test|Active_rule")
@@ -1897,8 +1912,10 @@ class RuleStatusAutoAckTestCase(TestCase):
         self.assertEqual(Ack.objects.filter(created_by=AUTOACK['CREATED_BY']).count(), 0)
 
         # Import the content and add an autoack for Active rule
-        import_content.import_all(json.loads(BASIC_TEST_DATA_CONFIG),
-                                  json.loads(BASIC_TEST_DATA_CONTENT.replace('replaceme1', AUTOACK['TAG'])))
+        import_content.import_all(
+            json.loads(BASIC_TEST_DATA_CONFIG),
+            json.loads(BASIC_TEST_DATA_CONTENT.replace('replaceme1', AUTOACK['TAG']))
+        )
 
         # Confirm there are 6 acks now, 2 of which are autoacks
         self.assertEqual(Ack.objects.count(), 6)
@@ -1907,12 +1924,22 @@ class RuleStatusAutoAckTestCase(TestCase):
         # Ok, now to test rule_status
         # Test getting list of all rules with rule_status='all' and rule_status parameter missing
         for account_org in accounts_orgs:
-            for response in (self.client.get(reverse('rule-list'), data={'rule_status': 'all'},
-                                             **auth_header_for_testing(account=account_org['account'],
-                                                                       org_id=account_org['org_id'])),
-                             self.client.get(reverse('rule-list'),
-                                             **auth_header_for_testing(account=account_org['account'],
-                                                                       org_id=account_org['org_id']))):
+            for response in (
+                self.client.get(
+                    reverse('rule-list'), data={'rule_status': 'all'},
+                    **auth_header_for_testing(
+                        account=account_org['account'],
+                        org_id=account_org['org_id']
+                    )
+                ),
+                self.client.get(
+                    reverse('rule-list'),
+                    **auth_header_for_testing(
+                        account=account_org['account'],
+                        org_id=account_org['org_id']
+                    )
+                )
+            ):
                 rules = rtc._response_is_good(response)
                 self.assertEqual(len(rules), 3)
                 self.assertIn(constants.active_rule, rules)
@@ -1928,30 +1955,49 @@ class RuleStatusAutoAckTestCase(TestCase):
 
         # Test getting rule list of Red Hat disabled rules - should be Active rule for both accounts
         for account_org in accounts_orgs:
-            response = self.client.get(reverse('rule-list'), data={'rule_status': 'rhdisabled'},
-                                       **auth_header_for_testing(account=account_org['account'],
-                                                                 org_id=account_org['org_id']))
+            response = self.client.get(
+                reverse('rule-list'), data={'rule_status': 'rhdisabled'},
+                **auth_header_for_testing(
+                    account=account_org['account'],
+                    org_id=account_org['org_id']
+                )
+            )
             rules = rtc._response_is_good(response)
             self.assertEqual(len(rules), 1)
             self.assertEqual(rules[constants.active_rule]['rule_status'], 'rhdisabled')
 
-            # Test getting rule detail of Active rule as well - should be Red Hat Disabled
-            response = self.client.get(reverse('rule-detail', kwargs={'rule_id': constants.active_rule}),
-                                       **auth_header_for_testing(account=account_org['account'],
-                                                                 org_id=account_org['org_id']))
+            # Test getting rule detail of Active rule as well - should be
+            # Red Hat Disabled
+            response = self.client.get(
+                reverse('rule-detail', kwargs={'rule_id': constants.active_rule}),
+                **auth_header_for_testing(
+                    account=account_org['account'],
+                    org_id=account_org['org_id']
+                )
+            )
             self.assertEqual(response.data['rule_status'], 'rhdisabled')
 
-        # Re-import the content and add an autoack for Second rule - but it won't overwrite the existing User ack
-        import_content.update_ruleset_with_content(json.loads(BASIC_TEST_DATA_CONTENT
-                                                              .replace("replaceme1", AUTOACK['TAG'])
-                                                              .replace("replaceme2", AUTOACK['TAG'])))
+        # Re-import the content and add an autoack for Second rule - but it
+        # won't overwrite the existing User ack
+        import_content.update_ruleset_with_content(
+            json.loads(
+                BASIC_TEST_DATA_CONTENT
+                .replace("replaceme1", AUTOACK['TAG'])
+                .replace("replaceme2", AUTOACK['TAG'])
+            )
+        )
 
-        # Get list of Red Hat disabled rules again - should still be the Active rule for both accounts,
-        # but only the Second rule for account 1234567 org id 9876543
+        # Get list of Red Hat disabled rules again - should still be the
+        # Active rule for both accounts, but only the Second rule for account
+        # 1234567 org id 9876543
         for account_org in accounts_orgs:
-            response = self.client.get(reverse('rule-list'), data={'rule_status': 'rhdisabled'},
-                                       **auth_header_for_testing(account=account_org['account'],
-                                                                 org_id=account_org['org_id']))
+            response = self.client.get(
+                reverse('rule-list'), data={'rule_status': 'rhdisabled'},
+                **auth_header_for_testing(
+                    account=account_org['account'],
+                    org_id=account_org['org_id']
+                )
+            )
             rules = rtc._response_is_good(response)
             if account_org['org_id'] == '9876543':
                 self.assertEqual(len(rules), 2)
@@ -1961,38 +2007,57 @@ class RuleStatusAutoAckTestCase(TestCase):
                 self.assertEqual(len(rules), 1)
                 self.assertEqual(rules[constants.active_rule]['rule_status'], 'rhdisabled')
 
-        # Remove autoack from Second Rule for account 1234567 org id 9876543 - should be enabled now and only Active rule disabled
-        response = self.client.delete(reverse('ack-detail', kwargs={'rule_id': constants.second_rule}),
-                                      **auth_header_for_testing())
+        # Remove autoack from Second Rule for account 1234567 org id 9876543 -
+        # should be enabled now and only Active rule disabled
+        response = self.client.delete(
+            reverse('ack-detail', kwargs={'rule_id': constants.second_rule}),
+            **self.default_header
+        )
         self.assertEqual(response.status_code, 204)
-        response = self.client.get(reverse('rule-list'), data={'rule_status': 'rhdisabled'},
-                                   **auth_header_for_testing())
+        response = self.client.get(
+            reverse('rule-list'), data={'rule_status': 'rhdisabled'},
+            **self.default_header
+        )
         rules = rtc._response_is_good(response)
         self.assertEqual(len(rules), 1)
         self.assertEqual(rules[constants.active_rule]['rule_status'], 'rhdisabled')
-        response = self.client.get(reverse('rule-list'), data={'rule_status': 'enabled'},
-                                   **auth_header_for_testing())
+        response = self.client.get(
+            reverse('rule-list'), data={'rule_status': 'enabled'},
+            **self.default_header
+        )
         rules = rtc._response_is_good(response)
         self.assertEqual(len(rules), 1)
         self.assertEqual(rules[constants.second_rule]['rule_status'], 'enabled')
-        response = self.client.get(reverse('rule-detail', kwargs={'rule_id': constants.second_rule}),
-                                   **auth_header_for_testing())
+        response = self.client.get(
+            reverse('rule-detail', kwargs={'rule_id': constants.second_rule}),
+            **self.default_header
+        )
         self.assertEqual(response.data['rule_status'], 'enabled')
 
         # Add user ack to Second Rule for account 1234567 org id 9876543 - rule_status should be just Disabled
-        response = self.client.post(reverse('ack-list'), data={'rule_id': constants.second_rule,
-                                                               'justification': 'Coz'},
-                                    **auth_header_for_testing())
+        response = self.client.post(
+            reverse('ack-list'), data={
+                'rule_id': constants.second_rule,
+                'justification': 'Coz'
+            },
+            **self.default_header
+        )
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(reverse('rule-detail', kwargs={'rule_id': constants.second_rule}),
-                                   **auth_header_for_testing())
+        response = self.client.get(
+            reverse('rule-detail', kwargs={'rule_id': constants.second_rule}),
+            **self.default_header
+        )
         self.assertEqual(response.data['rule_status'], 'disabled')
 
         # Confirm that Second rule is plain 'disabled' for both accounts now
         for account_org in accounts_orgs:
-            response = self.client.get(reverse('rule-list'), data={'rule_status': 'disabled'},
-                                       **auth_header_for_testing(account=account_org['account'],
-                                                                 org_id=account_org['org_id']))
+            response = self.client.get(
+                reverse('rule-list'), data={'rule_status': 'disabled'},
+                **auth_header_for_testing(
+                    account=account_org['account'],
+                    org_id=account_org['org_id']
+                )
+            )
             rules = rtc._response_is_good(response)
             self.assertEqual(len(rules), 2)
             self.assertEqual(rules[constants.second_rule]['rule_status'], 'disabled')
@@ -2000,11 +2065,15 @@ class RuleStatusAutoAckTestCase(TestCase):
 
         # Remove autoack from Active Rule for account 1234567 org id 9876543
         # Shouldn't be any Red Hat disabled rules anymore for that account
-        response = self.client.delete(reverse('ack-detail', kwargs={'rule_id': constants.active_rule}),
-                                      **auth_header_for_testing())
+        response = self.client.delete(
+            reverse('ack-detail', kwargs={'rule_id': constants.active_rule}),
+            **self.default_header
+        )
         self.assertEqual(response.status_code, 204)
-        response = self.client.get(reverse('rule-list'), data={'rule_status': 'rhdisabled'},
-                                   **auth_header_for_testing())
+        response = self.client.get(
+            reverse('rule-list'), data={'rule_status': 'rhdisabled'},
+            **self.default_header
+        )
         rules = rtc._response_is_good(response)
         self.assertEqual(len(rules), 0)
 
