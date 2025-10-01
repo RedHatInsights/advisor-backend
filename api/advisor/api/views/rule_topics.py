@@ -33,7 +33,7 @@ from api.filters import (
 )
 from api.models import (
     Rule, RuleTopic,
-    convert_to_count_query, get_reports_subquery
+    convert_to_count_query, get_reports_subquery, get_reporting_system_ids_queryset,
 )
 from api.permissions import (
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
@@ -176,12 +176,9 @@ class RuleTopicViewSet(viewsets.ModelViewSet):
         sort_fields = sort_params_to_fields(sort_list, systems_sort_field_map)
         # Because we're possibly seeing the current reports for different
         # rules on the same system, we need to make the sort fields distinct.
-        impacted_systems = (
-            topic.reports_for_account(request)
-            .order_by(*sort_fields)
-            .values_list('host_id', flat=True)
-            .distinct(*sort_fields)
-        )
+        impacted_systems = get_reporting_system_ids_queryset(
+            request, rule__tags__topic=topic
+        ).order_by(*sort_fields).distinct(*sort_fields)
 
         return Response(SystemsForRuleSerializer(
             {'host_ids': impacted_systems},
