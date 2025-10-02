@@ -408,7 +408,7 @@ def get_workspace_id(
     """
     org_id = request.auth['org_id']
     workspace_key = (org_id, workspace)
-    if workspace_key in workspace_for_org:
+    if workspace_for_org is not None and workspace_key in workspace_for_org:
         return (workspace_for_org[workspace_key], 0.0)
     # Note that we should really just use the default 'default' value, so
     # we're not doing any work with URL-encoding that string... caveat petens.
@@ -467,7 +467,8 @@ def get_workspace_id(
             workspace,
         )
         return (False, elapsed)
-    workspace_for_org[workspace_key] = workspace_id
+    if workspace_for_org is not None:
+        workspace_for_org[workspace_key] = workspace_id
     return workspace_id, elapsed
 
 
