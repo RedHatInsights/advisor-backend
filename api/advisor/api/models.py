@@ -27,8 +27,6 @@ from django_prometheus.models import ExportModelOperationsMixin
 from django.contrib.postgres.fields import ArrayField
 from django.conf import settings
 
-from api import kessel
-from api.kessel import HostId, OrgId, WorkspaceId
 from api.permissions import (
     request_to_username, request_to_org, host_group_attr
 )
@@ -47,20 +45,6 @@ logger = logging.getLogger(settings.APP_NAME)
 ##############################################################################
 # Utility functions
 #
-
-
-def sync_kessel_with_model():
-    # TODO: put under default & root workspace
-    for host in InventoryHost.objects.all():
-        if host.groups is None or len(host.groups) == 0:
-            ws_id = WorkspaceId(f'{host.org_id}_ungrouped')
-            kessel.client.put_host_in_workspace(HostId(str(host.id)), ws_id)
-            kessel.client.put_workspace(ws_id, OrgId(host.org_id))
-        else:
-            for group in host.groups:
-                ws_id = WorkspaceId(group['id'])
-                kessel.client.put_host_in_workspace(HostId(str(host.id)), ws_id)
-                kessel.client.put_workspace(ws_id, OrgId(host.org_id))
 
 
 def account_minimum_length(value):
@@ -742,8 +726,9 @@ class HostAck(ExportModelOperationsMixin('hostack'), TimestampedModel):
     )
 
     def __str__(self):
-        return u'ack for {r} for account {a} by org {o} for {s}'.format(r=self.rule, a=self.account,
-                                                                    o=self.org_id, s=self.host_id)
+        return u'ack for {r} for account {a} by org {o} for {s}'.format(
+            r=self.rule, a=self.account, o=self.org_id, s=self.host_id
+        )
 
     class Meta:
         ordering = ('org_id', 'host', 'rule__rule_id', )
