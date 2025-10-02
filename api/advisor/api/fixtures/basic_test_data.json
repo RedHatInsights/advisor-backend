@@ -226,10 +226,10 @@
     "fields": {
         "created_at": "2019-04-01T04:51:37Z",
         "updated_at": "2019-04-01T04:51:37Z",
-        "name": "'A' rules",
-        "slug": "A",
-        "description": "The set of rules featuring 'A' in their title",
-        "tag": 13,
+        "name": "Kernel rules",
+        "slug": "Kernel",
+        "description": "The set of rules working on the kernel",
+        "tag": 5,
         "enabled": true
     }
 },{

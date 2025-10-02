@@ -48,7 +48,6 @@ class RuleTopicViewsTestCase(TestCase):
         topic_list = self._response_is_good(response)
 
         self.assertIsInstance(topic_list, list)
-        self.assertEqual(len(topic_list), 2)
         # Test general properties of each topic
         for topic in topic_list:
             self.assertIsInstance(topic, dict)
@@ -60,9 +59,10 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(topic_list[0]['name'], "Active rules")
         self.assertEqual(topic_list[0]['enabled'], True)
         self.assertEqual(topic_list[0]['impacted_systems_count'], 4)
-        self.assertEqual(topic_list[1]['name'], "'A' rules")
+        self.assertEqual(topic_list[1]['name'], "Kernel rules")
         self.assertEqual(topic_list[1]['enabled'], True)
-        self.assertEqual(topic_list[1]['impacted_systems_count'], 0)
+        self.assertEqual(topic_list[1]['impacted_systems_count'], 4)
+        self.assertEqual(len(topic_list), 2)
 
     def test_topic_list_system_profile_filter(self):
         response = self.client.get(
@@ -78,9 +78,9 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(topic_list[0]['name'], "Active rules")
         self.assertEqual(topic_list[0]['enabled'], True)
         self.assertEqual(topic_list[0]['impacted_systems_count'], 2)
-        self.assertEqual(topic_list[1]['name'], "'A' rules")
+        self.assertEqual(topic_list[1]['name'], "Kernel rules")
         self.assertEqual(topic_list[1]['enabled'], True)
-        self.assertEqual(topic_list[1]['impacted_systems_count'], 0)
+        self.assertEqual(topic_list[1]['impacted_systems_count'], 2)
 
     def test_topic_detail(self):
         response = self.client.get(
@@ -118,8 +118,8 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertIsInstance(topic_list, list)
         self.assertEqual(len(topic_list), 3)
         self.assertEqual(topic_list[0]['name'], "Active rules")
-        self.assertEqual(topic_list[1]['name'], "'A' rules")
-        self.assertEqual(topic_list[2]['name'], "Disabled topic")
+        self.assertEqual(topic_list[1]['name'], "Disabled topic")
+        self.assertEqual(topic_list[2]['name'], "Kernel rules")
         # It should show as enabled when specifically requested
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'Disabled'}),
@@ -143,8 +143,8 @@ class RuleTopicViewsTestCase(TestCase):
         topic_list = self._response_is_good(response)
         self.assertIsInstance(topic_list, list)
         self.assertEqual(len(topic_list), 2)
-        self.assertEqual(topic_list[0]['name'], "'A' rules")
-        self.assertEqual(topic_list[1]['name'], "Disabled topic")
+        self.assertEqual(topic_list[0]['name'], "Disabled topic")
+        self.assertEqual(topic_list[1]['name'], "Kernel rules")
 
     def test_topic_systems(self):
         response = self.client.get(
@@ -366,9 +366,9 @@ class RuleTopicHostTagsViewsTestCase(TestCase):
         self.assertEqual(topic_list[0]['name'], "Active rules")
         self.assertEqual(topic_list[0]['enabled'], True)
         self.assertEqual(topic_list[0]['impacted_systems_count'], 4)
-        self.assertEqual(topic_list[1]['name'], "'A' rules")
+        self.assertEqual(topic_list[1]['name'], "Kernel rules")
         self.assertEqual(topic_list[1]['enabled'], True)
-        self.assertEqual(topic_list[1]['impacted_systems_count'], 0)
+        self.assertEqual(topic_list[1]['impacted_systems_count'], 4)
 
         response = self.client.get(
             reverse('ruletopic-list'),
@@ -382,9 +382,9 @@ class RuleTopicHostTagsViewsTestCase(TestCase):
         self.assertEqual(topic_list[0]['name'], "Active rules")
         self.assertEqual(topic_list[0]['enabled'], True)
         self.assertEqual(topic_list[0]['impacted_systems_count'], 2)
-        self.assertEqual(topic_list[1]['name'], "'A' rules")
+        self.assertEqual(topic_list[1]['name'], "Kernel rules")
         self.assertEqual(topic_list[1]['enabled'], True)
-        self.assertEqual(topic_list[1]['impacted_systems_count'], 0)
+        self.assertEqual(topic_list[1]['impacted_systems_count'], 2)
 
     def test_topic_systems(self):
         response = self.client.get(
