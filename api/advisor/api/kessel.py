@@ -15,89 +15,187 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
+import grpc
 import time
 from types import SimpleNamespace
-from typing import Tuple
+from typing import Generator, Optional, Tuple
+from uuid import UUID
 
-from authzed.api.v1 import InsecureClient
-import authzed.api.v1 as zed
+from kessel.inventory.v1beta2 import (
+    # ClientBuilder,
+    allowed_pb2,
+    check_request_pb2,
+    inventory_service_pb2_grpc,
+    representation_type_pb2,
+    request_pagination_pb2,
+    resource_reference_pb2,
+    reporter_reference_pb2,
+    streamed_list_objects_request_pb2,
+    streamed_list_objects_response_pb2,
+    subject_reference_pb2,
+)
 
 from django.conf import settings
 
-from api.permissions import RBACPermission
+from advisor_logging import logger
+
+#############################################################################
+# Data classes and definitions
+#############################################################################
+
+ALLOWED = allowed_pb2.ALLOWED_TRUE
+DENIED = allowed_pb2.ALLOWED_FALSE
+# Unspecified is treated as denied here.
 
 type Relation = str
 
+# Is this needed?
+host_object_type = representation_type_pb2.RepresentationType(
+    resource_type="host",
+    reporter_type="hbi",
+)
+workspace_object_type = representation_type_pb2.RepresentationType(
+    resource_type="workspace",
+    reporter_type="rbac",
+)
+
 
 @dataclass
-class ObjectType:
-    namespace: str
-    name: str
+class ResourceRef:
+    resource_id: str
+    resource_type: str
 
-    def to_zed(self):
-        return f"{self.namespace}/{self.name}"
-
-
-@dataclass
-class ObjectRef:
-    type: ObjectType
-    id: str
-
-    def as_subject(self, relation: Relation | None = None):
-        return SubjectRef(self, subject_relation=relation)
-
-    def to_zed(self):
-        return zed.ObjectReference(
-            object_type=self.type.to_zed(),
-            object_id=self.id
+    def as_pb2(self):
+        return resource_reference_pb2.ResourceReference(
+            resource_id=self.resource_id,
+            resource_type=self.resource_type,
+            reporter=reporter_reference_pb2.ReporterReference(type='rbac')
         )
+
+    def __repr__(self):
+        return f"ResourceRef({self.resource_id}, {self.resource_type})"
 
 
 @dataclass
 class SubjectRef:
-    object: ObjectRef
-    subject_relation: Relation | None = None
+    resource_id: str
+    resource_type: str
 
-    def to_zed(self):
-        return zed.SubjectReference(
-            object=self.object.to_zed(),
-            optional_relation=self.subject_relation if self.subject_relation is not None else ""
+    def as_pb2(self):
+        return subject_reference_pb2.SubjectReference(
+            resource=ResourceRef(self.resource_id, self.resource_type).as_pb2()
         )
 
-
-@dataclass(frozen=True)
-class WorkspaceId:
-    value: str
-
-    def to_ref(self) -> ObjectRef:
-        return ObjectRef(ObjectType("rbac", "workspace"), self.value)
+    def __repr__(self):
+        return f"SubjectRef({self.resource_id}, {self.resource_type})"
 
 
 @dataclass(frozen=True)
-class OrgId:
+class Workspace:
     value: str
 
-    def to_ref(self) -> ObjectRef:
-        return ObjectRef(ObjectType("rbac", "tenant"), f"localhost/{self.value}")
+    def to_ref(self) -> ResourceRef:
+        return ResourceRef(self.value, "workspace")
 
 
 @dataclass(frozen=True)
-class HostId:
+class Host:
     value: str
 
-    def to_ref(self) -> ObjectRef:
-        return ObjectRef(ObjectType("hbi", "host"), self.value)
+    def to_ref(self) -> ResourceRef:
+        return ResourceRef(self.value, "hbi.host")
 
 
-type Resource = WorkspaceId | OrgId | HostId
-type UserId = str
-type Permission = str
+def identity_to_subject(identity: dict) -> SubjectRef:
+    if identity['type'] == 'ServiceAccount':
+        user_id = identity['service_account']['user_id']
+    elif identity['type'] == 'User':
+        user_id = identity['user']['user_id']
+    return SubjectRef(f"redhat/{user_id}", 'principal')
 
 
-class add_zed_response(object):
+#############################################################################
+# Streaming resource request/response handling
+#############################################################################
+
+# Hopefully at some stage we can just import these from the Kessel SDK.
+def get_resources(
+    client_stub: inventory_service_pb2_grpc.KesselInventoryServiceStub,
+    object_type: representation_type_pb2.RepresentationType,
+    relation: str,
+    subject: subject_reference_pb2.SubjectReference,
+    limit: int = 20,
+    fetch_all=True
+) -> Generator[
+    resource_reference_pb2.ResourceReference, None, None
+]:
+    """
+    Get a continuous stream of the object type this subject has this relation
+    to.  Works around the inherent pagination and continuation token handling.
+
+    Object type and subject are the PB2 representations, so your code can
+    translate from your own internal representation.
+
+    E.g.:
+
+    >>> get_resources(
+            client, Workspace('default').as_pb2(), 'member', this_user.as_pb2()
+        )
+    generator object (...)
+
+    """
+    # logger.debug(f"Get resources({object_type}, {relation}, {subject})")
+    continuation_token = None
+    while (response := _get_resource_page(
+        client_stub, object_type, relation, subject, limit, continuation_token
+    )) is not None:
+        logger.debug("Got resource page response %s", response)
+        for data in response:
+            yield data.object
+        if not fetch_all:
+            # We only want the first page
+            break
+        continuation_token = data.pagination.continuation_token
+        if not continuation_token:
+            # Could just make another request and then get told no more pages,
+            # but it's neater this way...
+            break
+
+
+def _get_resource_page(
+    client_stub: inventory_service_pb2_grpc.KesselInventoryServiceStub,
+    object_type: representation_type_pb2.RepresentationType,
+    relation: str,
+    subject: subject_reference_pb2.SubjectReference,
+    limit: int,
+    continuation_token: Optional[str] = None
+) -> streamed_list_objects_response_pb2.StreamedListObjectsResponse:
+    """
+    Get a single page, of at most limit size, from continuation_token (or
+    start if None).
+    """
+    logger.debug(f"Get resource page({object_type}, {relation}, {subject}, {limit})")
+    request = streamed_list_objects_request_pb2.StreamedListObjectsRequest(
+        object_type=object_type,  # already a PB2 object
+        relation=relation,
+        subject=subject,
+        pagination=request_pagination_pb2.RequestPagination(
+            limit=limit,
+            continuation_token=continuation_token
+        )
+    )
+
+    return client_stub.StreamedListObjects(request)
+
+
+#############################################################################
+# Test decorator
+#############################################################################
+
+class add_kessel_response(object):
     """
     A context manager that inserts specific test data for permission checks
-    and resource lookups into the test Zed server, then remove them on exit.
+    and resource lookups into the test server, then remove them on exit.
     This also operates as a function or method decorator, thanks to the
     __call__ method.  Thanks, granite LLM, for teaching me this trick!
     """
@@ -110,17 +208,19 @@ class add_zed_response(object):
 
     def __enter__(self):
         # The client here is the Kessel object, its client is the
-        # TestZedClient interface.
-        for request, response in self.temporary_permission_checks:
-            client.client.add_permission_check_response(request, response)
-        for request, response in self.temporary_resource_lookups:
-            client.client.add_lookup_resources_response(request, response)
+        # gRPC Client interface.
+        for check, response in self.temporary_permission_checks:
+            # logger.debug(f"Adding permission check response for {check} = {response}")
+            client.client.add_permission_check_response(check, response)
+        for resource, response in self.temporary_resource_lookups:
+            # logger.debug(f"Adding resource lookup response for {resource} = {response}")
+            client.client.add_lookup_resources_response(resource, response)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for request, _ in self.temporary_permission_checks:
-            client.client.del_permission_check_response(request)
-        for request, _ in self.temporary_resource_lookups:
-            client.client.del_lookup_resources_response(request)
+        for check, _ in self.temporary_permission_checks:
+            client.client.del_permission_check_response(check)
+        for resource, _ in self.temporary_resource_lookups:
+            client.client.del_lookup_resources_response(resource)
         return False  # or context manager raises exception
 
     def __call__(self, fn):
@@ -130,240 +230,172 @@ class add_zed_response(object):
         return wrapper
 
 
-class TestZedClient(InsecureClient):
+#############################################################################
+# The test client
+#############################################################################
+
+class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
     """
-    An authzed client that can store up and then send responses to permission
+    A gRPC client that can store up and then send responses to permission
     and resource lookup requests.  Based, very roughly, on the `responses`
     library for handling tests whose code uses `requests`.
     """
 
-    def __init__(self, allow_writes: bool = False) -> None:
+    def __init__(self) -> None:
         self.permission_check_responses = dict()
         self.lookup_resources_responses = dict()
-        self.allow_writes = allow_writes
 
     def add_permission_check_response(
-        self, permission: zed.CheckPermissionRequest, response_int: int
-    ) -> None:
+        self, check: check_request_pb2.CheckRequest, response_int: int
+    ) -> str:
         """
         When this permission is requested, send this response.
         The response integer is put in an object as the `permissionship`
         property, as a shortcut.
         """
-        request_str = str(permission)
-        response_obj = SimpleNamespace(permissionship=response_int)
-        self.permission_check_responses[request_str] = response_obj
-        return request_str
+        check_str = str(check)
+        response_obj = SimpleNamespace(allowed=response_int)
+        self.permission_check_responses[check_str] = response_obj
+        return check_str
 
     def add_lookup_resources_response(
-        self, lookup: zed.LookupResourcesRequest, response_ids: list[int]
+        self, subject: SubjectRef, response_ids: list[UUID]
     ) -> None:
         """
-        When this resource is looked up, send this response.
-        The list of response integers is converted into a list of objects that
-        have these as the `resource_object_id` property, as a shortcut.
+        When the host groups this user subject can access is requested, return
+        this list of host groups by UUID.  At this stage we only look up
+        the workspaces the user has the 'member' relationship to, so we treat
+        the 'relation' and 'object type' being searched for here as static.
+        If we need to more lookups, the things handed in here will need to be
+        more complex.
         """
-        lookup_str = str(lookup)
+        lookup_str = str(subject)
         response_objs = [
-            SimpleNamespace(resource_object_id=response_id)
+            SimpleNamespace(
+                object=SimpleNamespace(resource_id=response_id),
+                pagination=SimpleNamespace(
+                    continuation_token=None
+                )
+            )
             for response_id in response_ids
         ]
         self.lookup_resources_responses[lookup_str] = response_objs
 
-    def del_permission_check_response(self, permission: zed.CheckPermissionRequest):
+    def del_permission_check_response(self, check: check_request_pb2.CheckRequest):
         """
         Delete the associated response for this permission
         """
-        request_str = str(permission)
-        del self.permission_check_responses[request_str]
+        check_str = str(check)
+        del self.permission_check_responses[check_str]
 
-    def del_lookup_resources_response(self, lookup: zed.LookupResourcesRequest):
+    def del_lookup_resources_response(self, subject: SubjectRef):
         """
         Delete the associated response for this permission
         """
-        lookup_str = str(lookup)
+        lookup_str = str(subject)
         del self.lookup_resources_responses[lookup_str]
 
-    def CheckPermission(self, request: zed.CheckPermissionRequest) -> object:
+    def Check(self, check: check_request_pb2.CheckRequest) -> object:
         """
         Attempt the permission check, or raise a failure?
         """
-        request_str = str(request)
-        # print(f"CheckPermission ({request})")
-        # this is faster for empty case than pure 'in' or try/except
-        if self.permission_check_responses and request_str in self.permission_check_responses:
-            # print(f"... Recognised test request, returning {self.permission_check_responses[request_str]}")
-            return self.permission_check_responses[request_str]
+        check_str = str(check)
+        # We should be checking this when we've been given an override, so
+        # permission_check_responses should not be empty.
+        # logger.info(f"Check faked for {check_str}")
+        if check_str in self.permission_check_responses:
+            return self.permission_check_responses[check_str]
         else:
-            raise NotImplementedError(f"Response for request {request_str} not implemented")
+            raise NotImplementedError(f"Response for request {check_str} not implemented")
 
-    def LookupResources(self, request: zed.LookupResourcesRequest) -> list:
+    def StreamedListObjects(
+        self, request: streamed_list_objects_request_pb2.StreamedListObjectsRequest
+    ) -> list[UUID]:
         """
-        Attempt the resource lookup, or raise a failure?
+        Find all resources for the given request.  Because at the moment we
+        don't really search for anything other than 'which workspaces is a
+        given user a member of?' we just use the subject of the request.
         """
-        request_str = str(request)
-        # print(f"LookupResources ({request})")
-        if self.lookup_resources_responses and request_str in self.lookup_resources_responses:
-            return self.lookup_resources_responses[request_str]
+        subject = request.subject  # (type coversion?)
+        subject_str = str(subject)
+        if subject_str in self.lookup_resources_responses:
+            return self.lookup_resources_responses[subject_str]
         else:
-            raise NotImplementedError(f"Response for lookup {request_str} not implemented")
+            raise NotImplementedError(f"Response for lookup {subject_str} not implemented")
 
-    def WriteRelationships(self, *args, **kwargs):
-        """
-        Pass through any writes, if allowed.
-        """
-        # Ultimately what would be cool here would be to actually store these
-        # relationships, and then be able to answer questions of them in
-        # the CheckPermission or LookupResources calls.  But they need too
-        # much knowledge of the internals of authzed and how our particular
-        # RBACv2 implements things.
-        if self.allow_writes:
-            self.up_client.WriteRelationships(*args, **kwargs)
-        else:
-            pass
-            # print(f"WriteRelationships ({args=}, {kwargs=})")
-            # raise ZedClientWritesNotAllowed(f"Write of ({args=}, {kwargs=}) not allowed")
+
+#############################################################################
+# The interface we provide to the rest of our code.
+#############################################################################
 
 
 class Kessel:
     """
-    A very dumbed-down fake version of the Kessel graph check for POC purposes.
+    A wrapper around the gRPC Kessel Inventory service.
     """
-
-    PERMISSIONSHIP_HAS_PERMISSION = zed.CheckPermissionResponse.PERMISSIONSHIP_HAS_PERMISSION
 
     def __init__(self) -> None:
         """
-        Use the TestZedClient to allow 'interception' of requests during
+        Use the TestClient to allow 'interception' of requests during
         testing.
         """
+        self.reporter = reporter_reference_pb2.ReporterReference(type="rbac")
         # We assume here that the host name 'device under test' means that we
-        # only allow access via the TestZedClient.
+        # only allow access via the TestClient.
         if settings.KESSEL_SERVER_NAME == 'device under test':
-            self.client = TestZedClient()
+            self.client = TestClient()
         else:
-            self.client = InsecureClient(
-                f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
-                settings.KESSEL_SERVER_PASSWORD
+            # stub, channel = ClientBuilder(KESSEL_ENDPOINT).insecure().build()
+            logger.info(
+                "Connecting to Kessel via server %s port %s",
+                settings.KESSEL_SERVER_NAME, settings.KESSEL_SERVER_PORT
             )
+            self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
+                grpc.insecure_channel(
+                    f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
+                )
+            )
+            logger.info("Connected to Kessel, client %s", self.client)
 
-    def check(self, resource: ObjectRef, relation: Relation, subject: SubjectRef) -> Tuple[bool, float]:
+    def check(
+        self, resource: ResourceRef, relation: Relation, subject: SubjectRef
+    ) -> Tuple[bool, float]:
         start = time.time()
-        zed_resource = resource.to_zed()
-        zed_subject = subject.to_zed()
-        response = self.client.CheckPermission(
-            zed.CheckPermissionRequest(
-                resource=zed_resource, permission=relation, subject=zed_subject
+        logger.info(
+            "Checking resource %s with relation %s for subject %s",
+            resource, relation, subject
+        )
+        response = self.client.Check(
+            check_request_pb2.CheckRequest(
+                subject=subject.as_pb2(),
+                relation=relation,
+                object=resource.as_pb2(),
             )
         )
-        result = response.permissionship == self.PERMISSIONSHIP_HAS_PERMISSION
+        # Note: we treat 'UNSPECIFIED' as 'DENIED' for security.
+        result = (response.allowed == ALLOWED)
         return result, time.time() - start
 
-    def lookupResources(self, resource_type: ObjectType, relation: Relation, subject: SubjectRef):
+    def host_groups_for(
+        self, subject: SubjectRef
+    ) -> Tuple[bool, float]:
+        """
+        There may be other uses of get_resources, but at the moment the only
+        one we care about is the host groups for this user.
+        """
         start = time.time()
-        zed_r_type = resource_type.to_zed()
-        zed_subject = subject.to_zed()
-        responses = self.client.LookupResources(zed.LookupResourcesRequest(
-            resource_object_type=zed_r_type,
-            permission=relation,
-            subject=zed_subject,
-        ))
-        result = [response.resource_object_id for response in responses]
+        logger.info(
+            "Getting host groups for subject %s", subject
+        )
+        result = [
+            response_object.resource_id
+            for response_object in get_resources(
+                self.client, workspace_object_type,
+                'inventory_host_view', subject.as_pb2()
+                # , limit=100?
+            )
+        ]
         return result, time.time() - start
-
-    def put_workspace(self, workspace: WorkspaceId, parent: WorkspaceId | OrgId):
-        self._write_tuple(workspace.to_ref(), "parent", parent.to_ref().as_subject())
-
-    def put_host_in_workspace(self, host: HostId, workspace: WorkspaceId):
-        self._write_tuple(host.to_ref(), "workspace", workspace.to_ref().as_subject())
-
-    def grant_access_to_org(self, user: UserId, permission: Permission, orgs: list[str]):
-        # Create a dummy role for the permission
-        perm_model = RBACPermission(permission)
-        perm_relation = rbac_permission_to_relation(perm_model)
-        self._write_tuple(
-            # Reuse the relation as the role id for simplicity
-            ObjectRef(type=ObjectType("rbac", "role"), id=perm_relation),
-            perm_relation,
-            SubjectRef(ObjectRef(type=ObjectType("rbac", "principal"), id="*"))
-        )
-
-        # Create a role binding for the role and user
-        self._write_tuple(
-            ObjectRef(type=ObjectType("rbac", "role_binding"), id=f"{perm_relation}/{user}"),
-            "subject",
-            SubjectRef(ObjectRef(type=ObjectType("rbac", "principal"), id=user))
-        )
-        self._write_tuple(
-            ObjectRef(type=ObjectType("rbac", "role_binding"), id=f"{perm_relation}/{user}"),
-            "role",
-            SubjectRef(ObjectRef(type=ObjectType("rbac", "role"), id=perm_relation))
-        )
-
-        # Bind it to orgs
-        for org in orgs:
-            self._write_tuple(
-                OrgId(org).to_ref(),
-                "binding",
-                SubjectRef(ObjectRef(type=ObjectType("rbac", "role_binding"), id=f"{perm_relation}/{user}"))
-            )
-
-    def grant_access_to_workspace(self, user: UserId, permission: Permission, workspaces: list[str] = []):
-        # Create a dummy role for the permission
-        perm_model = RBACPermission(permission)
-        perm_relation = rbac_permission_to_relation(perm_model)
-        self._write_tuple(
-            # Reuse the relation as the role id for simplicity
-            ObjectRef(type=ObjectType("rbac", "role"), id=perm_relation),
-            perm_relation,
-            SubjectRef(ObjectRef(type=ObjectType("rbac", "principal"), id="*"))
-        )
-
-        # Create a role binding for the role and user
-        self._write_tuple(
-            ObjectRef(type=ObjectType("rbac", "role_binding"), id=f"{perm_relation}/{user}"),
-            "subject",
-            SubjectRef(ObjectRef(type=ObjectType("rbac", "principal"), id=user))
-        )
-        self._write_tuple(
-            ObjectRef(type=ObjectType("rbac", "role_binding"), id=f"{perm_relation}/{user}"),
-            "role",
-            SubjectRef(ObjectRef(type=ObjectType("rbac", "role"), id=perm_relation))
-        )
-
-        # Bind it to workspaces
-        for workspace in workspaces:
-            self._write_tuple(
-                WorkspaceId(workspace).to_ref(),
-                "binding",
-                SubjectRef(ObjectRef(type=ObjectType("rbac", "role_binding"), id=f"{perm_relation}/{user}"))
-            )
-        # todo: if no workspace, bind to default ws
-
-    def _write_tuple(self, resource: ObjectRef, relation: Relation, subject: SubjectRef):
-        self.client.WriteRelationships(zed.WriteRelationshipsRequest(
-            updates=[
-                zed.RelationshipUpdate(
-                    operation=zed.RelationshipUpdate.Operation.OPERATION_TOUCH,
-                    relationship=zed.Relationship(
-                        resource=resource.to_zed(),
-                        relation=f't_{relation}',
-                        subject=subject.to_zed()
-                    )
-                ),
-                # TOOD: also need to remove other relationship if moving,
-                # but this wouldn't be needed with kessel
-            ]
-        ))
-
-
-def rbac_permission_to_relation(permission: RBACPermission) -> Relation:
-    return f"{permission.app}_{permission.resource}_{permission.method}".replace("*", "all").replace('-', '_')
-
-
-def identity_to_subject(identity: dict) -> SubjectRef:
-    user_id = identity['user']['user_id']
-    return SubjectRef(ObjectRef(ObjectType("rbac", "principal"), user_id))
 
 
 client = Kessel()

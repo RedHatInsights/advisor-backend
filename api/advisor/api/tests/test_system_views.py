@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import responses
+
 from datetime import timedelta
 
 from django.test import TestCase, override_settings
@@ -22,8 +24,15 @@ from django.utils import timezone
 
 from api import kessel
 from api.models import Ack, InventoryHost, Upload
+from api.permissions import auth_header_for_testing, make_rbac_url
 from api.tests import constants, update_stale_dates
-from api.permissions import auth_header_for_testing
+
+
+TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspace/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 
 class SystemViewTestCase(TestCase):
@@ -31,6 +40,8 @@ class SystemViewTestCase(TestCase):
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data', 'high_severity_rule',
     ]
+
+    std_auth_header = auth_header_for_testing()
 
     @classmethod
     def setUpClass(cls):
@@ -44,7 +55,7 @@ class SystemViewTestCase(TestCase):
 
     def test_list_system(self):
         response = self.client.get(
-            reverse('system-list'), **auth_header_for_testing()
+            reverse('system-list'), **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -138,7 +149,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'display_name': 'system'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -161,7 +172,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'incident': 'true'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         # Without the incident-creating high severity rule, we have no hits.
@@ -171,7 +182,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'incident': 'no'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -194,7 +205,7 @@ class SystemViewTestCase(TestCase):
         # 'incident=true' and 'incident=false', we get a 400.
         response = self.client.get(
             reverse('system-list') + "?incident=true&incident=false",
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         self.assertEqual(response.status_code, 400, response.content.decode())
 
@@ -202,7 +213,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'filter[system_profile][sap_system]': 'true'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -220,7 +231,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'filter[system_profile][sap_sids][contains][]': 'E02'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -236,7 +247,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'filter[system_profile][sap_sids][contains][]': ['E01', 'E02']},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -250,7 +261,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'filter[system_profile][sap_sids][contains]': 'fake'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -261,7 +272,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'filter[system_profile][system_memory_bytes][gt]': '33554432000'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -280,7 +291,7 @@ class SystemViewTestCase(TestCase):
 
     def test_list_system_hits_filter(self):
         # hits=yes lists only those systems with hits - expect 4
-        response = self.client.get(reverse('system-list'), data={'hits': 'yes'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': 'yes'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 4)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
@@ -293,21 +304,21 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[3]['hits'], 1)
 
         # hits=all lists all systems, with or without hits - expect 5
-        response = self.client.get(reverse('system-list'), data={'hits': 'all'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': 'all'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
         self.assertEqual(systems[4]['display_name'], constants.host_05_name)
         self.assertEqual(systems[4]['hits'], 0)
 
         # hits=no lists systems without hits - expect 1
-        response = self.client.get(reverse('system-list'), data={'hits': 'no'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': 'no'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 1)
         self.assertEqual(systems[0]['display_name'], constants.host_05_name)
         self.assertEqual(systems[0]['hits'], 0)
 
         # hits=1 lists systems with low_risk hits - expect 4
-        response = self.client.get(reverse('system-list'), data={'hits': '1'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': '1'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 4)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
@@ -316,22 +327,22 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[3]['low_hits'], 1)
 
         # hits=4 lists systems with critical_risk hits - expect 0
-        response = self.client.get(reverse('system-list'), data={'hits': '4'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': '4'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 0)
 
         # hits=1,4 lists systems with either low_risk or critical_risk hits - expect 4
-        response = self.client.get(reverse('system-list'), data={'hits': '1,4'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': '1,4'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 4)
 
         # hits=1,4,yes shouldn't happen, but will prioritize the hits=yes to list all systems - expect 4
-        response = self.client.get(reverse('system-list'), data={'hits': '1,4,yes'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': '1,4,yes'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 4)
 
         # hits=no,all,yes shouldn't happen, but will prioritize the hits=all to list all systems - expect 5
-        response = self.client.get(reverse('system-list'), data={'hits': 'no,all,yes'}, **auth_header_for_testing())
+        response = self.client.get(reverse('system-list'), data={'hits': 'no,all,yes'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
 
@@ -339,7 +350,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'sort': 'last_seen'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -362,7 +373,7 @@ class SystemViewTestCase(TestCase):
             reverse('system-list'), data={
                 'groups': 'group_1,group_2',
                 'sort': 'group_name'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertIsInstance(systems, list)
@@ -374,7 +385,7 @@ class SystemViewTestCase(TestCase):
             reverse('system-list'), data={
                 'groups': 'group_1,group_2',
                 'sort': '-group_name'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertIsInstance(systems, list)
@@ -385,7 +396,7 @@ class SystemViewTestCase(TestCase):
     def test_list_system_low_hits_sort(self):
         response = self.client.get(
             reverse('system-list'), data={'sort': 'low_hits'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
@@ -397,7 +408,7 @@ class SystemViewTestCase(TestCase):
 
         response = self.client.get(
             reverse('system-list'), data={'sort': '-low_hits'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
@@ -411,7 +422,7 @@ class SystemViewTestCase(TestCase):
         # Test reversing this, since it relies on two sort fields
         response = self.client.get(
             reverse('system-list'), data={'sort': '-rhel_version'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
@@ -428,7 +439,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'rhel_version': '7.5', 'sort': 'display_name'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(systems[0]['display_name'], constants.host_06_name)
@@ -442,7 +453,7 @@ class SystemViewTestCase(TestCase):
         # another account)
         response = self.client.get(
             reverse('system-list'), data={'rhel_version': '6.8'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(systems, [])
@@ -451,7 +462,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'pathway': 'test-component-1', 'sort': 'display_name'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(systems[0]['display_name'], constants.host_06_name)
@@ -466,7 +477,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'sort': 'bad_sort_value'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         self.assertEqual(response.status_code, 400)
 
@@ -475,7 +486,7 @@ class SystemViewTestCase(TestCase):
         # Matches systems01, 03, 04, and stale-warn
         response = self.client.get(
             reverse('system-list'), data={'update_method': 'dnfyum'},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
@@ -492,7 +503,7 @@ class SystemViewTestCase(TestCase):
         stale_hide_2 = InventoryHost.objects.get(id=constants.host_0a_uuid)
         self.assertGreater(stale_hide_2.updated, timezone.now() - timedelta(seconds=5))
         response = self.client.get(
-            reverse('system-list'), **auth_header_for_testing()
+            reverse('system-list'), **self.std_auth_header
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -507,16 +518,19 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(len(systems), 5)
         # Should NOT see stale_hide or stale_hide_2 hosts here.
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
-    # Our Test Zed client doesn't allow us to explicitly specify wildcards,
-    # because it has no idea what these things are.  It just matches exactly.
-    @kessel.add_zed_response(
-        permission_checks=constants.kessel_zedrsp_allow_disable_recom_rw,
-        resource_lookups=constants.kessel_zedlur_workspace_host_group_1
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_disable_recom_rw,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
+    @responses.activate
     def test_list_system_kessel_on(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
         response = self.client.get(
-            reverse('system-list'), **auth_header_for_testing()
+            reverse('system-list'), **self.std_auth_header
         )
         page = self._response_is_good(response)
         # Results should be filtered to host group 1.
@@ -528,7 +542,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-detail', kwargs={
                 'uuid': constants.host_01_uuid
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         system = self._response_is_good(response)
 
@@ -542,7 +556,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-detail', kwargs={
                 'uuid': constants.host_05_uuid
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         system = self._response_is_good(response)
 
@@ -555,7 +569,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-detail', kwargs={
                 'uuid': '123'
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         self.assertEqual(response.status_code, 404)
 
@@ -566,7 +580,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-detail', kwargs={
                 'uuid': constants.host_04_uuid
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         system = self._response_is_good(response)
         self.assertEqual(system['system_uuid'], constants.host_04_uuid)
@@ -584,7 +598,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-reports', kwargs={
                 'uuid': constants.host_01_uuid
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         json = self._response_is_good(response)
 
@@ -605,7 +619,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-detail', kwargs={'uuid': constants.host_01_uuid}),
             data={'branch_id': constants.remote_branch_uc},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         system = self._response_is_good(response)
         self.assertIsInstance(system, dict)
@@ -617,7 +631,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-reports', kwargs={'uuid': constants.host_01_uuid}),
             data={'branch_id': constants.remote_branch_lc},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         json = self._response_is_good(response)
         self.assertIsInstance(json[0], dict)
@@ -630,7 +644,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-reports', kwargs={'uuid': constants.host_01_uuid}),
             data={'branch_id': "satellite.example.com"},
-            **auth_header_for_testing()
+            **self.std_auth_header
         )
         self.assertEqual(response.status_code, 400, response.content.decode())
 
@@ -638,7 +652,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-reports', kwargs={
                 'uuid': constants.host_06_uuid
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         json = self._response_is_good(response)
 
@@ -657,7 +671,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-reports', kwargs={
                 'uuid': '00001111-2222-3333-4444-555566667777'
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         json = self._response_is_good(response)
         self.assertIsInstance(json, list)
@@ -667,7 +681,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-reports', kwargs={
                 'uuid': constants.host_02_uuid
-            }), **auth_header_for_testing()
+            }), **self.std_auth_header
         )
         json = self._response_is_good(response)
         self.assertIsInstance(json, list)
@@ -687,7 +701,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'has_disabled_recommendation': 'true'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         #  host_01 has one disabled recommendation
@@ -698,7 +712,7 @@ class SystemViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'has_disabled_recommendation': 'false'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         #  host_01 has one disabled recommendation, so, it should not be in the response
@@ -712,7 +726,7 @@ class SystemViewTestCase(TestCase):
             reverse('system-list'), data={
                 'has_disabled_recommendation': 'true',
                 'sort': 'display_name'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         # Now most hosts are shown, as they report the active rule.
@@ -728,7 +742,7 @@ class SystemViewTestCase(TestCase):
             reverse('system-list'), data={
                 'has_disabled_recommendation': 'false',
                 'sort': 'display_name'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         self.assertEqual(json['meta']['count'], 1)
@@ -741,6 +755,8 @@ class SystemHighSevViewTestCase(TestCase):
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data', 'high_severity_rule', 'high_severity_reports',
     ]
+
+    std_auth_header = auth_header_for_testing()
 
     @classmethod
     def setUpClass(cls):
@@ -757,7 +773,7 @@ class SystemHighSevViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'), data={
                 'incident': 'true'
-            }, **auth_header_for_testing()
+            }, **self.std_auth_header
         )
         json = self._response_is_good(response)
         # With the incident-creating high severity rule, we have one system
@@ -773,6 +789,8 @@ class SystemHostTagsViewTestCase(TestCase):
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data', 'host_tag_test_data',
     ]
+
+    tags_auth_header = auth_header_for_testing(account='1000000', org_id='1000000')
 
     @classmethod
     def setUpClass(cls):
@@ -790,7 +808,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIsInstance(json, dict)
@@ -815,7 +833,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -828,7 +846,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SFO,customer/security=high'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -842,7 +860,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SFO,customer/security=low'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -855,7 +873,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=MSP'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -866,7 +884,7 @@ class SystemHostTagsViewTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={'sort': 'display_name', 'tags': 'AWS/location=SFO,AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         json = self._response_is_good(response)
         self.assertIn('data', json)
@@ -877,7 +895,7 @@ class SystemHostTagsViewTestCase(TestCase):
         #  Test that tags can be used in both tags=tag1,tag2 as well as tags=tag1&tags=tag2 formats
         response = self.client.get(
             reverse('system-list') + '?tags=AWS/location=SFO,customer/environment=web&tags=customer/security=low',
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
 
         json = self._response_is_good(response)
@@ -890,7 +908,7 @@ class SystemHostTagsViewTestCase(TestCase):
         with self.settings(INVENTORY_TAG_FILTERING=True):
             response = self.client.get(
                 reverse('system-list') + '?tags=AWS/location=SFO,customer/environment=web&tags=customer/security=low',
-                **auth_header_for_testing(account='1000000', org_id='1000000')
+                **self.tags_auth_header
             )
 
             json = self._response_is_good(response)
@@ -904,7 +922,7 @@ class SystemHostTagsViewTestCase(TestCase):
             reverse('system-detail', kwargs={
                 'uuid': constants.host_ht_01_uuid
             }),
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         system = self._response_is_good(response)
         self.assertIn('hits', system)
@@ -922,7 +940,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         system = self._response_is_good(response)
         self.assertIn('system_uuid', system)
@@ -936,7 +954,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SFO'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         # And we should get a 404
         self.assertEqual(response.status_code, 404)
@@ -946,7 +964,7 @@ class SystemHostTagsViewTestCase(TestCase):
             reverse('system-reports', kwargs={
                 'uuid': constants.host_ht_01_uuid
             }),
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         rules = self._response_is_good(response)
         self.assertIsInstance(rules, list)
@@ -961,7 +979,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SLC'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         rules = self._response_is_good(response)
         self.assertIsInstance(rules, list)
@@ -973,7 +991,7 @@ class SystemHostTagsViewTestCase(TestCase):
                 'uuid': constants.host_ht_01_uuid
             }),
             data={'tags': 'AWS/location=SFO'},
-            **auth_header_for_testing(account='1000000', org_id='1000000')
+            **self.tags_auth_header
         )
         # We don't get a 404, we get no data.
         rules = self._response_is_good(response)

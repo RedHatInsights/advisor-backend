@@ -28,7 +28,7 @@ from api.filters import (
     sort_params_to_fields, sort_param_enum, filter_on_param, value_of_param,
     display_name_query_param, filter_on_display_name,
 )
-from api.permissions import OrgPermission
+from api.permissions import OrgPermission, ResourceScope
 from tasks.models import Job, JobLog, JobStatusChoices, TaskTypeChoices
 from tasks.permissions import TasksRBACPermission
 from tasks.serializers import JobSerializer, JobLogSerializer
@@ -81,6 +81,8 @@ class JobViewSet(ReadOnlyModelViewSet, PaginateMixin):
     pagination_class = CustomPageNumberPagination
     permission_classes = [OrgPermission, TasksRBACPermission]
     queryset = Job.objects.all()
+    resource_name = 'tasks'
+    resource_scope = ResourceScope.ORG
     serializer_class = JobSerializer
 
     def get_queryset(self):
