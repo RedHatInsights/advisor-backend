@@ -175,3 +175,21 @@ KESSEL_ENABLED = os.getenv("KESSEL_ENABLED", "false").lower == 'true'
 KESSEL_SERVER_NAME = os.getenv('KESSEL_SERVER_NAME', 'device under test')
 KESSEL_SERVER_PORT = os.getenv('KESSEL_SERVER_PORT', '50051')
 KESSEL_SERVER_PASSWORD = os.getenv('KESSEL_SERVER_PASSWORD', 'mykey')
+
+# Feature Flags
+if CLOWDER_ENABLED:
+    unleash = cfg.featureFlags
+    if unleash:
+        UNLEASH_TOKEN = unleash.clientAccessToken
+        UNLEASH_URL = f"{unleash.scheme.value}://{unleash.hostname}:{unleash.port}/api"
+    else:
+        UNLEASH_TOKEN = os.getenv("UNLEASH_TOKEN")
+        UNLEASH_URL = os.getenv("UNLEASH_URL")
+else:
+    UNLEASH_TOKEN = os.getenv("UNLEASH_TOKEN", "*:*.advisor")
+    UNLEASH_URL = os.getenv("UNLEASH_URL", "http://localhost:4242/api")
+
+UNLEASH_APP_NAME = os.getenv("UNLEASH_APP_NAME", APP_NAME)
+UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
+UNLEASH_REFRESH_INTERVAL = os.getenv("UNLEASH_REFRESH_INTERVAL", 5)
+UNLEASH_FAKE_INITIALIZE = os.getenv("UNLEASH_FAKE_INITIALIZE", "true").lower() == "true"
