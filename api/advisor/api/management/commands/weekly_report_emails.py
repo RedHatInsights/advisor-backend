@@ -29,7 +29,9 @@ from django.utils import timezone
 from api.models import (
     CurrentReport, InventoryHost, WeeklyReportSubscription, stale_systems_q, Ack
 )
-from api.permissions import has_rbac_permission
+from api.permissions import (
+    RHIdentityAuthentication, has_rbac_permission, request_object_for_testing
+)
 from api.utils import user_account_details
 from api.views.stats import get_reports_stats, get_rules_stats
 from advisor_logging import logger
@@ -221,9 +223,10 @@ def get_users_to_email(org_id, account, latest_email_time):
             expired_users.append(username)
             continue
         org_id = subscription_data.org_id
-        result, elapsed = has_rbac_permission(
-            username, org_id, permission=WEEKLY_REPORT_RBAC_PERMISSION, account=account
+        request = request_object_for_testing(
+            auth_by=RHIdentityAuthentication, org_id=org_id, username=username
         )
+        result, _ = has_rbac_permission(request, WEEKLY_REPORT_RBAC_PERMISSION)
         # Don't need the elapsed time here.
         if not result:
             logger.debug("User '%s' in account '%s' org_id '%s' doesn't have permission to receive the report email", username, account, org_id)

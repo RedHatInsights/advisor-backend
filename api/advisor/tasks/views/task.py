@@ -41,7 +41,7 @@ from api.filters import (
 from api.models import get_host_group_filter
 from api.permissions import (
     TurnpikeIdentityAuthentication, AssociatePermission,
-    CertAuthPermission, request_header_data,
+    CertAuthPermission, ResourceScope, request_header_data,
 )
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin, retry_request,
@@ -65,12 +65,14 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
     """
     View a list of tasks, or a single task
     """
+    lookup_field = 'slug'
     pagination_class = CustomPageNumberPagination
     permission_classes = [TasksRBACPermission | CertAuthPermission]
     queryset = Task.objects.filter(active=True).order_by('publish_date').prefetch_related(
         'taskparameters'
     )
-    lookup_field = 'slug'
+    resource_name = 'tasks'
+    resource_scope = ResourceScope.ORG
     serializer_class = TaskSerializer
 
     # If we put the YAML renderer first, then any authentication failures

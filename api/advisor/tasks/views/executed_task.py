@@ -44,7 +44,9 @@ from api.filters import (
     display_name_query_param, filter_on_display_name, filter_on_host_tags,
 )
 from api.models import get_host_group_filter
-from api.permissions import OrgPermission, http_auth_header_key, auth_header_key
+from api.permissions import (
+    OrgPermission, ResourceScope, http_auth_header_key, auth_header_key
+)
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin, retry_request,
     store_post_data,
@@ -333,6 +335,8 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
     pagination_class = CustomPageNumberPagination
     permission_classes = [OrgPermission, TasksRBACPermission]
     queryset = ExecutedTask.objects.all()
+    resource_name = 'tasks'
+    resource_scope = ResourceScope.ORG
     serializer_class = ExecutedTaskSerializer
 
     def get_queryset(self):

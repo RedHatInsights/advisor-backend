@@ -14,21 +14,23 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import responses
+
 from django.http import HttpRequest
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from rest_framework.exceptions import AuthenticationFailed
 
-from api.kessel import add_zed_response
+from api.kessel import add_kessel_response
 from api.models import InventoryHost
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
     CertAuthPermission, InsightsRBACPermission, IsRedHatInternalUser,
-    RBACPermission, RHIdentityAuthentication, ResourceScope,
+    RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
     auth_to_request, request_object_for_testing, request_to_username,
-    turnpike_auth_header_for_testing
+    turnpike_auth_header_for_testing, make_rbac_url, get_workspace_id,
 )
 from api.tests import constants
 
@@ -38,6 +40,12 @@ import base64
 def b64s(s):
     return base64.b64encode(s.encode())
 
+
+TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspace/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 turnpike_defaults = {
     'Role': [], 'email': 'testuser@redhat.com', 'givenName': 'Test',
@@ -371,21 +379,37 @@ class BadUseOfCertAuthPermission(TestCase):
 
 
 class RequestToUserNameTestCase(TestCase):
-    def test_missing_username(self):
+    def test_missing_fields(self):
+        # First - no username and no auth done yet.
+        request = HttpRequest()
+        self.assertFalse(hasattr(request, 'username'))
+        self.assertFalse(hasattr(request, 'auth'))
+        self.assertFalse(request_to_username(request))
+        # Then check handling of unknown identity type
         request = HttpRequest()
         request.META = {
             auth_header_key: b64s(
-                '{"identity": {"org_id": 9876543, "type": "User", '
+                '{"identity": {"org_id": 9876543, "type": "Certificate", '
                 '"user": {"is_internal": false}}}'
             ),
             'REMOTE_ADDR': 'test'
         }
-
-        with self.assertRaisesMessage(
-            AuthenticationFailed,
-            "'username' property not found in 'identity.user' section",
-        ):
-            request_to_username(request)
+        fake_auth_check(request, RHIdentityAuthentication)
+        self.assertFalse(hasattr(request, 'username'))
+        self.assertTrue(hasattr(request, 'auth'))
+        self.assertFalse(request_to_username(request))
+        # Then check handling when the type key is not in the identity
+        request = HttpRequest()
+        request.META = {
+            auth_header_key: b64s(
+                '{"identity": {"org_id": 9876543, "type": "User", '
+                '"certificate": {"is_internal": false}}}'
+            ),
+            'REMOTE_ADDR': 'test'
+        }
+        fake_auth_check(request, RHIdentityAuthentication)
+        self.assertFalse(hasattr(request, 'username'))
+        self.assertFalse(request_to_username(request))
 
 
 class IsRedHatInternalUserTestCase(TestCase):
@@ -443,6 +467,29 @@ class BaseRedHatUserTestCase(TestCase):
             x.has_red_hat_permission('request', 'view', 'user_data')
 
 
+class OrgPermissionTestCase(TestCase):
+    def test_basic_has_permission_steps(self):
+        orgperm = OrgPermission()
+        view = FakeView()
+        # Firstly, if no auth then false
+        rq = request_object_for_testing()
+        self.assertFalse(hasattr(rq, 'user'))
+        self.assertFalse(orgperm.has_permission(rq, view))
+        # Now for the second stage of the identity check
+        rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        self.assertTrue(hasattr(rq, 'user'))
+        self.assertTrue(hasattr(rq, 'auth'))
+        self.assertIsInstance(rq.auth, dict)
+        # Temporarily remove that...
+        auth_dict = rq.auth
+        rq.auth = None
+        self.assertFalse(orgperm.has_permission(rq, view))
+        # Now put it back and check that we get True if 'org_id' is present.
+        rq.auth = auth_dict
+        self.assertIn('org_id', rq.auth)
+        self.assertTrue(orgperm.has_permission(rq, view))
+
+
 class BadUsesOfAuthHeaderTestCase(TestCase):
     def test_get_unencode_value(self):
         self.assertEqual(auth_header_for_testing(unencoded=True), {'identity': {
@@ -455,6 +502,129 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
     def test_system_and_user_auth(self):
         with self.assertRaises(AuthenticationFailed):
             auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
+
+
+class GetWorkspaceIdTestCase(TestCase):
+    @responses.activate
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_get_workspace_id_failures(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        # Have to not use the workspace_for_org cache in this test
+        from api import permissions
+        permissions.workspace_for_org = None  # prevents cache use
+        with self.assertLogs(logger='advisor-log') as logs:
+            # Non-200 response
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                status=404,
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)  # This reflects the actual request.
+            self.assertIn(
+                "ERROR:advisor-log:Error: Got status 404 from RBAC: ''",
+                logs.output
+            )
+            # Not a dict
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json='Foo!',
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                "ERROR:advisor-log:Error: Response from RBAC is not a dictionary: 'Foo!'",
+                logs.output
+            )
+            # No 'data' item in dict
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'foo': 'bar'},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                "ERROR:advisor-log:Error: Response from RBAC is missing 'data' "
+                "key: '{'foo': 'bar'}'",
+                logs.output
+            )
+            # Data not a list
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'data': 'bar'},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                "ERROR:advisor-log:Error: Response from RBAC is not a list: "
+                "'bar'",
+                logs.output
+            )
+            # Data list empty
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'data': []},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                "ERROR:advisor-log:Error: Data from RBAC is empty: "
+                "'[]'",
+                logs.output
+            )
+            # Data list does not contain a dictionary
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'data': ['Foo part 2: Return of Foo']},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                "ERROR:advisor-log:Error: First data item from RBAC is not a "
+                "dictionary: 'Foo part 2: Return of Foo'",
+                logs.output
+            )
+            # Data list dictionary does not contain an 'id' element
+            responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'data': [{'foo': 'bar'}]},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                "ERROR:advisor-log:Error: First data item from RBAC is missing "
+                "'id' key: '{'foo': 'bar'}'",
+                logs.output
+            )
+
+    @responses.activate
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_workspace_id_cached(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        # Make the first request to cache the workspace ID
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
+        # Grab the cache dict to manipulate it in testing.
+        from api import permissions
+        permissions.workspace_for_org = dict()
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        # Make a second request to verify the workspace ID is cached
+        workspace_id, elapsed = get_workspace_id(request)
+        # Only one request made.
+        self.assertEqual(len(responses.calls), 1)
+        self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
+        self.assertEqual(elapsed, 0.0)
+        self.assertEqual(len(permissions.workspace_for_org), 1)
 
 
 class TestInsightsRBACPermissionKessel(TestCase):
@@ -524,22 +694,23 @@ class TestInsightsRBACPermissionKessel(TestCase):
         }
         self.assertFalse(irbp.has_permission(request, view))
 
-    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @add_kessel_response(
+        permission_checks=constants.kessel_allow_disable_recom_rw,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
     def test_kessel_resourcescope_host_object_permissions(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
         # Set up the various permissions objects
-        rhia = RHIdentityAuthentication()
-        request = request_object_for_testing()
-        org_id, _ = rhia.authenticate(request)
-        self.assertFalse(hasattr(request, 'user'))
-        request.user = org_id
-        request.auth = {
-            'org_id': constants.standard_org, 'type': 'User',
-            'user': {'username': 'Barry Jones', 'user_id': constants.test_user_id}
-        }
-        self.assertEqual(org_id, constants.standard_org)
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        self.assertTrue(hasattr(request, 'user'))
         self.assertTrue(hasattr(request, 'auth'))
         view = FakeView()
-        setattr(view, 'resource_name', 'recommendation_results')
+        setattr(view, 'resource_name', 'recommendation-results')
         setattr(view, 'resource_scope', ResourceScope.HOST)
         irbp = InsightsRBACPermission()
 
@@ -564,8 +735,8 @@ class TestInsightsRBACPermissionKessel(TestCase):
         ):
             irbp.has_object_permission(request, view, irbp)
         # Finally we actually get to do a has_kessel_permission check
-        with add_zed_response(
-            permission_checks=constants.kessel_zedrsp_allow_host_01_read
+        with add_kessel_response(
+            permission_checks=constants.kessel_allow_host_01_read
         ):
             self.assertTrue(irbp.has_object_permission(request, view, host))
 

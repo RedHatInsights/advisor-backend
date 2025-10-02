@@ -29,10 +29,15 @@ from django.utils import timezone, dateformat
 from api.management.commands.weekly_report_emails import get_rhdisabled_rules_systems
 from project_settings import settings
 from api.models import WeeklyReportSubscription, Rule, Tag, InventoryHost, Ack
-from api.permissions import has_rbac_permission, http_auth_header_key
+from api.permissions import has_rbac_permission, http_auth_header_key, make_rbac_url
 from api.tests import constants, update_stale_dates
 
 test_middleware_url = 'https://middleware.svc/'
+
+TEST_RBAC_URL = 'http://rbac.svc/'  # the setting
+# Because we handle the RBAC response with a callback, we accept all
+# parameters and work out how to respond from there.
+TEST_RBAC_V1_ACCESS = make_rbac_url("access/", rbac_base=TEST_RBAC_URL)
 
 
 user_details_table = {
@@ -118,11 +123,13 @@ def reset_last_email_at():
 
 
 def lookup_rbac_permissions(request):
-    if request.headers.get(http_auth_header_key):
-        identity = json.loads(base64.b64decode(request.headers[http_auth_header_key]))
+    if (identity_hdr := request.headers.get(http_auth_header_key)) is not None:
+        identity = json.loads(base64.b64decode(identity_hdr))
         username = identity['identity']['user']['username']
-    elif request.params.get('username'):
+        # logger.info("RBAC faked for username %s via identity", username)
+    elif ('username' in request.params):
         username = request.params['username']
+        # logger.info("RBAC faked for username %s via parameter", username)
 
     return 200, {}, json.dumps(user_permissions_table[username])
 
@@ -151,10 +158,12 @@ class WeeklyReportEmailTest(TestCase):
             callback=count_posted_emails, content_type=constants.json_mime,
         )
         # And our fake RBAC
-        responses.add_callback(responses.GET, 'http://rbac.svc', callback=lookup_rbac_permissions)
+        responses.add_callback(
+            responses.GET, TEST_RBAC_V1_ACCESS, callback=lookup_rbac_permissions
+        )
 
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             out = StringIO()
@@ -323,8 +332,8 @@ class WeeklyReportEmailTest(TestCase):
         # Set up our fake user account lookup, fake mail sender and fake rbac service
         responses.add_callback(responses.POST, test_middleware_url + '/users', callback=lookup_user_details)
         responses.add_callback(responses.POST, test_middleware_url + '/sendEmails', callback=count_posted_emails)
-        responses.add_callback(responses.GET, 'http://rbac.svc', callback=lookup_rbac_permissions)
-        responses.add_callback(responses.GET, 'http://rbac.svc?app=insights', callback=lookup_rbac_permissions)
+        responses.add_callback(responses.GET, TEST_RBAC_V1_ACCESS, callback=lookup_rbac_permissions)
+        # responses.add_callback(responses.GET, 'http://rbac.svc?app=insights', callback=lookup_rbac_permissions)
         out = StringIO
 
         # Initially the users have permissions - expect emails to be sent
@@ -332,7 +341,7 @@ class WeeklyReportEmailTest(TestCase):
         mail.outbox = []
         reset_last_email_at()
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -343,7 +352,7 @@ class WeeklyReportEmailTest(TestCase):
         mail.outbox = []
         reset_last_email_at()
         with self.settings(
-            RBAC_ENABLED=True, RBAC_URL="http://rbac.svc?app=insights",
+            RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL,
             RBAC_PSK="007", MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -358,7 +367,7 @@ class WeeklyReportEmailTest(TestCase):
         mail.outbox = []
         reset_last_email_at()
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -368,7 +377,7 @@ class WeeklyReportEmailTest(TestCase):
         reset_last_email_at()
         # Repeat test using Advisor PSK
         with self.settings(
-            RBAC_URL="http://rbac.svc?app=insights", RBAC_PSK="007",
+            RBAC_URL=TEST_RBAC_URL, RBAC_PSK="007",
             RBAC_ENABLED=True, MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', stdout=out)
@@ -385,14 +394,14 @@ class WeeklyReportEmailTest(TestCase):
         # Set up our fake user account lookup, fake mail sender and fake rbac service
         responses.add_callback(responses.POST, test_middleware_url + '/users', callback=lookup_user_details)
         responses.add_callback(responses.POST, test_middleware_url + '/sendEmails', callback=count_posted_emails)
-        responses.add_callback(responses.GET, 'http://rbac.svc', callback=lookup_rbac_permissions)
+        responses.add_callback(responses.GET, TEST_RBAC_V1_ACCESS, callback=lookup_rbac_permissions)
         out = StringIO
 
         self.assertEqual(WeeklyReportSubscription.objects.count(), 6)
         # Initially the users have permissions - expect emails to be sent
         # Test using identity headers
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', '--delete-expired', stdout=out)
@@ -407,7 +416,7 @@ class WeeklyReportEmailTest(TestCase):
         # Set up our fake user account lookup, fake mail sender and fake rbac service
         responses.add_callback(responses.POST, test_middleware_url + '/users', callback=lookup_user_details)
         responses.add_callback(responses.POST, test_middleware_url + '/sendEmails', callback=count_posted_emails)
-        responses.add_callback(responses.GET, 'http://rbac.svc', callback=lookup_rbac_permissions)
+        responses.add_callback(responses.GET, TEST_RBAC_V1_ACCESS, callback=lookup_rbac_permissions)
         out = StringIO
 
         # Create a new subscription with an unknown username
@@ -416,7 +425,7 @@ class WeeklyReportEmailTest(TestCase):
         # Trigger the email sending
         mail.outbox = []
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', '--org-id=7654321', stdout=out)
@@ -427,13 +436,13 @@ class WeeklyReportEmailTest(TestCase):
         # Set up our fake user account lookup, fake mail sender and fake rbac service
         responses.add_callback(responses.POST, test_middleware_url + '/users', callback=lookup_user_details)
         responses.add_callback(responses.POST, test_middleware_url + '/sendEmails', callback=count_posted_emails)
-        responses.add_callback(responses.GET, 'http://rbac.svc', callback=lookup_rbac_permissions)
+        responses.add_callback(responses.GET, TEST_RBAC_V1_ACCESS, callback=lookup_rbac_permissions)
         out = StringIO
 
         # Trigger the email sending
         mail.outbox = []
         with self.settings(
-            RBAC_URL="http://rbac.svc", RBAC_ENABLED=True,
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
             MIDDLEWARE_HOST_URL=test_middleware_url
         ):
             call_command('weekly_report_emails', '--org-id=1234567', stdout=out)

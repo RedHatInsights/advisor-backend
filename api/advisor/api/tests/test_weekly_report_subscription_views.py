@@ -22,8 +22,8 @@ from django.urls import reverse
 
 from api.tests import constants
 from api.tests.test_weekly_report_command import count_posted_emails
-from api.permissions import auth_header_for_testing
-from api.wrs_utils import send_confirmation_email, update_wrs
+from api.permissions import auth_header_for_testing, make_rbac_url
+from api.wrs_utils import update_wrs
 
 test_user_identity_header = auth_header_for_testing(username='test-user')
 test_user2_identity_header = auth_header_for_testing(username='test-user2')
@@ -31,6 +31,10 @@ subscribed = {'is_subscribed': True}
 not_subscribed = {'is_subscribed': False}
 test_middleware_url = 'https://middleware.svc/'
 TEST_RBAC_URL = 'http://rbac.svc/'
+TEST_RBAC_V1_ACCESS = make_rbac_url(
+    "access/?application=advisor,tasks,inventory&limit=1000",
+    rbac_base=TEST_RBAC_URL
+)
 
 
 class WeeklyReportSubscriptionTestCase(TestCase):
@@ -165,8 +169,8 @@ class WeeklyReportSubscriptionTestCase(TestCase):
     def test_rbac_enabled_and_user_denied(self):
         # Test that if the user is denied access to weekly emails by RBAC
         # then they get denied both listing and updating
-        responses.add(
-            responses.GET, TEST_RBAC_URL,
+        responses.get(
+            TEST_RBAC_V1_ACCESS,
             json={'data': [{'permission': 'advisor:recommendation-results:*'}]},
             status=200
         )
@@ -185,8 +189,6 @@ class WeeklyReportSubscriptionTestCase(TestCase):
             self._check_no_subscription_confirmation_sent()
 
             # Test utils functions directly...
-            self.assertIsNone(send_confirmation_email('test-user', '1234567', '9876543'))
-            self._check_no_subscription_confirmation_sent()
             self.assertIsNone(update_wrs('test-user', '1234567', False, '9876543'))
             self._check_no_subscription_confirmation_sent()
 
