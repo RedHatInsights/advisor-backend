@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+from kessel.inventory.v1beta2 import check_request_pb2
+
+from api import kessel
 from api.tests import constants as api_constants
 
 
@@ -197,6 +200,33 @@ class constants(object):
     missing_branch = api_constants.missing_branch
 
     test_user = 'testing'
+
+    # Kessel permissions
+    kessel_std_workspace_id = api_constants.kessel_std_workspace_id
+    kessel_std_org_obj = api_constants.kessel_std_org_obj
+    kessel_std_user_obj = api_constants.kessel_std_user_obj
+    # Kessel request check values
+    kessel_tasks_read = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="tasks_tasks_view",
+        subject=kessel_std_user_obj,
+    )
+    kessel_tasks_write = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="tasks_tasks_edit",
+        subject=kessel_std_user_obj,
+    )
+    # Kessel permission checks
+    kessel_tasks_rw = [(
+        kessel_tasks_write, kessel.ALLOWED
+    ), (
+        kessel_tasks_read, kessel.ALLOWED
+    )]
+    kessel_tasks_ro = [(
+        kessel_tasks_write, kessel.DENIED
+    ), (
+        kessel_tasks_read, kessel.ALLOWED
+    )]
 
 
 def task_creation_data(task_number: int, indexes: list):

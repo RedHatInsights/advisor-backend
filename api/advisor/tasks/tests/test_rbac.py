@@ -19,12 +19,22 @@ import json
 
 import responses
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from api.permissions import auth_header_for_testing
+from api.kessel import add_kessel_response
+from api.permissions import auth_header_for_testing, make_rbac_url
+from tasks.tests import constants
 
 TEST_RBAC_URL = 'http://rbac.svc/'
+TEST_RBAC_V1_ACCESS = make_rbac_url(
+    "access/?application=advisor,tasks,inventory&limit=1000",
+    rbac_base=TEST_RBAC_URL
+)
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspace/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 raw_insights_qa_identity = ''.join("""
 eyJlbnRpdGxlbWVudHMiOnsib3BlbnNoaWZ0Ijp
@@ -62,7 +72,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_allowed(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_ACCESS,
             json={'data': [{'permission': 'advisor:*:*'}, {'permission': 'tasks:*:*'}]}, status=200
         )
         with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
@@ -79,7 +89,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_allowed_full_response(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_ACCESS,
             json={
                 "meta": {
                     "count": 1,
@@ -121,7 +131,7 @@ class RBACTestCase(TestCase):
     @responses.activate
     def test_rbac_basic_denied(self):
         responses.add(
-            responses.GET, TEST_RBAC_URL,
+            responses.GET, TEST_RBAC_V1_ACCESS,
             json={'data': [{'permission': 'advisor:*:*'}]}, status=200
         )
         with self.settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True):
@@ -131,3 +141,45 @@ class RBACTestCase(TestCase):
                     response.status_code, 403,
                     f"view {view_name} should not be visible with RBAC denying tasks access"
                 )
+
+
+class KesselTestCase(TestCase):
+    basic_auth_header = auth_header_for_testing()
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @responses.activate
+    @add_kessel_response(
+        permission_checks=constants.kessel_tasks_rw
+    )
+    def test_rbac_basic_allowed_full(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
+
+        # Check that we can access the basic views
+        reply = self.client.get(reverse('tasks-task-list'), **self.basic_auth_header)
+        self.assertEqual(reply.status_code, 200)
+        reply = self.client.get(reverse('tasks-system-list'), **self.basic_auth_header)
+        self.assertEqual(reply.status_code, 200)
+        reply = self.client.get(reverse('tasks-executedtask-list'), **self.basic_auth_header)
+        self.assertEqual(reply.status_code, 200)
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @responses.activate
+    @add_kessel_response(
+        permission_checks=constants.kessel_tasks_ro
+    )
+    def test_rbac_basic_allowed_read_only(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
+
+        # Check that we can access the basic views
+        reply = self.client.get(reverse('tasks-task-list'), **self.basic_auth_header)
+        self.assertEqual(reply.status_code, 200)
+        reply = self.client.get(reverse('tasks-system-list'), **self.basic_auth_header)
+        self.assertEqual(reply.status_code, 200)
+        reply = self.client.get(reverse('tasks-executedtask-list'), **self.basic_auth_header)
+        self.assertEqual(reply.status_code, 200)
