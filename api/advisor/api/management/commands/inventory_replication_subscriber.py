@@ -195,7 +195,7 @@ def check_or_create_system_profile_tables():
             arch varchar(50) NULL,
             bootc_status jsonb NULL,
             dnf_modules _jsonb NULL,
-            host_type varchar(4) NULL,
+            host_type varchar(12) NULL,
             image_builder jsonb NULL,
             operating_system jsonb NULL,
             owner_id uuid NULL,
