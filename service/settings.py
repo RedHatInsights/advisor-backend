@@ -61,7 +61,7 @@ if CLOWDER_ENABLED:
     db = cfg.database
     DATABASES = {
         'default': {
-            'ENGINE': os.environ.get('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
+            'ENGINE': os.environ.get('ADVISOR_DB_ENGINE', 'db_backends'),
             'NAME': os.environ.get('ADVISOR_DB_NAME', db.name),
             'USER': os.environ.get('ADVISOR_DB_USER', db.username),
             'PASSWORD': os.environ.get('ADVISOR_DB_PASSWORD', db.password),
@@ -86,7 +86,7 @@ else:
 
     DATABASES = {
         'default': {
-            'ENGINE': os.environ.get('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
+            'ENGINE': os.environ.get('ADVISOR_DB_ENGINE', 'db_backends'),
             'NAME': os.environ.get('ADVISOR_DB_NAME', 'insightsapi'),
             'USER': os.environ.get('ADVISOR_DB_USER', 'insightsapi'),
             'PASSWORD': os.environ.get('ADVISOR_DB_PASSWORD', 'InsightsData'),
