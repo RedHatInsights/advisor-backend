@@ -42,6 +42,9 @@ class SystemViewTestCase(TestCase):
     ]
 
     std_auth_header = auth_header_for_testing()
+    service_account_auth_header = auth_header_for_testing(
+        service_account=constants.service_account
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -520,7 +523,7 @@ class SystemViewTestCase(TestCase):
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @kessel.add_kessel_response(
-        permission_checks=constants.kessel_allow_disable_recom_rw,
+        permission_checks=constants.kessel_allow_recom_read_ro,
         resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
     @responses.activate
@@ -538,7 +541,43 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(len(page['data']), 1)
         self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
 
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_svc_ro,
+        resource_lookups=constants.kessel_svc_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_list_system_kessel_on_service_account(self):
+        # Test with service account
+        response = self.client.get(
+            reverse('system-list'), **self.service_account_auth_header
+        )
+        page = self._response_is_good(response)
+        self.assertEqual(page['meta']['count'], 1)  # one system
+        self.assertEqual(len(page['data']), 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+
     def test_get_system(self):
+        response = self.client.get(
+            reverse('system-detail', kwargs={
+                'uuid': constants.host_01_uuid
+            }), **self.std_auth_header
+        )
+        system = self._response_is_good(response)
+
+        self.assertIsInstance(system, dict)
+        self.assertEqual(system['hits'], 1)
+        self.assertEqual(system['system_uuid'], constants.host_01_uuid)
+        self.assertEqual(system['display_name'], constants.host_01_name)
+        self.assertEqual(system['last_seen'], '2018-12-04T05:10:36Z')
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_get_system_kessel_on(self):
         response = self.client.get(
             reverse('system-detail', kwargs={
                 'uuid': constants.host_01_uuid

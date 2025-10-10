@@ -22,6 +22,7 @@ from django.utils import timezone
 
 from api import kessel
 from api.models import InventoryHost
+from api.permissions import identity_to_subject
 
 
 class constants(object):
@@ -45,11 +46,14 @@ class constants(object):
     host_tag_org = '1000000'
     test_username = 'testing'
     test_user_id = '01234567-0123-0123-0123-0123456789ab'
+    # SERVICEACCOUNT01
+    test_service_user_id = '53455256-4943-4541-4343-4f554e543031'
 
     service_account = {
         'client_id': '10203040-5060-7080-90a0-b0c0d0e0f000',
         # username longer than the old 40 character limits for some usernames
-        'username': 'service_account_10203040-5060-7080-90a0-b0c0d0e0f000'
+        'username': 'service_account_10203040-5060-7080-90a0-b0c0d0e0f000',
+        'user_id': test_service_user_id
     }
 
     # Rule IDs and details
@@ -288,10 +292,14 @@ class constants(object):
 
     # Kessel RBAC permission constants
     kessel_std_org_obj = kessel.Workspace(kessel_std_workspace_id).to_ref().as_pb2()
-    kessel_std_user_identity_dict = {
+    kessel_std_user_identity_dict = {  # very minimal
         'type': 'User', 'user': {'user_id': test_user_id}
     }
-    kessel_std_user_obj = kessel.identity_to_subject(kessel_std_user_identity_dict).as_pb2()
+    kessel_std_service_identity_dict = {  # also very minimal
+        'type': 'ServiceAccount', 'service_account': {'user_id': test_service_user_id}
+    }
+    kessel_std_user_obj = identity_to_subject(kessel_std_user_identity_dict).as_pb2()
+    kessel_std_svc_user_obj = identity_to_subject(kessel_std_service_identity_dict).as_pb2()
     kessel_host_01_obj = kessel.Host(host_01_uuid).to_ref().as_pb2()
 
     # Kessel individual requests
@@ -314,6 +322,16 @@ class constants(object):
         object=kessel_std_org_obj,
         relation="advisor_recommendation-results_view",
         subject=kessel_std_user_obj,
+    )
+    kessel_cpr_read_recom_svc_write = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_recommendation-results_edit",
+        subject=kessel_std_svc_user_obj,
+    )
+    kessel_cpr_read_recom_svc_read = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_recommendation-results_view",
+        subject=kessel_std_svc_user_obj,
     )
     kessel_cpr_host_01_recom_read = check_request_pb2.CheckRequest(
         object=kessel_host_01_obj,
@@ -338,10 +356,17 @@ class constants(object):
     ), (
         kessel_cpr_read_recom_read, kessel.ALLOWED
     )]
+    kessel_allow_recom_read_svc_ro = [(
+        kessel_cpr_read_recom_svc_read, kessel.ALLOWED
+    )]
     kessel_allow_host_01_read = [(
         kessel_cpr_host_01_recom_read, kessel.ALLOWED
     )]
     # Kessel allow standard user access to host group 1
+    kessel_svc_user_in_workspace_host_group_1 = [(
+        kessel_std_svc_user_obj,
+        [host_group_1_id]
+    )]
     kessel_user_in_workspace_host_group_1 = [(
         kessel_std_user_obj,
         [host_group_1_id]

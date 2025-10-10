@@ -419,7 +419,7 @@ class IsRedHatInternalUserTestCase(TestCase):
         request = HttpRequest()
         request.META = {
             auth_header_key: b64s(
-                '{"identity": {"org_id": 9876543, "user": '
+                '{"identity": {"org_id": 9876543, "type": "User", "user": '
                 '{"username": "test", "is_internal": true}}}'
             ),
             'REMOTE_ADDR': 'test'
@@ -429,7 +429,9 @@ class IsRedHatInternalUserTestCase(TestCase):
         # First have to go through standard identity authentication
         self.assertEqual(fake_auth_check(request, RHIdentityAuthentication), (
             '9876543',
-            {"org_id": 9876543, "user": {"username": "test", "is_internal": True}}
+            {"org_id": 9876543, "type": "User", "user": {
+                "username": "test", "is_internal": True
+            }}
         ))
         # Then check that the user can be detected as internal
         irhu = IsRedHatInternalUser()
@@ -441,7 +443,7 @@ class IsRedHatInternalUserTestCase(TestCase):
         request = HttpRequest()
         request.META = {
             auth_header_key: b64s(
-                '{"identity": {"org_id": 9876543, "user": '
+                '{"identity": {"org_id": 9876543, "type": "User", "user": '
                 '{"username": "test", "is_internal": false}}}'
             ),
             'REMOTE_ADDR': 'test'
@@ -452,7 +454,9 @@ class IsRedHatInternalUserTestCase(TestCase):
         rhia = RHIdentityAuthentication()
         self.assertEqual(rhia.authenticate(request), (
             '9876543',
-            {"org_id": 9876543, "user": {"username": "test", "is_internal": False}}
+            {"org_id": 9876543, "type": "User", "user": {
+                "username": "test", "is_internal": False
+            }}
         ))
         irhu = IsRedHatInternalUser()
         irhu.allowed_views = ['List']
