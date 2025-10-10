@@ -384,7 +384,8 @@ class RequestToUserNameTestCase(TestCase):
         request = HttpRequest()
         self.assertFalse(hasattr(request, 'username'))
         self.assertFalse(hasattr(request, 'auth'))
-        self.assertFalse(request_to_username(request))
+        with self.assertRaises(AuthenticationFailed):
+            request_to_username(request)
         # Then check handling of unknown identity type
         request = HttpRequest()
         request.META = {
@@ -397,7 +398,8 @@ class RequestToUserNameTestCase(TestCase):
         fake_auth_check(request, RHIdentityAuthentication)
         self.assertFalse(hasattr(request, 'username'))
         self.assertTrue(hasattr(request, 'auth'))
-        self.assertFalse(request_to_username(request))
+        with self.assertRaises(AuthenticationFailed):
+            request_to_username(request)
         # Then check handling when the type key is not in the identity
         request = HttpRequest()
         request.META = {
@@ -409,7 +411,8 @@ class RequestToUserNameTestCase(TestCase):
         }
         fake_auth_check(request, RHIdentityAuthentication)
         self.assertFalse(hasattr(request, 'username'))
-        self.assertFalse(request_to_username(request))
+        with self.assertRaises(AuthenticationFailed):
+            request_to_username(request)
 
 
 class IsRedHatInternalUserTestCase(TestCase):
