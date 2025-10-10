@@ -1226,19 +1226,19 @@ def request_to_user_data(request) -> dict:
     in.  This is more complicated than it needs to be.
     """
     if not hasattr(request, 'auth'):
-        return False
+        return {}
     identity = request.auth
     # Because other systems besides the RBACPermission use this function, we
     # have to politely return nothing if we don't have a user section.
     if 'type' not in identity or identity['type'] not in user_details_key:
-        return False
+        return {}
     type_key = user_details_key[identity['type']]
     if type_key not in identity:
-        return False
+        return {}
     return identity[type_key]
 
 
-def request_to_username(request) -> str | bool:
+def request_to_username(request) -> str:
     """
     Get the user name from the current request, in the
     identity['user']['user_name'] field.
@@ -1248,7 +1248,7 @@ def request_to_username(request) -> str | bool:
     user_data = request_to_user_data(request)
     if 'username' not in user_data:
         error_and_deny(
-            f"'username' property not found in 'identity.user' section of "
+            f"'username' property not found in 'identity' user details of "
             f"{auth_header_key}"
         )
     setattr(request, 'username', user_data['username'])
