@@ -57,6 +57,17 @@ def make_rbac_url(path, version=1, rbac_base=None):
     return urljoin(rbac_base, f'/api/rbac/v{version}/{path}')
 
 
+def identity_to_subject(identity: dict) -> kessel.SubjectRef:
+    """
+    Look up the user ID from the correct part of the identity object.
+    """
+    identity_field = user_details_key.get(identity['type'])
+    if identity_field is None:
+        raise ValueError(f"Unknown identity type: {identity['type']}")
+    user_id = identity[identity_field]['user_id']
+    return kessel.SubjectRef(f"redhat/{user_id}", 'principal')
+
+
 ##############################################################################
 # Kessel workspace caching
 ##############################################################################
@@ -340,7 +351,7 @@ def has_rbac_permission(request, permission='advisor:*:*') -> Tuple[bool, float]
     # for schema generation; instead we just use a local cache dict.  The
     # only values RBAC cares about are the username and account, so that's the
     # key we use.
-    username = request.auth['user']['username']
+    username = request_to_username(request)
     org_id = request.auth['org_id']
     auth_tuple = (username, org_id)
     if rbac_perm_cache is not None and auth_tuple in rbac_perm_cache:
@@ -510,14 +521,14 @@ def has_kessel_permission(
             result, elapsed = kessel.client.check(
                 kessel.Workspace(workspace_id).to_ref(),
                 permission.as_kessel_permission(),
-                kessel.identity_to_subject(identity)
+                identity_to_subject(identity)
             )
         elif scope == ResourceScope.WORKSPACE:
             # print("... for workspace")
             logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.host_groups_for(
-                kessel.identity_to_subject(identity)
+                identity_to_subject(identity)
             )
         else:
             # Scope is a specific host.
@@ -530,7 +541,7 @@ def has_kessel_permission(
             result, elapsed = kessel.client.check(
                 kessel.Host(str(host_id)).to_ref(),
                 permission.as_kessel_permission(),
-                kessel.identity_to_subject(identity)
+                identity_to_subject(identity)
             )
 
         # print(f"... returned {result} in {elapsed}s")
@@ -653,9 +664,16 @@ class RHIdentityAuthentication(BaseAuthentication):
             self.message = f"Org ID '{org_id}' greater than 50 characters"
             return None
 
+        if 'type' not in identity:
+            self.message = f"'type' property not found in 'identity' section of {auth_header_key}"
+            return None
+
         if settings.KESSEL_ENABLED:
-            if 'user_id' not in identity['user']:
-                self.message = "'user_id' property not found in 'user' section of identity"
+            identity_field = user_details_key.get(identity['type'])
+            if identity_field is None:
+                raise ValueError(f"Unknown identity type: {identity['type']}")
+            if 'user_id' not in identity[identity_field]:
+                self.message = f"'user_id' property not found in '{identity_field}' section of identity"
                 return None
 
         # Set the org_id
@@ -1201,28 +1219,36 @@ class OrgPermission(BasePermission):
 ##############################################################################
 
 
-def request_to_username(request) -> str | bool:
+def request_to_user_data(request) -> dict:
+    """
+    Get the 'user' record out of the identity section of the request.  This
+    uses the identity type to figure out which field in the identity to look
+    in.  This is more complicated than it needs to be.
+    """
+    if not hasattr(request, 'auth'):
+        return {}
+    identity = request.auth
+    # Because other systems besides the RBACPermission use this function, we
+    # have to politely return nothing if we don't have a user section.
+    if 'type' not in identity or identity['type'] not in user_details_key:
+        return {}
+    type_key = user_details_key[identity['type']]
+    if type_key not in identity:
+        return {}
+    return identity[type_key]
+
+
+def request_to_username(request) -> str:
     """
     Get the user name from the current request, in the
     identity['user']['user_name'] field.
     """
     if hasattr(request, 'username') and request.username is not None:
         return request.username
-    # Have to have come through authentication first.
-    if not hasattr(request, 'auth'):
-        return False
-    identity = request.auth
-    # Because other systems besides the RBACPermission use this function, we
-    # have to politely return nothing if we don't have a user section.
-    if 'type' not in identity or identity['type'] not in user_details_key:
-        return False
-    type_key = user_details_key[identity['type']]
-    if type_key not in identity:
-        return False
-    user_data = identity[type_key]
+    user_data = request_to_user_data(request)
     if 'username' not in user_data:
         error_and_deny(
-            f"'username' property not found in 'identity.user' section of "
+            f"'username' property not found in 'identity' user details of "
             f"{auth_header_key}"
         )
     setattr(request, 'username', user_data['username'])

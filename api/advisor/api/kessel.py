@@ -106,14 +106,6 @@ class Host:
         return ResourceRef(self.value, "hbi.host")
 
 
-def identity_to_subject(identity: dict) -> SubjectRef:
-    if identity['type'] == 'ServiceAccount':
-        user_id = identity['service_account']['user_id']
-    elif identity['type'] == 'User':
-        user_id = identity['user']['user_id']
-    return SubjectRef(f"redhat/{user_id}", 'principal')
-
-
 #############################################################################
 # Streaming resource request/response handling
 #############################################################################

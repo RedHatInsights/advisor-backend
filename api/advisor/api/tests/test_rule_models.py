@@ -19,7 +19,7 @@ from django.utils import timezone
 
 from api.models import RuleSet, Rule, RuleCategory, RuleImpact, Resolution
 from api.tests import constants, update_stale_dates
-from api.permissions import request_object_for_testing
+from api.permissions import RHIdentityAuthentication, request_object_for_testing
 
 import datetime
 import pytz
@@ -67,9 +67,7 @@ class RuleTestCase(TestCase):
         self.assertEqual(str(r.resolution_set.all()[0].resolution_risk), 'Adjust Service Status(1)')
 
         # Test of reports for account?
-        rq = request_object_for_testing(account='1234567', org_id='9876543')
-        rq.account = '1234567'
-        rq.auth['org_id'] = '9876543'
+        rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
         self.assertEqual(
             # Have to do a bit of manipulation to get these into a sensible
             # format to compare, since the page does half of this hard work.
@@ -151,9 +149,7 @@ class RuleTestCase(TestCase):
             )
 
     def test_rule_for_account_annotations(self):
-        rq = request_object_for_testing()
-        rq.account = '1234567'
-        rq.auth['org_id'] = '9876543'
+        rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
         for rule in Rule.objects.for_account(rq):
             self.assertTrue(hasattr(rule, 'reports_shown'))
             self.assertIsInstance(rule.reports_shown, bool)
