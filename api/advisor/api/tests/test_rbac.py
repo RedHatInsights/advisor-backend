@@ -48,7 +48,7 @@ class RBACTestCase(TestCase):
     }
     std_auth_views = {
         'ack-list', 'hostack-list', 'rule-list',
-        'rulerating-list', 'settings-list', 'stats-list', 'system-list',
+        'rulerating-list', 'stats-list', 'system-list',
         'ruletopic-list', 'user-preferences-list',
         'weeklyreportsubscription-list',
     }
@@ -57,9 +57,6 @@ class RBACTestCase(TestCase):
     }
     exports_views = {
         'export-hits-list',
-    }
-    preferences_views = {
-        'settings-list',
     }
     weekly_report_views = {
         'weeklyreportsubscription-list', 'user-preferences-list',
@@ -100,20 +97,20 @@ class RBACTestCase(TestCase):
     granular_rbac_data = {
         'disable-recommendations': {
             'resource views': acks_views,
-            'non resource views': exports_views | preferences_views | results_views,
+            'non resource views': exports_views | results_views,
             'post views': ('ack-list', 'hostack-list', 'rule-ack-hosts', 'rule-unack-hosts'),
         },
         'exports': {
             'resource views': exports_views,
-            'non resource views': acks_views | preferences_views | results_views,
+            'non resource views': acks_views | results_views,
         },
         'preferences': {
-            'resource views': preferences_views,
+            'resource views': [],
             'non resource views': exports_views | acks_views | results_views,
         },
         'recommendation-results': {
             'resource views': results_views,
-            'non resource views': acks_views | exports_views | preferences_views,
+            'non resource views': acks_views | exports_views,
         },
         'weekly-report': {
             'resource views': weekly_report_views,
