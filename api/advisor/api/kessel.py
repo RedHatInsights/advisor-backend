@@ -334,18 +334,16 @@ class Kessel:
         self.reporter = reporter_reference_pb2.ReporterReference(type="rbac")
         # We assume here that the host name 'device under test' means that we
         # only allow access via the TestClient.
-        if settings.KESSEL_SERVER_NAME == 'device under test':
+        if settings.KESSEL_SERVER_URL == 'device under test':
             self.client = TestClient()
         else:
             # stub, channel = ClientBuilder(KESSEL_ENDPOINT).insecure().build()
             logger.info(
-                "Connecting to Kessel via server %s port %s",
-                settings.KESSEL_SERVER_NAME, settings.KESSEL_SERVER_PORT
+                "Connecting to Kessel via server url %s",
+                settings.KESSEL_SERVER_URL
             )
             self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
-                grpc.insecure_channel(
-                    f"{settings.KESSEL_SERVER_NAME}:{settings.KESSEL_SERVER_PORT}",
-                )
+                grpc.insecure_channel(settings.KESSEL_SERVER_URL)
             )
             logger.info("Connected to Kessel, client %s", self.client)
 
