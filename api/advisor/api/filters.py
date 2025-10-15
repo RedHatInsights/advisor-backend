@@ -19,6 +19,7 @@ from datetime import datetime
 from functools import reduce
 from itertools import chain, product
 import re
+from typing import Optional
 from uuid import UUID
 
 from django.apps import apps
@@ -570,6 +571,16 @@ systems_detail_name_query_param = OpenApiParameter(
 )
 
 
+topic_query_param = OpenApiParameter(
+    name='topic', location=OpenApiParameter.QUERY,
+    description="Display rules in this topic (slug)",
+    required=False,
+    type=OpenApiTypes.REGEX, pattern=r'[\w-]+',
+    # See note for enums in category list as to why we can't populate the
+    # topics with a query.
+)
+
+
 update_method_query_param = OpenApiParameter(
     name='update_method', location=OpenApiParameter.QUERY,
     required=False, many=True, style='form', type=OpenApiTypes.STR,
@@ -735,7 +746,7 @@ def filter_on_incident(request):
         return Q(incident_hits=0)
 
 
-def filter_on_rhel_version(request, relation=None):
+def filter_on_rhel_version(request, relation: Optional[str] = None):
     versions = value_of_param(rhel_version_query_param, request)
     # Based on InventoryHost so look up directly
     version_filter = Q()
@@ -744,18 +755,33 @@ def filter_on_rhel_version(request, relation=None):
 
     base_parameter = 'system_profile__operating_system'
     if relation:
-        base_parameter = relation + '__' + base_parameter
+        base_parameter = f"{relation}__{base_parameter}"
     for version in versions:
         # Assertion: our parameters always have 'major.minor', and those are
         # always ints.
         major, minor = map(int, version.split('.'))
+        major_param = f"{base_parameter}__major"
+        minor_param = f"{base_parameter}__minor"
         version_filter |= Q(**{
-            base_parameter + '__major': major, base_parameter + '__minor': minor,
+            major_param: major, minor_param: minor,
         })
     return version_filter
 
 
-def filter_on_update_method(request, relation=None):
+def filter_on_topic(request, relation: Optional[str] = None):
+    topic_param = value_of_param(topic_query_param, request)
+    if topic_param:
+        # Note: this will produce duplicates if a topic has more than one
+        # tag, and a rule has more than one of those tags.
+        base_parameter = 'tags__topic__slug'
+        if relation is not None:
+            base_parameter = f"{relation}__{base_parameter}"
+        return Q(**{base_parameter: topic_param})
+    else:
+        return Q()
+
+
+def filter_on_update_method(request, relation: Optional[str] = None):
     update_methods = value_of_param(update_method_query_param, request)
     if not update_methods:
         return Q()

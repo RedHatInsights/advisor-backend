@@ -37,7 +37,7 @@ from api.filters import (
     rhel_version_query_param, filter_on_rhel_version,
     sort_params_to_fields, sort_param_enum, filter_on_display_name,
     systems_detail_name_query_param, host_group_name_query_param,
-    update_method_query_param,
+    topic_query_param, filter_on_topic, update_method_query_param,
 )
 from api.models import (
     Ack, CurrentReport, HostAck, Resolution, Rule,
@@ -63,7 +63,7 @@ class SystemsForRuleCSVRenderer(CSVRenderer):
     header = ['system_uuid']
     labels = {'system_uuid': 'Host UUID'}
 
-    def render(self, data, media_type=None, renderer_context=None):
+    def render(self, data, media_type=None, renderer_context=None, writer_opts=None):
         """
         The data in the systems-for-a-rule list is a key named
         'host_ids' which contains the list of UUIDs.  The CSV renderer is
@@ -210,14 +210,6 @@ text_query_param = OpenApiParameter(
     required=False,
     type=OpenApiTypes.STR,
 )
-topic_query_param = OpenApiParameter(
-    name='topic', location=OpenApiParameter.QUERY,
-    description="Display rules in this topic (slug)",
-    required=False,
-    type=OpenApiTypes.REGEX, pattern=r'[\w-]+',
-    # See note for enums in category list as to why we can't populate the
-    # topics with a query.
-)
 total_risk_query_param = OpenApiParameter(
     name='total_risk', location=OpenApiParameter.QUERY,
     description="Display rules with this total risk level (1..4)",
@@ -310,16 +302,6 @@ def filter_on_text(request):
                     resolution__icontains=srch
                 ).values('rule_id')
             ))
-    else:
-        return Q()
-
-
-def filter_on_topic(request):
-    topic_param = value_of_param(topic_query_param, request)
-    if topic_param:
-        # Note: this will produce duplicates if a topic has more than one
-        # tag, and a rule has more than one of those tags.
-        return Q(tags__topic__slug=topic_param)
     else:
         return Q()
 

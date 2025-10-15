@@ -34,7 +34,7 @@ from api.filters import (
     filter_system_profile_sap_sids_contains_query_param,
     rule_id_query_param, filter_on_display_name,
     host_id_query_param, filter_on_host_id, host_group_name_query_param,
-    update_method_query_param,
+    topic_query_param, filter_on_topic, update_method_query_param,
 )
 from api.models import (
     InventoryHost, Playbook, Resolution, Rule, Tag, Upload,
@@ -243,7 +243,8 @@ hits_common_params = [
     host_tags_query_param, incident_query_param, has_playbook_query_param,
     reboot_required_query_param, filter_system_profile_sap_system_query_param,
     filter_system_profile_sap_sids_contains_query_param, display_name_query_param,
-    host_id_query_param, host_group_name_query_param, update_method_query_param,
+    host_id_query_param, host_group_name_query_param, topic_query_param,
+    update_method_query_param,
 ]
 
 
@@ -325,7 +326,8 @@ class HitsViewSet(ExportViewSet):
                 filter_on_reboot_required(request),
                 filter_on_has_playbook(request),
                 filter_on_display_name(request, 'inventory'),
-                filter_on_host_id(request)
+                filter_on_host_id(request),
+                filter_on_topic(request, relation='rule'),
             )
 
         # Return all the data
@@ -369,7 +371,9 @@ class ReportsViewSet(ExportViewSet):
         Rule and System export data.  It's like the hits output but much
         less repetitive.
         """
-        reports = get_reports_subquery(request, use_joins=True).order_by(
+        reports = get_reports_subquery(request, use_joins=True).filter(
+            filter_on_topic(request, relation='rule'),
+        ).order_by(
             'host_id', 'rule__rule_id'
         ).values(  # also acts as a select_related
             'host_id', 'rule__rule_id', 'upload__checked_on', 'details', 'impacted_date'
@@ -398,7 +402,9 @@ class RulesViewSet(ViewSet):
         Rule and System export data.  It's like the hits output but much
         less repetitive.
         """
-        rules = Rule.objects.for_account(request).annotate(
+        rules = Rule.objects.for_account(request).filter(
+            filter_on_topic(request),
+        ).annotate(
             category_name=F('category__name'),
             impact_name=F('impact__name'),
             playbook_count=Count('resolution__playbook'),
@@ -436,7 +442,10 @@ class SystemsViewSet(ExportViewSet):
         display_name_value = value_of_param(display_name_query_param, request)
         reports = get_reports_subquery(
             request, exclude_ineligible_hosts=False, host=OuterRef('id'),
-        ).filter(rule__rule_id=rule_id_value)
+        ).filter(
+            filter_on_topic(request, relation='rule'),
+            rule__rule_id=rule_id_value,
+        )
         systems = get_systems_queryset(request).filter(
             Q(display_name__icontains=display_name_value) if display_name_value else Q(),
             Exists(reports) if rule_id_value else Q()

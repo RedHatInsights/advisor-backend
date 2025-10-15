@@ -179,4 +179,6 @@ class CertAuthTestCase(TestCase):
         self.assertEqual(len(topic_list), 2)
 
         self.assertEqual(topic_list[0]['impacted_systems_count'], 2)
-        self.assertEqual(topic_list[1]['impacted_systems_count'], 0)
+        self.assertEqual(topic_list[0]['name'], "Active rules")
+        self.assertEqual(topic_list[1]['impacted_systems_count'], 2)
+        self.assertEqual(topic_list[1]['name'], "Kernel rules")
