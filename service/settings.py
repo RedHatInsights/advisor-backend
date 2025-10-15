@@ -172,9 +172,7 @@ AUTOACK = {
 }
 
 KESSEL_ENABLED = os.getenv("KESSEL_ENABLED", "false").lower == 'true'
-KESSEL_SERVER_NAME = os.getenv('KESSEL_SERVER_NAME', 'device under test')
-KESSEL_SERVER_PORT = os.getenv('KESSEL_SERVER_PORT', '50051')
-KESSEL_SERVER_PASSWORD = os.getenv('KESSEL_SERVER_PASSWORD', 'mykey')
+KESSEL_SERVER_URL = os.getenv('KESSEL_SERVER_URL', 'device under test')
 
 # Feature Flags
 if CLOWDER_ENABLED:
