@@ -185,7 +185,7 @@ class RBACPermission(object):
         # scope' permission.  This saves us doing two full replaces on the
         # entire rendered string.
         method = 'edit' if self.method == 'write' else 'view'
-        return f"{self.app}_{self.resource}_{method}"
+        return f"{self.app}_{self.resource.replace("-", "_")}_{method}"
 
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:

@@ -305,37 +305,37 @@ class constants(object):
     # Kessel individual requests
     kessel_cpr_disable_recom_write = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="advisor_disable-recommendations_edit",
+        relation="advisor_disable_recommendations_edit",
         subject=kessel_std_user_obj,
     )
     kessel_cpr_disable_recom_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="advisor_disable-recommendations_view",
+        relation="advisor_disable_recommendations_view",
         subject=kessel_std_user_obj,
     )
     kessel_cpr_read_recom_write = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="advisor_recommendation-results_edit",
+        relation="advisor_recommendation_results_edit",
         subject=kessel_std_user_obj,
     )
     kessel_cpr_read_recom_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="advisor_recommendation-results_view",
+        relation="advisor_recommendation_results_view",
         subject=kessel_std_user_obj,
     )
     kessel_cpr_read_recom_svc_write = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="advisor_recommendation-results_edit",
+        relation="advisor_recommendation_results_edit",
         subject=kessel_std_svc_user_obj,
     )
     kessel_cpr_read_recom_svc_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="advisor_recommendation-results_view",
+        relation="advisor_recommendation_results_view",
         subject=kessel_std_svc_user_obj,
     )
     kessel_cpr_host_01_recom_read = check_request_pb2.CheckRequest(
         object=kessel_host_01_obj,
-        relation="advisor_recommendation-results_view",
+        relation="advisor_recommendation_results_view",
         subject=kessel_std_user_obj,
     )
 
