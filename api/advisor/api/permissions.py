@@ -423,7 +423,7 @@ def get_workspace_id(
         return (workspace_for_org[workspace_key], 0.0)
     # Note that we should really just use the default 'default' value, so
     # we're not doing any work with URL-encoding that string... caveat petens.
-    rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
+    rbac_url = make_rbac_url(f"workspaces/?type={workspace}", version=2)
     response, elapsed = make_rbac_request(rbac_url, request)
     if response.status_code != 200:
         logger.error(
