@@ -15,14 +15,14 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
-import grpc
 import time
 from types import SimpleNamespace
 from typing import Generator, Optional, Tuple
 from uuid import UUID
 
+from kessel.auth import fetch_oidc_discovery, OAuth2ClientCredentials
 from kessel.inventory.v1beta2 import (
-    # ClientBuilder,
+    ClientBuilder,
     allowed_pb2,
     check_request_pb2,
     inventory_service_pb2_grpc,
@@ -32,7 +32,7 @@ from kessel.inventory.v1beta2 import (
     reporter_reference_pb2,
     streamed_list_objects_request_pb2,
     streamed_list_objects_response_pb2,
-    subject_reference_pb2,
+    subject_reference_pb2
 )
 
 from django.conf import settings
@@ -64,12 +64,13 @@ workspace_object_type = representation_type_pb2.RepresentationType(
 class ResourceRef:
     resource_id: str
     resource_type: str
+    reporter_type: str
 
     def as_pb2(self):
         return resource_reference_pb2.ResourceReference(
             resource_id=self.resource_id,
             resource_type=self.resource_type,
-            reporter=reporter_reference_pb2.ReporterReference(type='rbac')
+            reporter=reporter_reference_pb2.ReporterReference(type=self.reporter_type)
         )
 
     def __repr__(self):
@@ -83,7 +84,7 @@ class SubjectRef:
 
     def as_pb2(self):
         return subject_reference_pb2.SubjectReference(
-            resource=ResourceRef(self.resource_id, self.resource_type).as_pb2()
+            resource=ResourceRef(self.resource_id, self.resource_type, "rbac").as_pb2()
         )
 
     def __repr__(self):
@@ -95,7 +96,7 @@ class Workspace:
     value: str
 
     def to_ref(self) -> ResourceRef:
-        return ResourceRef(self.value, "workspace")
+        return ResourceRef(self.value, "workspace", "rbac")
 
 
 @dataclass(frozen=True)
@@ -103,7 +104,7 @@ class Host:
     value: str
 
     def to_ref(self) -> ResourceRef:
-        return ResourceRef(self.value, "hbi.host")
+        return ResourceRef(self.value, "host", "hbi")
 
 
 #############################################################################
@@ -331,20 +332,31 @@ class Kessel:
         Use the TestClient to allow 'interception' of requests during
         testing.
         """
-        self.reporter = reporter_reference_pb2.ReporterReference(type="rbac")
         # We assume here that the host name 'device under test' means that we
         # only allow access via the TestClient.
-        if settings.KESSEL_SERVER_URL == 'device under test':
+        if settings.KESSEL_URL == 'device under test':
             self.client = TestClient()
         else:
-            # stub, channel = ClientBuilder(KESSEL_ENDPOINT).insecure().build()
             logger.info(
                 "Connecting to Kessel via server url %s",
-                settings.KESSEL_SERVER_URL
+                settings.KESSEL_URL
             )
-            self.client = inventory_service_pb2_grpc.KesselInventoryServiceStub(
-                grpc.insecure_channel(settings.KESSEL_SERVER_URL)
-            )
+            builder = ClientBuilder(settings.KESSEL_URL)
+            if settings.KESSEL_INSECURE:
+                builder.insecure()
+            elif settings.KESSEL_AUTH_ENABLED:
+                discovery = fetch_oidc_discovery(settings.KESSEL_AUTH_OIDC_ISSUER)
+                credentials = OAuth2ClientCredentials(
+                    client_id=settings.KESSEL_AUTH_CLIENT_ID,
+                    client_secret=settings.KESSEL_AUTH_CLIENT_SECRET,
+                    token_endpoint=discovery.token_endpoint
+                )
+                builder.oauth2_client_authenticated(credentials)
+            else:
+                builder.unauthenticated()
+
+            self.client = builder.build()
+
             logger.info("Connected to Kessel, client %s", self.client)
 
     def check(
