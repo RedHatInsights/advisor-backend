@@ -35,7 +35,7 @@ TEST_RBAC_V1_ACCESS = make_rbac_url(
     rbac_base=TEST_RBAC_URL
 )
 TEST_RBAC_V2_WKSPC = make_rbac_url(
-    "workspace/?type=default",
+    "workspaces/?type=default",
     version=2, rbac_base=TEST_RBAC_URL
 )
 
