@@ -185,7 +185,7 @@ class RBACPermission(object):
         # scope' permission.  This saves us doing two full replaces on the
         # entire rendered string.
         method = 'edit' if self.method == 'write' else 'view'
-        return f"{self.app}_{self.resource}_{method}"
+        return f"{self.app}_{self.resource.replace("-", "_")}_{method}"
 
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
@@ -423,7 +423,7 @@ def get_workspace_id(
         return (workspace_for_org[workspace_key], 0.0)
     # Note that we should really just use the default 'default' value, so
     # we're not doing any work with URL-encoding that string... caveat petens.
-    rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
+    rbac_url = make_rbac_url(f"workspaces/?type={workspace}", version=2)
     response, elapsed = make_rbac_request(rbac_url, request)
     if response.status_code != 200:
         logger.error(

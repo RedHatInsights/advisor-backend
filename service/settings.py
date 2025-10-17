@@ -172,7 +172,12 @@ AUTOACK = {
 }
 
 KESSEL_ENABLED = os.getenv("KESSEL_ENABLED", "false").lower == 'true'
-KESSEL_SERVER_URL = os.getenv('KESSEL_SERVER_URL', 'device under test')
+KESSEL_URL = os.getenv('KESSEL_URL', 'device under test')
+KESSEL_AUTH_ENABLED = os.getenv("KESSEL_AUTH_ENABLED", "false").lower() == "true"
+KESSEL_AUTH_CLIENT_ID = os.getenv("KESSEL_AUTH_CLIENT_ID", "")
+KESSEL_AUTH_CLIENT_SECRET = os.getenv("KESSEL_AUTH_CLIENT_SECRET", "")
+KESSEL_AUTH_OIDC_ISSUER = os.getenv("KESSEL_AUTH_OIDC_ISSUER", "")
+KESSEL_INSECURE = os.getenv("KESSEL_INSECURE", "true").lower() == "true"
 
 # Feature Flags
 if CLOWDER_ENABLED:

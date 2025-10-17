@@ -106,7 +106,12 @@ RBAC_PSK = os.getenv("RBAC_PSK")
 RBAC_CLIENT_ID = os.getenv("RBAC_CLIENT_ID", "advisor")
 KESSEL_ENABLED = string_to_bool(os.getenv("KESSEL_ENABLED", "false"))
 # Note: tests assume that host='device under test' mean 'use the TestZedClient'.
-KESSEL_SERVER_URL = os.getenv('KESSEL_SERVER_URL', 'device under test')
+KESSEL_URL = os.getenv('KESSEL_URL', 'device under test')
+KESSEL_AUTH_ENABLED = string_to_bool(os.getenv("KESSEL_AUTH_ENABLED", "false"))
+KESSEL_AUTH_CLIENT_ID = os.getenv("KESSEL_AUTH_CLIENT_ID", "")
+KESSEL_AUTH_CLIENT_SECRET = os.getenv("KESSEL_AUTH_CLIENT_SECRET", "")
+KESSEL_AUTH_OIDC_ISSUER = os.getenv("KESSEL_AUTH_OIDC_ISSUER", "")
+KESSEL_INSECURE = string_to_bool(os.getenv("KESSEL_INSECURE", "true"))
 
 # Middleware settings
 MIDDLEWARE_HOST_URL = os.getenv('MIDDLEWARE_HOST_URL')
