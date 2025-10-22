@@ -355,7 +355,7 @@ class Kessel:
             else:
                 builder.unauthenticated()
 
-            self.client = builder.build()
+            self.client, _ = builder.build()
 
             logger.info("Connected to Kessel, client %s", self.client)
 
