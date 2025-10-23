@@ -35,6 +35,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from advisor_logging import logger
 
 import api.kessel as kessel
+from feature_flags import feature_flag_is_enabled, FLAG_ADVISOR_KESSEL_ENABLED
 
 http_auth_header_key = 'x-rh-identity'
 auth_header_key = 'HTTP_X_RH_IDENTITY'
@@ -668,7 +669,7 @@ class RHIdentityAuthentication(BaseAuthentication):
             self.message = f"'type' property not found in 'identity' section of {auth_header_key}"
             return None
 
-        if settings.KESSEL_ENABLED:
+        if feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             identity_field = user_details_key.get(identity['type'])
             if identity_field is None:
                 raise ValueError(f"Unknown identity type: {identity['type']}")
@@ -954,7 +955,7 @@ class InsightsRBACPermission(BasePermission):
 
         permission = f'{self.app}:{resource}:{action}'
 
-        if not settings.KESSEL_ENABLED:
+        if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             result, elapsed = has_rbac_permission(
                 request, permission
             )
@@ -978,7 +979,7 @@ class InsightsRBACPermission(BasePermission):
         return bool(result)
 
     def has_object_permission(self, request, view, obj) -> bool:
-        if not settings.KESSEL_ENABLED:
+        if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             return True
 
         resource, scope = self._get_resource(view)
