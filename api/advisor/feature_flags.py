@@ -114,22 +114,22 @@ def feature_flag_is_enabled(feature: str, context: dict = None) -> bool:
 def custom_fallback(feature_name: str, context: dict) -> bool:
     """
     Fallback function for feature flags when Unleash is unavailable.
-    
+
     This function strips the 'advisor.' prefix from the feature name,
     converts it to Django settings format (uppercase with underscores),
     and checks if a corresponding setting exists.
-    
+
     For example:
     - 'advisor.kessel_enabled' -> checks settings.KESSEL_ENABLED
     - 'advisor.inventory_hosts_db_logical_replication' -> checks settings.INVENTORY_HOSTS_DB_LOGICAL_REPLICATION
-    
+
     Args:
         feature_name: The feature flag name
         context: The context dictionary (unused in this implementation)
-    
+
     Returns:
         The value from Django settings if it exists, otherwise False
     """
     stripped_name = feature_name[len('advisor.'):]
-    
+
     return setting(stripped_name.upper(), False)
