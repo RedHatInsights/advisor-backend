@@ -16,7 +16,6 @@
 
 import base64
 import json
-from unittest.mock import patch
 
 import responses
 
@@ -147,13 +146,12 @@ class RBACTestCase(TestCase):
 class KesselTestCase(TestCase):
     basic_auth_header = auth_header_for_testing()
 
-    @override_settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
-    @patch('api.permissions.feature_flag_is_enabled', return_value=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @responses.activate
     @add_kessel_response(
         permission_checks=constants.kessel_tasks_rw
     )
-    def test_rbac_basic_allowed_full(self, mock_feature_flag):
+    def test_rbac_basic_allowed_full(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
             json={'data': [{'id': constants.kessel_std_workspace_id}]}
@@ -167,13 +165,12 @@ class KesselTestCase(TestCase):
         reply = self.client.get(reverse('tasks-executedtask-list'), **self.basic_auth_header)
         self.assertEqual(reply.status_code, 200)
 
-    @override_settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
-    @patch('api.permissions.feature_flag_is_enabled', return_value=True)
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @responses.activate
     @add_kessel_response(
         permission_checks=constants.kessel_tasks_ro
     )
-    def test_rbac_basic_allowed_read_only(self, mock_feature_flag):
+    def test_rbac_basic_allowed_read_only(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
             json={'data': [{'id': constants.kessel_std_workspace_id}]}
