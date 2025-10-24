@@ -137,77 +137,28 @@ def get_resources(
     generator object (...)
 
     """
-    logger.debug(
-        "get_resources() starting - object_type=%s, relation=%s, subject=%s, limit=%s, fetch_all=%s",
-        object_type, relation, subject, limit, fetch_all
-    )
+    # logger.debug(f"Get resources({object_type}, {relation}, {subject})")
     continuation_token = None
-    page_number = 0
-    total_items_yielded = 0
-    
-    try:
-        while (response := _get_resource_page(
-            client_stub, object_type, relation, subject, limit, continuation_token
-        )) is not None:
-            page_number += 1
-            logger.debug("Got resource page response (page %d): %s", page_number, response)
-            
-            last_data = None
-            items_in_page = 0
-            try:
-                for data in response:
-                    items_in_page += 1
-                    total_items_yielded += 1
-                    logger.debug(
-                        "Yielding item %d in page %d (total items so far: %d): resource_id=%s",
-                        items_in_page, page_number, total_items_yielded, data.object.resource_id
-                    )
-                    yield data.object
-                    last_data = data
-            except Exception as e:
-                logger.error(
-                    "Error iterating over response items on page %d (after %d items): %s",
-                    page_number, items_in_page, e, exc_info=True
-                )
-                raise
-            
-            logger.debug("Page %d complete: yielded %d items", page_number, items_in_page)
-            
-            if not fetch_all:
-                # We only want the first page
-                logger.debug("fetch_all=False, stopping after first page")
-                break
-            
-            # Extract continuation token from the last item in the response
-            # If response was empty, there's no next page
-            if last_data is None:
-                logger.debug("Page %d was empty (no items), stopping pagination", page_number)
-                break
-            
-            continuation_token = last_data.pagination.continuation_token
-            logger.debug(
-                "Extracted continuation_token from last item in page %d: %s",
-                page_number, continuation_token if continuation_token else "(empty/None)"
-            )
-            
-            if not continuation_token:
-                # Could just make another request and then get told no more pages,
-                # but it's neater this way...
-                logger.debug("No continuation token, reached end of results")
-                break
-            
-            logger.debug("Fetching next page with continuation_token: %s", continuation_token)
-    except Exception as e:
-        logger.error(
-            "Error in get_resources pagination loop at page %d (after %d total items): %s",
-            page_number, total_items_yielded, e, exc_info=True
-        )
-        raise
-    
-    logger.debug(
-        "get_resources() complete - total pages: %d, total items yielded: %d",
-        page_number, total_items_yielded
-    )
+    while (response := _get_resource_page(
+        client_stub, object_type, relation, subject, limit, continuation_token
+    )) is not None:
+        logger.debug("Got resource page response %s", response)
+        last_data = None
+        for data in response:
+            yield data.object
+            last_data = data
+        if not fetch_all:
+            # We only want the first page
+            break
+        # Extract continuation token from the last item in the response
+        # If response was empty, there's no next page
+        if last_data is None:
+            break
+        continuation_token = last_data.pagination.continuation_token
+        if not continuation_token:
+            # Could just make another request and then get told no more pages,
+            # but it's neater this way...
+            break
 
 
 def _get_resource_page(
@@ -222,32 +173,18 @@ def _get_resource_page(
     Get a single page, of at most limit size, from continuation_token (or
     start if None).
     """
-    logger.debug(
-        "_get_resource_page() called - object_type=%s, relation=%s, subject=%s, limit=%d, continuation_token=%s",
-        object_type, relation, subject, limit, continuation_token if continuation_token else "(None - first page)"
+    logger.debug(f"Get resource page({object_type}, {relation}, {subject}, {limit})")
+    request = streamed_list_objects_request_pb2.StreamedListObjectsRequest(
+        object_type=object_type,  # already a PB2 object
+        relation=relation,
+        subject=subject,
+        pagination=request_pagination_pb2.RequestPagination(
+            limit=limit,
+            continuation_token=continuation_token
+        )
     )
-    
-    try:
-        request = streamed_list_objects_request_pb2.StreamedListObjectsRequest(
-            object_type=object_type,  # already a PB2 object
-            relation=relation,
-            subject=subject,
-            pagination=request_pagination_pb2.RequestPagination(
-                limit=limit,
-                continuation_token=continuation_token
-            )
-        )
 
-        logger.debug("Calling client_stub.StreamedListObjects with request: %s", request)
-        response = client_stub.StreamedListObjects(request)
-        logger.debug("Got response from client_stub.StreamedListObjects: %s", response)
-        return response
-    except Exception as e:
-        logger.error(
-            "Error calling StreamedListObjects - object_type=%s, relation=%s, continuation_token=%s, error: %s",
-            object_type, relation, continuation_token, e, exc_info=True
-        )
-        raise
+    return client_stub.StreamedListObjects(request)
 
 
 #############################################################################
@@ -401,87 +338,51 @@ class Kessel:
         Use the TestClient to allow 'interception' of requests during
         testing.
         """
-        logger.debug("Kessel.__init__() starting - KESSEL_URL=%s", settings.KESSEL_URL)
-        
         # We assume here that the host name 'device under test' means that we
         # only allow access via the TestClient.
         if settings.KESSEL_URL == 'device under test':
-            logger.info("Using TestClient for Kessel (device under test mode)")
             self.client = TestClient()
         else:
             logger.info(
-                "Connecting to Kessel via server url %s (KESSEL_INSECURE=%s, KESSEL_AUTH_ENABLED=%s)",
-                settings.KESSEL_URL, settings.KESSEL_INSECURE, settings.KESSEL_AUTH_ENABLED
+                "Connecting to Kessel via server url %s",
+                settings.KESSEL_URL
             )
             builder = ClientBuilder(settings.KESSEL_URL)
-            
             if settings.KESSEL_INSECURE:
-                logger.debug("Configuring Kessel client as insecure")
                 builder.insecure()
             elif settings.KESSEL_AUTH_ENABLED:
-                logger.debug(
-                    "Configuring Kessel client with OAuth2 authentication (OIDC issuer: %s, client_id: %s)",
-                    settings.KESSEL_AUTH_OIDC_ISSUER, settings.KESSEL_AUTH_CLIENT_ID
-                )
                 discovery = fetch_oidc_discovery(settings.KESSEL_AUTH_OIDC_ISSUER)
-                logger.debug("Fetched OIDC discovery, token_endpoint=%s", discovery.token_endpoint)
-                
                 credentials = OAuth2ClientCredentials(
                     client_id=settings.KESSEL_AUTH_CLIENT_ID,
                     client_secret=settings.KESSEL_AUTH_CLIENT_SECRET,
                     token_endpoint=discovery.token_endpoint
                 )
                 builder.oauth2_client_authenticated(credentials)
-                logger.debug("OAuth2 credentials configured")
             else:
-                logger.debug("Configuring Kessel client as unauthenticated")
                 builder.unauthenticated()
 
-            logger.debug("Building Kessel client...")
             self.client, _ = builder.build()
 
-            logger.info("Connected to Kessel successfully, client type: %s", type(self.client).__name__)
-            logger.debug("Kessel client object: %s", self.client)
+            logger.info("Connected to Kessel, client %s", self.client)
 
     def check(
         self, resource: ResourceRef, relation: Relation, subject: SubjectRef
     ) -> Tuple[bool, float]:
         start = time.time()
         logger.info(
-            "check() starting - Checking resource %s with relation %s for subject %s",
+            "Checking resource %s with relation %s for subject %s",
             resource, relation, subject
         )
-        logger.debug(
-            "check() - Building CheckRequest with subject=%s, relation=%s, object=%s",
-            subject.as_pb2(), relation, resource.as_pb2()
+        response = self.client.Check(
+            check_request_pb2.CheckRequest(
+                subject=subject.as_pb2(),
+                relation=relation,
+                object=resource.as_pb2(),
+            )
         )
-        
-        try:
-            response = self.client.Check(
-                check_request_pb2.CheckRequest(
-                    subject=subject.as_pb2(),
-                    relation=relation,
-                    object=resource.as_pb2(),
-                )
-            )
-            logger.debug("check() - Got response: %s", response)
-            
-            # Note: we treat 'UNSPECIFIED' as 'DENIED' for security.
-            result = (response.allowed == ALLOWED)
-            elapsed = time.time() - start
-            
-            logger.info(
-                "check() complete - Result: %s (allowed=%s) in %.3f seconds",
-                "ALLOWED" if result else "DENIED", response.allowed, elapsed
-            )
-            return result, elapsed
-        except Exception as e:
-            elapsed = time.time() - start
-            logger.error(
-                "Error in check() after %.3f seconds - resource=%s, relation=%s, subject=%s, error: %s",
-                elapsed, resource, relation, subject, e, exc_info=True
-            )
-            raise
+        # Note: we treat 'UNSPECIFIED' as 'DENIED' for security.
+        result = (response.allowed == ALLOWED)
+        return result, time.time() - start
 
     def host_groups_for(
         self, subject: SubjectRef
@@ -492,48 +393,22 @@ class Kessel:
         """
         start = time.time()
         logger.info(
-            "host_groups_for() starting - Getting host groups for subject %s", subject
+            "Getting host groups for subject %s", subject
         )
-        logger.debug(
-            "host_groups_for() - workspace_object_type=%s, relation='inventory_host_view'",
-            workspace_object_type
-        )
-        
-        try:
-            item_count = 0
-            result = []
-            logger.debug("host_groups_for() - Starting iteration to collect resource IDs")
-            
+        result = [
+            response_object.resource_id
             for response_object in get_resources(
                 self.client, workspace_object_type,
                 'inventory_host_view', subject.as_pb2()
                 # , limit=100?
-            ):
-                item_count += 1
-                resource_id = response_object.resource_id
-                logger.debug(
-                    "host_groups_for() - Got resource %d: resource_id=%s",
-                    item_count, resource_id
-                )
-                result.append(resource_id)
+            )
+        ]
 
-            elapsed = time.time() - start
-            logger.info(
-                "host_groups_for() complete - Found %d host groups for subject %s in %.3f seconds",
-                len(result), subject, elapsed
-            )
-            logger.debug(
-                "host_groups_for() - Full result list: %s", result
-            )
+        logger.debug(
+            "Getting host groups for subject - Result %s", result
+        )
 
-            return result, elapsed
-        except Exception as e:
-            elapsed = time.time() - start
-            logger.error(
-                "Error in host_groups_for() after %.3f seconds - subject=%s, error: %s",
-                elapsed, subject, e, exc_info=True
-            )
-            raise
+        return result, time.time() - start
 
 
 client = Kessel()
