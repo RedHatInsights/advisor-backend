@@ -35,6 +35,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from advisor_logging import logger
 
 import api.kessel as kessel
+from feature_flags import feature_flag_is_enabled, FLAG_ADVISOR_KESSEL_ENABLED
 
 http_auth_header_key = 'x-rh-identity'
 auth_header_key = 'HTTP_X_RH_IDENTITY'
@@ -185,7 +186,7 @@ class RBACPermission(object):
         # scope' permission.  This saves us doing two full replaces on the
         # entire rendered string.
         method = 'edit' if self.method == 'write' else 'view'
-        return f"{self.app}_{self.resource}_{method}"
+        return f"{self.app}_{self.resource.replace("-", "_")}_{method}"
 
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
@@ -423,7 +424,7 @@ def get_workspace_id(
         return (workspace_for_org[workspace_key], 0.0)
     # Note that we should really just use the default 'default' value, so
     # we're not doing any work with URL-encoding that string... caveat petens.
-    rbac_url = make_rbac_url(f"workspace/?type={workspace}", version=2)
+    rbac_url = make_rbac_url(f"workspaces/?type={workspace}", version=2)
     response, elapsed = make_rbac_request(rbac_url, request)
     if response.status_code != 200:
         logger.error(
@@ -668,7 +669,7 @@ class RHIdentityAuthentication(BaseAuthentication):
             self.message = f"'type' property not found in 'identity' section of {auth_header_key}"
             return None
 
-        if settings.KESSEL_ENABLED:
+        if feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             identity_field = user_details_key.get(identity['type'])
             if identity_field is None:
                 raise ValueError(f"Unknown identity type: {identity['type']}")
@@ -954,7 +955,7 @@ class InsightsRBACPermission(BasePermission):
 
         permission = f'{self.app}:{resource}:{action}'
 
-        if not settings.KESSEL_ENABLED:
+        if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             result, elapsed = has_rbac_permission(
                 request, permission
             )
@@ -978,7 +979,7 @@ class InsightsRBACPermission(BasePermission):
         return bool(result)
 
     def has_object_permission(self, request, view, obj) -> bool:
-        if not settings.KESSEL_ENABLED:
+        if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             return True
 
         resource, scope = self._get_resource(view)
