@@ -297,6 +297,68 @@ class APIDocsTestCase(ApiDocsTestCaseClass):
                         schema['items']['$ref'], '#/components/schemas/Report'
                     )
 
+    def test_list_views_are_paginated(self):
+        ignore_entirely = {
+            '/api/insights/v1/status/',
+            '/api/insights/v1/status/live/', '/api/insights/v1/status/ready/',
+        }
+        for endpoint, end_data in self.swagger['paths'].items():
+            if endpoint in ignore_entirely:
+                continue
+            if '{' in endpoint:
+                # Detail endpoints have a parameter - not list views
+                continue
+            self.assertIn('get', end_data)
+            list_ep = end_data['get']
+            self.assertIn('responses', list_ep)
+            self.assertIn(
+                '200', list_ep['responses'],
+                f"Endpoint {endpoint} does not have a 200 response"
+            )
+            self.assertIn(
+                'content', list_ep['responses']['200'],
+                f"Endpoint {endpoint} does not have a content response"
+            )
+            self.assertIn('application/json', list_ep['responses']['200']['content'])
+            self.assertIn('schema', list_ep['responses']['200']['content']['application/json'])
+            ep_schema = list_ep['responses']['200']['content']['application/json']['schema']
+            # This is probably a reference to a component schema - just check that...
+            if '$ref' not in ep_schema:
+                continue
+            self.assertTrue(ep_schema['$ref'].startswith('#/components/schemas/'))
+            schema_name = ep_schema['$ref'].split('/')[3]
+            self.assertIn(schema_name, self.swagger['components']['schemas'])
+            response_schema = self.swagger['components']['schemas'][schema_name]
+            if schema_name.startswith('Paginated'):
+                # Finally, we can check that this obeys the pagination schema
+                self.assertEqual(
+                    response_schema['type'], 'object',
+                    f"Endpoint {endpoint} response schema {schema_name} looks "
+                    f"paginated but is not an object"
+                )
+                self.assertIn('properties', response_schema)
+                self.assertIn('data', response_schema['properties'])
+                self.assertIn('meta', response_schema['properties'])
+                self.assertEqual(response_schema['properties']['data']['type'], 'array')
+                self.assertEqual(response_schema['properties']['meta']['type'], 'object')
+            elif schema_name == 'Stats':
+                self.assertEqual(
+                    response_schema['type'], 'object',
+                    f"Endpoint {endpoint} response schema {schema_name} looks "
+                    f"like a stats object but is not an object"
+                )
+                # Stats endpoints are 'special'
+                self.assertIn('properties', response_schema)
+                self.assertNotIn('data', response_schema['properties'])
+                self.assertNotIn('meta', response_schema['properties'])
+            else:
+                # Unpaginated lists should just be a list
+                self.assertEqual(
+                    response_schema['type'], 'list',
+                    f"Endpoint {endpoint} response schema {schema_name} looks "
+                    f"unpaginated but is not a list"
+                )
+
     @responses.activate
     def test_schema_has_docs_with_rbac(self):
         TEST_RBAC_URL = 'http://docs-rbac.svc'
