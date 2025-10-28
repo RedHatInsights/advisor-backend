@@ -203,6 +203,7 @@ if importlib.util.find_spec('drf_spectacular_sidecar'):
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    'middleware.feature_flags_context.feature_flags_context',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -214,7 +215,6 @@ MIDDLEWARE = [
     'middleware.sat_compat_deprecated_headers.satellite_compatibility_api_deprecated',
     'middleware.tasks_rewrite_internal_urls.rewrite_urls',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
-    'middleware.feature_flags_context.feature_flags_context',
 ]
 
 ROOT_URLCONF = 'project_settings.urls'
