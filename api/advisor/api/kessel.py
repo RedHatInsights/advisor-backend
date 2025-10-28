@@ -117,7 +117,7 @@ def get_resources(
     object_type: representation_type_pb2.RepresentationType,
     relation: str,
     subject: subject_reference_pb2.SubjectReference,
-    limit: int = 20,
+    limit: int = 1000,
     fetch_all=True
 ) -> Generator[
     resource_reference_pb2.ResourceReference, None, None
