@@ -113,7 +113,7 @@ class constants(object):
     host_0a_inid = 'ffeeddcc-bbaa-9988-7766-55443322110a'
     host_e1_uuid = '00112233-4455-6677-8899-0123456789e1'
     host_e1_name = 'edge01.example.com'
-    host_e1_inid = 'FFEEDDCC-BBAA-9988-7766-5544332211e1'
+    host_e1_inid = 'ffeeddcc-bbaa-9988-7766-5544332211e1'
     host_e1_said = 'aabbccdd-eeff-ffee-ddcc-aabbccddeee1'
 
     host_02_name = 'system02.example.org'
@@ -182,7 +182,7 @@ class constants(object):
         "high_risk_count": 0,
         "medium_risk_count": 1,
         "low_risk_count": 0,
-        "recommendation_level": 70
+        "recommendation_level": 66
     }
 
     third_pathway = {
@@ -222,7 +222,7 @@ class constants(object):
         "high_risk_count": 1,
         "medium_risk_count": 0,
         "low_risk_count": 0,
-        "recommendation_level": 82
+        "recommendation_level": 78
     }
 
     fifth_pathway = {
@@ -242,7 +242,7 @@ class constants(object):
         "high_risk_count": 0,
         "medium_risk_count": 1,
         "low_risk_count": 0,
-        "recommendation_level": 70
+        "recommendation_level": 66
     }
 
     incident_pathway = {
