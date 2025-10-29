@@ -673,14 +673,15 @@ class HostGroupsTestCase(TestCase):
         self.assertEqual(page['data'][2]['impacted_systems_count'], 2)
         # Systems list
         page = self._get_view('system-list')
-        self.assertEqual(page['meta']['count'], 4)
-        self.assertEqual(len(page['data']), 4)
+        self.assertEqual(page['meta']['count'], 5)
+        self.assertEqual(len(page['data']), 5)
         # not host 1 which is in group 1, but hosts which have no group set
         # Ordered by... display name?
         self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
         self.assertEqual(page['data'][1]['display_name'], constants.host_04_name)
         self.assertEqual(page['data'][2]['display_name'], constants.host_06_name)
         self.assertEqual(page['data'][3]['display_name'], constants.host_05_name)
+        self.assertEqual(page['data'][4]['display_name'], constants.host_e1_name)
         # Systems detail - system not in group
         response = self.client.get(
             reverse(
@@ -718,7 +719,11 @@ class HostGroupsTestCase(TestCase):
         )
         row_data = self._get_export_view(response)
         self.assertEqual(row_data[0]['display_name'], constants.host_03_name)
-        self.assertEqual(len(row_data), 4)
+        self.assertEqual(row_data[1]['display_name'], constants.host_04_name)
+        self.assertEqual(row_data[2]['display_name'], constants.host_06_name)
+        self.assertEqual(row_data[3]['display_name'], constants.host_05_name)
+        self.assertEqual(row_data[4]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(row_data), 5)
         # Stats views
         stats = self._get_view('stats-systems')
         # Systems in account 1234567 not in host group 1: system 3, 4, (5), 6
@@ -771,17 +776,19 @@ class HostGroupsTestCase(TestCase):
         self.assertEqual(page['data'][2]['impacted_systems_count'], 2)
         # Systems list
         page = self._get_view('system-list')
-        self.assertEqual(page['meta']['count'], 5)
-        self.assertEqual(len(page['data']), 5)
+        self.assertEqual(page['meta']['count'], 6)
+        self.assertEqual(len(page['data']), 6)
         self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
         self.assertEqual(page['data'][1]['display_name'], constants.host_04_name)
         self.assertEqual(page['data'][2]['display_name'], constants.host_01_name)
         self.assertEqual(page['data'][3]['display_name'], constants.host_06_name)
         self.assertEqual(page['data'][4]['display_name'], constants.host_05_name)
-        # Systems detail - system not in group
+        self.assertEqual(page['data'][5]['display_name'], constants.host_e1_name)
+
+        # Systems detail - system not in group (but match all?)
         response = self.client.get(
             reverse(
-                'system-detail', kwargs={'uuid': constants.host_e1_uuid}
+                'system-detail', kwargs={'uuid': constants.host_08_uuid}
             ),
             **auth_header_for_testing()
         )
@@ -814,7 +821,8 @@ class HostGroupsTestCase(TestCase):
         self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
         self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
         self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
-        self.assertEqual(len(row_data), 5)
+        self.assertEqual(row_data[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(row_data), 6)
         # Stats views
         stats = self._get_view('stats-systems')
         # Systems in account 1234567 no host groups filtered: 1, 3, 4, 5, 6
