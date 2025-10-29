@@ -522,6 +522,13 @@ host_tags_query_param = OpenApiParameter(
 )
 
 
+host_type_query_param = OpenApiParameter(
+    name='host_type', location=OpenApiParameter.QUERY,
+    description="Display only systems with this type ('all' = both types)",
+    required=False, type=OpenApiTypes.STR, enum=('all', 'edge', 'null'),
+)
+
+
 incident_query_param = OpenApiParameter(
     name='incident', location=OpenApiParameter.QUERY,
     description="Display only systems reporting an incident",
@@ -733,6 +740,20 @@ def filter_on_host_tags(request, field_name='host_id'):
     return Q(**{field_name + '__in': Subquery(
          InventoryHost.objects.filter(tag_query).values('id')
     )})
+
+
+def filter_on_host_type(request):
+    """
+    Filter on the host_type field (currently within system_profile).
+    """
+    host_type = value_of_param(host_type_query_param, request)
+    # relation='' ?
+    if host_type is None or host_type == 'all':
+        return Q()
+    elif host_type == 'edge':
+        return Q(system_profile__host_type='edge')
+    elif host_type == 'null':
+        return Q(system_profile__host_type__isnull=True)
 
 
 def filter_on_incident(request):

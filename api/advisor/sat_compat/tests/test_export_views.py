@@ -175,9 +175,9 @@ class SatExportViewTestCase(TestCase):
         # Test first row for all columns and values
         # All fields are strings, and normally hidden hosts are shown
         self.assertIn('System Name', row_data[0])
-        self.assertEqual(row_data[0]['System Name'], constants.host_0A_name)
+        self.assertEqual(row_data[0]['System Name'], constants.host_e1_name)
         self.assertIn('System ID', row_data[0])
-        self.assertEqual(row_data[0]['System ID'], constants.host_0a_inid)
+        self.assertEqual(row_data[0]['System ID'], constants.host_e1_inid)
         self.assertIn('System Type', row_data[0])
         self.assertEqual(row_data[0]['System Type'], 'RHEL Server')
         self.assertIn('Registration Date (UTC)', row_data[0])
@@ -185,27 +185,30 @@ class SatExportViewTestCase(TestCase):
         self.assertIn('Last Check In (UTC)', row_data[0])
         self.assertEqual(row_data[0]['Last Check In (UTC)'], "2020-06-25 07:56:27+00:00")
         self.assertIn('Stale', row_data[0])
-        self.assertEqual(row_data[0]['Stale'], 'True')  # stale-hide-2.example.com
+        self.assertEqual(row_data[0]['Stale'], 'False')
         self.assertIn('Actions', row_data[0])
         self.assertEqual(row_data[0]['Actions'], '0')
         self.assertIn('URL', row_data[0])
         self.assertEqual(row_data[0]['URL'],
             'https://console.redhat.com/insights/advisor/systems/classic/'
-            '00112233-4455-6677-8899-01234567890a')
+            '00112233-4455-6677-8899-0123456789e1')
         # Then test remaining rows for the key fields we expect to change
-        self.assertEqual(row_data[1]['System Name'], constants.host_08_name)
+        self.assertEqual(row_data[1]['System Name'], constants.host_0A_name)
         self.assertEqual(row_data[1]['Stale'], 'True')
         self.assertEqual(row_data[1]['Actions'], '0')
-        self.assertEqual(row_data[2]['System Name'], constants.host_06_name)
+        self.assertEqual(row_data[2]['System Name'], constants.host_08_name)
         self.assertEqual(row_data[2]['Stale'], 'True')
         self.assertEqual(row_data[2]['Actions'], '0')
-        self.assertEqual(row_data[3]['System Name'], constants.host_01_name)
-        self.assertEqual(row_data[3]['Stale'], 'False')
-        self.assertEqual(row_data[3]['Actions'], '2')
-        self.assertEqual(row_data[4]['System Name'], constants.host_03_name)
-        self.assertEqual(row_data[5]['System Name'], constants.host_04_name)
-        self.assertEqual(row_data[6]['System Name'], constants.host_05_name)
-        self.assertEqual(len(row_data), 7)
+        self.assertEqual(row_data[3]['System Name'], constants.host_06_name)
+        self.assertEqual(row_data[3]['Stale'], 'True')
+        self.assertEqual(row_data[3]['Actions'], '0')
+        self.assertEqual(row_data[4]['System Name'], constants.host_01_name)
+        self.assertEqual(row_data[4]['Stale'], 'False')
+        self.assertEqual(row_data[4]['Actions'], '2')
+        self.assertEqual(row_data[5]['System Name'], constants.host_03_name)
+        self.assertEqual(row_data[6]['System Name'], constants.host_04_name)
+        self.assertEqual(row_data[7]['System Name'], constants.host_05_name)
+        self.assertEqual(len(row_data), 8)
 
     def test_systems_export_cert_auth(self):
         """
