@@ -47,7 +47,7 @@ else
 
     APP_HOME=${APP_HOME:-api/advisor}
     APP_MODULE=${APP_MODULE:-project_settings.wsgi}
-    LOGGING_CONF=${LOGGING_CONF:-logging_conf.py}
+    GUNICORN_CONF=${GUNICORN_CONF:-gunicorn_conf.py}
     BIND_ADDR="0.0.0.0:${GUNICORN_PORT:-8000}"
     TIMEOUT=${GUNICORN_TIMEOUT:-120}
 
@@ -59,7 +59,7 @@ else
     # not in that directory the import fails.  So we 'cd' first, then the
     # --chdir option is no longer needed and the config imports work.
     cd ${APP_HOME}
-    CMD="pipenv run gunicorn --preload --config ${LOGGING_CONF} --bind ${BIND_ADDR} --timeout ${TIMEOUT} ${APP_MODULE}"
+    CMD="pipenv run gunicorn --preload --config ${GUNICORN_CONF} --bind ${BIND_ADDR} --timeout ${TIMEOUT} ${APP_MODULE}"
 fi
 
 echo "Running ${CMD} ..."
