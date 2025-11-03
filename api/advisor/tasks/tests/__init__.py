@@ -208,12 +208,12 @@ class constants(object):
     # Kessel request check values
     kessel_tasks_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="tasks_tasks_view",
+        relation="tasks_task_view",
         subject=kessel_std_user_obj,
     )
     kessel_tasks_write = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,
-        relation="tasks_tasks_edit",
+        relation="tasks_task_edit",
         subject=kessel_std_user_obj,
     )
     # Kessel permission checks
