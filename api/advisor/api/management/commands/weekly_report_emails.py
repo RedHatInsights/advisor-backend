@@ -72,7 +72,7 @@ includes users that have been deleted in the portal, inactive users,
 users without RBAC permissions, and users without an email address.
 '''
 
-default_subject = environ.get('MAIL_SUBJECT', 'Weekly Insights summary report')
+default_subject = environ.get('MAIL_SUBJECT', 'Weekly Red Hat Lightspeed summary report')
 default_html_template = environ.get('MAIL_HTML_TEMPLATE', 'weekly_report.html')
 MAIL_RETRY_ATTEMPTS = int(environ.get('MAIL_RETRY_ATTEMPTS', 3))
 MAIL_MINIMUM_HOURS = int(environ.get('MAIL_MINIMUM_HOURS', 24))
@@ -259,7 +259,7 @@ def send_emails(org_id, account, reports, users_to_email, subject, html_template
             try:
                 client.send_email(
                     subject=subject,
-                    from_email='Red Hat Insights <noreply@redhat.com>',
+                    from_email='Red Hat Lightspeed <noreply@redhat.com>',
                     recipient=user['address'],
                     body=render_to_string(html_template, context=reports),
                 )

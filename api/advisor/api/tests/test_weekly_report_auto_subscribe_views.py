@@ -58,12 +58,12 @@ class WeeklyReportAutoSubscribeTestCase(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(
             mail.outbox[0]["subject"],
-            "Subscription Confirmation - Insights Advisor Weekly Report",
+            "Subscription Confirmation - Red Hat Lightspeed Advisor Weekly Report",
         )
         self.assertEqual(mail.outbox[0]["recipients"], [username])
         body = mail.outbox[0]["body"]
         self.assertIn(
-            'You have successfully subscribed to the <span style="font-weight: bold;">Insights Advisor Weekly Report</span>.',
+            'You have successfully subscribed to the <span style="font-weight: bold;">Red Hat Lightspeed Advisor Weekly Report</span>.',
             body,
         )
         # Clear the outbox for more tests

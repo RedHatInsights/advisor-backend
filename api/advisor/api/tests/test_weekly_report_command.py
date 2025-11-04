@@ -171,7 +171,7 @@ class WeeklyReportEmailTest(TestCase):
 
             # We should now have received an email for each subscription
             self.assertEqual(len(mail.outbox), 1, [m['recipients'] for m in mail.outbox])
-            self.assertEqual(mail.outbox[0]['subject'], 'Weekly Insights summary report')
+            self.assertEqual(mail.outbox[0]['subject'], 'Weekly Red Hat Lightspeed summary report')
             self.assertEqual(mail.outbox[0]['recipients'], ['"Test User" test-user@example.com'])
             body = mail.outbox[0]['body']
             self.assertIn('Hi Test,', body)
@@ -193,7 +193,7 @@ class WeeklyReportEmailTest(TestCase):
             self.assertNotIn('Red Hat disabled recommendations applicable to your systems', body)
             self.assertNotIn('rule_status=rhdisabled', body)
             # Button points to Advisor and not general Insights or other outdated links
-            self.assertIn('Go to Insights Advisor', body)
+            self.assertIn('Go to Red Hat Lightspeed Advisor', body)
             self.assertNotIn('"https://https://console.redhat.com/"', body)
             self.assertNotIn('https://console.redhat.com/insights/rules', body)
             # No links to github artifacts
