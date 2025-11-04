@@ -243,7 +243,7 @@ class SystemViewSet(ReadOnlyModelViewSet, PaginateMixin):
     pagination_class = CustomPageNumberPagination
     permission_classes = [OrgPermission, TasksRBACPermission]
     queryset = Host.objects.all()
-    resource_name = 'tasks'
+    resource_name = 'task'
     resource_scope = ResourceScope.ORG
     serializer_class = HostSerializer
 

@@ -81,7 +81,7 @@ class JobViewSet(ReadOnlyModelViewSet, PaginateMixin):
     pagination_class = CustomPageNumberPagination
     permission_classes = [OrgPermission, TasksRBACPermission]
     queryset = Job.objects.all()
-    resource_name = 'tasks'
+    resource_name = 'task'
     resource_scope = ResourceScope.ORG
     serializer_class = JobSerializer
 

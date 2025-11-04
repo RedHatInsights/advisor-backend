@@ -71,7 +71,7 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
     queryset = Task.objects.filter(active=True).order_by('publish_date').prefetch_related(
         'taskparameters'
     )
-    resource_name = 'tasks'
+    resource_name = 'task'
     resource_scope = ResourceScope.ORG
     serializer_class = TaskSerializer
 
