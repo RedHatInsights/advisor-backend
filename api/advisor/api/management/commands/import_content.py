@@ -15,10 +15,10 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
+from git import InvalidGitRepositoryError, Repo
 from os import path, walk
 import pytz
 import requests
-import subprocess
 import yaml
 import zlib
 
@@ -807,25 +807,25 @@ def read_playbook(this_path, file):
 
 def find_git_hashes(playbook_dir):
     """
-    Read the git log to determine the latest hash for each file.  More or less
-    drawn from the content server.
+    Read the git log to determine the latest hash for each file.  If the
+    directory is not a git repository, return an empty dictionary.
     """
-    command = ['git', '-C', playbook_dir, 'log', '--stat', '--name-only', "--pretty=hash:%H"]
-    last_hash = None
     hash_for_file = dict()
-    git_proc = subprocess.run(command, capture_output=True)
-    for line in git_proc.stdout.decode().splitlines():
-        # line = line.strip()  -- necessary?
-        if not line:
-            continue
-        if line.startswith('hash:'):
-            last_hash = line[5:]
-            continue
-        if not line.endswith('fixit.yml'):
-            continue
-        full_path = path.join(playbook_dir, line)
-        if full_path not in hash_for_file:
-            hash_for_file[full_path] = last_hash
+    try:
+        repo = Repo(playbook_dir, search_parent_directories=True)
+    except InvalidGitRepositoryError:
+        logger.error(f"Playbook directory {playbook_dir} is not a git repository")
+        return hash_for_file
+    # Step through the git commits, starting from the newest, and collect the
+    # hashes for each file.
+    for commit in repo.iter_commits('HEAD'):
+        commit_hash = commit.hexsha
+        for file_path in commit.stats.files.keys():
+            if not file_path.endswith('fixit.yml'):
+                continue
+            full_path = path.join(playbook_dir, file_path)
+            if full_path not in hash_for_file:
+                hash_for_file[full_path] = commit_hash
 
     return hash_for_file
 
