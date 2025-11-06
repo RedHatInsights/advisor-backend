@@ -28,7 +28,7 @@ from api.permissions import (
 
 default_subject = environ.get(
     'WELCOME_MAIL_SUBJECT',
-    'Subscription Confirmation - Insights Advisor Weekly Report'
+    'Subscription Confirmation - Red Hat Lightspeed Advisor Weekly Report'
 )
 default_html_template = environ.get(
     'WELCOME_MAIL_HTML_TEMPLATE', 'subscription_confirmation.html')
@@ -45,7 +45,7 @@ def send_confirmation_email(username):
     try:
         return client.send_email(
             subject=default_subject,
-            from_email='Red Hat Insights <noreply@redhat.com>',
+            from_email='Red Hat Lightspeed <noreply@redhat.com>',
             recipient=username,
             body=render_to_string(default_html_template, context={}),
         )
