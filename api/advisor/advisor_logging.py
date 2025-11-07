@@ -185,13 +185,19 @@ class OurFormatter(LogstashFormatterV1):
 
         record_name = getattr(record, "name")
         record_args = getattr(record, "args")
-        if record_name in ('django.request', 'django.server') and record_args and isinstance(record_args, str):
-            # args="GET /api/insights/v1/... HTTP/1.1, 200, 603"
-            args = record_args.split()
-            if len(args) > 1 and args[0] in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'):
-                setattr(record, 'method', args[0])
-                setattr(record, 'url', args[1])
-                setattr(record, 'http_version', args[2][:-1])  # minus comma
+        if record_name in ('django.request', 'django.server') and record_args:
+            method = None
+            if isinstance(record_args, str):
+                # args="GET /api/insights/v1/... HTTP/1.1, 200, 603"
+                args = record_args.split()
+                method, url, version = args[0], args[1], args[2][:-1]  # minus comma
+            elif isinstance(record_args, list):
+                # args=["GET /api/insights/v1/rule/ HTTP/1.1", "200", "179"]
+                method, url, version = args[0].split()
+            if method and method in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'):
+                setattr(record, 'method', method)
+                setattr(record, 'url', url)
+                setattr(record, 'http_version', version)
         elif record_name == 'gunicorn.access' and record_args and isinstance(record_args, dict):
             modify_gunicorn_logs_record(record, record_args)
             # record.args is used in % with the message of:
