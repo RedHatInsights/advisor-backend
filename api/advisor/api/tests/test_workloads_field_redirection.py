@@ -55,16 +55,17 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         systems = json_data['data']
 
         self.assertIsInstance(systems, list)
-        # Expect exactly 3 SAP systems with workloads.sap in account 1234567
+        # Expect exactly 4 SAP systems with workloads.sap in account 1234567
         expected_sap_systems = {
             constants.host_01_uuid,
             constants.host_04_uuid,
             constants.host_05_uuid,
+            constants.host_e1_uuid,
         }
         actual_system_uuids = {system['system_uuid'] for system in systems}
 
-        self.assertEqual(len(systems), 3)
-        self.assertEqual(json_data['meta']['count'], 3)
+        self.assertEqual(len(systems), len(expected_sap_systems))
+        self.assertEqual(json_data['meta']['count'], len(expected_sap_systems))
         self.assertEqual(actual_system_uuids, expected_sap_systems)
 
     def test_sap_sids_field_redirection_new_schema(self):
@@ -166,9 +167,9 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         self.assertIn('meta', json_data)
         self.assertIn('count', json_data['meta'])
 
-        # 5 systems are visible after staleness filtering (8 total - 3 stale-hide systems)
-        self.assertEqual(len(systems), 5)
-        self.assertEqual(json_data['meta']['count'], 5)
+        # 6 systems are visible after staleness filtering (9 total - 3 stale-hide systems)
+        self.assertEqual(len(systems), 6)
+        self.assertEqual(json_data['meta']['count'], 6)
 
     def test_workloads_false_filtering(self):
         """Test filtering systems without specific workloads."""
@@ -185,10 +186,11 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         # Expect 3 systems (5 visible - 2 with workloads.mssql)
         # Note: stale-hide systems (host_08, host_0A, host_e1) are filtered out by staleness
         expected_non_mssql_systems = {
-            constants.host_01_uuid, constants.host_03_uuid, constants.host_05_uuid
+            constants.host_01_uuid, constants.host_03_uuid,
+            constants.host_05_uuid, constants.host_e1_uuid,
         }
         actual_system_uuids = {system['system_uuid'] for system in systems}
 
-        self.assertEqual(len(systems), 3)
-        self.assertEqual(json_data['meta']['count'], 3)
+        self.assertEqual(len(systems), 4)
+        self.assertEqual(json_data['meta']['count'], 4)
         self.assertEqual(actual_system_uuids, expected_non_mssql_systems)

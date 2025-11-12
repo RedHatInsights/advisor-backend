@@ -31,14 +31,14 @@ class ImportContentTestCase(TestCase):
 
     def test_delete_hosts_command(self):
         orig_full_host_count = Host.objects.count()
-        self.assertEqual(orig_full_host_count, 10)
+        self.assertEqual(orig_full_host_count, 11)
         orig_ihost_count = InventoryHost.objects.count()
         self.assertEqual(orig_ihost_count, 10)
         # We should not just have the same counts, but the same hosts - test
         # via explicit inner join
         orig_match_host_count = Host.objects.exclude(inventory__display_name=None).count()
         self.assertEqual(
-            orig_match_host_count, 9,
+            orig_match_host_count, 10,
             Host.objects.exclude(inventory_id__in=InventoryHost.objects.values_list('id'))
         )
 
@@ -54,9 +54,13 @@ class ImportContentTestCase(TestCase):
         # Simulate Inventory hosts being culled - just in one account so
         # some remain.
         stale_cull_date = timezone.now() - timedelta(days=28)
-        InventoryHost.objects.exclude(org_id='9988776').filter(
-            updated__lt=stale_cull_date,
+        result = InventoryHost.objects.filter(
+            org_id='9876543', updated__lt=stale_cull_date,
         ).delete()
+        # We should have actually deleted something here...
+        self.assertEqual(result, (8, {'api.InventoryHost': 8}))
+        # Note, however, that we've based our deletion on the updated date in
+        # the InventoryHost table, not the Host table.
 
         # Note that update_stale_dates() does not delete...
 
@@ -70,5 +74,10 @@ class ImportContentTestCase(TestCase):
 
         # And hosts should have been deleted as well
         update_host_count = Host.objects.count()
-        self.assertEqual(update_host_count, update_ihost_count)
         self.assertLess(update_host_count, orig_full_host_count)
+        self.assertEqual(
+            update_host_count, update_ihost_count,
+            Host.objects.exclude(
+                inventory_id__in=InventoryHost.objects.values_list('id', flat=True)
+            )
+        )

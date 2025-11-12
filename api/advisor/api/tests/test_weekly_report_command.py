@@ -179,8 +179,8 @@ class WeeklyReportEmailTest(TestCase):
             # No incidents
             self.assertNotIn('incident=true"', body)
             self.assertIn('<img src="https://console.redhat.com/apps/frontend-assets/email-assets/lightning-bolt.png"', body)  # for no incidents
-            # 7 systems
-            self.assertIn("""<span class="rh-metric__count" style="-ms-text-size-adjust: 100%; font-size: 28px; font-weight: 500; font-family: 'Red Hat Display', Helvetica, Arial sans-serif; line-height: 1.5;">7</span>""", body)
+            # 8 systems
+            self.assertIn("""<span class="rh-metric__count" style="-ms-text-size-adjust: 100%; font-size: 28px; font-weight: 500; font-family: 'Red Hat Display', Helvetica, Arial sans-serif; line-height: 1.5;">8</span>""", body)
             # 3 stale systems
             self.assertIn('<a href="https://console.redhat.com/insights/inventory/?status=stale&status=stale_warning&source=puptoo" style="-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; text-decoration: none !important; color: #0066cc;">Check for stale systems</a>', body)
             # Only low severity rule recommendations
@@ -264,8 +264,8 @@ class WeeklyReportEmailTest(TestCase):
             reset_last_email_at()
             call_command('weekly_report_emails', org_id=['9876543'])
             body = mail.outbox[0]['body']
-            # Only 5 systems now
-            self.assertIn("""<span class="rh-metric__count" style="-ms-text-size-adjust: 100%; font-size: 28px; font-weight: 500; font-family: 'Red Hat Display', Helvetica, Arial sans-serif; line-height: 1.5;">5</span>""", body)
+            # Only 6 systems now
+            self.assertIn("""<span class="rh-metric__count" style="-ms-text-size-adjust: 100%; font-size: 28px; font-weight: 500; font-family: 'Red Hat Display', Helvetica, Arial sans-serif; line-height: 1.5;">6</span>""", body)
             # Only 1 stale system now
             self.assertIn('<a href="https://console.redhat.com/insights/inventory/?status=stale&status=stale_warning&source=puptoo" style="-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; text-decoration: none !important; color: #0066cc;">Check for stale systems</a>', body)
 
@@ -275,8 +275,8 @@ class WeeklyReportEmailTest(TestCase):
             reset_last_email_at()
             call_command('weekly_report_emails', org_id=['9876543'])
             body = mail.outbox[0]['body']
-            # Only 4 systems now
-            self.assertIn("""<span class="rh-metric__count" style="-ms-text-size-adjust: 100%; font-size: 28px; font-weight: 500; font-family: 'Red Hat Display', Helvetica, Arial sans-serif; line-height: 1.5;">4</span>""", body)
+            # Only 5 systems now
+            self.assertIn("""<span class="rh-metric__count" style="-ms-text-size-adjust: 100%; font-size: 28px; font-weight: 500; font-family: 'Red Hat Display', Helvetica, Arial sans-serif; line-height: 1.5;">5</span>""", body)
             # No stale systems now
             self.assertNotIn('https://console.redhat.com/insights/inventory/?status=stale', body)
             self.assertNotIn('stale system', body)

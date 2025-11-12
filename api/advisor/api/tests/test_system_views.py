@@ -64,7 +64,6 @@ class SystemViewTestCase(TestCase):
         systems = json['data']
 
         self.assertIsInstance(systems, list)
-        self.assertEqual(len(systems), 5)
 
         # Systems are by default sorted by number of hits, then name
         self.assertEqual(systems[0]['system_uuid'], constants.host_03_uuid)
@@ -148,6 +147,10 @@ class SystemViewTestCase(TestCase):
         )
         self.assertEqual(systems[4]['group_name'], None)
 
+        self.assertEqual(systems[5]['display_name'], constants.host_e1_name)
+
+        self.assertEqual(len(systems), 6)
+
     def test_list_system_name_filter(self):
         response = self.client.get(
             reverse('system-list'), data={
@@ -169,6 +172,48 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[2]['display_name'], constants.host_01_name)
         self.assertEqual(systems[3]['hits'], 0)
         self.assertEqual(systems[3]['display_name'], constants.host_05_name)
+
+    def test_list_host_type_filter(self):
+        # Filter systems by host type - 'standard'
+        response = self.client.get(
+            reverse('system-list'), data={
+                'host_type': 'null', 'sort': 'display_name'
+            }, **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertIsInstance(systems, list)
+        self.assertEqual(systems[0]['display_name'], constants.host_06_name)
+        self.assertEqual(systems[1]['display_name'], constants.host_01_name)
+        self.assertEqual(systems[2]['display_name'], constants.host_03_name)
+        self.assertEqual(systems[3]['display_name'], constants.host_04_name)
+        self.assertEqual(systems[4]['display_name'], constants.host_05_name)
+        self.assertEqual(len(systems), 5)
+        # 'edge'
+        response = self.client.get(
+            reverse('system-list'), data={
+                'host_type': 'edge', 'sort': 'display_name'
+            }, **self.std_auth_header
+        )
+        systems = self._response_is_good(response)['data']
+        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(systems), 1)
+        # 'all' = 'standard' + 'edge'
+        response = self.client.get(
+            reverse('system-list'), data={
+                'host_type': 'all', 'sort': 'display_name'
+            }, **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertIsInstance(systems, list)
+        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[1]['display_name'], constants.host_06_name)
+        self.assertEqual(systems[2]['display_name'], constants.host_01_name)
+        self.assertEqual(systems[3]['display_name'], constants.host_03_name)
+        self.assertEqual(systems[4]['display_name'], constants.host_04_name)
+        self.assertEqual(systems[5]['display_name'], constants.host_05_name)
+        self.assertEqual(len(systems), 6)
 
     def test_list_incident_filter(self):
         # Filter systems with incidents:
@@ -202,7 +247,8 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[3]['hits'], 1)
         self.assertEqual(systems[4]['display_name'], constants.host_05_name)
         self.assertEqual(systems[4]['hits'], 0)
-        self.assertEqual(len(systems), 5)
+        self.assertEqual(systems[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(systems), 6)
 
         # Advisor-3047 - in the special case where the UI requests both
         # 'incident=true' and 'incident=false', we get a 400.
@@ -220,7 +266,7 @@ class SystemViewTestCase(TestCase):
         )
         json = self._response_is_good(response)
         systems = json['data']
-        # Systems 1, 4, 5, 8, 9 and A are SAP systems:
+        # Systems 1, 4, 5 and edge are SAP systems:
         self.assertIsInstance(systems, list)
         # Systems are by default sorted by number of hits, then name
         self.assertEqual(systems[0]['hits'], 2)
@@ -229,7 +275,8 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[1]['display_name'], constants.host_01_name)
         self.assertEqual(systems[2]['hits'], 0)
         self.assertEqual(systems[2]['display_name'], constants.host_05_name)
-        self.assertEqual(len(systems), 3)
+        self.assertEqual(systems[3]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(systems), 4, systems[4:])
 
         response = self.client.get(
             reverse('system-list'),
@@ -290,13 +337,13 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[3]['display_name'], constants.host_06_name)
         self.assertEqual(systems[4]['hits'], 0)
         self.assertEqual(systems[4]['display_name'], constants.host_05_name)
-        self.assertEqual(len(systems), 5)
+        self.assertEqual(systems[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(systems), 6)
 
     def test_list_system_hits_filter(self):
         # hits=yes lists only those systems with hits - expect 4
         response = self.client.get(reverse('system-list'), data={'hits': 'yes'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 4)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
         self.assertEqual(systems[0]['hits'], 2)
         self.assertEqual(systems[1]['display_name'], constants.host_04_name)
@@ -305,20 +352,25 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[2]['hits'], 1)
         self.assertEqual(systems[3]['display_name'], constants.host_06_name)
         self.assertEqual(systems[3]['hits'], 1)
+        self.assertEqual(len(systems), 4)
 
-        # hits=all lists all systems, with or without hits - expect 5
+        # hits=all lists all systems, with or without hits - expect 6
         response = self.client.get(reverse('system-list'), data={'hits': 'all'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 5)
+        self.assertEqual(len(systems), 6)
         self.assertEqual(systems[4]['display_name'], constants.host_05_name)
         self.assertEqual(systems[4]['hits'], 0)
+        self.assertEqual(systems[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[5]['hits'], 0)
 
-        # hits=no lists systems without hits - expect 1
+        # hits=no lists systems without hits - expect 2
         response = self.client.get(reverse('system-list'), data={'hits': 'no'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 1)
         self.assertEqual(systems[0]['display_name'], constants.host_05_name)
         self.assertEqual(systems[0]['hits'], 0)
+        self.assertEqual(systems[1]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[1]['hits'], 0)
+        self.assertEqual(len(systems), 2)
 
         # hits=1 lists systems with low_risk hits - expect 4
         response = self.client.get(reverse('system-list'), data={'hits': '1'}, **self.std_auth_header)
@@ -326,6 +378,10 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(len(systems), 4)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
         self.assertEqual(systems[0]['low_hits'], 2)
+        self.assertEqual(systems[1]['display_name'], constants.host_04_name)
+        self.assertEqual(systems[1]['hits'], 2)
+        self.assertEqual(systems[2]['display_name'], constants.host_01_name)
+        self.assertEqual(systems[2]['hits'], 1)
         self.assertEqual(systems[3]['display_name'], constants.host_06_name)
         self.assertEqual(systems[3]['low_hits'], 1)
 
@@ -344,10 +400,10 @@ class SystemViewTestCase(TestCase):
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 4)
 
-        # hits=no,all,yes shouldn't happen, but will prioritize the hits=all to list all systems - expect 5
+        # hits=no,all,yes shouldn't happen, but will prioritize the hits=all to list all systems - expect 6
         response = self.client.get(reverse('system-list'), data={'hits': 'no,all,yes'}, **self.std_auth_header)
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 5)
+        self.assertEqual(len(systems), 6)
 
     def test_list_system_last_seen_sort(self):
         response = self.client.get(
@@ -359,12 +415,14 @@ class SystemViewTestCase(TestCase):
         systems = json['data']
 
         self.assertIsInstance(systems, list)
-        self.assertEqual(len(systems), 5)
-        self.assertEqual(systems[0]['last_seen'], '2018-09-22T02:00:51Z')
-        self.assertEqual(systems[1]['last_seen'], '2018-12-04T05:10:36Z')
-        self.assertEqual(systems[2]['last_seen'], '2018-12-10T23:32:13Z')
-        self.assertEqual(systems[3]['last_seen'], '2018-12-10T23:32:15Z')
-        self.assertEqual(systems[4]['last_seen'], '2019-04-05T14:30:00Z')
+        self.assertEqual(systems[0]['last_seen'], None)  # no upload...
+        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[1]['last_seen'], '2018-09-22T02:00:51Z')
+        self.assertEqual(systems[2]['last_seen'], '2018-12-04T05:10:36Z')
+        self.assertEqual(systems[3]['last_seen'], '2018-12-10T23:32:13Z')
+        self.assertEqual(systems[4]['last_seen'], '2018-12-10T23:32:15Z')
+        self.assertEqual(systems[5]['last_seen'], '2019-04-05T14:30:00Z')
+        self.assertEqual(len(systems), 6)
 
     def test_list_system_host_group_name_sort(self):
         # We can only sort by one field, we don't populate the groups
@@ -380,9 +438,9 @@ class SystemViewTestCase(TestCase):
         )
         systems = self._response_is_good(response)['data']
         self.assertIsInstance(systems, list)
-        self.assertEqual(len(systems), 2)
         self.assertEqual(systems[0]['display_name'], constants.host_01_name)
         self.assertEqual(systems[1]['display_name'], constants.host_03_name)
+        self.assertEqual(len(systems), 2)
         # Reverse:
         response = self.client.get(
             reverse('system-list'), data={
@@ -392,9 +450,9 @@ class SystemViewTestCase(TestCase):
         )
         systems = self._response_is_good(response)['data']
         self.assertIsInstance(systems, list)
-        self.assertEqual(len(systems), 2)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
         self.assertEqual(systems[1]['display_name'], constants.host_01_name)
+        self.assertEqual(len(systems), 2)
 
     def test_list_system_low_hits_sort(self):
         response = self.client.get(
@@ -402,24 +460,32 @@ class SystemViewTestCase(TestCase):
             **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 5)
         # Systems are sorted by number of low risk hits asc, then name asc
         self.assertEqual(systems[0]['display_name'], constants.host_05_name)
         self.assertEqual(systems[0]['low_hits'], 0)
-        self.assertEqual(systems[4]['display_name'], constants.host_04_name)
+        self.assertEqual(systems[1]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[2]['display_name'], constants.host_01_name)
+        self.assertEqual(systems[3]['display_name'], constants.host_06_name)
+        self.assertEqual(systems[4]['display_name'], constants.host_03_name)
         self.assertEqual(systems[4]['low_hits'], 2)
+        self.assertEqual(systems[5]['display_name'], constants.host_04_name)
+        self.assertEqual(len(systems), 6)
 
         response = self.client.get(
             reverse('system-list'), data={'sort': '-low_hits'},
             **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 5)
         # Systems are sorted by number of low risk hits desc, then name asc
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
-        self.assertEqual(systems[0]['low_hits'], 2)
+        self.assertEqual(systems[1]['display_name'], constants.host_04_name)
+        self.assertEqual(systems[1]['low_hits'], 2)
+        self.assertEqual(systems[2]['display_name'], constants.host_01_name)
+        self.assertEqual(systems[3]['display_name'], constants.host_06_name)
         self.assertEqual(systems[4]['display_name'], constants.host_05_name)
-        self.assertEqual(systems[4]['low_hits'], 0)
+        self.assertEqual(systems[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[5]['low_hits'], 0)
+        self.assertEqual(len(systems), 6)
 
     def test_list_system_rhel_version_sort(self):
         # Test reversing this, since it relies on two sort fields
@@ -428,14 +494,15 @@ class SystemViewTestCase(TestCase):
             **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
-        self.assertEqual(len(systems), 5)
         # Systems are sorted by OS version - all in this account are 7.5
         # except for system 5 which is 7.1 so is last (reverse).  Sorted then by UUID.
         self.assertEqual(systems[0]['display_name'], constants.host_01_name)
         self.assertEqual(systems[1]['display_name'], constants.host_03_name)
         self.assertEqual(systems[2]['display_name'], constants.host_04_name)
         self.assertEqual(systems[3]['display_name'], constants.host_06_name)
-        self.assertEqual(systems[4]['display_name'], constants.host_05_name)
+        self.assertEqual(systems[4]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[5]['display_name'], constants.host_05_name)
+        self.assertEqual(len(systems), 6)
 
     def test_list_system_rhel_version_filter(self):
         # All of the standard account's systems are on RHEL 7.5
@@ -445,12 +512,13 @@ class SystemViewTestCase(TestCase):
             **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
-        self.assertEqual(systems[0]['display_name'], constants.host_06_name)
-        self.assertEqual(systems[1]['display_name'], constants.host_01_name)
-        self.assertEqual(systems[2]['display_name'], constants.host_03_name)
-        self.assertEqual(systems[3]['display_name'], constants.host_04_name)
+        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
+        self.assertEqual(systems[1]['display_name'], constants.host_06_name)
+        self.assertEqual(systems[2]['display_name'], constants.host_01_name)
+        self.assertEqual(systems[3]['display_name'], constants.host_03_name)
+        self.assertEqual(systems[4]['display_name'], constants.host_04_name)
         # Note that we filter out system 5 because it's on RHEL 7.1
-        self.assertEqual(len(systems), 4)
+        self.assertEqual(len(systems), 5)
 
         # Get empty list on request for version we don't have (and it's in
         # another account)
@@ -518,7 +586,8 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[2]['system_uuid'], constants.host_01_uuid)
         self.assertEqual(systems[3]['system_uuid'], constants.host_06_uuid)
         self.assertEqual(systems[4]['system_uuid'], constants.host_05_uuid)
-        self.assertEqual(len(systems), 5)
+        self.assertEqual(systems[5]['system_uuid'], constants.host_e1_uuid)
+        self.assertEqual(len(systems), 6)
         # Should NOT see stale_hide or stale_hide_2 hosts here.
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
@@ -784,9 +853,9 @@ class SystemViewTestCase(TestCase):
             }, **self.std_auth_header
         )
         json = self._response_is_good(response)
-        self.assertEqual(json['meta']['count'], 1)
-        self.assertEqual(len(json['data']), 1)
-        self.assertEqual(json['data'][0]['system_uuid'], constants.host_05_uuid)
+        self.assertEqual(len(json['data']), 2)
+        self.assertEqual(json['data'][0]['system_uuid'], constants.host_e1_uuid)
+        self.assertEqual(json['data'][1]['system_uuid'], constants.host_05_uuid)
 
 
 class SystemHighSevViewTestCase(TestCase):
