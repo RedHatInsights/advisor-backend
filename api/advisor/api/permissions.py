@@ -509,12 +509,16 @@ def has_kessel_permission(
 
     identity = request.auth
 
+    elapsed = 0.0
     try:
         # print(f"Checking {identity} has {permission} in {scope}...")
         logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
             # We actually translate this into the default workspace of that org.
             workspace_id, elapsed = get_workspace_id(request)
+            if not workspace_id:
+                # Log created by exception catch below
+                raise ValueError("No workspace found for org")
             logger.info(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
@@ -550,7 +554,7 @@ def has_kessel_permission(
         return result, elapsed
     except Exception as e:
         logger.error(f"Error calling kessel for {scope.name} access check: {e}")
-        return (False, 0.0)
+        return (False, elapsed)
 
 
 def get_identity_header(request):
