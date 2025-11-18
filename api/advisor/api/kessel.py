@@ -342,6 +342,9 @@ class Kessel:
         # only allow access via the TestClient.
         if settings.KESSEL_URL == 'device under test':
             self.client = TestClient()
+        elif not (settings.KESSEL_ENABLED and settings.KESSEL_URL):
+            logger.info("Kessel environment not enabled")
+            self.client = None
         else:
             logger.info(
                 "Connecting to Kessel via server url %s",
@@ -368,6 +371,9 @@ class Kessel:
     def check(
         self, resource: ResourceRef, relation: Relation, subject: SubjectRef
     ) -> Tuple[bool, float]:
+        if not self.client:
+            logger.info("Kessel environment not enabled")
+            return False, 0.0
         start = time.time()
         logger.info(
             "Checking resource %s with relation %s for subject %s",
@@ -391,6 +397,9 @@ class Kessel:
         There may be other uses of get_resources, but at the moment the only
         one we care about is the host groups for this user.
         """
+        if not self.client:
+            logger.info("Kessel environment not enabled")
+            return False, 0.0
         start = time.time()
         logger.info(
             "Getting host groups for subject %s", subject
