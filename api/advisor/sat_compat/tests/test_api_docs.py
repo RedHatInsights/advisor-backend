@@ -20,6 +20,11 @@ from api.tests.test_api_docs import APIDocsTestCase
 class SatCompatAPIDocsTestCase(APIDocsTestCase):
     schema_path_name = 'sat-compat-openapi-spec'
 
+    list_views_no_pagination_check = {
+        '/r/insights/v3/articles/overview-satellite6',
+        '/r/insights/v3/evaluation/status',
+    }
+
     def test_schema_has_docs_with_rbac(self):
         # We don't really use RBAC for access to the Sat-Compat API, and the
         # view list we need to check is different.

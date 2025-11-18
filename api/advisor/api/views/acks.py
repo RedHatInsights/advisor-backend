@@ -216,6 +216,10 @@ class AckCountViewSet(viewsets.ReadOnlyModelViewSet):
         rule_ack_count = self.get_object()
         return Response(rule_ack_count)
 
+    @extend_schema(
+        # Non-paginated list view
+        responses={200: AckCountSerializer(many=True)}
+    )
     def list(self, request, format=None):
         """
         Get the ack counts for all active rules
