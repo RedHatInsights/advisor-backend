@@ -20,7 +20,7 @@ from django_prometheus import exports
 
 from project_settings import settings
 
-from api.urls import urlpatterns
+from api.urls import router, urlpatterns
 from tasks.urls import urlpatterns as tasks_urlpatterns
 from sat_compat.urls import v1router, v2router, v3urlpatterns
 from sat_compat.views.me import MeView
@@ -48,6 +48,8 @@ urlpatterns = [
     path(settings.SAT_COMPAT_PATH_PREFIX_V1, include(v1router.urls)),
     path(settings.SAT_COMPAT_PATH_PREFIX_V2, include(v2router.urls)),
     path(settings.SAT_COMPAT_PATH_PREFIX_V3, include(v3urlpatterns)),
+    # Special path for platform to cope with Satellite proxy path restrictions
+    path(settings.PLATFORM_PATH_PREFIX, include(router.urls)),
 
     # Other paths
     path(settings.PROMETHEUS_PATH, exports.ExportToDjangoView, name="prometheus-django-metrics"),
