@@ -37,6 +37,7 @@ LOG_HTTP_HEADER_FIELDS = {
     'REMOTE_HOST': 'REMOTE-HOST',
     'HTTP_HOST': 'HOST'
 }
+ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 
 
 class AdvisorStreamHandler(logging.StreamHandler):
@@ -187,25 +188,19 @@ class OurFormatter(LogstashFormatterV1):
         record_args = getattr(record, "args")
         if record_name in ('django.request', 'django.server') and record_args:
             # How much should we not trust the string we get?
-            method = None
-            url = None
-            version = None
-            args_str = None
-            if isinstance(record_args, str):
-                # args="GET /api/insights/v1/... HTTP/1.1, 200, 603"
-                args_str = record_args
-            elif isinstance(record_args, list):
-                # args=["GET /api/insights/v1/rule/ HTTP/1.1", "200", "179"]
-                args_str = record_args[0]
-            if args_str is not None:
-                args_list = args_str.split()
-                method = args_list[0] if len(args_list) > 0 else None
-                url = args_list[1] if len(args_list) > 1 else None
-                version = args_list[2].strip(',') if len(args_list) > 2 else None
-            if method and method in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'):
-                setattr(record, 'method', method)
-                setattr(record, 'url', url)
-                setattr(record, 'http_version', version)
+            # single pull-out of the raw "GET ... HTTP/1.1" string
+            # This code suggested by Sourcery AI.
+            raw = record_args[0] if isinstance(record_args, list) else record_args
+
+            parts = raw.split()
+            if parts and parts[0] in ALLOWED_METHODS:
+                # unpack with defaults
+                method, url, *rest = parts + [None, None]
+                version = rest[0].rstrip(",") if rest else None
+
+                setattr(record, "method", method)
+                setattr(record, "url", url)
+                setattr(record, "http_version", version)
         elif record_name == 'gunicorn.access' and record_args and isinstance(record_args, dict):
             modify_gunicorn_logs_record(record, record_args)
             # record.args is used in % with the message of:
