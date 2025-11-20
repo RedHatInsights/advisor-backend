@@ -44,6 +44,7 @@ TP_ASSOCIATE = 'tp_associate'
 host_group_attr = 'host_groups'
 user_details_key = {
     'User': 'user',
+    'System': 'system',
     'ServiceAccount': 'service_account'
 }
 
