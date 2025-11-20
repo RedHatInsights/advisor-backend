@@ -173,11 +173,11 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[3]['hits'], 0)
         self.assertEqual(systems[3]['display_name'], constants.host_05_name)
 
-    def test_list_host_type_filter(self):
+    def test_list_system_type_filter(self):
         # Filter systems by host type - 'standard'
         response = self.client.get(
             reverse('system-list'), data={
-                'host_type': 'null', 'sort': 'display_name'
+                'system_type': 'conventional', 'sort': 'display_name'
             }, **self.std_auth_header
         )
         json = self._response_is_good(response)
@@ -192,7 +192,7 @@ class SystemViewTestCase(TestCase):
         # 'edge'
         response = self.client.get(
             reverse('system-list'), data={
-                'host_type': 'edge', 'sort': 'display_name'
+                'system_type': 'edge', 'sort': 'display_name'
             }, **self.std_auth_header
         )
         systems = self._response_is_good(response)['data']
@@ -201,7 +201,7 @@ class SystemViewTestCase(TestCase):
         # 'all' = 'standard' + 'edge'
         response = self.client.get(
             reverse('system-list'), data={
-                'host_type': 'all', 'sort': 'display_name'
+                'system_type': 'all', 'sort': 'display_name'
             }, **self.std_auth_header
         )
         json = self._response_is_good(response)

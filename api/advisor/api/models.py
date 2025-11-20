@@ -33,7 +33,7 @@ from api.permissions import (
 from api.filters import (
     filter_multi_param, filter_on_param, value_of_param,
     category_query_param, host_group_name_query_param, pathway_query_param,
-    filter_on_branch_id, filter_on_display_name, filter_on_host_type,
+    filter_on_branch_id, filter_on_display_name, filter_on_system_type,
     filter_on_hits, filter_on_host_tags, filter_on_incident, filter_on_rhel_version,
     filter_on_update_method, filter_on_has_disabled_recommendation,
 )
@@ -363,7 +363,7 @@ def get_reports_subquery(
     if not org_id:
         return CurrentReport.objects.none()
     host_tags_q = filter_on_host_tags(request)
-    host_type_q = filter_on_host_type(request)
+    system_type_q = filter_on_system_type(request)
 
     system_profile_filter = filter_multi_param(
         request, 'system_profile', field_prefix='inventory'
@@ -404,7 +404,7 @@ def get_reports_subquery(
 
     return CurrentReport.objects.filter(
         Q(
-            host_tags_q, host_type_q, system_profile_filter,
+            host_tags_q, system_type_q, system_profile_filter,
             category_filter,
             cert_auth_q(request, relation='inventory'),
             branch_id_filter,
@@ -598,7 +598,7 @@ class InventoryHostManager(models.Manager):
         * Host groups when supplied
         """
         host_tags_q = filter_on_host_tags(request, field_name='id')
-        host_type_q = filter_on_host_type(request)
+        system_type_q = filter_on_system_type(request)
         system_profile_filter = filter_multi_param(request, 'system_profile')
         staleness_filter = Q()
         if filter_stale:  # field defined in annotate below
@@ -617,7 +617,7 @@ class InventoryHostManager(models.Manager):
                 output_field=models.CharField()
             ), output_field=models.DateTimeField())
         ).filter(
-            host_tags_q, host_type_q, system_profile_filter,
+            host_tags_q, system_type_q, system_profile_filter,
             cert_auth_q(request), branch_id_filter, staleness_filter,
             filter_on_update_method(request),
             require_host_filter, host_group_filter,

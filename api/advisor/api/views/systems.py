@@ -24,7 +24,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from api.filters import (
-    value_of_param, host_tags_query_param, host_type_query_param,
+    value_of_param, host_tags_query_param, system_type_query_param,
     filter_system_profile_sap_system_query_param,
     filter_system_profile_sap_sids_contains_query_param,
     filter_system_profile_mssql_query_param,
@@ -102,7 +102,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             filter_system_profile_mssql_query_param,
             filter_system_profile_ansible_query_param,
             has_disabled_recommendation_query_param,
-            host_type_query_param,
+            system_type_query_param,
         ],
     )
     def list(self, request, format=None):
@@ -126,7 +126,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             host_group_name_query_param, update_method_query_param,
             filter_system_profile_mssql_query_param,
             filter_system_profile_ansible_query_param,
-            host_type_query_param,
+            system_type_query_param,
         ],
         responses={200: ReportSerializer(many=True)}
     )

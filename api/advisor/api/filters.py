@@ -522,13 +522,6 @@ host_tags_query_param = OpenApiParameter(
 )
 
 
-host_type_query_param = OpenApiParameter(
-    name='host_type', location=OpenApiParameter.QUERY,
-    description="Display only systems with this type ('all' = both types)",
-    required=False, type=OpenApiTypes.STR, enum=('all', 'edge', 'null'),
-)
-
-
 incident_query_param = OpenApiParameter(
     name='incident', location=OpenApiParameter.QUERY,
     description="Display only systems reporting an incident",
@@ -568,6 +561,13 @@ rule_id_query_param = OpenApiParameter(
     name='rule_id', location=OpenApiParameter.QUERY,
     description="Display systems with this text in their rule_id",
     required=False, type=OpenApiTypes.STR,
+)
+
+
+system_type_query_param = OpenApiParameter(
+    name='system_type', location=OpenApiParameter.QUERY,
+    description="Display only systems with this type ('all' = both types)",
+    required=False, type=OpenApiTypes.STR, enum=('all', 'edge', 'conventional', 'bootc'),
 )
 
 
@@ -742,17 +742,19 @@ def filter_on_host_tags(request, field_name='host_id'):
     )})
 
 
-def filter_on_host_type(request):
+def filter_on_system_type(request):
     """
     Filter on the host_type field (currently within system_profile).
     """
-    host_type = value_of_param(host_type_query_param, request)
+    system_type = value_of_param(system_type_query_param, request)
     # relation='' ?
-    if host_type is None or host_type == 'all':
+    if system_type is None or system_type == 'all':
         return Q()
-    elif host_type == 'edge':
+    elif system_type == 'edge':
         return Q(system_profile__host_type='edge')
-    elif host_type == 'null':
+    elif system_type == 'bootc':
+        return Q(system_profile__bootc_status__isnull=False)
+    elif system_type == 'conventional':
         return Q(system_profile__host_type__isnull=True)
 
 
