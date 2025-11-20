@@ -85,7 +85,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [InsightsRBACPermission | CertAuthPermission]
     queryset = InventoryHost.objects.all()
     resource_name = 'recommendation-results'
-    resource_scope = ResourceScope.WORKSPACE
+    resource_scope = ResourceScope.ORG
     serializer_class = SystemSerializer
 
     def get_queryset(self):
