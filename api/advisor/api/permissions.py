@@ -497,6 +497,7 @@ def has_kessel_permission(
 
     Host group information is also found and stored in the request object.
     """
+    logger.info("Got to has_kessel_permission")
     if not settings.RBAC_ENABLED:
         return (True, 0.0)
 
@@ -510,9 +511,11 @@ def has_kessel_permission(
     identity = request.auth
 
     elapsed = 0.0
+    logger.info("KESSEL debug: scope = %s", scope)
+    logger.info("KESSEL debug: identity = %s", repr(identity))
+    logger.info("KESSEL debug: permission = %s", repr(permission))
     try:
         # print(f"Checking {identity} has {permission} in {scope}...")
-        logger.info("KESSEL: checking %s has %s in %s", identity, permission, scope)
         if scope == ResourceScope.ORG:
             # We actually translate this into the default workspace of that org.
             workspace_id, elapsed = get_workspace_id(request)
