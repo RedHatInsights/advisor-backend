@@ -474,3 +474,22 @@ class OpenAPI3SchemaValidation(ApiDocsTestCaseClass):
         # for server in self.swagger['servers']:
         #     self.assertIn('url', server)
         #     self.assertEqual(server['url'], 'http://testserver/api/insights/v1')
+
+
+class PlatformPathTestCase(TestCase):
+    """
+    While the API should only advertise the standard API prefix
+    (api/insights/v1), we also want to make sure it responsed to the platform
+    prefix paths (r/insights/platform/insights/v1).
+    """
+    fixtures = ['rulesets']
+
+    def test_paths(self):
+        # We should be able to get a range of data, with credentials, via
+        # the platform path
+        for suffix in ('', 'rule/', 'stats/rules/', 'system/'):
+            response = self.client.get(
+                '/' + settings.PLATFORM_PATH_PREFIX + suffix,
+                **auth_header_for_testing(user_opts={'is_internal': True})
+            )
+            self.assertEqual(response.status_code, 200)
