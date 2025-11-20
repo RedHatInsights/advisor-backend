@@ -962,11 +962,7 @@ class InsightsRBACPermission(BasePermission):
 
         permission = f'{self.app}:{resource}:{action}'
 
-        if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
-            result, elapsed = has_rbac_permission(
-                request, permission
-            )
-        else:
+        if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             if scope == ResourceScope.HOST:
                 # Let has_object_permission take care of it
                 return True
@@ -978,6 +974,10 @@ class InsightsRBACPermission(BasePermission):
                 # a list.  We assume any list returned contains host group IDs.
                 if isinstance(result, list):
                     setattr(request, host_group_attr, result)
+        else:
+            result, elapsed = has_rbac_permission(
+                request, permission
+            )
 
         # Only record the non-cached response time
         if elapsed > 0.0:

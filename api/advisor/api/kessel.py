@@ -343,7 +343,7 @@ class Kessel:
         if settings.KESSEL_URL == 'device under test':
             self.client = TestClient()
         elif not (settings.KESSEL_ENABLED and settings.KESSEL_URL):
-            logger.info("Kessel environment not enabled")
+            logger.warn("Kessel environment not enabled - not creating a client")
             self.client = None
         else:
             logger.info(
@@ -372,7 +372,7 @@ class Kessel:
         self, resource: ResourceRef, relation: Relation, subject: SubjectRef
     ) -> Tuple[bool, float]:
         if not self.client:
-            logger.info("Kessel environment not enabled")
+            logger.error("Kessel client not available (in check)")
             return False, 0.0
         start = time.time()
         logger.info(
@@ -398,7 +398,7 @@ class Kessel:
         one we care about is the host groups for this user.
         """
         if not self.client:
-            logger.info("Kessel environment not enabled")
+            logger.error("Kessel client not available (in host_groups_for)")
             return False, 0.0
         start = time.time()
         logger.info(
