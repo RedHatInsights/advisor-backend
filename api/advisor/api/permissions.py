@@ -379,8 +379,7 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
         response, elapsed = make_rbac_request(rbac_url, request)
         if (response is None) or response.status_code == 500:
             # Cannot reach RBAC at all, but should retry...
-            set_rbac_failure(request, 'Cannot reach RBAC')
-            return (False, elapsed)
+            return (set_rbac_failure(request, 'Cannot reach RBAC'), elapsed)
         if rbac_perm_cache is not None:
             rbac_perm_cache[auth_tuple] = response
 
