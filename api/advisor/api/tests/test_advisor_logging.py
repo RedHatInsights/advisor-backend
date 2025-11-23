@@ -292,6 +292,36 @@ class AdvisorLoggingTestCase(TestCase):
         self.assertNotIn('filename', formatted_rec)
         self.assertNotIn('lineno', formatted_rec)
 
+    def test_format_method_django_server_tuple(self):
+        """
+        This is going to be a bit of a hack as actually getting to format a
+        log line in normal operation is hard to set up AFAICS.
+        """
+        fmtr = advisor_logging.OurFormatter()
+        # No request or post data in thread storage yet.
+        thread_storage.set_value('request', None)
+        thread_storage.set_value('post', None)
+        record = SimpleNamespace()
+        record.name = 'django.server'
+        record.args = ("GET /api/insights/v1/... HTTP/1.1", 200, 603)
+        record.exc_info = None
+
+        formatted = fmtr.format(record)
+        self.assertIsInstance(formatted, str)
+        formatted_rec = json.loads(formatted)
+        self.assertIn('@timestamp', formatted_rec)
+        self.assertEqual(formatted_rec["@version"], 1)
+        self.assertIn('source_host', formatted_rec)
+        self.assertEqual(formatted_rec["name"], record.name)
+        self.assertEqual(formatted_rec["args"], list(record.args))
+        self.assertEqual(formatted_rec['method'], 'GET')
+        self.assertEqual(formatted_rec['url'], '/api/insights/v1/...')
+        self.assertEqual(formatted_rec['http_version'], 'HTTP/1.1')
+        # Check that other fields are not here because they haven't been
+        # set in e.g. the request or post data
+        self.assertNotIn('headers', formatted_rec)
+        self.assertNotIn('post', formatted_rec)
+
     def test_format_method_gunicorn(self):
         """
         This is going to be a bit of a hack as actually getting to format a
