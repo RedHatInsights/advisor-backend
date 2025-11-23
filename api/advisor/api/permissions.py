@@ -866,7 +866,7 @@ class CertAuthPermission(BasePermission):
             return False
         try:
             uuid.UUID(identity['system']['cn'])
-        except:
+        except ValueError:
             set_rbac_failure(
                 request,
                 "'identity.system.cn' is not a UUID in Cert authentication check"
@@ -1055,7 +1055,7 @@ class InsightsRBACPermission(BasePermission):
         resource = getattr(view, 'resource_name', None)
         if resource is None and hasattr(view, 'basename'):
             resource = view.basename + ('' if view.basename[-1] == 's' else 's')
-        assert resource is not None, f'Cannot determine resource for {view}'
+        assert isinstance(resource, str), f'Cannot determine resource for {view} {view_name=}'
         if view_method is not None:
             resource = getattr(view_method, 'resource_name', resource)
 
