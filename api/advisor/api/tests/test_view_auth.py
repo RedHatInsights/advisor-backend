@@ -68,6 +68,7 @@ def fake_auth_check(request, auth_class):
 class FakeView(object):
     # Needs to supply get_view_name method for has_permission check
     view_name = 'List'
+    basename = 'list'
 
     def get_view_name(self):
         return self.view_name
@@ -517,6 +518,14 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
             'type': 'User',
             'user': {'user_id': constants.test_user_id, 'username': constants.test_username}
         }})
+
+    def test_get_raw_value(self):
+        # Test the 'raw' parameter
+        raw_result = auth_header_for_testing(raw='test')
+        # Normally the 'raw' structure would be a complete dict but we just
+        # want to check that you get back what you put in.
+        expected_raw = {auth_header_key: 'test'}
+        self.assertEqual(raw_result, expected_raw)
 
     def test_system_and_user_auth(self):
         with self.assertRaises(AuthenticationFailed):
