@@ -189,14 +189,14 @@ class OurFormatter(LogstashFormatterV1):
         if record_name in ('django.request', 'django.server') and record_args:
             # How much should we not trust the string we get?
             # single pull-out of the raw "GET ... HTTP/1.1" string
-            # This code suggested by Sourcery AI.
-            raw = record_args[0] if isinstance(record_args, list) else record_args
+            raw = record_args[0] if isinstance(record_args, (list, tuple)) else record_args
 
             parts = raw.split()
             if parts and parts[0] in ALLOWED_METHODS:
                 # unpack with defaults
-                method, url, *rest = parts + [None, None]
-                version = rest[0].rstrip(",") if rest else None
+                method = parts.pop(0)
+                url = parts.pop(0) if parts else None
+                version = parts.pop(0).rstrip(',') if parts else None
 
                 setattr(record, "method", method)
                 setattr(record, "url", url)
