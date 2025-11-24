@@ -939,7 +939,7 @@ class InsightsRBACPermission(BasePermission):
             return set_rbac_failure(request, 'org_id not in identity')
         user_data = request_to_user_data(request)
         if not user_data:
-            return set_rbac_failure(request, 'missing or invalid identity type')
+            return set_rbac_failure(request, 'missing user data in request')
         if 'username' not in user_data:
             return set_rbac_failure(request, 'no "username" field in identity type data')
         if not isinstance(user_data['username'], str):
