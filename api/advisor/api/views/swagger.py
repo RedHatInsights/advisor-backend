@@ -24,9 +24,6 @@ from drf_spectacular.views import (
     SpectacularAPIView, SpectacularJSONAPIView, SpectacularSwaggerView
 )
 
-from api.permissions import (
-    RHIdentityAuthentication, TurnpikeIdentityAuthentication,
-)
 # module import so we can manipulate rbac_perm_cache
 from api import permissions
 # from project_settings import settings
@@ -143,7 +140,7 @@ def make_spectacular_view(view_class):
         permissions.rbac_perm_cache = dict()
         rtn = view_class.as_view(
             custom_settings=advisor_api_settings,
-            authentication_classes=[RHIdentityAuthentication, TurnpikeIdentityAuthentication],
+            authentication_classes=[],
             permission_classes=[AllowAny],
         )(*args, **kwargs)
         permissions.rbac_perm_cache = None

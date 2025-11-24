@@ -41,11 +41,14 @@ class ApiDocsTestCaseClass(TestCase):
             reverse(cls.schema_path_name), HTTP_ACCEPT=constants.json_mime,
             **cls.auth_dict
         )
+        cls.status_code = response.status_code
+        cls.content = response.content.decode('utf-8')
         cls.swagger = response.json()
 
 
 class UnauthedUserAPIDocsTestCase(ApiDocsTestCaseClass):
     def test_schema_has_docs(self):
+        self.assertEqual(self.status_code, 200, self.content)
         self.assertIn('info', self.swagger)
         self.assertIn('title', self.swagger['info'])
         self.assertNotEqual(self.swagger['info']['title'], '')
@@ -465,6 +468,8 @@ class APIDocsTestCase(ApiDocsTestCaseClass):
 
 class OpenAPI3SchemaValidation(ApiDocsTestCaseClass):
     def test_openapi_3_schema_validation(self):
+        self.assertIn('version', self.swagger['info'])
+        self.assertNotEqual(self.swagger['info']['version'], '')
         self.assertIsNone(validate_spec(self.swagger))
         # Test that URL is where and what we expect:
         # DRF Spectacular does not fill this in automatically, and I'm not

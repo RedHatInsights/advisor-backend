@@ -258,4 +258,6 @@ class WeeklyReportSubscriptionTestCase(TestCase):
         # Missing identity header altogether
         response = self.client.post(reverse('weeklyreportsubscription-list'))
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json(), {'detail': 'Authentication credentials were not provided.'})
+        self.assertEqual(
+            response.json(), {'detail': 'No identity information'}
+        )

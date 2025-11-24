@@ -68,6 +68,7 @@ def fake_auth_check(request, auth_class):
 class FakeView(object):
     # Needs to supply get_view_name method for has_permission check
     view_name = 'List'
+    basename = 'list'
 
     def get_view_name(self):
         return self.view_name
@@ -105,7 +106,7 @@ class AuthFailTestCase(TestCase):
         """
         response = self.client.get(reverse('rule-list'))
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json(), {'detail': 'Authentication credentials were not provided.'})
+        self.assertEqual(response.json(), {'detail': 'No identity information'})
 
     def test_auth_req_view_with_no_base64(self):
         """
@@ -194,7 +195,10 @@ class AuthFailTestCase(TestCase):
         }
         response = self.client.get(reverse('rule-list'), **headers)
         self.assertEqual(response.status_code, 403)
-        self.assertIn("Authentication credentials were not provided", response.content.decode())
+        self.assertIn(
+            "'org_id' property not found in 'identity' section of HTTP_X_RH_IDENTITY",
+            response.content.decode()
+        )
 
     def test_auth_req_view_with_json_org_id_too_long(self):
         """
@@ -203,13 +207,17 @@ class AuthFailTestCase(TestCase):
         """
         headers = {
             auth_header_key: b64s(
-                '{"identity": {"org_id": "123456789012345678901234567890123456789012345678901", "user": '
-                '{"username": "test"}}}'
+                '{"identity": {"org_id": "123456789012345678901234567890123456789012345678901"'
+                ', "user": {"username": "test"}}}'
             )
         }
         response = self.client.get(reverse('rule-list'), **headers)
         self.assertEqual(response.status_code, 403)
-        self.assertIn('Authentication credentials were not provided', response.content.decode())
+        self.assertIn(
+            "Org ID '123456789012345678901234567890123456789012345678901' "
+            "greater than 50 characters",
+            response.content.decode()
+        )
 
     def test_auth_req_view_with_json_org_id_alpha_characters(self):
         """
@@ -308,11 +316,12 @@ class BadUseOfRBACPermission(TestCase):
 
 class BadUseOfCertAuthPermission(TestCase):
     def test_permission_not_string(self):
-        # request object given must have 'user' and 'auth' properties
+        # request object must have gone through authentication.
         cap = CertAuthPermission()
-        result = cap.has_permission('request', 'view')
+        request = request_object_for_testing()
+        result = cap.has_permission(request, 'view')
         self.assertFalse(result)
-        self.assertEqual(cap.message, 'not authenticated')
+        self.assertEqual(request.rbac_failure_message, 'not authenticated')
 
         # Failures in identity property of request.auth
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
@@ -325,7 +334,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
+            request.rbac_failure_message,
             "'system' property is not an object in 'identity' section of HTTP_X_RH_IDENTITY in Cert authentication check"
         )
         # system dict has no 'cn'
@@ -336,7 +345,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
+            request.rbac_failure_message,
             "'cn' property not found in 'identity.system' section of HTTP_X_RH_IDENTITY in Cert authentication check"
         )
         # system dict 'cn' value not a string
@@ -347,7 +356,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
+            request.rbac_failure_message,
             "'identity.system.cn' is not a string in Cert authentication check"
         )
         # system dict 'cn' value not a UUID
@@ -358,7 +367,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
+            request.rbac_failure_message,
             "'identity.system.cn' is not a UUID in Cert authentication check"
         )
 
@@ -369,6 +378,9 @@ class BadUseOfCertAuthPermission(TestCase):
         }
         result = cap.has_permission(request, view)
         self.assertTrue(result)
+        self.assertEqual(
+            request.rbac_failure_message, 'CertAuthPermission OK'
+        )
         # Check attributes now set on request
         self.assertTrue(hasattr(request, 'auth_system_type'))
         self.assertEqual(request.auth_system_type, 'system')
@@ -501,10 +513,19 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
     def test_get_unencode_value(self):
         self.assertEqual(auth_header_for_testing(unencoded=True), {'identity': {
             'account_number': constants.standard_acct,
+            'auth_type': 'jwt-auth',
             'org_id': constants.standard_org,
             'type': 'User',
             'user': {'user_id': constants.test_user_id, 'username': constants.test_username}
         }})
+
+    def test_get_raw_value(self):
+        # Test the 'raw' parameter
+        raw_result = auth_header_for_testing(raw='test')
+        # Normally the 'raw' structure would be a complete dict but we just
+        # want to check that you get back what you put in.
+        expected_raw = {auth_header_key: 'test'}
+        self.assertEqual(raw_result, expected_raw)
 
     def test_system_and_user_auth(self):
         with self.assertRaises(AuthenticationFailed):
@@ -737,10 +758,11 @@ class TestInsightsRBACPermissionKessel(TestCase):
         view.resource_scope = ResourceScope.HOST
         # Object passed in has no 'id' attribute:
         self.assertFalse(hasattr(irbp, 'id'))
-        with self.assertRaisesMessage(
-            ValueError, "Permission scope is 'Host' but object has no 'id' attribute"
-        ):
-            irbp.has_object_permission(request, view, irbp)
+        self.assertFalse(irbp.has_object_permission(request, view, irbp))
+        self.assertEqual(
+            request.rbac_failure_message,
+            "Permission scope is 'Host' but object has no 'id' attribute"
+        )
         # Finally we actually get to do a has_kessel_permission check
         with add_kessel_response(
             permission_checks=constants.kessel_allow_host_01_read
@@ -759,13 +781,19 @@ class TestTurnpikeAuthentication(TestCase):
 
         # Standard auth identity fails
         rq = auth_to_request(auth_header_for_testing())
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.auth_type is not 'saml-auth'"
+        ):
+            self.TIAClass.authenticate(rq)
 
         # No auth header key in request seems to be the only way of returning
         # `None` from `get_identity_header()`...
         rq = auth_to_request({'foo': 'bar'})
         # That then returns None here:
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "could not decode identity header"
+        ):
+            self.TIAClass.authenticate(rq)
 
     def test_header_property_fails(self):
         # Specific property failures
@@ -773,47 +801,71 @@ class TestTurnpikeAuthentication(TestCase):
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"type": "Associate"}}')
         })
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "'auth_type' not found in identity header"
+        ):
+            self.TIAClass.authenticate(rq)
         # auth_type not a string
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"auth_type": 47}}')
         })
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.auth_type is not a string"
+        ):
+            self.TIAClass.authenticate(rq)
         # auth type doesn't match
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"auth_type": "Associate"}}')
         })
         # non-matching auth_type is OK, just fails out
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.auth_type is not 'saml-auth'"
+        ):
+            self.TIAClass.authenticate(rq)
 
         # no type property
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"auth_type": "saml-auth"}}')
         })
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "'type' not found in identity header"
+        ):
+            self.TIAClass.authenticate(rq)
         # type property not a string
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": 2}}'
         )})
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.type is not a string"
+        ):
+            self.TIAClass.authenticate(rq)
         # type property doesn't match
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": "Manager"}}'
         )})
-        # non-matching type is OK, just fails out
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        # type not 'Associate'
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.type is not 'Associate'"
+        ):
+            self.TIAClass.authenticate(rq)
 
         # no associate property
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": "Associate"}}'
         )})
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "'associate' not found in identity header"
+        ):
+            self.TIAClass.authenticate(rq)
         # associate property not a dict
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": "Associate"'
             ', "associate": "very yes"}}'
         )})
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.associate is not an object"
+        ):
+            self.TIAClass.authenticate(rq)
 
     def test_authenticate_success(self):
         # Completely minimal associate header
@@ -883,8 +935,8 @@ class TestAssociatePermission(TestCase):
 
     def test_associate_needed(self):
         ext_rq = auth_to_request(auth_header_for_testing())
-        fake_auth_check(ext_rq, TurnpikeIdentityAuthentication)
-        self.assertFalse(self.APClass.has_permission(ext_rq, self.view))
+        with self.assertRaises(AuthenticationFailed):
+            fake_auth_check(ext_rq, TurnpikeIdentityAuthentication)
         int_rq = auth_to_request(turnpike_auth_header_for_testing())
         fake_auth_check(int_rq, TurnpikeIdentityAuthentication)
         self.assertTrue(self.APClass.has_permission(int_rq, self.view))
