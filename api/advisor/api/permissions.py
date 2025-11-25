@@ -17,7 +17,7 @@
 import base64
 from enum import Enum
 import json
-from typing import Tuple
+from typing import Any
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import uuid
 
@@ -44,12 +44,12 @@ TP_ASSOCIATE = 'tp_associate'
 host_group_attr = 'host_groups'
 user_details_key = {
     'User': 'user',
-    'System': 'system',
+    # 'System': 'system',  - systems have no 'user_id' field in their identity
     'ServiceAccount': 'service_account'
 }
 
 
-def make_rbac_url(path, version=1, rbac_base=None):
+def make_rbac_url(path, version: int = 1, rbac_base: str | None = None):
     """
     Use the settings.RBAC_URL, or the rbac_base and the given path and version
     number to construct a URL for RBAC.
@@ -77,7 +77,7 @@ def identity_to_subject(identity: dict) -> kessel.SubjectRef:
 # This is a simple cache within the process.  Workspace IDs will remain
 # constant for their lifetime so they can be reused across multiple requests.
 # The key is (org_id, workspace_str), the value is the ID.
-workspace_for_org = dict()
+workspace_for_org: dict[str, str] = dict()
 
 
 ##############################################################################
@@ -108,7 +108,7 @@ class ResourceScope(Enum):
 ##############################################################################
 
 
-def error_and_deny(msg, extra=''):
+def error_and_deny(msg: str, extra: str = ''):
     logger.error(msg + (' ' + extra if extra else ''))
     raise AuthenticationFailed(msg)
 
@@ -155,15 +155,15 @@ class RBACPermission(object):
     def __init__(self, permission_str):
         if not isinstance(permission_str, str):
             raise ValueError('permission given is not a string')
-        self.string = permission_str
+        self.string: str = permission_str
         if not permission_str.count(':') == 2:
             raise ValueError("permission given does not contain exactly two ':' characters")
         (self.app, self.resource, self.method) = permission_str.split(':')
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'RBACPermission') -> bool:
         return self.string == other.string
 
-    def __contains__(self, other):
+    def __contains__(self, other: 'RBACPermission') -> bool:
         # Note that the sense of 'contains' is opposite to the sense of 'in':
         # A is in B if B contains A.
         if self.string == other.string:
@@ -178,10 +178,10 @@ class RBACPermission(object):
             return True
         return (other.method == 'read' and self.method == 'write')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.string
 
-    def as_kessel_permission(self):
+    def as_kessel_permission(self) -> str:
         # Note that neither the resource nor method will be '*' here, because
         # we are converting a specific permission to a relation, not a 'general
         # scope' permission.  This saves us doing two full replaces on the
@@ -318,7 +318,7 @@ def find_host_groups(role_list, request):
         logger.info(f"User has host groups {host_groups}")
 
 
-def has_rbac_permission(request, permission='advisor:*:*') -> Tuple[bool, float]:
+def has_rbac_permission(request, permission='advisor:*:*') -> tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
 
@@ -374,8 +374,8 @@ def has_rbac_permission(request, permission='advisor:*:*') -> Tuple[bool, float]
         data = response.json()
         if 'data' not in data:
             logger.warning(
-                f"Warning: Response from RBAC did not contain a 'data' list: "
-                f"'{response.content.decode()}'"
+                "Warning: Response from RBAC did not contain a 'data' list: %s",
+                response.content.decode()
             )
             return (False, elapsed)
         tested_list = []
@@ -414,7 +414,7 @@ def has_rbac_permission(request, permission='advisor:*:*') -> Tuple[bool, float]
 
 def get_workspace_id(
     request: Request, workspace: str = "default"
-) -> Tuple[str, float]:
+) -> tuple[str, float]:
     """
     Get the ID of the workspace from the RBAC REST API, for the given
     identity.
@@ -488,7 +488,7 @@ def get_workspace_id(
 def has_kessel_permission(
     scope: "ResourceScope", permission: RBACPermission, request: Request,
     host_id: str | None = None
-) -> Tuple[bool, float]:
+) -> tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
 
@@ -527,6 +527,8 @@ def has_kessel_permission(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
             )
+            # Kessel check requires a 'user_id' in the identity's user data.
+            # This is checked in InsightsRBACPermission, the caller.
             result, elapsed = kessel.client.check(
                 kessel.Workspace(workspace_id).to_ref(),
                 permission.as_kessel_permission(),
@@ -652,6 +654,7 @@ class RHIdentityAuthentication(BaseAuthentication):
         (i.e. in {auth_header_key}), then they have authenticated with the
         3Scales and we trust them implicitly.
         """
+        # print("Started RHIdentityAuthentication.authenticate")
         # If we have this cached, return the cached data.
         if hasattr(request, 'rh_identity') and hasattr(request, 'org_id'):
             return (request.org_id, request.rh_identity)
@@ -676,14 +679,6 @@ class RHIdentityAuthentication(BaseAuthentication):
         if 'type' not in identity:
             self.message = f"'type' property not found in 'identity' section of {auth_header_key}"
             return None
-
-        if feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
-            identity_field = user_details_key.get(identity['type'])
-            if identity_field is None:
-                raise ValueError(f"Unknown identity type: {identity['type']}")
-            if 'user_id' not in identity[identity_field]:
-                self.message = f"'user_id' property not found in '{identity_field}' section of identity"
-                return None
 
         # Set the org_id
         setattr(request, 'org_id', org_id)
@@ -826,6 +821,7 @@ class CertAuthPermission(BasePermission):
     message = 'Red Hat Certificate Authentication has denied permission'
 
     def has_permission(self, request, view):
+        # print("Started CertAuthPermission.has_permission")
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
             self.message = 'not authenticated'
             return False
@@ -867,6 +863,8 @@ class CertAuthPermission(BasePermission):
             return False
         # Less important - remember what type of certificate this is:
         setattr(request, 'auth_system_type', identity['system'].get('cert_type', 'system'))
+
+        # print("Completed CertAuthPermission.has_permission checks, allowed")
 
         # Save the system's UUID for later
         setattr(request, 'auth_system', identity['system']['cn'])
@@ -911,6 +909,7 @@ class InsightsRBACPermission(BasePermission):
     app = 'advisor'
 
     def has_permission(self, request, view):
+        # print("Started InsightsRBACPermission.has_permission")
         # Returns true or false
 
         # Allow views to specify a specific resource name via its
@@ -964,6 +963,14 @@ class InsightsRBACPermission(BasePermission):
         permission = f'{self.app}:{resource}:{action}'
 
         if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
+            # Kessel check requires a 'user_id' in the identity's user data.
+            identity_field = user_details_key.get(identity['type'])
+            if identity_field is None:
+                raise ValueError(f"Unknown identity type: {identity['type']}")
+            if 'user_id' not in identity[identity_field]:
+                self.message = f"'user_id' property not found in '{identity_field}' section of identity"
+                return None
+
             if scope == ResourceScope.HOST:
                 # Let has_object_permission take care of it
                 return True
@@ -1102,7 +1109,7 @@ class AssociatePermission(BaseAssociatePermission):
         return 'associate' in identity
 
 
-def view_methods_dict(allowed_views):
+def view_methods_dict(allowed_views: list[str | tuple[str, str]]):
     """
     Construct the view methods dictionary for ease of reference later.
     Each view can occur more than once, as long as the associated method is
@@ -1110,7 +1117,7 @@ def view_methods_dict(allowed_views):
     and different methods on the same view name, but restricting the same
     view name and method twice has no further effect.
     """
-    view_methods_dict = dict()
+    view_methods_dict: dict[str, list[str]] = dict()
     for rv in allowed_views:
         if not isinstance(rv, tuple):
             rv = (rv, 'GET')
@@ -1145,14 +1152,14 @@ class BaseRedHatUserPermission(BasePermission):
     allowed_views = []
     message = "Access is restricted"
 
-    def has_red_hat_permission(self, request, view, user_data):
+    def has_red_hat_permission(self, request: Request, view, user_data):
         """
         This method checks the user data supplied in the `x-rh-identity`
         header.  This must be overridden in derived classes.
         """
         raise NotImplementedError("Implement a check of Red Hat user data here")
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view):
         """
         Check if this user is allowed to view this view.
 
@@ -1173,7 +1180,7 @@ class BaseRedHatUserPermission(BasePermission):
         """
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
             return False
-        identity = request.auth
+        identity: dict[str, Any] = request.auth
         if identity is None:
             return False
         if 'user' not in identity:
