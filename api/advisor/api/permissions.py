@@ -77,7 +77,7 @@ def identity_to_subject(identity: dict) -> kessel.SubjectRef:
 # This is a simple cache within the process.  Workspace IDs will remain
 # constant for their lifetime so they can be reused across multiple requests.
 # The key is (org_id, workspace_str), the value is the ID.
-workspace_for_org: dict[str, str] = dict()
+workspace_for_org: dict[tuple[str, str], str] = {}
 
 
 ##############################################################################
@@ -966,10 +966,12 @@ class InsightsRBACPermission(BasePermission):
             # Kessel check requires a 'user_id' in the identity's user data.
             identity_field = user_details_key.get(identity['type'])
             if identity_field is None:
-                raise ValueError(f"Unknown identity type: {identity['type']}")
+                # The identity should actually be handled by another
+                # Permissions class, e.g. CertAuthPermission
+                return False
             if 'user_id' not in identity[identity_field]:
                 self.message = f"'user_id' property not found in '{identity_field}' section of identity"
-                return None
+                return False
 
             if scope == ResourceScope.HOST:
                 # Let has_object_permission take care of it
