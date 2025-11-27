@@ -67,15 +67,18 @@ class DummyProducer(Producer):
         self.flush_calls += 1
 
 
-class DummyMessage(confluent_kafka.Message):
+class DummyMessage():
     """
     A dummy Kafka message for use during testing.
+
+    Do not base this on confluent_kafka.Message because it seems to have a
+    weird initialisation process that we don't want to follow for tests.
     """
     def __init__(self, topic: str, value: bytes, headers: list[tuple[str, bytes]] | None = None):
-        self._topic = topic
-        self._value = value
-        self._headers = headers
-        self._error = None
+        self._topic: str = topic
+        self._value: bytes = value
+        self._headers: list[tuple[str, bytes]] | None = headers
+        self._error: str = None
 
     def topic(self) -> str:
         return self._topic
@@ -85,6 +88,9 @@ class DummyMessage(confluent_kafka.Message):
 
     def headers(self) -> list[tuple[str, bytes]] | None:
         return self._headers
+
+    def set_error(self, error: str):
+        self._error = error
 
     def error(self):
         return self._error
@@ -106,16 +112,35 @@ class DummyConsumer(Consumer):
         self.message_index: int = 0
         self.subscribed_topics: list[str] = []
         self.closed: bool = False
+        self.dispatcher_to_quit: 'KafkaDispatcher' | None = None
 
     def add_message(
-        self, topic: str, body: JsonValue, headers: list[tuple[str, bytes]] | None = None
+        self, topic: str, value: JsonValue, headers: list[tuple[str, bytes]] | None = None
     ):
-        """Add a message to the queue that will be returned by poll()."""
-        message_value = json.dumps(body).encode('utf-8')
+        """
+        Add a message to the queue that will be returned by poll().
+        """
+        message_value = json.dumps(value).encode('utf-8')
         self.messages.append(DummyMessage(topic, message_value, headers))
 
+    def add_message_obj(self, message: DummyMessage):
+        """
+        Add a message object to the queue that will be returned by poll().
+        """
+        self.messages.append(message)
+
+    def set_dispatcher_quit(self, dispatcher: 'KafkaDispatcher'):
+        """
+        When we reach the end of the message queue, set the 'quit' flag on
+        the dispatcher.  This is mainly for testing, to save having to have a
+        sentinel message.
+        """
+        self.dispatcher_to_quit = dispatcher
+
     def subscribe(self, topics: list[str]):
-        """Subscribe to topics."""
+        """
+        Subscribe to topics.
+        """
         self.subscribed_topics = topics
         # Because the handler subscribes to the list of topics after the dummy
         # consumer has added them as test data, should we check at this point
@@ -123,9 +148,15 @@ class DummyConsumer(Consumer):
         # we want to see if the handler fails correctly?
 
     def poll(self, timeout: int = 0) -> DummyMessage | None:
-        """Return the next message in the queue, or None if no more messages."""
+        """
+        Return the next message in the queue, or None if no more messages.
+        """
         if self.closed:
-            raise KafkaError("Consumer is closed")
+            if self.dispatcher_to_quit:
+                self.dispatcher_to_quit.quit = True
+                return None
+            else:
+                raise KafkaError(KafkaError._PARTITION_EOF, "Consumer is closed")
         if self.message_index < len(self.messages):
             message = self.messages[self.message_index]
             self.message_index += 1
@@ -236,7 +267,7 @@ class KafkaDispatcher(object):
             'filters': kwargs
         }
 
-    def _handle_message(self, message: confluent_kafka.Message | None):
+    def _handle_message(self, message: confluent_kafka.Message | DummyMessage | None):
         """
         Receive a message, find the handler for this topic, and run the
         message handler for this topic.
