@@ -15,34 +15,20 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import prometheus
+import signal
 from typing import Any
 
-from django.conf import settings
+# from django.conf import settings
 from project_settings import kafka_settings
 from django.core.management.base import BaseCommand
-
-import payload_tracker
 
 from advisor_logging import logger
 from api.models import InventoryHost, Host
 
-from tasks.kafka_utils import send_event_message, KafkaDispatcher, send_kakfa_message
+from kafka_utils import KafkaDispatcher  # , send_kakfa_message
 
 
-# From service/utils.py
-def traverse_keys(d: dict[str, dict | str], keys: list[str], default: str | None = None):
-    """
-    Allows you to look up a 'path' of keys in nested dicts without knowing
-    whether each key exists
-    """
-    key = keys.pop(0)
-    item = d.get(key, default)
-    if len(keys) == 0:
-        return item
-    return traverse_keys(item, keys, default)
-
-
-def handle_inventory_event(topic: str, message) -> None:
+def handle_inventory_event(topic: str, message: dict[str, Any]) -> None:
     """
     Handle inventory events.
 
@@ -54,14 +40,13 @@ def handle_inventory_event(topic: str, message) -> None:
         return
 
     if message['type'] == 'delete':
-        handle_delete_event(message)
+        handle_deleted_event(message)
     elif message['type'] == 'created' or message['type'] == 'updated':
-        handle_update_event(message)
+        handle_created_event(message)
     else:
         logger.error(
             "Inventory event: Unknown message type: %s", message['type']
         )
-
 
 
 def handle_created_event(message: dict[str, Any]):
@@ -121,6 +106,7 @@ def handle_created_event(message: dict[str, Any]):
 
     # Maybe this is a weird way of handling checking the keys, but ... it
     # saves writing what amounts to an exception handler.
+    request_id = 'Unknown'
     try:
         metadata = message['metadata']
         request_id = metadata['request_id']
@@ -145,9 +131,6 @@ def handle_created_event(message: dict[str, Any]):
             request_id, key_name
         )
         prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
-        payload_tracker.bad_payload(
-            'inventory', message, f'Inventory event missing {key_name} key'
-        )
         return
 
     # Create or update the inventory host, without setting the system_profile
@@ -175,7 +158,6 @@ def handle_created_event(message: dict[str, Any]):
         "%s Inventory host %s account %s org_id %s",
         action, inv_host.id, account, org_id
     )
-    payload_tracker.good_payload('inventory', message)
 
     # Now update the system_profile from the message, only changing the fields
     # we care about in Advisor and Tasks.
@@ -183,6 +165,7 @@ def handle_created_event(message: dict[str, Any]):
     # separated out into a different model.
     system_profile_updated = False
     # These are the particular fields that Advisor and Tasks uses
+    system_profile: dict[str: Any] = {}
     for item in (
         'ansible', 'bootc_status', 'host_type', 'mssql', 'operating_system',
         'owner_id', 'rhc_client_id', 'sap', 'sap_system', 'sap_sids',
@@ -212,11 +195,11 @@ def handle_created_event(message: dict[str, Any]):
     action = 'Created' if created else 'Updated'
     logger.debug(
         "%s Host %s account %s org_id %s",
-        action, inv_host.id, account, org_id
+        action, host_obj.inventory_id, account, org_id
     )
 
 
-def handle_deleted_event(message):
+def handle_deleted_event(message: dict[str, str]):
     """
     Handle a 'deleted' event message.
 
@@ -241,8 +224,7 @@ def handle_deleted_event(message):
     logger.info("Handling 'deleted' event")
 
     try:
-        metadata = message['metadata']
-        request_id = metadata['request_id']
+        request_id = message['request_id']
         inventory_id = message['id']
         account = message.get('account')  # optional
         org_id = message['org_id']
@@ -253,9 +235,6 @@ def handle_deleted_event(message):
             missing_key
         )
         prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
-        payload_tracker.bad_payload(
-            'inventory', message, 'Inventory event missing keys.'
-        )
         return
 
     payload_info = {
@@ -265,10 +244,6 @@ def handle_deleted_event(message):
         'org_id': org_id,
         'source': 'inventory'
     }
-
-    payload_tracker.payload_status(
-        'received', 'Received DELETE event from Inventory.', payload_info
-    )
     logger.info("Received DELETE event from Inventory.", extra=payload_info)
 
     # Delete Host object and related records - CurrentReport, HostAck,
@@ -282,6 +257,7 @@ def handle_deleted_event(message):
         host_id=inventory_id, org_id=org_id
     ).delete()
     logger.info("Deleted %d records based on InventoryHost: %s.", *deleted_records)
+    prometheus.INVENTORY_HOST_DELETED.inc()
 
 
 # Main command
@@ -300,7 +276,7 @@ class Command(BaseCommand):
         receiver.register_handler(kafka_settings.INVENTORY_TOPIC, handle_inventory_event)
 
         def terminate(signum, frame):
-            logger.info("SIGTERM received, triggering shutdown")
+            logger.info("Signal %d received, triggering shutdown", signum)
             receiver.quit = True
 
         signal.signal(signal.SIGTERM, terminate)
