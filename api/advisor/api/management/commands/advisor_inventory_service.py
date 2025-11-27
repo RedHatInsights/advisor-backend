@@ -108,10 +108,10 @@ def handle_created_event(message: dict[str, Any]):
     # saves writing what amounts to an exception handler.
     request_id = 'Unknown'
     try:
-        metadata = message['metadata']
+        metadata: dict[str, str] = message['metadata']
         request_id = metadata['request_id']
-        host = message['host']
-        host_id = message['id']
+        host: dict[str, str] = message['host']
+        host_id = host['id']
         display_name = host['display_name']
         account = host.get('account_number')  # optional
         org_id = host['org_id']
