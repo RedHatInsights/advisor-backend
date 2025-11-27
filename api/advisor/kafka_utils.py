@@ -16,7 +16,7 @@
 
 import app_common_python
 from advisor_logging import logger
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, KafkaError, Producer
 import json
 from typing import Callable
 
@@ -28,7 +28,8 @@ from django.core.signals import request_started, request_finished
 cfg = app_common_python.LoadedConfig
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
-type HandlerDataValue = Callable[[str, JsonValue], None] | dict[str, str]
+type HandlerFunc = Callable[[str, JsonValue], None]
+type HandlerDataValue = HandlerFunc | dict[str, str]
 
 
 handler_warning_message = 'Topic %s already has function %s registered when trying to register function %s.  Ignoring this new handler.'
@@ -64,6 +65,79 @@ class DummyProducer(Producer):
 
     def flush(self):
         self.flush_calls += 1
+
+
+class DummyMessage(confluent_kafka.Message):
+    """
+    A dummy Kafka message for use during testing.
+    """
+    def __init__(self, topic: str, value: bytes, headers: list[tuple[str, bytes]] | None = None):
+        self._topic = topic
+        self._value = value
+        self._headers = headers
+        self._error = None
+
+    def topic(self) -> str:
+        return self._topic
+
+    def value(self) -> bytes:
+        return self._value
+
+    def headers(self) -> list[tuple[str, bytes]] | None:
+        return self._headers
+
+    def error(self):
+        return self._error
+
+
+class DummyConsumer(Consumer):
+    """
+    A dummy Kafka consumer for use during testing.
+
+    Usage:
+        consumer = DummyConsumer()
+        consumer.add_message('topic-name', {'key': 'value'})
+        consumer.add_message('topic-name', {'key': 'value2'}, headers=[('service', b'tasks')])
+
+        # Now when poll() is called, it will return these messages in order
+    """
+    def __init__(self, *args, **kwargs):
+        self.messages: list[DummyMessage | None] = []
+        self.message_index: int = 0
+        self.subscribed_topics: list[str] = []
+        self.closed: bool = False
+
+    def add_message(
+        self, topic: str, body: JsonValue, headers: list[tuple[str, bytes]] | None = None
+    ):
+        """Add a message to the queue that will be returned by poll()."""
+        message_value = json.dumps(body).encode('utf-8')
+        self.messages.append(DummyMessage(topic, message_value, headers))
+
+    def subscribe(self, topics: list[str]):
+        """Subscribe to topics."""
+        self.subscribed_topics = topics
+        # Because the handler subscribes to the list of topics after the dummy
+        # consumer has added them as test data, should we check at this point
+        # that indeed those messages are all in the subscribed topics?  Maybe
+        # we want to see if the handler fails correctly?
+
+    def poll(self, timeout: int = 0) -> DummyMessage | None:
+        """Return the next message in the queue, or None if no more messages."""
+        if self.closed:
+            raise KafkaError("Consumer is closed")
+        if self.message_index < len(self.messages):
+            message = self.messages[self.message_index]
+            self.message_index += 1
+            return message
+        self.closed = True
+        # This would be a good point for the calling message handler to have
+        # set up a function which sets the KafkaHandler's `quit` property.
+        return None
+
+    def close(self):
+        """Close the consumer."""
+        self.closed = True
 
 
 producer = None
@@ -137,14 +211,19 @@ class KafkaDispatcher(object):
     call them here.  Calling `register_handler` more than once will generate
     a warning and ignore the new handler function given.
     """
-    def __init__(self):
+    def __init__(self, consumer: Consumer | None = None):
         self.registered_handlers: dict[str, dict[str, HandlerDataValue]] = {}
         self.quit: bool = False
         self.loop_timeout: int = 1
-        # Own consumer for own set of topics
-        self.consumer: Consumer = Consumer(kafka_settings.KAFKA_SETTINGS)
+        # When being tested, supply a DummyConsumer object that has added
+        # messages via consumer.add_message().  Those messages will be processed
+        # in the order they were added.
+        if consumer is not None:
+            self.consumer = consumer
+        else:
+            self.consumer: Consumer = Consumer(kafka_settings.KAFKA_SETTINGS)
 
-    def register_handler(self, topic: str, handler_fn: Callable, **kwargs):
+    def register_handler(self, topic: str, handler_fn: HandlerFunc, **kwargs):
         if topic in self.registered_handlers:
             logger.warn(
                 handler_warning_message,
