@@ -17,10 +17,8 @@
 import app_common_python
 from advisor_logging import logger
 from confluent_kafka import Consumer, Producer
-from datetime import datetime
 import json
 from typing import Callable
-from uuid import uuid4
 
 import confluent_kafka
 from project_settings import kafka_settings as kafka_settings
@@ -28,6 +26,12 @@ from project_settings import kafka_settings as kafka_settings
 from django.core.signals import request_started, request_finished
 
 cfg = app_common_python.LoadedConfig
+
+type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
+type HandlerDataValue = Callable[[str, JsonValue], None] | dict[str, str]
+
+
+handler_warning_message = 'Topic %s already has function %s registered when trying to register function %s.  Ignoring this new handler.'
 
 
 def topic(t: str) -> str:
@@ -44,14 +48,14 @@ class DummyProducer(Producer):
     A dummy Kafka producer for use during testing.
     """
     def __init__(self, *args, **kwargs):
-        self.poll_calls = 0
-        self.produce_calls = []
-        self.flush_calls = 0
+        self.poll_calls: int = 0
+        self.produce_calls: list[dict[str, str | None]] = []
+        self.flush_calls: int = 0
 
-    def poll(self, time):
+    def poll(self, _time: int):
         self.poll_calls += 1
 
-    def produce(self, topic, message, callback=None):
+    def produce(self, topic: str, message: str, callback: str | None = None):
         self.produce_calls.append({
             'topic': topic,
             'message': message,
@@ -90,14 +94,17 @@ def report_delivery_callback(err: Exception | None, msg: confluent_kafka.Message
         logger.error('Webhook event message delivery failed: {}'.format(err))
 
 
-def send_kakfa_message(topic, message):
+def send_kakfa_message(topic: str, message: JsonValue):
+    if producer is None:
+        logger.error("Kafka producer is not initialized")
+        return
     producer.poll(0)
     encoded_message = json.dumps(message).encode('utf8')
     producer.produce(topic, encoded_message, callback=report_delivery_callback)
     producer.flush()
 
 
-def send_webhook_event(event_msg):
+def send_webhook_event(event_msg: JsonValue):
     # For compatibility - replace with direct calls to send_kakfa_message
     send_kakfa_message(kafka_settings.WEBHOOKS_TOPIC, event_msg)
 
@@ -131,7 +138,7 @@ class KafkaDispatcher(object):
     a warning and ignore the new handler function given.
     """
     def __init__(self):
-        self.registered_handlers: dict[str, dict[str, Callable | dict[str, str]]] = {}
+        self.registered_handlers: dict[str, dict[str, HandlerDataValue]] = {}
         self.quit: bool = False
         self.loop_timeout: int = 1
         # Own consumer for own set of topics
@@ -140,8 +147,7 @@ class KafkaDispatcher(object):
     def register_handler(self, topic: str, handler_fn: Callable, **kwargs):
         if topic in self.registered_handlers:
             logger.warn(
-                'Topic %s already has function %s registered when trying to ' +
-                'register function %s.  Ignoring this new handler.',
+                handler_warning_message,
                 topic, self.registered_handlers[topic]['handler'].__name__,
                 handler_fn.__name__,
             )
