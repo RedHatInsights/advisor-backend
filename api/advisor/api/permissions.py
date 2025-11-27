@@ -516,7 +516,7 @@ def has_kessel_permission(
     logger.info("KESSEL debug: identity = %s", repr(identity))
     logger.info("KESSEL debug: permission = %s", repr(permission))
     try:
-        # print(f"Checking {identity} has {permission} in {scope}...")
+        logger.debug("Checking %s has %s in %s...", identity, permission, scope)
         if scope == ResourceScope.ORG:
             # We actually translate this into the default workspace of that org.
             workspace_id, elapsed = get_workspace_id(request)
@@ -535,7 +535,6 @@ def has_kessel_permission(
                 identity_to_subject(identity)
             )
         elif scope == ResourceScope.WORKSPACE:
-            # print("... for workspace")
             logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.host_groups_for(
@@ -547,7 +546,6 @@ def has_kessel_permission(
             if host_id is None:
                 raise ValueError("Host scope requested but host_id not provided")
 
-            # print(f"... for host {host_id}")
             logger.info("KESSEL: checking access to host %s", host_id)
             result, elapsed = kessel.client.check(
                 kessel.Host(str(host_id)).to_ref(),
@@ -555,7 +553,6 @@ def has_kessel_permission(
                 identity_to_subject(identity)
             )
 
-        # print(f"... returned {result} in {elapsed}s")
         logger.info("KESSEL: returned %s in %s", result, elapsed)
         return result, elapsed
     except Exception as e:
@@ -654,7 +651,7 @@ class RHIdentityAuthentication(BaseAuthentication):
         (i.e. in {auth_header_key}), then they have authenticated with the
         3Scales and we trust them implicitly.
         """
-        # print("Started RHIdentityAuthentication.authenticate")
+        logger.debug("Started RHIdentityAuthentication.authenticate")
         # If we have this cached, return the cached data.
         if hasattr(request, 'rh_identity') and hasattr(request, 'org_id'):
             return (request.org_id, request.rh_identity)
@@ -821,7 +818,7 @@ class CertAuthPermission(BasePermission):
     message = 'Red Hat Certificate Authentication has denied permission'
 
     def has_permission(self, request, view):
-        # print("Started CertAuthPermission.has_permission")
+        logger.debug("Started CertAuthPermission.has_permission")
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
             self.message = 'not authenticated'
             return False
@@ -864,7 +861,7 @@ class CertAuthPermission(BasePermission):
         # Less important - remember what type of certificate this is:
         setattr(request, 'auth_system_type', identity['system'].get('cert_type', 'system'))
 
-        # print("Completed CertAuthPermission.has_permission checks, allowed")
+        logger.debug("Completed CertAuthPermission.has_permission checks, allowed")
 
         # Save the system's UUID for later
         setattr(request, 'auth_system', identity['system']['cn'])
@@ -909,7 +906,7 @@ class InsightsRBACPermission(BasePermission):
     app = 'advisor'
 
     def has_permission(self, request, view):
-        # print("Started InsightsRBACPermission.has_permission")
+        logger.debug("Started InsightsRBACPermission.has_permission")
         # Returns true or false
 
         # Allow views to specify a specific resource name via its
