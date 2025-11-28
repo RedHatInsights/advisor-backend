@@ -935,14 +935,12 @@ class InsightsRBACPermission(BasePermission):
             return False
         if 'org_id' not in identity:
             return False
-        if 'type' not in identity or identity['type'] not in user_details_key:
+        user_data = request_to_user_data(request)
+        if not user_data:
             return False
-        type_key = user_details_key[identity['type']]
-        if type_key not in identity or not isinstance(identity[type_key], dict):
+        if 'username' not in user_data:
             return False
-        if 'username' not in identity[type_key]:
-            return False
-        if not isinstance(identity[type_key]['username'], str):
+        if not isinstance(user_data['username'], str):
             return False
 
         # Have to do this after the auth checks and view method check so that
@@ -961,13 +959,7 @@ class InsightsRBACPermission(BasePermission):
 
         if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             # Kessel check requires a 'user_id' in the identity's user data.
-            identity_field = user_details_key.get(identity['type'])
-            if identity_field is None:
-                # The identity should actually be handled by another
-                # Permissions class, e.g. CertAuthPermission
-                return False
-            if 'user_id' not in identity[identity_field]:
-                self.message = f"'user_id' property not found in '{identity_field}' section of identity"
+            if 'user_id' not in user_data:
                 return False
 
             if scope == ResourceScope.HOST:
