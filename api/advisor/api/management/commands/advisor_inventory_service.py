@@ -16,19 +16,19 @@
 
 import prometheus
 import signal
-from typing import Any
 
 # from django.conf import settings
 from project_settings import kafka_settings
 from django.core.management.base import BaseCommand
 
 from advisor_logging import logger
-from api.models import InventoryHost, Host
+from api.models import InventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
 
-from kafka_utils import KafkaDispatcher  # , send_kakfa_message
+from kafka_utils import JsonValue, KafkaDispatcher  # , send_kakfa_message
 
 
-def handle_inventory_event(topic: str, message: dict[str, Any]) -> None:
+#############################################################################
+def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
     """
     Handle inventory events.
 
@@ -39,17 +39,17 @@ def handle_inventory_event(topic: str, message: dict[str, Any]) -> None:
         logger.error("Message received on topic %s with no 'type' field", topic)
         return
 
-    if message['type'] == 'delete':
+    msg_type = message['type']
+    if msg_type == 'delete':
         handle_deleted_event(message)
-    elif message['type'] == 'created' or message['type'] == 'updated':
+    elif msg_type == 'created' or msg_type == 'updated':
         handle_created_event(message)
     else:
-        logger.error(
-            "Inventory event: Unknown message type: %s", message['type']
-        )
+        logger.error("Inventory event: Unknown message type: %s", msg_type)
 
 
-def handle_created_event(message: dict[str, Any]):
+#############################################################################
+def handle_created_event(message: dict[str, JsonValue]):
     """
     Handle a 'created' or 'updated' event message.
 
@@ -113,7 +113,7 @@ def handle_created_event(message: dict[str, Any]):
         host: dict[str, str] = message['host']
         host_id = host['id']
         display_name = host['display_name']
-        account = host.get('account_number')  # optional
+        account = host.get('account')  # optional
         org_id = host['org_id']
         tags = host['tags']
         groups = host['groups']
@@ -122,8 +122,12 @@ def handle_created_event(message: dict[str, Any]):
         insights_id = host['insights_id']
         satellite_id = host['satellite_id']
         # No branch_id ?
-        # Do we care about the staleness timestamp fields, when we only use
-        # the per_reporter_staleness field?
+        # Sadly the staleness fields are still mandatory even though we
+        # should not use them.
+        stale_timestamp = host['stale_timestamp']
+        stale_warning_timestamp = host['stale_warning_timestamp']
+        culled_timestamp = host['culled_timestamp']
+        system_profile_field = host['system_profile']
         per_reporter_staleness = host['per_reporter_staleness']
     except KeyError as key_name:
         logger.error(
@@ -133,7 +137,23 @@ def handle_created_event(message: dict[str, Any]):
         prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
         return
 
-    # Create or update the inventory host, without setting the system_profile
+    # These are the particular fields that Advisor and Tasks uses
+    system_profile: dict[str, JsonValue] = {
+        key: system_profile_field[key]
+        for key in (
+            'ansible', 'bootc_status', 'host_type', 'mssql', 'operating_system',
+            'owner_id', 'rhc_client_id', 'sap', 'sap_system', 'sap_sids',
+            # need to phase out sap_system and sap_sids in favour of sap structure.
+            'system_update_method',
+        ) if key in system_profile_field
+    }
+
+    # Create or update the inventory host.
+    # If we're creating the host, we need to supply a system_profile.
+    # However, if updating we don't really want to supply a large quantity
+    # of system_profile data that may not be changing.  When the system
+    # profile data moves into its own model, this may be easier and more
+    # efficient.
     inv_host, created = InventoryHost.objects.update_or_create(
         id=host_id,
         defaults={
@@ -145,7 +165,11 @@ def handle_created_event(message: dict[str, Any]):
             'created': created,
             'updated': updated,
             'insights_id': insights_id,
-            'per_reporter_staleness': per_reporter_staleness
+            'stale_timestamp': stale_timestamp,
+            'stale_warning_timestamp': stale_warning_timestamp,
+            'culled_timestamp': culled_timestamp,
+            'per_reporter_staleness': per_reporter_staleness,
+            'system_profile': system_profile,
         }
     )
     if created:
@@ -158,29 +182,6 @@ def handle_created_event(message: dict[str, Any]):
         "%s Inventory host %s account %s org_id %s",
         action, inv_host.id, account, org_id
     )
-
-    # Now update the system_profile from the message, only changing the fields
-    # we care about in Advisor and Tasks.
-    # This would also suit an environment in which the system_profile was
-    # separated out into a different model.
-    system_profile_updated = False
-    # These are the particular fields that Advisor and Tasks uses
-    system_profile: dict[str: Any] = {}
-    for item in (
-        'ansible', 'bootc_status', 'host_type', 'mssql', 'operating_system',
-        'owner_id', 'rhc_client_id', 'sap', 'sap_system', 'sap_sids',
-        # need to phase out sap_system and sap_sids in favour of sap structure.
-        'system_update_method',
-    ):
-        if item in message:
-            # copy all items across, but only update if the value has changed.
-            system_profile[item] = message[item]
-            if message[item] != inv_host.system_profile[item]:
-                system_profile_updated = True
-        if system_profile_updated:
-            inv_host.system_profile = system_profile
-            inv_host.save()
-            logger.info("Updated system profile for host %s", inv_host.id)
 
     # Also add the Host record
     host_obj, created = Host.objects.update_or_create(
@@ -199,7 +200,8 @@ def handle_created_event(message: dict[str, Any]):
     )
 
 
-def handle_deleted_event(message: dict[str, str]):
+#############################################################################
+def handle_deleted_event(message: dict[str, JsonValue]):
     """
     Handle a 'deleted' event message.
 
