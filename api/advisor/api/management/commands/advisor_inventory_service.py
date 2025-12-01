@@ -39,13 +39,13 @@ def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
         logger.error("Message received on topic %s with no 'type' field", topic)
         return
 
-    msg_type = message['type']
-    if msg_type == 'delete':
-        handle_deleted_event(message)
-    elif msg_type == 'created' or msg_type == 'updated':
-        handle_created_event(message)
-    else:
-        logger.error("Inventory event: Unknown message type: %s", msg_type)
+    match message['type']:
+        case 'delete':
+            handle_deleted_event(message)
+        case 'created' | 'updated':
+            handle_created_event(message)
+        case msg_type:
+            logger.error("Inventory event: Unknown message type: %s", msg_type)
 
 
 #############################################################################
