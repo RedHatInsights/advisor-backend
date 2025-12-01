@@ -227,7 +227,6 @@ class TestAdvisorInventoryServer(TestCase):
         """
         Test all the missing keys being detected in the create message
         """
-        # Start by processing the create message using handle_inventory_event
         for missing_field in (
             'metadata', 'request_id', 'host', 'id', 'display_name', 'org_id',
             'tags', 'groups', 'created', 'updated', 'insights_id',
@@ -254,7 +253,7 @@ class TestAdvisorInventoryServer(TestCase):
                 if missing_field == 'metadata':
                     this_req_id = 'metadata'
                 elif missing_field == 'request_id':
-                    this_req_id = 'unknown_request_id'
+                    this_req_id = 'unknown request_id'
                 else:
                     this_req_id = modified_msg['metadata']['request_id']
                 self.assertEqual(
@@ -377,7 +376,7 @@ class TestAdvisorInventoryServer(TestCase):
         """
         # Call handle_created_event directly
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            handle_deleted_event(delete_host_msg)
+            handle_inventory_event('topic', delete_host_msg)
             # Now check the logs
             # We aim to remove this debug log soon but in the meantime
             log_lines: list[str] = list(filter(
@@ -427,3 +426,34 @@ class TestAdvisorInventoryServer(TestCase):
             HostAck.objects.filter(host_id=constants.host_01_uuid).count(),
             0
         )
+
+    def test_deleted_message_fail_missing_key(self):
+        """
+        Test all the missing keys being detected in the delete message
+        """
+        # account is optional and missing account is tested above.
+        for missing_field in ('id', 'org_id', 'request_id'):
+            with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+                modified_msg: dict[str, str] = deepcopy(delete_host_msg)
+                del modified_msg[missing_field]
+                handle_deleted_event(modified_msg)
+                # We aim to remove this debug log soon but in the meantime
+                log_lines: list[str] = list(filter(
+                    lambda line: 'Using Cyndi replication view' not in line, logs.output
+                ))
+                self.assertEqual(
+                    "INFO:advisor-log:Handling 'deleted' event",
+                    log_lines[0]
+                )
+                if missing_field == 'request_id':
+                    this_req_id = 'unknown request_id'
+                else:
+                    this_req_id = modified_msg['request_id']
+                self.assertEqual(
+                    "ERROR:advisor-log:Request %s: Inventory event did not contain required key %s" % (
+                        this_req_id, missing_field
+                    ),
+                    log_lines[1],
+                    f"Field {missing_field} is required"
+                )
+                self.assertEqual(len(log_lines), 2)
