@@ -423,13 +423,13 @@ def update_ruleset_with_content(content):
         # Filter out rules we don't want to see
         # Ignore content for rules that don't have the vital fields we need.
         if 'python_module' not in rule_api:
-            logger.warn(
+            logger.warning(
                 "'python_module' not found as key in rule_api keys: %s",
                 ', '.join(sorted(rule_api.keys()))
             )
             continue
         if 'rule_id' not in rule_api:
-            logger.warn(
+            logger.warning(
                 "'rule_id' not found as key in rule_api keys: %s",
                 ', '.join(sorted(rule_api.keys()))
             )
@@ -663,7 +663,7 @@ def update_playbook_models(resolution_model, playbooks_content):
     for playbook_content in playbooks_content:
         missing_keys = [key for key in expected_playbook_keys if key not in playbook_content]
         if missing_keys:
-            logger.warn("Playbook data %s is missing keys %s", playbook_content, missing_keys)
+            logger.warning("Playbook data %s is missing keys %s", playbook_content, missing_keys)
             continue
         # Don't look up the database for each playbook, just check our set
         if playbook_content['resolution_type'] in db_playbook_types:

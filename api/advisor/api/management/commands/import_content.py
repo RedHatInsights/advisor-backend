@@ -214,7 +214,7 @@ def update_model_from_config(
         if row is None:
             # Transformer found it couldn't relate this row to a
             # key.  So we throw this row away here.
-            logger.warn(
+            logger.warning(
                 "... Data for key '%s' could not be transformed into a %s "
                 "- discarding.",
                 key, model_class.__name__,
