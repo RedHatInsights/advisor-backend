@@ -251,12 +251,12 @@ def handle_deleted_event(message: dict[str, JsonValue]):
     # Delete Host object and related records - CurrentReport, HostAck,
     # SatMaintenanceAction, and Upload
     deleted_records = Host.objects.filter(
-        host_id=inventory_id, org_id=org_id, current=True
+        inventory_id=inventory_id, org_id=org_id, current=True
     ).delete()
     logger.info("Deleted %d records based on Host: %s.", *deleted_records)
     # Delete InventoryHost record
     deleted_records = InventoryHost.objects.filter(
-        host_id=inventory_id, org_id=org_id
+        id=inventory_id, org_id=org_id
     ).delete()
     logger.info("Deleted %d records based on InventoryHost: %s.", *deleted_records)
     prometheus.INVENTORY_HOST_DELETED.inc()
