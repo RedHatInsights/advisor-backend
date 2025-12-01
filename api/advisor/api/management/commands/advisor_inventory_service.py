@@ -107,6 +107,8 @@ def handle_created_event(message: dict[str, JsonValue]):
     # Maybe this is a weird way of handling checking the keys, but ... it
     # saves writing what amounts to an exception handler.
     request_id = 'Unknown'
+    # Only use 'get' specifically on optional fields, everything else should
+    # be required.
     try:
         metadata: dict[str, str] = message['metadata']
         request_id = metadata['request_id']
@@ -130,6 +132,13 @@ def handle_created_event(message: dict[str, JsonValue]):
         system_profile_field = host['system_profile']
         per_reporter_staleness = host['per_reporter_staleness']
     except KeyError as key_name:
+        # Might be missing metadata or request_id...
+        key_name = str(key_name).strip("'")  # Error is quoted in single quotes
+        if key_name == 'metadata':
+            request_id = 'metadata'
+        elif key_name == 'request_id':
+            request_id = 'unknown_request_id'
+        # else the request_id variable exists from above
         logger.error(
             "Request %s: Inventory event did not contain required key '%s'",
             request_id, key_name
