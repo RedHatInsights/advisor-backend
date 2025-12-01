@@ -15,6 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 # import responses
+from copy import deepcopy
 from datetime import datetime, timedelta
 
 from django.test import TestCase  # , override_settings
@@ -221,6 +222,124 @@ class TestAdvisorInventoryServer(TestCase):
             )
             new_host = Host.objects.get(inventory_id=new_host_id)
             self.assertEqual(str(new_host.satellite_id).upper(), new_host_satid)
+
+    def test_created_message_fail_missing_key(self):
+        """
+        Test all the missing keys being detected in the create message
+        """
+        # Start by processing the create message using handle_inventory_event
+        for missing_field in (
+            'metadata', 'request_id', 'host', 'id', 'display_name', 'org_id',
+            'tags', 'groups', 'created', 'updated', 'insights_id',
+        ):
+            with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+                modified_msg: JsonValue = deepcopy(create_new_host_msg)
+                # Have to delete bits of the structure - not linear
+                match missing_field:
+                    case 'request_id':
+                        del modified_msg['metadata']['request_id']
+                    case 'host' | 'metadata':
+                        del modified_msg[missing_field]
+                    case host_field:  # everything else inside host
+                        del modified_msg['host'][host_field]
+                handle_created_event(modified_msg)
+                # We aim to remove this debug log soon but in the meantime
+                log_lines: list[str] = list(filter(
+                    lambda line: 'Using Cyndi replication view' not in line, logs.output
+                ))
+                self.assertEqual(
+                    "INFO:advisor-log:Handling 'created' event",
+                    log_lines[0]
+                )
+                if missing_field == 'metadata':
+                    this_req_id = 'metadata'
+                elif missing_field == 'request_id':
+                    this_req_id = 'unknown_request_id'
+                else:
+                    this_req_id = modified_msg['metadata']['request_id']
+                self.assertEqual(
+                    "ERROR:advisor-log:Request %s: Inventory event did not contain required key '%s'" % (
+                        this_req_id, missing_field
+                    ),
+                    log_lines[1],
+                    f"Field {missing_field} is required"
+                )
+                self.assertEqual(len(log_lines), 2)
+        # The optional fields should allow a success though.
+        # This also tests that receiving a 'create' event on a host that
+        # already exists is treated as an update.
+        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+            modified_msg: JsonValue = deepcopy(create_new_host_msg)
+            del modified_msg['host']['account']
+            handle_created_event(modified_msg)
+            log_lines: list[str] = list(filter(
+                lambda line: 'Using Cyndi replication view' not in line, logs.output
+            ))
+            self.assertEqual(
+                "INFO:advisor-log:Handling 'created' event",
+                log_lines[0]
+            )
+            self.assertEqual(
+                "DEBUG:advisor-log:Created Inventory host %s account %s org_id %s" % (
+                    new_host_id, None, constants.standard_org
+                ),
+                log_lines[1]
+            )
+            self.assertEqual(
+                "DEBUG:advisor-log:Created Host %s account %s org_id %s" % (
+                    new_host_id, None, constants.standard_org
+                ),
+                log_lines[2]
+            )
+            self.assertEqual(len(log_lines), 3)
+            # Check existence of InventoryHost record
+            self.assertEqual(
+                InventoryHost.objects.filter(id=new_host_id).count(),
+                1
+            )
+            self.assertEqual(
+                Host.objects.filter(inventory_id=new_host_id).count(),
+                1
+            )
+            host = Host.objects.get(inventory_id=new_host_id)
+            self.assertEqual(str(host.satellite_id), new_host_satid.lower())
+        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+            modified_msg: JsonValue = deepcopy(create_new_host_msg)
+            del modified_msg['host']['satellite_id']
+            handle_created_event(modified_msg)
+            log_lines: list[str] = list(filter(
+                lambda line: 'Using Cyndi replication view' not in line, logs.output
+            ))
+            self.assertEqual(
+                "INFO:advisor-log:Handling 'created' event",
+                log_lines[0]
+            )
+            self.assertEqual(
+                "DEBUG:advisor-log:Updated Inventory host %s account %s org_id %s" % (
+                    new_host_id, constants.standard_acct, constants.standard_org
+                ),
+                log_lines[1]
+            )
+            self.assertEqual(
+                "DEBUG:advisor-log:Updated Host %s account %s org_id %s" % (
+                    new_host_id, constants.standard_acct, constants.standard_org
+                ),
+                log_lines[2]
+            )
+            self.assertEqual(len(log_lines), 3)
+            # Check existence of InventoryHost record
+            self.assertEqual(
+                InventoryHost.objects.filter(id=new_host_id).count(),
+                1
+            )
+            self.assertEqual(
+                Host.objects.filter(inventory_id=new_host_id).count(),
+                1
+            )
+            host = Host.objects.get(inventory_id=new_host_id)
+            # Because the host is being updated, the Satellite ID has carried
+            # over from the previous update.
+            self.assertEqual(str(host.satellite_id), new_host_satid.lower())
 
     def test_updated_message_success(self):
         """
