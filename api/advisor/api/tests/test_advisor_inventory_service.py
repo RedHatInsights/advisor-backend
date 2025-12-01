@@ -23,7 +23,7 @@ from django.utils import timezone
 from kafka_utils import JsonValue
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    handle_inventory_event  # , handle_created_event, handle_deleted_event
+    handle_inventory_event, handle_created_event  # , handle_deleted_event
 )
 from api.models import InventoryHost, Host
 from api.tests import constants
@@ -67,6 +67,53 @@ create_new_host_msg: JsonValue = {
             "operating_system": "", "owner_id": "", "rhc_client_id": "",
             "sap": "", "sap_system": "", "sap_sids": "",
             "system_update_method": ""
+        },
+        "per_reporter_staleness": {"puptoo": {
+            "stale_timestamp": stale_time,
+            "stale_warning_timestamp": stale_warn_time,
+            "culled_timestamp": cull_time
+        }},
+        "groups": [],
+    }
+}
+update_host_msg: JsonValue = {
+    # A minimal structure for a new host event.  We don't really need to test
+    # that fields we want to ignore are in fact ignored...
+    'type': 'updated',
+    "timestamp": "<timestamp>",
+    "metadata": {
+        "request_id": "<request_id>",
+    },
+    "host": {
+        "id": constants.host_01_uuid,
+        "account": constants.standard_acct,
+        "org_id": constants.standard_org,
+        "display_name": constants.host_01_name,
+        "insights_id": constants.host_01_inid,
+        "satellite_id": '',
+        "created": "2025-12-01T03:09:27Z",
+        "updated": "2025-12-01T03:09:27Z",
+        "tags": [],
+        "stale_timestamp": stale_time,
+        "stale_warning_timestamp": stale_warn_time,
+        "culled_timestamp": cull_time,
+        "system_profile": {  # taken from the fixture, only certain values copied
+            "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
+            "bios_release_date": "13/06/2017", "cores_per_socket": 8,
+            "number_of_sockets": 2, "infrastructure_type": "physical",
+            "system_memory_bytes": 134927265792, "satellite_managed": True,
+            "insights_egg_version": "3.0.182-1", "sap_system": True,
+            "insights_client_version": "3.0.14", "sap_sids": ["E01", "E02"],
+            "os_release": "Red Hat Enterprise Linux Server",
+            "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+            "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+            "system_update_method": "dnf",
+            "workloads": {
+                "sap": {
+                    "sap_system": True, "version": "2.00.122.04.1478575636",
+                    "sids": ["E01", "E02"], "instance_number": "00"
+                }
+            }
         },
         "per_reporter_staleness": {"puptoo": {
             "stale_timestamp": stale_time,
@@ -164,3 +211,33 @@ class TestAdvisorInventoryServer(TestCase):
             )
             new_host = Host.objects.get(inventory_id=new_host_id)
             self.assertEqual(str(new_host.satellite_id).upper(), new_host_satid)
+
+    def test_updated_message_success(self):
+        """
+        Test successful updating of existing host.
+        """
+        # Call handle_created_event directly
+        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+            handle_created_event(update_host_msg)
+            # Now check the logs
+            # We aim to remove this debug log soon but in the meantime
+            log_lines: list[str] = list(filter(
+                lambda line: 'Using Cyndi replication view' not in line, logs.output
+            ))
+            self.assertEqual(
+                "INFO:advisor-log:Handling 'updated' event",
+                log_lines[0]
+            )
+            self.assertEqual(
+                "DEBUG:advisor-log:Updated Inventory host %s account %s org_id %s" % (
+                    constants.host_01_uuid, constants.standard_acct, constants.standard_org
+                ),
+                log_lines[1]
+            )
+            self.assertEqual(
+                "DEBUG:advisor-log:Updated Host %s account %s org_id %s" % (
+                    constants.host_01_uuid, constants.standard_acct, constants.standard_org
+                ),
+                log_lines[2]
+            )
+            self.assertEqual(len(log_lines), 3)
