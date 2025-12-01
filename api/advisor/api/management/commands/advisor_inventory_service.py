@@ -248,12 +248,15 @@ def handle_deleted_event(message: dict[str, JsonValue]):
         'org_id': org_id,
         'source': 'inventory'
     }
-    logger.info("Received DELETE event from Inventory.", extra=payload_info)
+    logger.info(
+        "Received DELETE event from Inventory for host %s.",
+        inventory_id, extra=payload_info
+    )
 
     # Delete Host object and related records - CurrentReport, HostAck,
     # SatMaintenanceAction, and Upload
     deleted_records = Host.objects.filter(
-        inventory_id=inventory_id, org_id=org_id, current=True
+        inventory_id=inventory_id, org_id=org_id
     ).delete()
     logger.info("Deleted %d records based on Host: %s.", *deleted_records)
     # Delete InventoryHost record
