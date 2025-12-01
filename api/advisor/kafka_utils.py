@@ -199,7 +199,7 @@ def report_delivery_callback(err: Exception | None, msg: confluent_kafka.Message
         logger.error('Webhook event message delivery failed: {}'.format(err))
 
 
-def send_kakfa_message(topic: str, message: JsonValue):
+def send_kafka_message(topic: str, message: JsonValue):
     if producer is None:
         logger.error("Kafka producer is not initialized")
         return
@@ -210,8 +210,8 @@ def send_kakfa_message(topic: str, message: JsonValue):
 
 
 def send_webhook_event(event_msg: JsonValue):
-    # For compatibility - replace with direct calls to send_kakfa_message
-    send_kakfa_message(kafka_settings.WEBHOOKS_TOPIC, event_msg)
+    # For compatibility - replace with direct calls to send_kafka_message
+    send_kafka_message(kafka_settings.WEBHOOKS_TOPIC, event_msg)
 
 
 class KafkaDispatcher(object):
