@@ -24,7 +24,7 @@ from django.core.management.base import BaseCommand
 from advisor_logging import logger
 from api.models import InventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
 
-from kafka_utils import JsonValue, KafkaDispatcher  # , send_kakfa_message
+from kafka_utils import JsonValue, KafkaDispatcher  # , send_kafka_message
 
 
 #############################################################################
