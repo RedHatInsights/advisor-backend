@@ -23,9 +23,9 @@ from django.utils import timezone
 from kafka_utils import JsonValue
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    handle_inventory_event, handle_created_event  # , handle_deleted_event
+    handle_inventory_event, handle_created_event, handle_deleted_event
 )
-from api.models import InventoryHost, Host
+from api.models import CurrentReport, Host, HostAck, InventoryHost, Upload
 from api.tests import constants
 
 #############################################################################
@@ -123,6 +123,16 @@ update_host_msg: JsonValue = {
         "groups": [],
     }
 }
+delete_host_msg: dict[str, str] = {  # Pick a host with acks, hostacks, etc.
+    "type": "delete",
+    "id": constants.host_01_uuid,
+    "timestamp": "<delete timestamp>",
+    # Test handling of no account number
+    "org_id": constants.standard_org,
+    "insights_id": constants.host_01_inid,
+    "request_id": "<request id>",
+}
+
 
 #############################################################################
 # Test class
@@ -241,3 +251,60 @@ class TestAdvisorInventoryServer(TestCase):
                 log_lines[2]
             )
             self.assertEqual(len(log_lines), 3)
+
+    def test_deleted_message_success(self):
+        """
+        Test successful deletion of existing host.
+        """
+        # Call handle_created_event directly
+        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+            handle_deleted_event(delete_host_msg)
+            # Now check the logs
+            # We aim to remove this debug log soon but in the meantime
+            log_lines: list[str] = list(filter(
+                lambda line: 'Using Cyndi replication view' not in line, logs.output
+            ))
+            self.assertEqual(
+                "INFO:advisor-log:Handling 'deleted' event",
+                log_lines[0]
+            )
+            self.assertEqual(
+                "INFO:advisor-log:Received DELETE event from Inventory for host %s." % (
+                    constants.host_01_uuid
+                ),
+                log_lines[1]
+            )
+            self.assertEqual(
+                "INFO:advisor-log:Deleted %d records based on Host: %s." % (
+                    9, "{'api.CurrentReport': 4, 'api.HostAck': 1, 'api.Upload': 3, 'api.Host': 1}"
+                ),
+                log_lines[2]
+            )
+            self.assertEqual(
+                "INFO:advisor-log:Deleted %d records based on InventoryHost: %s." % (
+                    1, "{'api.InventoryHost': 1}"
+                ),
+                log_lines[3]
+            )
+            self.assertEqual(len(log_lines), 4)
+        # Now test that we actually deleted all those things:
+        self.assertEqual(
+            InventoryHost.objects.filter(id=constants.host_01_uuid).count(),
+            0
+        )
+        self.assertEqual(
+            Host.objects.filter(inventory_id=constants.host_01_uuid).count(),
+            0
+        )
+        self.assertEqual(
+            Upload.objects.filter(host_id=constants.host_01_uuid).count(),
+            0
+        )
+        self.assertEqual(
+            CurrentReport.objects.filter(host_id=constants.host_01_uuid).count(),
+            0
+        )
+        self.assertEqual(
+            HostAck.objects.filter(host_id=constants.host_01_uuid).count(),
+            0
+        )
