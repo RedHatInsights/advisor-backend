@@ -175,7 +175,7 @@ def handle_ansible_job_updates(topic, message):
     try:
         job = Job.objects.get(run_id=run_id)
     except Job.DoesNotExist:
-        logger.warn(
+        logger.warning(
             'Job with run ID not found during Ansible playbook update processing when updating job status for task',
             extra={
                 'run_id': run_id,
@@ -349,7 +349,7 @@ def handle_script_job_updates(topic, message):
     try:
         job = Job.objects.get(run_id=run_id)
     except Job.DoesNotExist:
-        logger.warn(
+        logger.warning(
             'Job with run ID not found during script update processing when updating job status for task',
             extra={
                 'run_id': run_id,
@@ -439,7 +439,7 @@ def update_executed_task_status(
     # Historically some executed tasks have ended up with no associated jobs.
     # We should deal with them early.
     if not job_statuses:
-        logger.warn(
+        logger.warning(
             "Found executed task %s id %d has no jobs - %s delete",
             extask.name, extask.id, ("will" if delete_empty else "not set to")
         )
@@ -452,7 +452,7 @@ def update_executed_task_status(
     if JobStatusChoices.RUNNING in job_statuses:
         # Let's make sure!
         if extask.status != ExecutedTaskStatusChoices.RUNNING:
-            logger.warn(
+            logger.warning(
                 "Executed task %s id %d has running jobs - needed to be in RUNNING state",
                 extask.name, extask.id
             )

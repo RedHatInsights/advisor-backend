@@ -126,7 +126,7 @@ def retrieve_pd_connected_systems(request, system_uuids):
     """
     # If Playbook Dispatcher is not enabled here, just return nothing
     if not (settings.PLAYBOOK_DISPATCHER_URL and settings.PDAPI_PSK):
-        logger.warn("Expected PLAYBOOK_DISPATCHER_URL and PDAPI_PSK to be set")
+        logger.warning("Expected PLAYBOOK_DISPATCHER_URL and PDAPI_PSK to be set")
         return set()
     # /internal/v2/recipients/status takes an array of HostsWithOrgId
     # items, and returns a HighLevelRecipientStatus response.
