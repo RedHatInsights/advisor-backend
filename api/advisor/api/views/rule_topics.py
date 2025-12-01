@@ -37,7 +37,7 @@ from api.models import (
 )
 from api.permissions import (
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
-    ReadOnlyUser, ResourceScope,
+    ReadOnlyUser, ResourceScope, TurnpikeIdentityAuthentication,
 )
 from api.serializers import (
     RuleSerializer, SystemsForRuleSerializer, TopicSerializer, TopicEditSerializer
@@ -54,41 +54,7 @@ show_disabled_query_param = OpenApiParameter(
 )
 
 
-@method_decorator(
-    name='create',
-    decorator=extend_schema(
-        summary="Create a new rule topic",
-        description="Create a new rule topic, along with its association to a rule tag",
-        request=TopicEditSerializer,
-        responses={201: TopicEditSerializer}
-    )
-)
-@method_decorator(
-    name='update',
-    decorator=extend_schema(
-        summary="Update a rule topic",
-        description="Update an existing rule topic.  All fields need to be supplied",
-        request=TopicEditSerializer,
-        responses={200: TopicEditSerializer}
-    )
-)
-@method_decorator(
-    name='partial_update',
-    decorator=extend_schema(
-        summary="Partially update a rule topic",
-        description="Update an existing rule topic.  Only the fields being changed need to be supplied",
-        request=TopicEditSerializer,
-        responses={200: TopicEditSerializer}
-    )
-)
-@method_decorator(
-    name='destroy',
-    decorator=extend_schema(
-        summary="Delete a rule topic",
-        description="Delete a rule topic.  Rules associated with the tag of this topic will be unaffected",
-    )
-)
-class RuleTopicViewSet(viewsets.ModelViewSet):
+class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Rules have topics, set by Insights administrators.  This is a view of
     the topics available, along with the rules and systems to which they
@@ -199,3 +165,15 @@ class RuleTopicViewSet(viewsets.ModelViewSet):
             Rule.objects.filter(active=True, tags__topic=topic),
             many=True, context={'request': request}
         ).data)
+
+
+class InternalRuleTopicViewSet(viewsets.ModelViewSet):
+    """
+    Internal editing interface for rule topics.
+
+    This viewset is only available to Red hat associates.
+    """
+    authentication_classes = [TurnpikeIdentityAuthentication]
+    lookup_field = 'slug'
+    permission_classes = [AssociatePermission]
+    serializer_class = TopicEditSerializer
