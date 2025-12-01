@@ -120,7 +120,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         created = host['created']
         updated = host['updated']
         insights_id = host['insights_id']
-        satellite_id = host['satellite_id']
+        satellite_id = host.get('satellite_id')  # optional
         # No branch_id ?
         # Sadly the staleness fields are still mandatory even though we
         # should not use them.
@@ -184,14 +184,16 @@ def handle_created_event(message: dict[str, JsonValue]):
     )
 
     # Also add the Host record
+    host_data = {
+        'account': account,
+        'org_id': org_id,
+        # branch_id not in Inventory create/update message?
+    }
+    if satellite_id:
+        host_data['satellite_id'] = satellite_id
     host_obj, created = Host.objects.update_or_create(
         inventory_id=inv_host.id,
-        defaults={
-            'account': inv_host.account,
-            'org_id': inv_host.org_id,
-            'satellite_id': satellite_id,
-            # branch_id not in Inventory create/update message?
-        }
+        defaults=host_data
     )
     action = 'Created' if created else 'Updated'
     logger.debug(
@@ -277,12 +279,12 @@ class Command(BaseCommand):
         receiver = KafkaDispatcher()
         receiver.register_handler(kafka_settings.INVENTORY_TOPIC, handle_inventory_event)
 
-        def terminate(signum, frame):
+        def terminate(signum: int, _):
             logger.info("Signal %d received, triggering shutdown", signum)
             receiver.quit = True
 
-        signal.signal(signal.SIGTERM, terminate)
-        signal.signal(signal.SIGINT, terminate)
+        _ = signal.signal(signal.SIGTERM, terminate)
+        _ = signal.signal(signal.SIGINT, terminate)
 
         # Loops until receiver.quit is set
         receiver.receive()
