@@ -343,7 +343,7 @@ class Kessel:
         if settings.KESSEL_URL == 'device under test':
             self.client = TestClient()
         elif not (settings.KESSEL_ENABLED and settings.KESSEL_URL):
-            logger.warn("Kessel environment not enabled - not creating a client")
+            logger.warning("Kessel environment not enabled - not creating a client")
             self.client = None
         else:
             logger.info(

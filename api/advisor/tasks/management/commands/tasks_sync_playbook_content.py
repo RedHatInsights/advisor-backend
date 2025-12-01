@@ -68,7 +68,7 @@ class Command(BaseCommand):
                 # Write file out
                 with open(pb_path, 'w') as fh:
                     fh.write(fixture_fields['playbook'])
-                logger.warn(
+                logger.warning(
                     "Created %s for task %s - %s - use `git add` to add it to repository",
                     pb_path, task_id, task_slug
                 )

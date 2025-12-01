@@ -215,7 +215,7 @@ class KafkaDispatcher(object):
 
     def register_handler(self, topic, handler_fn, **kwargs):
         if topic in self.registered_handlers:
-            logger.warn(
+            logger.warning(
                 f"Warning: topic {topic} already has function "
                 f"{self.registered_handlers[topic]['handler'].__name__} "
                 f"registered when trying to register function "

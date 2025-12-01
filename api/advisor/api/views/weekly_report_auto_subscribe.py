@@ -79,7 +79,7 @@ class WeeklyReportAutoSubscribeViewSet(viewsets.ViewSet):
 
         if not settings.ENABLE_AUTOSUB:
             result_msg = "Auto-subscription is not enabled on this enviroment"
-            logger.warn(result_msg)
+            logger.warning(result_msg)
             return Response(
                 data={"message": result_msg},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -87,7 +87,7 @@ class WeeklyReportAutoSubscribeViewSet(viewsets.ViewSet):
 
         if SubscriptionExcludedAccount.objects.filter(org_id=org_id).exists():
             result_msg = "Auto-subscription is excluded for this Org Id"
-            logger.warn(result_msg)
+            logger.warning(result_msg)
             return Response(
                 data={"message": result_msg},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED,

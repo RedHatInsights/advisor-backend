@@ -43,7 +43,7 @@ def check_stale_jobs_for(task):
 
     if not timed_out_extasks.exists():
         return
-    logger.warn(
+    logger.warning(
         f"Found task {task.slug} had jobs past the {task.timeout}s timeout"
     )
     for extask in timed_out_extasks:
