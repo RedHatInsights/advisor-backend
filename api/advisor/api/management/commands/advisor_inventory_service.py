@@ -137,7 +137,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         if key_name == 'metadata':
             request_id = 'metadata'
         elif key_name == 'request_id':
-            request_id = 'unknown_request_id'
+            request_id = 'unknown request_id'
         # else the request_id variable exists from above
         logger.error(
             "Request %s: Inventory event did not contain required key '%s'",
@@ -241,11 +241,13 @@ def handle_deleted_event(message: dict[str, JsonValue]):
         inventory_id = message['id']
         account = message.get('account')  # optional
         org_id = message['org_id']
-        request_id = message['request_id']
     except KeyError as missing_key:
+        key_name = str(missing_key).strip("'")
+        if key_name == 'request_id':
+            request_id = 'unknown request_id'
         logger.error(
-            "Inventory event did not contain required key %s",
-            missing_key
+            "Request %s: Inventory event did not contain required key %s",
+            request_id, key_name
         )
         prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
         return
