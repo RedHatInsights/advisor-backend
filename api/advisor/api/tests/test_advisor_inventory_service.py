@@ -25,6 +25,7 @@ from kafka_utils import JsonValue
 from api.management.commands.advisor_inventory_service import (
     handle_inventory_event  # , handle_created_event, handle_deleted_event
 )
+from api.models import InventoryHost, Host
 from api.tests import constants
 
 #############################################################################
@@ -32,6 +33,7 @@ from api.tests import constants
 #############################################################################
 new_host_id: str = "00112233-4455-6677-8899-012345678920"
 new_host_name: str = "new_host_20.example.org"
+new_host_satid: str = "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE20"
 # Note that we want to make sure that we use current timestamps so this
 # data appears in current InventoryHost searches.
 now: datetime = timezone.now()
@@ -53,7 +55,7 @@ create_new_host_msg: JsonValue = {
         "org_id": constants.standard_org,
         "display_name": new_host_name,
         "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221120",
-        "satellite_id": "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE20",
+        "satellite_id": new_host_satid,
         "created": "2025-11-28T03:53:20Z",
         "updated": "2025-11-28T03:53:20Z",
         "tags": [],
@@ -145,3 +147,20 @@ class TestAdvisorInventoryServer(TestCase):
                 log_lines[2]
             )
             self.assertEqual(len(log_lines), 3)
+            # Check existence of InventoryHost record
+            self.assertEqual(
+                InventoryHost.objects.filter(id=new_host_id).count(),
+                1
+            )
+            new_ihost = InventoryHost.objects.get(id=new_host_id)
+            # Probably don't need to check the entire data set.
+            self.assertEqual(str(new_ihost.id), new_host_id)
+            self.assertEqual(new_ihost.account, constants.standard_acct)
+            self.assertEqual(new_ihost.org_id, constants.standard_org)
+            # Check existence of Host record
+            self.assertEqual(
+                Host.objects.filter(inventory_id=new_host_id).count(),
+                1
+            )
+            new_host = Host.objects.get(inventory_id=new_host_id)
+            self.assertEqual(str(new_host.satellite_id).upper(), new_host_satid)
