@@ -160,7 +160,7 @@ class RBACPermission(object):
     def __init__(self, permission_str):
         if not isinstance(permission_str, str):
             raise TypeError("permission given is not a string")
-        self.string = permission_str
+        self.string: str = permission_str
         if not permission_str.count(':') == 2:
             raise ValueError("permission given does not contain exactly two ':' characters")
         (self.app, self.resource, self.method) = permission_str.split(':')
