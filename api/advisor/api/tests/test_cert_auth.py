@@ -15,12 +15,21 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import base64
+import responses
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from api import kessel
 from api.tests import constants, update_stale_dates
-from api.permissions import auth_header_for_testing, auth_header_key
+from api.permissions import auth_header_for_testing, auth_header_key, make_rbac_url
+
+
+TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V2_WKSPC = make_rbac_url(
+    "workspaces/?type=default",
+    version=2, rbac_base=TEST_RBAC_URL
+)
 
 
 def bad_header(json_str):
@@ -32,6 +41,13 @@ class CertAuthTestCase(TestCase):
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data'
     ]
+
+    sat_cert_auth_header = auth_header_for_testing(
+        system_opts=constants.host_03_system_data
+    )
+    self_cert_auth_header = auth_header_for_testing(
+        system_opts=constants.host_04_system_data
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -89,7 +105,7 @@ class CertAuthTestCase(TestCase):
         # it owns.
         response = self.client.get(
             reverse('system-list'),
-            **auth_header_for_testing(system_opts=constants.host_03_system_data),
+            **self.sat_cert_auth_header,
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -104,7 +120,7 @@ class CertAuthTestCase(TestCase):
     def test_list_system_self_owned(self):
         response = self.client.get(
             reverse('system-list'),
-            **auth_header_for_testing(system_opts=constants.host_04_system_data),
+            **self.self_cert_auth_header,
         )
         json = self._response_is_good(response)
         systems = json['data']
@@ -116,14 +132,14 @@ class CertAuthTestCase(TestCase):
     def test_get_non_owned_system(self):
         response = self.client.get(
             reverse('system-detail', kwargs={'uuid': constants.host_04_uuid}),
-            **auth_header_for_testing(system_opts=constants.host_03_system_data)
+            **self.sat_cert_auth_header
         )
         self.assertEqual(response.status_code, 404)
 
     def test_get_non_owned_system_reports(self):
         response = self.client.get(
             reverse('system-reports', kwargs={'uuid': constants.host_04_uuid}),
-            **auth_header_for_testing(system_opts=constants.host_03_system_data)
+            **self.sat_cert_auth_header
         )
         # Apparently we don't report a 404 here?
         reports = self._response_is_good(response)
@@ -133,7 +149,7 @@ class CertAuthTestCase(TestCase):
         response = self.client.get(
             reverse('rule-list'),
             data={'impacting': 'true'},
-            **auth_header_for_testing(system_opts=constants.host_03_system_data)
+            **self.sat_cert_auth_header
         )
         rules = self._response_is_good(response)['data']
 
@@ -148,7 +164,7 @@ class CertAuthTestCase(TestCase):
     def test_systems_stats(self):
         response = self.client.get(
             reverse('stats-systems'),
-            **auth_header_for_testing(system_opts=constants.host_03_system_data)
+            **self.sat_cert_auth_header
         )
         stats = self._response_is_good(response)
 
@@ -169,9 +185,7 @@ class CertAuthTestCase(TestCase):
 
     def test_topic_list(self):
         response = self.client.get(
-            reverse('ruletopic-list'), **auth_header_for_testing(
-                system_opts=constants.host_03_system_data,
-            )
+            reverse('ruletopic-list'), **self.sat_cert_auth_header
         )
         topic_list = self._response_is_good(response)
 
@@ -182,3 +196,40 @@ class CertAuthTestCase(TestCase):
         self.assertEqual(topic_list[0]['name'], "Active rules")
         self.assertEqual(topic_list[1]['impacted_systems_count'], 2)
         self.assertEqual(topic_list[1]['name'], "Kernel rules")
+
+    @override_settings(
+        RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL,
+        LOG_LEVEL='DEBUG'
+    )
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_list_system_kessel_on_cert_auth(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
+        response = self.client.get(
+            reverse('system-list'), **self.self_cert_auth_header
+        )
+        page = self._response_is_good(response)
+        # Results should be filtered to system 04.
+        self.assertEqual(page['meta']['count'], 1)  # one system
+        self.assertEqual(len(page['data']), 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_04_name)
+
+        # Satellite system should be able to see all of the hosts it manages?
+        response = self.client.get(
+            reverse('system-list'),
+            data={'sort': 'last_seen'},
+            **self.sat_cert_auth_header
+        )
+        page = self._response_is_good(response)
+        # Results should be filtered to system 04.
+        self.assertEqual(page['data'][0]['display_name'], constants.host_03_name)
+        self.assertEqual(page['data'][1]['display_name'], constants.host_01_name)
+        self.assertEqual(page['data'][2]['display_name'], constants.host_05_name)
+        self.assertEqual(page['meta']['count'], 3)  # three systems
+        self.assertEqual(len(page['data']), 3)
