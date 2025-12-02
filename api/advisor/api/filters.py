@@ -748,14 +748,15 @@ def filter_on_system_type(request):
     """
     system_type = value_of_param(system_type_query_param, request)
     # relation='' ?
-    if system_type is None or system_type == 'all':
-        return Q()
-    elif system_type == 'edge':
-        return Q(system_profile__host_type='edge')
-    elif system_type == 'bootc':
-        return Q(system_profile__bootc_status__isnull=False)
-    elif system_type == 'conventional':
-        return Q(system_profile__host_type__isnull=True)
+    match system_type:
+        case 'edge':
+            return Q(system_profile__host_type='edge')
+        case 'bootc':
+            return Q(system_profile__bootc_status__isnull=False)
+        case 'conventional':
+            return Q(system_profile__host_type__isnull=True)
+        case _:
+            return Q()
 
 
 def filter_on_incident(request):
