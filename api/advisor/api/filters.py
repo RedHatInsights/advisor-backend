@@ -566,7 +566,7 @@ rule_id_query_param = OpenApiParameter(
 
 system_type_query_param = OpenApiParameter(
     name='system_type', location=OpenApiParameter.QUERY,
-    description="Display only systems with this type ('all' = both types)",
+    description="Display only systems with this type ('all' = no filter)",
     required=False, type=OpenApiTypes.STR, enum=('all', 'edge', 'conventional', 'bootc'),
 )
 
