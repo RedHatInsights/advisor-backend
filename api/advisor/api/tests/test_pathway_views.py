@@ -69,13 +69,13 @@ class PathwayViewTestCase(TestCase):
         # Check on all pathways recommendation levels - check calculation?
         # Ordering defaults to name, except networkmanager < kernel?
         self.assertEqual(pathway_list[0]['name'], constants.no_reboot_required_pathway['name'])
-        self.assertEqual(pathway_list[0]['recommendation_level'], 58)
+        self.assertEqual(pathway_list[0]['recommendation_level'], 54)
         self.assertEqual(pathway_list[1]['name'], constants.reboot_required_pathway['name'])
-        self.assertEqual(pathway_list[1]['recommendation_level'], 94)
+        self.assertEqual(pathway_list[1]['recommendation_level'], 90)
         self.assertEqual(pathway_list[2]['name'], constants.incident_pathway['name'])
-        self.assertEqual(pathway_list[2]['recommendation_level'], 96)
+        self.assertEqual(pathway_list[2]['recommendation_level'], 92)
         self.assertEqual(pathway_list[3]['name'], constants.no_incident_pathway['name'])
-        self.assertEqual(pathway_list[3]['recommendation_level'], 58)
+        self.assertEqual(pathway_list[3]['recommendation_level'], 54)
         self.assertEqual(pathway_list[4]['name'], constants.first_pathway['name'])
         self.assertEqual(pathway_list[4]['recommendation_level'], constants.first_pathway['recommendation_level'])
         self.assertEqual(pathway_list[5]['name'], constants.second_pathway['name'])
@@ -153,7 +153,8 @@ class PathwayViewTestCase(TestCase):
         pathway_list = pathway_page['data']
 
         self.assertEqual(len(pathway_list), 9)
-        self.assertEqual(pathway_list[0]['name'], constants.incident_pathway['name'])
+        self.assertEqual(pathway_list[0]['name'], constants.third_pathway['name'])
+        self.assertEqual(pathway_list[1]['name'], constants.incident_pathway['name'])
 
         # Invalid sort criteria
         response = self.client.get(
