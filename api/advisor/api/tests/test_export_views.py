@@ -974,7 +974,8 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[4]['low_hits'], '0')
         self.assertEqual(row_data[4]['rhel_version'], '7.1')
         self.assertEqual(row_data[4]['group_name'], '')
-        self.assertEqual(len(row_data), 5)
+        self.assertEqual(row_data[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(row_data), 6)
         self.assertTrue(all(['group_name' in row for row in row_data]))
 
         # Test that requesting the CSV and JSON files by format extension
@@ -997,7 +998,7 @@ class ExportViewTestCase(TestCase):
         )
         self.assertEqual(response.accepted_media_type, constants.json_mime)
         row_data = self._response_is_good(response, systems_headers)
-        self.assertEqual(len(row_data), 5)
+        self.assertEqual(len(row_data), 6)
 
         # Requests without format should get export/hits/ - accept header
         # should then determine content type.
@@ -1049,7 +1050,8 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
         self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
         self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
-        self.assertEqual(len(row_data), 5)
+        self.assertEqual(row_data[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(row_data), 6)
 
         # Nonexistent topic = all systems
         response = self.client.get(
@@ -1061,7 +1063,8 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[2]['display_name'], constants.host_01_name)
         self.assertEqual(row_data[3]['display_name'], constants.host_06_name)
         self.assertEqual(row_data[4]['display_name'], constants.host_05_name)
-        self.assertEqual(len(row_data), 5)
+        self.assertEqual(row_data[5]['display_name'], constants.host_e1_name)
+        self.assertEqual(len(row_data), 6)
 
 
 class ExportViewHostTagsTestCase(TestCase):
