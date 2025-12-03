@@ -569,22 +569,6 @@ class TopicSerializer(serializers.ModelSerializer):
         )
 
 
-class TopicEditSerializer(serializers.ModelSerializer):
-    """
-    Create or edit topics.
-    """
-    tag = serializers.SlugRelatedField(
-        slug_field='name', many=False,
-        queryset=models.Tag.objects.all(),
-    )
-
-    class Meta:
-        model = models.RuleTopic
-        fields = (
-            'name', 'slug', 'description', 'tag', 'featured', 'enabled',
-        )
-
-
 class ReportSerializer(serializers.ModelSerializer):
     rule = RuleSerializer(many=False, read_only=True)
     details = serializers.JSONField()

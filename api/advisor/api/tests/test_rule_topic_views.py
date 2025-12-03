@@ -101,50 +101,14 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(topic['impacted_systems_count'], 4)
 
     def test_enable_disable_topic(self):
-        # Take a disabled topic, and enable it,
+        # Can't patch a topic even with an internal user - method not allowed.
         response = self.client.patch(
             reverse('ruletopic-detail', kwargs={'slug': 'Disabled'}),
             data={'enabled': True},
             content_type=constants.json_mime,
             **auth_header_for_testing(user_opts={'is_internal': True})
         )
-        topic = self._response_is_good(response)
-        self.assertEqual(topic['enabled'], True)
-        # It should now appear in the list of topics
-        response = self.client.get(
-            reverse('ruletopic-list'), **auth_header_for_testing()
-        )
-        topic_list = self._response_is_good(response)
-        self.assertIsInstance(topic_list, list)
-        self.assertEqual(len(topic_list), 3)
-        self.assertEqual(topic_list[0]['name'], "Active rules")
-        self.assertEqual(topic_list[1]['name'], "Disabled topic")
-        self.assertEqual(topic_list[2]['name'], "Kernel rules")
-        # It should show as enabled when specifically requested
-        response = self.client.get(
-            reverse('ruletopic-detail', kwargs={'slug': 'Disabled'}),
-            **auth_header_for_testing()
-        )
-        topic = self._response_is_good(response)
-        self.assertEqual(topic['enabled'], True)
-        # Take an enabled topic, and disable it,
-        response = self.client.patch(
-            reverse('ruletopic-detail', kwargs={'slug': 'Active'}),
-            data={'enabled': False},
-            content_type=constants.json_mime,
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        topic = self._response_is_good(response)
-        self.assertEqual(topic['enabled'], False)
-        # It should now not appear in the list of topics
-        response = self.client.get(
-            reverse('ruletopic-list'), **auth_header_for_testing()
-        )
-        topic_list = self._response_is_good(response)
-        self.assertIsInstance(topic_list, list)
-        self.assertEqual(len(topic_list), 2)
-        self.assertEqual(topic_list[0]['name'], "Disabled topic")
-        self.assertEqual(topic_list[1]['name'], "Kernel rules")
+        self.assertEqual(response.status_code, 405)
 
     def test_topic_systems(self):
         response = self.client.get(
@@ -185,7 +149,7 @@ class RuleTopicViewsTestCase(TestCase):
         )
 
     def test_topic_create_destroy(self):
-        # Non-internal user should be denied
+        # Can't create topics - method not allowed
         response = self.client.post(
             reverse('ruletopic-list'), data={
                 'name': 'New topic',
@@ -194,22 +158,9 @@ class RuleTopicViewsTestCase(TestCase):
             },
             **auth_header_for_testing()
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 405)
 
-        # Adding a new topic with a nonexistent tag should report 400
-        response = self.client.post(
-            reverse('ruletopic-list'), data={
-                'name': 'New topic',
-                'slug': 'New',
-                'description': 'A new topic created through the API',
-                'enabled': True,
-                'tag': 'flapjack',
-            },
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        self.assertEqual(response.status_code, 400, response.content.decode())
-
-        # Adding a new topic should return that data
+        # Not even if you're an internal user.
         response = self.client.post(
             reverse('ruletopic-list'), data={
                 'name': 'New topic',
@@ -220,66 +171,23 @@ class RuleTopicViewsTestCase(TestCase):
             },
             **auth_header_for_testing(user_opts={'is_internal': True})
         )
-        new_topic = self._response_is_good(response, 201)
+        self.assertEqual(response.status_code, 405)
 
-        self.assertIsInstance(new_topic, dict)
-        self.assertIn('name', new_topic)
-        self.assertEqual(new_topic['name'], 'New topic')
-        self.assertIn('slug', new_topic)
-        self.assertEqual(new_topic['slug'], 'New')
-        self.assertIn('description', new_topic)
-        self.assertEqual(new_topic['description'], 'A new topic created through the API')
-        self.assertIn('enabled', new_topic)
-        self.assertEqual(new_topic['enabled'], True)
-        self.assertIn('tag', new_topic)
-        self.assertEqual(new_topic['tag'], 'testing')
-
-        # We should now see that topic in the list as item 3 (by name)
-        response = self.client.get(
-            reverse('ruletopic-list'),
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        topic_list = self._response_is_good(response)
-        self.assertIsInstance(topic_list, list)
-        self.assertEqual(len(topic_list), 3)
-        self.assertIsInstance(topic_list[2], dict)
-        for attr in ('name', 'slug', 'description', 'tag', 'featured', 'enabled'):
-            self.assertIn(attr, topic_list[2])
-            self.assertEqual(topic_list[2][attr], new_topic[attr])
-
-        # We should now be able to get the details for that topic
-        response = self.client.get(
-            reverse('ruletopic-detail', kwargs={'slug': 'New'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        get_topic = self._response_is_good(response)
-        for attr in ('name', 'slug', 'description', 'tag', 'featured', 'enabled'):
-            self.assertIn(attr, get_topic)
-            self.assertEqual(get_topic[attr], new_topic[attr])
-
-        # Non-internal user should not be allowed to delete
+        # Nor delete
         response = self.client.delete(
             reverse('ruletopic-detail', kwargs={'slug': 'New'}),
             **auth_header_for_testing()
         )
-        self.assertEqual(response.status_code, 403)
-        # Now delete it
+        self.assertEqual(response.status_code, 405)
+        # Nor delete for an internal user
         response = self.client.delete(
             reverse('ruletopic-detail', kwargs={'slug': 'New'}),
             **auth_header_for_testing(user_opts={'is_internal': True})
         )
-        self.assertEqual(response.status_code, 204)
-        self.assertIsNone(response.get('Content-Type'))
-
-        # And we should no longer be able to find that topic
-        response = self.client.get(
-            reverse('ruletopic-detail', kwargs={'slug': 'New'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 405)
 
     def test_topic_update(self):
-        # Non-internal users should not be allowed to update
+        # Can't update a topic - method not allowed
         response = self.client.patch(
             reverse('ruletopic-detail', kwargs={'slug': 'Active'}), data={
                 'name': 'Active topic (updated)',
@@ -288,8 +196,8 @@ class RuleTopicViewsTestCase(TestCase):
             content_type=constants.json_mime,
             **auth_header_for_testing()
         )
-        self.assertEqual(response.status_code, 403)
-        # Update topic with new details - including slug!
+        self.assertEqual(response.status_code, 405)
+        # Not even with an internal user
         response = self.client.patch(
             reverse('ruletopic-detail', kwargs={'slug': 'Active'}), data={
                 'name': 'Active topic (updated)',
@@ -298,30 +206,7 @@ class RuleTopicViewsTestCase(TestCase):
             content_type=constants.json_mime,
             **auth_header_for_testing(user_opts={'is_internal': True})
         )
-        # We should get updated details, but same description and tags
-        upd_topic = self._response_is_good(response)
-        self.assertIsInstance(upd_topic, dict)
-        self.assertIn('name', upd_topic)
-        self.assertEqual(upd_topic['name'], 'Active topic (updated)')
-        self.assertIn('slug', upd_topic)
-        self.assertEqual(upd_topic['slug'], 'Updated')
-        self.assertIn('description', upd_topic)
-        self.assertEqual(upd_topic['description'], 'The set of active rules (including acked rules)')
-        self.assertIn('tag', upd_topic)
-        self.assertEqual(upd_topic['tag'], 'active')
-
-        # We should no longer be able to find the topic with its old slug
-        response = self.client.get(
-            reverse('ruletopic-detail', kwargs={'slug': 'Active'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        self.assertEqual(response.status_code, 404)
-        # ... but with its new slug
-        response = self.client.get(
-            reverse('ruletopic-detail', kwargs={'slug': 'Updated'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
-        )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 405)
 
     def test_rules_with_tag(self):
         response = self.client.get(
