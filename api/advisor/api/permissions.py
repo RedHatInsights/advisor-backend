@@ -157,7 +157,9 @@ class RBACPermission(object):
     resource: str
     method: str
 
-    def __init__(self, permission_str: str):
+    def __init__(self, permission_str):
+        if not isinstance(permission_str, str):
+            raise TypeError("permission given is not a string")
         self.string = permission_str
         if not permission_str.count(':') == 2:
             raise ValueError("permission given does not contain exactly two ':' characters")
@@ -202,7 +204,7 @@ def set_rbac_failure(request: Request, message: str):
     Set the RBAC failure message on the request object.  This then gets
     recorded in the log message.
     """
-    setattr(request._request, 'rbac_failure_message', message)
+    setattr(request, 'rbac_failure_message', message)
     return False
 
 

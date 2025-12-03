@@ -309,7 +309,7 @@ class RHIdentityAuthFailTestCase(TestCase):
 class BadUseOfRBACPermission(TestCase):
     def test_permission_not_string(self):
         with self.assertRaisesMessage(
-            ValueError, 'permission given is not a string'
+            TypeError, 'permission given is not a string'
         ):
             RBACPermission(42)
 
@@ -759,6 +759,8 @@ class TestInsightsRBACPermissionKessel(TestCase):
         # Object passed in has no 'id' attribute:
         self.assertFalse(hasattr(irbp, 'id'))
         self.assertFalse(irbp.has_object_permission(request, view, irbp))
+
+        self.assertTrue(hasattr(request, 'rbac_failure_message'))
         self.assertEqual(
             request.rbac_failure_message,
             "Permission scope is 'Host' but object has no 'id' attribute"
