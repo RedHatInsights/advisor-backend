@@ -152,10 +152,13 @@ class RBACPermission(object):
     permission is included in an RBAC permission
     """
 
-    def __init__(self, permission_str):
-        if not isinstance(permission_str, str):
-            raise ValueError('permission given is not a string')
-        self.string: str = permission_str
+    string: str
+    app: str
+    resource: str
+    method: str
+
+    def __init__(self, permission_str: str):
+        self.string = permission_str
         if not permission_str.count(':') == 2:
             raise ValueError("permission given does not contain exactly two ':' characters")
         (self.app, self.resource, self.method) = permission_str.split(':')
@@ -199,7 +202,7 @@ def set_rbac_failure(request: Request, message: str):
     Set the RBAC failure message on the request object.  This then gets
     recorded in the log message.
     """
-    setattr(request, 'rbac_failure_message', message)
+    setattr(request._request, 'rbac_failure_message', message)
     return False
 
 
@@ -246,7 +249,7 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
     return retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10)
 
 
-def find_host_groups(role_list, request):
+def find_host_groups(role_list: list[dict[str, str | dict[str, str]]], request):
     """
     We now also have to store the host group information we get from inventory.
     This comes in the resource definition within the RBAC response:
@@ -279,7 +282,7 @@ def find_host_groups(role_list, request):
     """
     if request is None:
         return  # we can't store any host groups on None
-    host_groups = []
+    host_groups: list[str] = []
     sought_permission = RBACPermission('inventory:hosts:read')
     for role in role_list:
         if 'permission' not in role:
@@ -367,7 +370,7 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
     # only values RBAC cares about are the username and account, so that's the
     # key we use.
     username = request_to_username(request)
-    org_id = request.auth['org_id']
+    org_id = request_to_org(request)
     auth_tuple = (username, org_id)
     if rbac_perm_cache is not None and auth_tuple in rbac_perm_cache:
         response = rbac_perm_cache[auth_tuple]
@@ -384,14 +387,14 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
             rbac_perm_cache[auth_tuple] = response
 
     if response.status_code == 200:
-        data = response.json()
+        data: dict[str, list[dict[str, str]]] = response.json()
         if 'data' not in data:
             logger.warning(
                 "Warning: Response from RBAC did not contain a 'data' list: %s",
                 response.content.decode()
             )
             return (False, elapsed)
-        tested_list = []
+        tested_list: list[str] = []
         # Find host group data
         find_host_groups(data['data'], request)
         # Find matching permission (ignoring resource definitions)
@@ -820,7 +823,7 @@ class CertAuthPermission(BasePermission):
     queries to filter only on this system.
     """
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         _ = set_rbac_failure(request, 'CertAuthPermission has_permission() check starting')
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
             return set_rbac_failure(request, 'not authenticated')
@@ -906,7 +909,7 @@ class InsightsRBACPermission(BasePermission):
     message = "Red Hat RBAC has denied you permission"
     app = 'advisor'
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         logger.debug("Started InsightsRBACPermission.has_permission")
         # Returns true or false
 
@@ -920,9 +923,6 @@ class InsightsRBACPermission(BasePermission):
         resource, scope = self._get_resource(view)
         if resource == 'denied':
             return set_rbac_failure(request, 'view resource denies access')
-
-        if scope is None:
-            return set_rbac_failure(request, 'resource has no scope')
 
         if not ((hasattr(request, 'user') or hasattr(request, 'service_account'))
                 and hasattr(request, 'auth')):
@@ -1023,7 +1023,7 @@ class InsightsRBACPermission(BasePermission):
         )
         return result
 
-    def _get_resource(self, view) -> Tuple[str, ResourceScope]:
+    def _get_resource(self, view) -> tuple[str, ResourceScope]:
         """
         Returns the resource and its scope for a particular view.
         """
@@ -1066,7 +1066,7 @@ class BaseAssociatePermission(BasePermission):
         """
         raise NotImplementedError("Implement a check of Associate user data here")
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         # Return OK if we're not restricting access, or we're viewing an
         # un-restricted view
         _ = set_rbac_failure(request, 'BaseAssociatePermission has_permission() check started')
@@ -1093,7 +1093,9 @@ class BaseAssociatePermission(BasePermission):
                     request, f'{request.method} of {view_name} not allowed'
                 )
 
-        return self.has_associate_permission(request, view, identity)
+        result = self.has_associate_permission(request, view, identity)
+        _ = set_rbac_failure(request, f"Associate permission successfully returned {result}")
+        return result
 
 
 class AssociatePermission(BaseAssociatePermission):
@@ -1207,7 +1209,9 @@ class BaseRedHatUserPermission(BasePermission):
                     request, f"{request.method} of {view_name} not allowed"
                 )
 
-        return self.has_red_hat_permission(request, view, identity['user'])
+        result = self.has_red_hat_permission(request, view, identity['user'])
+        _ = set_rbac_failure(request, f"Red Hat permission successfully returned {result}")
+        return result
 
 
 class IsRedHatInternalUser(BaseRedHatUserPermission):
@@ -1239,7 +1243,7 @@ class OrgPermission(BasePermission):
 ##############################################################################
 
 
-def request_to_user_data(request) -> dict:
+def request_to_user_data(request: Request) -> dict[str, str]:
     """
     Get the 'user' record out of the identity section of the request.  This
     uses the identity type to figure out which field in the identity to look
@@ -1258,7 +1262,7 @@ def request_to_user_data(request) -> dict:
     return identity[type_key]
 
 
-def request_to_username(request) -> str:
+def request_to_username(request: Request) -> str:
     """
     Get the user name from the current request, in the
     identity['user']['user_name'] field.
@@ -1267,15 +1271,12 @@ def request_to_username(request) -> str:
         return request.username
     user_data = request_to_user_data(request)
     if 'username' not in user_data:
-        error_and_deny(
-            f"'username' property not found in 'identity' user details of "
-            f"{auth_header_key}"
-        )
+        error_and_deny("'username' property not found in 'identity' user details")
     setattr(request, 'username', user_data['username'])
     return user_data['username']
 
 
-def request_to_org(request) -> str:
+def request_to_org(request: Request) -> str:
     """
     Get the org id from the current request.  This is a string, even
     though the values are always whole numbers.  This only makes sense if
