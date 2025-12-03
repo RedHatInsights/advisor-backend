@@ -80,7 +80,7 @@ def msg_delivery_callback(err, msg):
         )
 
 
-def send_kakfa_message(topic, message):
+def send_kafka_message(topic, message):
     producer.poll(0)
     encoded_message = json.dumps(message).encode('utf8')
     producer.produce(topic, encoded_message, callback=msg_delivery_callback)
@@ -173,7 +173,7 @@ def send_event_message(event_type, account=None, org_id=None, context={}, event_
         "id": str(uuid4()),
     }
     try:
-        send_kakfa_message(kafka_settings.WEBHOOKS_TOPIC, send_msg)
+        send_kafka_message(kafka_settings.WEBHOOKS_TOPIC, send_msg)
     except Exception as e:
         logger.exception('Could not send event of type %s (%s)', event_type, e)
 
