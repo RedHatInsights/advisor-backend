@@ -197,6 +197,7 @@ class AckCountViewSet(viewsets.ReadOnlyModelViewSet):
 
     param: rule_id: Get a count of acks for this rule_id
     """
+    pagination_class = None
     permission_classes = [IsRedHatInternalUser]
     # No resource_name - not using RBAC permissions
     serializer_class = AckCountSerializer
@@ -216,10 +217,6 @@ class AckCountViewSet(viewsets.ReadOnlyModelViewSet):
         rule_ack_count = self.get_object()
         return Response(rule_ack_count)
 
-    @extend_schema(
-        # Non-paginated list view
-        responses={200: AckCountSerializer(many=True)}
-    )
     def list(self, request, format=None):
         """
         Get the ack counts for all active rules
