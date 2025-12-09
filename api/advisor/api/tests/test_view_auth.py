@@ -542,7 +542,7 @@ class GetWorkspaceIdTestCase(TestCase):
         permissions.workspace_for_org = None  # prevents cache use
         with self.assertLogs(logger='advisor-log') as logs:
             # Non-200 response
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 status=404,
             )
@@ -554,19 +554,20 @@ class GetWorkspaceIdTestCase(TestCase):
                 logs.output
             )
             # Not a dict
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json='Foo!',
             )
             workspace_id, elapsed = get_workspace_id(request)
+            ehdr = 'ERROR:advisor-log:Error: '
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Response from RBAC is not a dictionary: 'Foo!'",
+                f"{ehdr}Response from RBAC is not a dictionary: 'Foo!'",
                 logs.output
             )
             # No 'data' item in dict
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'foo': 'bar'},
             )
@@ -574,12 +575,12 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Response from RBAC is missing 'data' "
-                "key: '{'foo': 'bar'}'",
+                f"{ehdr}Response from RBAC is missing 'data' key: '{{'foo': 'bar'}}'",
                 logs.output
             )
+            ehdr = 'ERROR:advisor-log:Error: '
             # Data not a list
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': 'bar'},
             )
@@ -587,12 +588,11 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Response from RBAC is not a list: "
-                "'bar'",
+                f"{ehdr}Response from RBAC is not a list: 'bar'",
                 logs.output
             )
             # Data list empty
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': []},
             )
@@ -600,12 +600,11 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Data from RBAC is empty: "
-                "'[]'",
+                f"{ehdr}Data from RBAC is empty: '[]'",
                 logs.output
             )
             # Data list does not contain a dictionary
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': ['Foo part 2: Return of Foo']},
             )
@@ -613,12 +612,11 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: First data item from RBAC is not a "
-                "dictionary: 'Foo part 2: Return of Foo'",
+                f"{ehdr}First data item from RBAC is not a dictionary: 'Foo part 2: Return of Foo'",
                 logs.output
             )
             # Data list dictionary does not contain an 'id' element
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': [{'foo': 'bar'}]},
             )
@@ -626,8 +624,19 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: First data item from RBAC is missing "
-                "'id' key: '{'foo': 'bar'}'",
+                f"{ehdr}First data item from RBAC is missing 'id' key: '{{'foo': 'bar'}}'",
+                logs.output
+            )
+            # Data list dictionary does not contain an 'id' element
+            _ = responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'data': [{'foo': 'bar', 'id': None}]},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                f"{ehdr}Workspace 'default' not found in RBAC response",
                 logs.output
             )
 
