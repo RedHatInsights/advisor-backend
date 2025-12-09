@@ -106,13 +106,14 @@ class RuleTopicViewsTestCase(TestCase):
 
     def test_enable_disable_topic(self):
         # External users can't edit topics via the public API, even if they
-        # have the old 'is_internal' permission.
+        # have the old 'is_internal' permission - gives method not allowed.
         response = self.client.patch(
             reverse('ruletopic-detail', kwargs={'slug': 'Disabled'}),
             data={'enabled': True},
             content_type=constants.json_mime,
             **self.is_internal_auth
         )
+        self.assertEqual(response.status_code, 405)
         # Nor the internal API either, this gives permission denied.
         response = self.client.patch(
             reverse('internal-ruletopic-detail', kwargs={'slug': 'Disabled'}),
