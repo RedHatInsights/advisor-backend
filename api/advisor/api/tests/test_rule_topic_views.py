@@ -18,7 +18,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from api.tests import constants, update_stale_dates
-from api.permissions import auth_header_for_testing
+from api.permissions import auth_header_for_testing, turnpike_auth_header_for_testing
 
 
 class RuleTopicViewsTestCase(TestCase):
@@ -26,6 +26,10 @@ class RuleTopicViewsTestCase(TestCase):
         'rule_categories', 'rulesets', 'system_types', 'upload_sources',
         'basic_test_data', 'high_severity_rule'
     ]
+
+    std_auth: dict[str, str] = auth_header_for_testing()
+    is_internal_auth: dict[str, str] = auth_header_for_testing(user_opts={'is_internal': True})
+    turnpike_auth: dict[str, str] = turnpike_auth_header_for_testing()
 
     @classmethod
     def setUpClass(cls):
@@ -43,7 +47,7 @@ class RuleTopicViewsTestCase(TestCase):
 
     def test_topic_list(self):
         response = self.client.get(
-            reverse('ruletopic-list'), **auth_header_for_testing()
+            reverse('ruletopic-list'), **self.std_auth
         )
         topic_list = self._response_is_good(response)
 
@@ -68,7 +72,7 @@ class RuleTopicViewsTestCase(TestCase):
         response = self.client.get(
             reverse('ruletopic-list'),
             data={'filter[system_profile][sap_system]': 'true'},
-            **auth_header_for_testing()
+            **self.std_auth
         )
         topic_list = self._response_is_good(response)
 
@@ -85,7 +89,7 @@ class RuleTopicViewsTestCase(TestCase):
     def test_topic_detail(self):
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'Active'}),
-            **auth_header_for_testing()
+            **self.std_auth
         )
         topic = self._response_is_good(response)
 
@@ -101,18 +105,34 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(topic['impacted_systems_count'], 4)
 
     def test_enable_disable_topic(self):
-        # Take a disabled topic, and enable it,
+        # External users can't edit topics via the public API, even if they
+        # have the old 'is_internal' permission.
         response = self.client.patch(
             reverse('ruletopic-detail', kwargs={'slug': 'Disabled'}),
             data={'enabled': True},
             content_type=constants.json_mime,
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.is_internal_auth
+        )
+        # Nor the internal API either, this gives permission denied.
+        response = self.client.patch(
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Disabled'}),
+            data={'enabled': True},
+            content_type=constants.json_mime,
+            **self.is_internal_auth
+        )
+        self.assertEqual(response.status_code, 403)
+        # But using the Turnpike internal API works
+        response = self.client.patch(
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Disabled'}),
+            data={'enabled': True},
+            content_type=constants.json_mime,
+            **self.turnpike_auth
         )
         topic = self._response_is_good(response)
         self.assertEqual(topic['enabled'], True)
         # It should now appear in the list of topics
         response = self.client.get(
-            reverse('ruletopic-list'), **auth_header_for_testing()
+            reverse('ruletopic-list'), **self.std_auth
         )
         topic_list = self._response_is_good(response)
         self.assertIsInstance(topic_list, list)
@@ -123,22 +143,22 @@ class RuleTopicViewsTestCase(TestCase):
         # It should show as enabled when specifically requested
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'Disabled'}),
-            **auth_header_for_testing()
+            **self.std_auth
         )
         topic = self._response_is_good(response)
         self.assertEqual(topic['enabled'], True)
         # Take an enabled topic, and disable it,
         response = self.client.patch(
-            reverse('ruletopic-detail', kwargs={'slug': 'Active'}),
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Active'}),
             data={'enabled': False},
             content_type=constants.json_mime,
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.turnpike_auth
         )
         topic = self._response_is_good(response)
         self.assertEqual(topic['enabled'], False)
         # It should now not appear in the list of topics
         response = self.client.get(
-            reverse('ruletopic-list'), **auth_header_for_testing()
+            reverse('ruletopic-list'), **self.std_auth
         )
         topic_list = self._response_is_good(response)
         self.assertIsInstance(topic_list, list)
@@ -149,7 +169,7 @@ class RuleTopicViewsTestCase(TestCase):
     def test_topic_systems(self):
         response = self.client.get(
             reverse('ruletopic-systems', kwargs={'slug': 'Active'}),
-            **auth_header_for_testing()
+            **self.std_auth
         )
         topic = self._response_is_good(response)
 
@@ -171,7 +191,7 @@ class RuleTopicViewsTestCase(TestCase):
         # UUIDs.
         response = self.client.get(
             reverse('ruletopic-systems', kwargs={'slug': 'Active'}),
-            data={'sort': 'display_name,-last_seen'}, **auth_header_for_testing()
+            data={'sort': 'display_name,-last_seen'}, **self.std_auth
         )
         topic = self._response_is_good(response)
         self.assertEqual(
@@ -185,40 +205,50 @@ class RuleTopicViewsTestCase(TestCase):
         )
 
     def test_topic_create_destroy(self):
-        # Non-internal user should be denied
+        # External view doesn't allow deletion
         response = self.client.post(
             reverse('ruletopic-list'), data={
                 'name': 'New topic',
                 'slug': 'New',
                 'description': 'A new topic created through the API',
             },
-            **auth_header_for_testing()
+            **self.std_auth
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 405)
+        # External view doesn't allow deletion
+        response = self.client.post(
+            reverse('ruletopic-list'), data={
+                'name': 'New topic',
+                'slug': 'New',
+                'description': 'A new topic created through the API',
+            },
+            **self.is_internal_auth
+        )
+        self.assertEqual(response.status_code, 405)
 
         # Adding a new topic with a nonexistent tag should report 400
         response = self.client.post(
-            reverse('ruletopic-list'), data={
+            reverse('internal-ruletopic-list'), data={
                 'name': 'New topic',
                 'slug': 'New',
                 'description': 'A new topic created through the API',
                 'enabled': True,
                 'tag': 'flapjack',
             },
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.turnpike_auth
         )
         self.assertEqual(response.status_code, 400, response.content.decode())
 
         # Adding a new topic should return that data
         response = self.client.post(
-            reverse('ruletopic-list'), data={
+            reverse('internal-ruletopic-list'), data={
                 'name': 'New topic',
                 'slug': 'New',
                 'description': 'A new topic created through the API',
                 'enabled': True,
                 'tag': 'testing',
             },
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.turnpike_auth
         )
         new_topic = self._response_is_good(response, 201)
 
@@ -237,7 +267,7 @@ class RuleTopicViewsTestCase(TestCase):
         # We should now see that topic in the list as item 3 (by name)
         response = self.client.get(
             reverse('ruletopic-list'),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.std_auth
         )
         topic_list = self._response_is_good(response)
         self.assertIsInstance(topic_list, list)
@@ -250,23 +280,17 @@ class RuleTopicViewsTestCase(TestCase):
         # We should now be able to get the details for that topic
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'New'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.is_internal_auth
         )
         get_topic = self._response_is_good(response)
         for attr in ('name', 'slug', 'description', 'tag', 'featured', 'enabled'):
             self.assertIn(attr, get_topic)
             self.assertEqual(get_topic[attr], new_topic[attr])
 
-        # Non-internal user should not be allowed to delete
-        response = self.client.delete(
-            reverse('ruletopic-detail', kwargs={'slug': 'New'}),
-            **auth_header_for_testing()
-        )
-        self.assertEqual(response.status_code, 403)
         # Now delete it
         response = self.client.delete(
-            reverse('ruletopic-detail', kwargs={'slug': 'New'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'New'}),
+            **self.turnpike_auth
         )
         self.assertEqual(response.status_code, 204)
         self.assertIsNone(response.get('Content-Type'))
@@ -274,29 +298,39 @@ class RuleTopicViewsTestCase(TestCase):
         # And we should no longer be able to find that topic
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'New'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.is_internal_auth
         )
         self.assertEqual(response.status_code, 404)
 
     def test_topic_update(self):
-        # Non-internal users should not be allowed to update
+        # No patching on the external interface for non-internal users
         response = self.client.patch(
             reverse('ruletopic-detail', kwargs={'slug': 'Active'}), data={
                 'name': 'Active topic (updated)',
                 'slug': 'Updated',
             },
             content_type=constants.json_mime,
-            **auth_header_for_testing()
+            **self.std_auth
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 405)
+        # No patching on the external interface for internal users
+        response = self.client.patch(
+            reverse('ruletopic-detail', kwargs={'slug': 'Active'}), data={
+                'name': 'Active topic (updated)',
+                'slug': 'Updated',
+            },
+            content_type=constants.json_mime,
+            **self.is_internal_auth
+        )
+        self.assertEqual(response.status_code, 405)
         # Update topic with new details - including slug!
         response = self.client.patch(
-            reverse('ruletopic-detail', kwargs={'slug': 'Active'}), data={
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Active'}), data={
                 'name': 'Active topic (updated)',
                 'slug': 'Updated',
             },
             content_type=constants.json_mime,
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.turnpike_auth
         )
         # We should get updated details, but same description and tags
         upd_topic = self._response_is_good(response)
@@ -313,20 +347,20 @@ class RuleTopicViewsTestCase(TestCase):
         # We should no longer be able to find the topic with its old slug
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'Active'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.is_internal_auth
         )
         self.assertEqual(response.status_code, 404)
         # ... but with its new slug
         response = self.client.get(
             reverse('ruletopic-detail', kwargs={'slug': 'Updated'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.is_internal_auth
         )
         self.assertEqual(response.status_code, 200)
 
     def test_rules_with_tag(self):
         response = self.client.get(
             reverse('ruletopic-rules-with-tag', kwargs={'slug': 'Active'}),
-            **auth_header_for_testing(user_opts={'is_internal': True})
+            **self.is_internal_auth
         )
         rule_list = self._response_is_good(response)
         self.assertEqual(len(rule_list), 4)

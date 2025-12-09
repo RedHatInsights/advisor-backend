@@ -16,7 +16,6 @@
 
 from django.db.models import OuterRef, Subquery
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
 
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -36,12 +35,13 @@ from api.models import (
     convert_to_count_query, get_reports_subquery, get_reporting_system_ids_queryset,
 )
 from api.permissions import (
-    IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
-    ReadOnlyUser, ResourceScope, TurnpikeIdentityAuthentication,
+    InsightsRBACPermission, CertAuthPermission,
+    ResourceScope, TurnpikeIdentityAuthentication, AssociatePermission
 )
 from api.serializers import (
     RuleSerializer, SystemsForRuleSerializer, TopicSerializer, TopicEditSerializer
 )
+from api.utils import CustomPageNumberPagination
 from api.views.rules import systems_sort_field_map, systems_sort_query_param
 
 
@@ -65,11 +65,9 @@ class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
     partial_update: Update the given fields of a topic with new data
     delete: Delete a topic
     """
-    lookup_field = 'slug'
+    lookup_field: str = 'slug'
     pagination_class = None
-    permission_classes = [
-        (InsightsRBACPermission & (ReadOnlyUser | IsRedHatInternalUser)) | CertAuthPermission
-    ]
+    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     queryset = RuleTopic.objects.all()
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.ORG
@@ -175,5 +173,7 @@ class InternalRuleTopicViewSet(viewsets.ModelViewSet):
     """
     authentication_classes = [TurnpikeIdentityAuthentication]
     lookup_field = 'slug'
+    pagination_class = CustomPageNumberPagination
     permission_classes = [AssociatePermission]
+    queryset = RuleTopic.objects.all()
     serializer_class = TopicEditSerializer
