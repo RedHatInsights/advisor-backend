@@ -437,6 +437,12 @@ def get_workspace_id(
     Get the ID of the workspace from the RBAC REST API, for the given
     identity.
     """
+    elapsed = 0.0
+
+    def log_and_return_fail(message, *args):
+        logger.error(message, *args)
+        return ('', elapsed)
+
     org_id = request.auth['org_id']
     workspace_key = (org_id, workspace)
     if workspace_for_org is not None and workspace_key in workspace_for_org:
@@ -446,58 +452,51 @@ def get_workspace_id(
     rbac_url = make_rbac_url(f"workspaces/?type={workspace}", version=2)
     response, elapsed = make_rbac_request(rbac_url, request)
     if response.status_code != 200:
-        logger.error(
+        # Report actual time to make RBAC request
+        return log_and_return_fail(
             "Error: Got status %d from RBAC: '%s'",
-            response.status_code, response.content.decode(),
+            response.status_code, response.content.decode()
         )
-        return (False, elapsed)
     # Check that the actual content is a list of workspaces
     page = response.json()
     if not isinstance(page, dict):
-        logger.error(
+        return log_and_return_fail(
             "Error: Response from RBAC is not a dictionary: '%s'",
             page,
         )
-        return (False, elapsed)
     if 'data' not in page:
-        logger.error(
+        return log_and_return_fail(
             "Error: Response from RBAC is missing 'data' key: '%s'",
             page,
         )
-        return (False, elapsed)
     if not isinstance(page['data'], list):
-        logger.error(
+        return log_and_return_fail(
             "Error: Response from RBAC is not a list: '%s'",
             page['data'],
         )
-        return (False, elapsed)
     if len(page['data']) == 0:
-        logger.error(
+        return log_and_return_fail(
             "Error: Data from RBAC is empty: '%s'",
             page['data'],
         )
-        return (False, elapsed)
     # There should only ever be one workspace with a given name, certainly
     # for 'default'.
     if not isinstance(page['data'][0], dict):
-        logger.error(
+        return log_and_return_fail(
             "Error: First data item from RBAC is not a dictionary: '%s'",
             page['data'][0],
         )
-        return (False, elapsed)
     if 'id' not in page['data'][0]:
-        logger.error(
+        return log_and_return_fail(
             "Error: First data item from RBAC is missing 'id' key: '%s'",
             page['data'][0],
         )
-        return (False, elapsed)
     workspace_id = page['data'][0]['id']
     if workspace_id is None:
-        logger.error(
+        return log_and_return_fail(
             "Error: Workspace '%s' not found in RBAC response",
             workspace,
         )
-        return (False, elapsed)
     if workspace_for_org is not None:
         workspace_for_org[workspace_key] = workspace_id
     return workspace_id, elapsed
