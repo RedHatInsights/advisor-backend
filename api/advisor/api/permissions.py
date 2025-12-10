@@ -48,7 +48,7 @@ user_details_key = {
 }
 
 
-def make_rbac_url(path, version: int = 1, rbac_base: str | None = None):
+def make_rbac_url(path, version: int = 1, rbac_base: str | None = None) -> str:
     """
     Use the settings.RBAC_URL, or the rbac_base and the given path and version
     number to construct a URL for RBAC.
@@ -198,7 +198,7 @@ class RBACPermission(object):
 # RBAC utility functions
 ##############################################################################
 
-def set_rbac_failure(request: Request, message: str):
+def set_rbac_failure(request: Request, message: str) -> bool:
     """
     Set the RBAC failure message on the request object.  This then gets
     recorded in the log message.
@@ -438,7 +438,7 @@ def get_workspace_id(
     """
     elapsed = 0.0
 
-    def log_and_return_fail(message, *args):
+    def log_and_return_fail(message: str, *args) -> tuple[str, float]:
         logger.error(message, *args)
         return ('', elapsed)
 
@@ -576,7 +576,7 @@ def has_kessel_permission(
         return (False, elapsed)
 
 
-def get_identity_header(request):
+def get_identity_header(request: Request) -> None | dict[str, str]:
     """
     Get the identity structure from the request, `None` if no identity
     header was found in the request, or raise an error if decoding the
@@ -660,7 +660,7 @@ class RHIdentityAuthentication(BaseAuthentication):
     in the identity object are not checked for here.
     """
 
-    def authenticate(self, request):
+    def authenticate(self, request: Request) -> tuple[str, dict[str, str]]:
         """
         If the user has an identity supplied in the X-RH-IDENTITY header
         (i.e. in {auth_header_key}), then they have authenticated with the
@@ -731,7 +731,7 @@ class TurnpikeIdentityAuthentication(BaseAuthentication):
 
     We don't at this point handle the X509 certificate identity from Turnpike.
     """
-    def authenticate(self, request):
+    def authenticate(self, request: Request) -> tuple[str, dict[str, str]]:
         """
         Check the identity header for basic compliance.
         """
@@ -783,7 +783,7 @@ class ReadOnlyUser(BasePermission):
     Authorise all users to use read-only methods.
     """
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         return request.method in SAFE_METHODS
 
 
@@ -1055,7 +1055,7 @@ class BaseAssociatePermission(BasePermission):
     """
     allowed_views = []
 
-    def has_associate_permission(self, request, view, identity):
+    def has_associate_permission(self, request: Request, view, identity) -> bool:
         """
         This method checks the associate's identity data supplied in the
         `x-rh-identity` header.  This must be overridden in derived classes.
@@ -1106,12 +1106,12 @@ class AssociatePermission(BaseAssociatePermission):
     permissions checks within Turnpike.
     """
 
-    def has_associate_permission(self, request, view, identity):
+    def has_associate_permission(self, request: Request, view, identity) -> bool:
         # Basic 'associate' structure within the Turnpike identity.
         return 'associate' in identity
 
 
-def view_methods_dict(allowed_views: list[str | tuple[str, str]]):
+def view_methods_dict(allowed_views: list[str | tuple[str, str]]) -> dict[str, list[str]]:
     """
     Construct the view methods dictionary for ease of reference later.
     Each view can occur more than once, as long as the associated method is
@@ -1153,14 +1153,14 @@ class BaseRedHatUserPermission(BasePermission):
     """
     allowed_views = []
 
-    def has_red_hat_permission(self, request: Request, view, user_data):
+    def has_red_hat_permission(self, request: Request, view, user_data) -> bool:
         """
         This method checks the user data supplied in the `x-rh-identity`
         header.  This must be overridden in derived classes.
         """
         raise NotImplementedError("Implement a check of Red Hat user data here")
 
-    def has_permission(self, request: Request, view):
+    def has_permission(self, request: Request, view) -> bool:
         """
         Check if this user is allowed to view this view.
 
@@ -1216,7 +1216,7 @@ class IsRedHatInternalUser(BaseRedHatUserPermission):
     set in their user details.
     """
 
-    def has_red_hat_permission(self, request, view, user_data):
+    def has_red_hat_permission(self, request: Request, view, user_data) -> bool:
         return 'is_internal' in user_data and bool(user_data['is_internal'])
 
 
@@ -1225,10 +1225,8 @@ class OrgPermission(BasePermission):
     Authorise any user with an `org_id` field in their identity.
     """
 
-    def has_permission(self, request, view):
-        if not (hasattr(request, 'user') and hasattr(request, 'auth')):
-            return False
-        identity = request.auth
+    def has_permission(self, request: Request, view) -> bool:
+        identity: dict[str, str] = request.auth
         if identity is None:
             return False
         return ('org_id' in identity)
@@ -1402,9 +1400,8 @@ def auth_header_for_testing(
             try:
                 uuid.UUID(user_id)
             except ValueError:
-                raise ValueError(
-                    "'user_id' argument to auth_header_for_testing must be a "
-                    "valid UUID"
+                error_and_deny(
+                    "'user_id' argument to auth_header_for_testing must be a valid UUID"
                 )
             user_section['user_id'] = user_id
         identity['user'] = user_section
@@ -1461,7 +1458,7 @@ def request_object_for_testing(auth_by=None, *args, **kwargs) -> Request:
     return rq
 
 
-def request_header_data(request):
+def request_header_data(request) -> dict[str, dict[str, str]]:
     """
     Reframe the request's authentication data in to a dict with the key that
     the 'requests' module can use.
