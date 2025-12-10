@@ -23,7 +23,6 @@ import uuid
 
 from django.conf import settings
 from django.http import HttpRequest
-from django.utils.datastructures import MultiValueDict
 
 from rest_framework.authentication import BaseAuthentication
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
@@ -826,12 +825,10 @@ class CertAuthPermission(BasePermission):
 
     def has_permission(self, request: Request, view) -> bool:
         _ = set_rbac_failure(request, 'CertAuthPermission has_permission() check starting')
-        if not (hasattr(request, 'user') and hasattr(request, 'auth')):
-            return set_rbac_failure(request, 'not authenticated')
         identity = request.auth
 
         if identity is None:
-            return set_rbac_failure(request, 'no identity')
+            return set_rbac_failure(request, 'not authenticated')
         # This class only allows access for systems - see other classes such
         # as InsightsRBACPermission for allowing access to other types.
         if 'system' not in identity:
@@ -1439,21 +1436,19 @@ def turnpike_auth_header_for_testing(**kwargs) -> dict[str, str]:
     return {auth_header_key: base64.b64encode(json.dumps(auth_dict).encode())}
 
 
-def auth_to_request(auth_dict):
+def auth_to_request(auth_dict) -> Request:
     """
     Create a request object from a dictionary, given by either
     `auth_header_for_testing` or `turnpike_auth_header_for_testing`.
     """
-    request = HttpRequest()
+    request = Request(HttpRequest())
     request.META = auth_dict
     request.META['REMOTE_ADDR'] = 'test'
     request.method = 'GET'
-    request.query_params = MultiValueDict()
-    request.auth = {}
     return request
 
 
-def request_object_for_testing(auth_by=None, *args, **kwargs):
+def request_object_for_testing(auth_by=None, *args, **kwargs) -> Request:
     """
     Create a request object with the auth header constructed by
     `auth_header_for_testing` above.
@@ -1465,7 +1460,6 @@ def request_object_for_testing(auth_by=None, *args, **kwargs):
         if auth_tuple is not None:
             setattr(rq, 'user', auth_tuple[0])
             setattr(rq, 'auth', auth_tuple[1])
-    setattr(rq, '_request', HttpRequest())
     return rq
 
 

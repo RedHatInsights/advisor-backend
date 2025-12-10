@@ -492,7 +492,10 @@ class OrgPermissionTestCase(TestCase):
         view = FakeView()
         # Firstly, if no auth then false
         rq = request_object_for_testing()
-        self.assertFalse(hasattr(rq, 'user'))
+        # Request object has user and auth
+        self.assertTrue(hasattr(rq, 'user'))
+        self.assertTrue(hasattr(rq, 'auth'))
+        self.assertIsNone(rq.auth)
         self.assertFalse(orgperm.has_permission(rq, view))
         # Now for the second stage of the identity check
         rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
@@ -697,13 +700,9 @@ class TestInsightsRBACPermissionKessel(TestCase):
         self.assertFalse(result)
 
     def test_identity_object_property_fails(self):
-        rhia = RHIdentityAuthentication()
-        request = request_object_for_testing()
-        user_id, _ = rhia.authenticate(request)
-        self.assertEqual(user_id, constants.standard_org)
-        # Not sure yet why this isn't set but has_permission needs it.
-        self.assertFalse(hasattr(request, 'user'))
-        setattr(request, 'user', user_id)
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        self.assertTrue(hasattr(request, 'user'))
+        self.assertEqual(request.user, constants.standard_org)
         self.assertTrue(hasattr(request, 'auth'))
         view = FakeView()
         irbp = InsightsRBACPermission()
@@ -936,10 +935,7 @@ class TestBaseAssociatePermission(TestCase):
         # For ease of testing we mangle the has_associate_permission call
         local_bap.has_associate_permission = lambda r, v, i: True
         local_bap.allowed_views = ['List']
-        rhia = RHIdentityAuthentication()
-        request = request_object_for_testing()
-        user_id, _ = rhia.authenticate(request)
-        request.user = user_id
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
         # Check the handling of allowed_views in has_permission
         view = FakeView()
         # Normal handling should allow list view access

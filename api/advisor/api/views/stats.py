@@ -30,7 +30,7 @@ from api.filters import (
 )
 from api.models import RuleCategory, get_reports_subquery
 from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission, ResourceScope,
+    InsightsRBACPermission, CertAuthPermission, RHIdentityAuthentication, ResourceScope,
     request_object_for_testing,
 )
 from api.serializers import (
@@ -95,13 +95,13 @@ def overview_stats_counts(queryset):
 # request_object_for_testing function to make up a request object.  Ugly, but
 # simpler than decoding the parameter everywhere and handing that in.
 def get_rules_stats(org_id):
-    request = request_object_for_testing(org_id=org_id)
+    request = request_object_for_testing(org_id=org_id, auth_by=RHIdentityAuthentication)
     request.auth['org_id'] = org_id
     return stats_counts(get_reports_subquery(request), 'rule_id')
 
 
 def get_reports_stats(org_id):
-    request = request_object_for_testing(org_id=org_id)
+    request = request_object_for_testing(org_id=org_id, auth_by=RHIdentityAuthentication)
     request.auth['org_id'] = org_id
     return stats_counts(get_reports_subquery(request), 'id')
 
