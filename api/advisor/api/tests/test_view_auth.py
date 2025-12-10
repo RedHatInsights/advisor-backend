@@ -485,6 +485,16 @@ class BaseRedHatUserTestCase(TestCase):
             x = BaseRedHatUserPermission()
             x.has_red_hat_permission('request', 'view', 'user_data')
 
+    def test_has_permission_basic_fails(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        brhup = BaseRedHatUserPermission()
+        del request.auth['user']
+        self.assertFalse(brhup.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'Red Hat user - user field not in identity data')
+        request.auth = None
+        self.assertFalse(brhup.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'Red Hat user has no identity data')
+
 
 class OrgPermissionTestCase(TestCase):
     def test_basic_has_permission_steps(self):
@@ -938,6 +948,11 @@ class TestBaseAssociatePermission(TestCase):
         request.user = 'username'
         request.auth = None
         self.assertFalse(self.BAPClass.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'No identity data in associate permission')
+        # Request() doesn't let us delete the auth or user properties...
+        request = HttpRequest()
+        self.assertFalse(self.BAPClass.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'Not yet authenticated in associate permission')
 
     def test_has_permission_allowed_views(self):
         local_bap = BaseAssociatePermission()

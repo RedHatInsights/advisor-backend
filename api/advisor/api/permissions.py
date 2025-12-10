@@ -1186,7 +1186,7 @@ class BaseRedHatUserPermission(BasePermission):
         if identity is None:
             return set_rbac_failure(request, 'Red Hat user has no identity data')
         if 'user' not in identity:
-            return set_rbac_failure(request, 'Red Hat user user field not in identity data')
+            return set_rbac_failure(request, 'Red Hat user - user field not in identity data')
 
         # If allowed_views is set then we deny access to anything else and
         # check permissions on accesses to those views.  Otherwise we assume
