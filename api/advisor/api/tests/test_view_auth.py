@@ -29,7 +29,7 @@ from api.permissions import (
     CertAuthPermission, InsightsRBACPermission, IsRedHatInternalUser,
     RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
-    auth_to_request, request_object_for_testing, request_to_username,
+    auth_to_request, has_kessel_permission, request_object_for_testing, request_to_username,
     turnpike_auth_header_for_testing, make_rbac_url, get_workspace_id,
 )
 from api.tests import constants
@@ -730,6 +730,21 @@ class TestInsightsRBACPermissionKessel(TestCase):
             'user': {'username': ['Barry', 'Jones']}
         }
         self.assertFalse(irbp.has_permission(request, view))
+
+    def test_kessel_permission_rbac_not_enabled(self):
+        # The request is not actually checked but it should be the right type.
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        perm = RBACPermission('advisor:*:*')
+        result, elapsed = has_kessel_permission(ResourceScope.ORG, perm, request)
+        self.assertTrue(result)
+        self.assertEqual(elapsed, 0.0)
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    def test_kessel_permission_rbac_no_url(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        perm = RBACPermission('advisor:*:*')
+        with self.assertRaises(ValueError):
+            _ = has_kessel_permission(ResourceScope.ORG, perm, request)
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @add_kessel_response(
