@@ -576,13 +576,12 @@ def handle_sources_event(topic, message):
         # the rhc_source_message
         # rhc_id seems to be able to be set by customers, who don't seem to
         # set it to a recognisable UUID.  Validate and log failures.
-        try:
-            rhc_uuid = UUID(message['rhc_id'])
+        if is_valid_uuid(message['rhc_id']):
             _ = SatelliteRhc.objects.filter(
                 source_id=message['source_ids'][0],
-            ).update(rhc_client_id=rhc_uuid)
-        except ValueError:
-            logger.error(f"Invalid RHC UUID: {message['rhc_id']}")
+            ).update(rhc_client_id=message['rhc_id'])
+        else:
+            _ = logger.error(f"Invalid RHC UUID {message['rhc_id']} for source ID {message['source_ids'][0]}")
 
 
 # Main command
