@@ -335,7 +335,7 @@ class BadUseOfCertAuthPermission(TestCase):
         self.assertFalse(result)
         self.assertEqual(
             request.rbac_failure_message,
-            "'system' property is not an object in 'identity' section of HTTP_X_RH_IDENTITY in Cert authentication check"
+            "'identity.system' is not an object in Cert authentication check"
         )
         # system dict has no 'cn'
         request.auth = {
@@ -346,7 +346,7 @@ class BadUseOfCertAuthPermission(TestCase):
         self.assertFalse(result)
         self.assertEqual(
             request.rbac_failure_message,
-            "'cn' property not found in 'identity.system' section of HTTP_X_RH_IDENTITY in Cert authentication check"
+            "'identity.system' has no 'cn' property in Cert authentication check"
         )
         # system dict 'cn' value not a string
         request.auth = {
@@ -519,7 +519,8 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
             'auth_type': 'jwt-auth',
             'org_id': constants.standard_org,
             'type': 'User',
-            'user': {'user_id': constants.test_user_id, 'username': constants.test_username}
+            'user': {'user_id': constants.test_user_id, 'username': constants.test_username},
+            'internal': {'org_id': constants.standard_org}
         }})
 
     def test_get_raw_value(self):
@@ -530,9 +531,13 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
         expected_raw = {auth_header_key: 'test'}
         self.assertEqual(raw_result, expected_raw)
 
+    def test_no_account_org_id(self):
+        with self.assertRaises(AuthenticationFailed):
+            _ = auth_header_for_testing(org_id='', account='')
+
     def test_system_and_user_auth(self):
         with self.assertRaises(AuthenticationFailed):
-            auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
+            _ = auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
 
 
 class GetWorkspaceIdTestCase(TestCase):

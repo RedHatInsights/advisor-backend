@@ -838,14 +838,12 @@ class CertAuthPermission(BasePermission):
         if not isinstance(identity['system'], dict):
             return set_rbac_failure(
                 request,
-                f"'system' property is not an object in 'identity' section of "
-                f"{auth_header_key} in Cert authentication check"
+                "'identity.system' is not an object in Cert authentication check"
             )
         if 'cn' not in identity['system']:
             return set_rbac_failure(
                 request,
-                f"'cn' property not found in 'identity.system' section of "
-                f"{auth_header_key} in Cert authentication check"
+                "'identity.system' has no 'cn' property in Cert authentication check"
             )
         if not isinstance(identity['system']['cn'], str):
             return set_rbac_failure(
@@ -1376,14 +1374,14 @@ def auth_header_for_testing(
         identity['account_number'] = account
     elif account is None:
         identity['account_number'] = '1234567'
-    if org_id in identity:
+    if 'org_id' in identity:
         # org_id also appears in the 'internal' section for some reason
         identity['internal'] = {
             'org_id': identity['org_id']
         }
     # In the future, when account is no longer
     # We need at least one of those two to be valid...
-    if not identity:
+    if not ('org_id' in identity or 'account_number' in identity):
         error_and_deny("both account and org_id cannot be empty")
     if system_opts and user_opts:
         error_and_deny("'system-opts' cannot be used with 'user_opts'")
