@@ -201,3 +201,11 @@ class TaskSatTrackingTestCase(TestCase):
             })
             self.assertEqual(len(log.output), 1)
             self.assertIn('Invalid RHC UUID', log.output[0])
+
+    def test_no_source_ids(self):
+        with self.assertLogs(logger='advisor-log') as log:
+            _ = handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, {
+                'rhc_id': '52321130-c0d6-11ec-a1f5-abea1b2200b3', 'source_ids': []
+            })
+            self.assertEqual(len(log.output), 1)
+            self.assertIn('No source ID', log.output[0])
