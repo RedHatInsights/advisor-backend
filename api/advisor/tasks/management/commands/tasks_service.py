@@ -18,7 +18,6 @@ import base64
 from json import loads, dumps
 import re
 import signal
-from uuid import UUID
 
 from django.conf import settings
 from project_settings import kafka_settings
