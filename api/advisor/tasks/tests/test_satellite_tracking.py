@@ -193,3 +193,11 @@ class TaskSatTrackingTestCase(TestCase):
 
         sr_count = SatelliteRhc.objects.filter(instance_id='357b7360-c0d6-11ec-a1f5-abea1b2200b3').count()
         self.assertEqual(sr_count, 0)
+
+    def test_rhc_id_not_uuid(self):
+        with self.assertLogs(logger='advisor-log') as log:
+            _ = handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, {
+                'rhc_id': '“1337-8888”', 'source_ids': [1]
+            })
+            self.assertEqual(len(log.output), 1)
+            self.assertIn('Invalid RHC UUID', log.output[0])
