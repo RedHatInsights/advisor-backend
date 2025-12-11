@@ -175,6 +175,8 @@ class WeeklyReportEmailTest(TestCase):
             self.assertEqual(mail.outbox[0]['recipients'], ['"Test User" test-user@example.com'])
             body = mail.outbox[0]['body']
             self.assertIn('Hi Test,', body)
+            self.assertNotIn('<img src="https://console.redhat.com/apps/frontend-assets/email-assets/logo_insights.jpg', body)
+            self.assertIn('<img src="https://console.redhat.com/apps/frontend-assets/email-assets/logo_lightspeed.jpg" alt="Red Hat Lightspeed logo"', body)
             self.assertIn(f'Red Hat Enterprise Linux - Advisor Weekly Report - {dateformat.format(timezone.now(), "j F Y")}</h1>', body)
             # No incidents
             self.assertNotIn('incident=true"', body)
