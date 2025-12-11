@@ -18,7 +18,7 @@ from django.urls import path, include
 
 from rest_framework.routers import APIRootView, DefaultRouter
 
-from api.views import rules
+from api.views import rules, rule_topics
 
 
 class InternalRootView(APIRootView):
@@ -37,6 +37,7 @@ class InternalRouter(DefaultRouter):
 
 router = InternalRouter()
 router.register(r'rule', rules.InternalRuleViewSet, basename='internal-rule')
+router.register(r'ruletopic', rule_topics.InternalRuleTopicViewSet, basename='internal-ruletopic')
 
 urlpatterns = [
     path(r'', include(router.urls)),
