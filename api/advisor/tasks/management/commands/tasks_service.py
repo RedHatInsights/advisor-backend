@@ -566,18 +566,23 @@ def handle_sources_event(topic, message):
         # the satellite_source_message
         satellite_source_type_id = get_satellite_source_type_id()
         if message['source_type_id'] == satellite_source_type_id and is_valid_uuid(message['source_ref']):
-            SatelliteRhc.objects.update_or_create(
+            _ = SatelliteRhc.objects.update_or_create(
                 instance_id=message['source_ref'],
                 defaults={'source_id': message['id']}
             )
             return
     if 'rhc_id' in message and 'source_ids' in message:
         # the rhc_source_message
-        SatelliteRhc.objects.filter(
-            source_id=message['source_ids'][0],
-        ).update(
-            rhc_client_id=message['rhc_id']
-        )
+        # rhc_id seems to be able to be set by customers, who don't seem to
+        # set it to a recognisable UUID.  Validate and log failures.
+        if not is_valid_uuid(message['rhc_id']):
+            _ = logger.error(f"Invalid RHC UUID {message['rhc_id']} for source ID {message['source_ids'][0]}")
+        elif not message['source_ids']:
+            _ = logger.error(f"No source ID for RHC UUID {message['rhc_id']}")
+        else:
+            _ = SatelliteRhc.objects.filter(
+                source_id=message['source_ids'][0],
+            ).update(rhc_client_id=message['rhc_id'])
 
 
 # Main command
