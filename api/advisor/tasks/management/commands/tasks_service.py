@@ -26,10 +26,11 @@ from django.core.cache import cache
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from kafka_utils import KafkaDispatcher, send_kafka_message
 from advisor_logging import logger
 from api.permissions import auth_header_for_testing
 from api.utils import retry_request
-from tasks.kafka_utils import send_event_message, KafkaDispatcher, send_kafka_message
+from tasks.kafka_utils import send_event_message
 from tasks.models import (
     ExecutedTask, ExecutedTaskStatusChoices, Host, Job, JobStatusChoices,
     SatelliteRhc, TaskTypeChoices,
