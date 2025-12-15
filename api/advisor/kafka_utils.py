@@ -16,9 +16,10 @@
 
 import app_common_python
 from advisor_logging import logger
+# from collections.abc import Callable as AbcCallable
 from confluent_kafka import Consumer, KafkaError, Producer
 import json
-from typing import Callable
+from typing import Callable, TypedDict
 
 import confluent_kafka
 from project_settings import kafka_settings as kafka_settings
@@ -29,7 +30,10 @@ cfg = app_common_python.LoadedConfig
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
 type HandlerFunc = Callable[[str, JsonValue], None]
-type HandlerDataValue = HandlerFunc | dict[str, str]
+class HandlerEntry(TypedDict):
+    handler: HandlerFunc
+    filters: dict[str, str]
+type HandlerDataValue = HandlerEntry
 
 
 duplicate_handler_warning_message = (
@@ -186,7 +190,7 @@ producer = None
 if not kafka_settings.KAFKA_SETTINGS:
     # This means that we've been misconfigured
     logger.error("Kafka producer settings required to send messages")
-elif not kafka_settings.KAFKA_SETTINGS['bootstrap.servers']:
+elif not kafka_settings.KAFKA_SETTINGS.get('bootstrap.servers'):
     # This means that we've been configured but from the Dev environment,
     # which doesn't include a default bootstrap server.  So we use the dummy
     # class above to just pretend to do stuff.
@@ -258,7 +262,7 @@ class KafkaDispatcher(object):
     a warning and ignore the new handler function given.
     """
     def __init__(self, consumer: Consumer | None = None):
-        self.registered_handlers: dict[str, dict[str, HandlerDataValue]] = {}
+        self.registered_handlers: dict[str, HandlerEntry] = {}
         self.quit: bool = False
         self.loop_timeout: int = 1
         # When being tested, supply a DummyConsumer object that has added
@@ -269,7 +273,7 @@ class KafkaDispatcher(object):
         else:
             self.consumer: Consumer = Consumer(kafka_settings.KAFKA_SETTINGS)
 
-    def register_handler(self, topic: str, handler_fn: HandlerFunc, **kwargs: dict[str, str]):
+    def register_handler(self, topic: str, handler_fn: HandlerFunc, **filters: dict[str, str]):
         if topic in self.registered_handlers:
             logger.warning(
                 duplicate_handler_warning_message,
@@ -279,7 +283,7 @@ class KafkaDispatcher(object):
             return
         self.registered_handlers[topic] = {
             'handler': handler_fn,
-            'filters': kwargs
+            'filters': filters
         }
 
     def _handle_message(self, message: confluent_kafka.Message | DummyMessage | None):
@@ -334,7 +338,7 @@ class KafkaDispatcher(object):
         # Call handler with JSON
         try:
             handler = self.registered_handlers[topic]['handler']
-            assert isinstance(handler, Callable)
+            # assert isinstance(handler, AbcCallable)
             handler(topic, body)
         except Exception as e:
             logger.exception(
