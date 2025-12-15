@@ -344,9 +344,9 @@ class TestAdvisorInventoryServer(TestCase):
         """
         Test successful updating of existing host.
         """
-        # Call handle_created_event directly
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            handle_created_event(update_host_msg)
+            # Call via handle_inventory_event to exercise update handling
+            handle_inventory_event('topic', update_host_msg)
             # Now check the logs
             # We aim to remove this debug log soon but in the meantime
             log_lines: list[str] = list(filter(
