@@ -204,6 +204,7 @@ def set_rbac_failure(request: Request, message: str) -> bool:
     recorded in the log message.
     """
     setattr(request, 'rbac_failure_message', message)
+    logger.warning("RBAC failure during permissions check: %s", message)
     return False
 
 
