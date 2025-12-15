@@ -200,6 +200,13 @@ class RBACPermission(object):
 
 def set_rbac_failure(request: Request, message: str) -> bool:
     """
+    When authentication fails, it raises an AuthenticationError which allows
+    it to set the reason why authentication failed in the response.  But
+    there's no equivalent for permissions check failures, because they can be
+    combined with logical operators and there's no obvious single 'check' that
+    'failed'.  But we often need to know what failed in the permission check
+    process, at least in our logs, for debugging purposes.
+
     Set the RBAC failure message on the request object.  This then gets
     recorded in the log message.
     """
