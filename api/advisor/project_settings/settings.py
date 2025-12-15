@@ -257,7 +257,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
         DJANGO_DB_OPTIONS["sslrootcert"] = LoadedConfig.rds_ca()
     DATABASES = {
         'default': {
-            'ENGINE': 'db_backends',
+            'ENGINE': 'django_prometheus.db.backends.postgresql',
             'HOST': db.hostname,
             'PORT': db.port,  # PORT_NUM to avoid name collision in Openshift
             'NAME': db.name,
@@ -266,7 +266,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
             'OPTIONS': DJANGO_DB_OPTIONS
         },
         'readonly': {
-            'ENGINE': 'db_backends',
+            'ENGINE': 'django_prometheus.db.backends.postgresql',
             'HOST': db.hostname,
             'PORT': db.port,  # PORT_NUM to avoid name collision in Openshift
             'NAME': db.name,
@@ -280,7 +280,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
 else:
     DATABASES = {
         'default': {
-            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'db_backends'),
+            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
             'HOST': os.getenv('ADVISOR_DB_HOST', ''),  # '' allows local socket connection
             'PORT': os.getenv('ADVISOR_DB_PORT_NUM', ''),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),
@@ -289,7 +289,7 @@ else:
             'OPTIONS': DJANGO_DB_OPTIONS
         },
         'readonly': {
-            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'db_backends'),
+            'ENGINE': os.getenv('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
             'HOST': os.getenv('ADVISOR_DB_READONLY_HOST') or os.getenv('ADVISOR_DB_HOST', ''),
             'PORT': os.getenv('ADVISOR_DB_PORT_NUM', ''),  # PORT_NUM to avoid name collision in Openshift
             'NAME': os.getenv('ADVISOR_DB_NAME', 'insightsapi'),

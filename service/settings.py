@@ -86,7 +86,7 @@ else:
 
     DATABASES = {
         'default': {
-            'ENGINE': os.environ.get('ADVISOR_DB_ENGINE', 'db_backends'),
+            'ENGINE': os.environ.get('ADVISOR_DB_ENGINE', 'django_prometheus.db.backends.postgresql'),
             'NAME': os.environ.get('ADVISOR_DB_NAME', 'insightsapi'),
             'USER': os.environ.get('ADVISOR_DB_USER', 'insightsapi'),
             'PASSWORD': os.environ.get('ADVISOR_DB_PASSWORD', 'InsightsData'),
