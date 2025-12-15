@@ -30,9 +30,13 @@ cfg = app_common_python.LoadedConfig
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
 type HandlerFunc = Callable[[str, JsonValue], None]
+
+
 class HandlerEntry(TypedDict):
     handler: HandlerFunc
     filters: dict[str, str]
+
+
 type HandlerDataValue = HandlerEntry
 
 
@@ -56,7 +60,7 @@ def write_cert(cert: str):
 #############################################################################
 # Dummy classes for use during testing
 
-class DummyProducer(Producer):
+class DummyProducer:
     """
     A dummy Kafka producer for use during testing.
     """
@@ -108,7 +112,7 @@ class DummyMessage():
         return self._error
 
 
-class DummyConsumer(Consumer):
+class DummyConsumer():
     """
     A dummy Kafka consumer for use during testing.
 
