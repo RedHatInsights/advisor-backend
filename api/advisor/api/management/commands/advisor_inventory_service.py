@@ -282,13 +282,13 @@ def handle_deleted_event(message: dict[str, JsonValue]):
 
 
 class Command(BaseCommand):
-    help = "Updates the job and executed task states based on Kafka messages"
+    help = "Manage InventoryHost table replication from Inventory Event messages"
 
     def handle(self, *args, **options):
         """
         Run the handler loop continuously until interrupted by SIGTERM.
         """
-        logger.info('Tasks service starting up')
+        logger.info('Advisor Inventory replication service starting up')
 
         receiver = KafkaDispatcher()
         receiver.register_handler(kafka_settings.INVENTORY_TOPIC, handle_inventory_event)
@@ -302,4 +302,4 @@ class Command(BaseCommand):
 
         # Loops until receiver.quit is set
         receiver.receive()
-        logger.info('Tasks service shutting down')
+        logger.info('Advisor Inventory replication service shutting down')
