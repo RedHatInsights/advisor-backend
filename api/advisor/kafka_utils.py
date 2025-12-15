@@ -32,9 +32,14 @@ type HandlerFunc = Callable[[str, JsonValue], None]
 type HandlerDataValue = HandlerFunc | dict[str, str]
 
 
-handler_warning_message = 'Topic %s already has function %s registered when trying to register function %s.  Ignoring this new handler.'
+duplicate_handler_warning_message = (
+    'Topic %s already has function %s registered when trying to ' +  # noqa: W504
+    'register function %s.  Ignoring this new handler.'
+)
 
 
+#############################################################################
+# These two copied from the service, but do we use them?
 def topic(t: str) -> str:
     return app_common_python.KafkaTopics[t].name
 
@@ -43,6 +48,9 @@ def write_cert(cert: str):
     with open('/opt/certs/kafka-cacert', 'w') as f:
         f.write(cert)
 
+
+#############################################################################
+# Dummy classes for use during testing
 
 class DummyProducer(Producer):
     """
@@ -171,10 +179,13 @@ class DummyConsumer(Consumer):
         self.closed = True
 
 
+#############################################################################
+# Setup
+
 producer = None
 if not kafka_settings.KAFKA_SETTINGS:
     # This means that we've been misconfigured
-    logger.error("Tasks views require Kafka producer settings to send messages")
+    logger.error("Kafka producer settings required to send messages")
 elif not kafka_settings.KAFKA_SETTINGS['bootstrap.servers']:
     # This means that we've been configured but from the Dev environment,
     # which doesn't include a default bootstrap server.  So we use the dummy
@@ -185,6 +196,7 @@ else:
     producer = Producer(kafka_settings.KAFKA_SETTINGS)
 
 
+#############################################################################
 # Message delivery callback
 
 def report_delivery_callback(err: Exception | None, msg: confluent_kafka.Message):
@@ -213,6 +225,9 @@ def send_webhook_event(event_msg: JsonValue):
     # For compatibility - replace with direct calls to send_kafka_message
     send_kafka_message(kafka_settings.WEBHOOKS_TOPIC, event_msg)
 
+
+#############################################################################
+# Kafka message dispatch service class
 
 class KafkaDispatcher(object):
     """
@@ -254,10 +269,10 @@ class KafkaDispatcher(object):
         else:
             self.consumer: Consumer = Consumer(kafka_settings.KAFKA_SETTINGS)
 
-    def register_handler(self, topic: str, handler_fn: HandlerFunc, **kwargs):
+    def register_handler(self, topic: str, handler_fn: HandlerFunc, **kwargs: dict[str, str]):
         if topic in self.registered_handlers:
-            logger.warn(
-                handler_warning_message,
+            logger.warning(
+                duplicate_handler_warning_message,
                 topic, self.registered_handlers[topic]['handler'].__name__,
                 handler_fn.__name__,
             )
@@ -311,8 +326,8 @@ class KafkaDispatcher(object):
         # Decode JSON
         try:
             body = json.loads(message.value().decode('utf-8').strip('"'))
-        except:
-            logger.exception(f"Malformed JSON when handling {topic}")
+        except Exception as e:
+            logger.exception(f"Malformed JSON when handling {topic}: {e}")
             return
         # Tell Django we're starting a 'request' (db connection restarts...)
         request_started.send(sender=self.__class__)
@@ -321,12 +336,13 @@ class KafkaDispatcher(object):
             handler = self.registered_handlers[topic]['handler']
             assert isinstance(handler, Callable)
             handler(topic, body)
-        except:
+        except Exception as e:
             logger.exception(
                 "Error processing kafka message",
                 extra={
                     'topic': topic,
-                    'payload': body
+                    'payload': body,
+                    'error': str(e)
                 }
             )
         # and we're finishing the 'request'
