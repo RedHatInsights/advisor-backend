@@ -48,6 +48,15 @@ def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
 
 
 #############################################################################
+def log_missing_key(request_id: str, event_type: str, key_name: str):
+    logger.error(
+        "Request %s: Inventory %s event did not contain required key '%s'",
+        request_id, event_type, key_name
+    )
+    prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
+
+
+#############################################################################
 def handle_created_event(message: dict[str, JsonValue]):
     """
     Handle a 'created' or 'updated' event message.
@@ -133,17 +142,14 @@ def handle_created_event(message: dict[str, JsonValue]):
     except KeyError as key_name:
         # Might be missing metadata or request_id...
         key_name = str(key_name).strip("'")  # Error is quoted in single quotes
+        # We know this exists because handle_inventory_message used it
+        event_type = message['type']
         if key_name == 'metadata':
             request_id = 'metadata'
         elif key_name == 'request_id':
             request_id = 'unknown request_id'
         # else the request_id variable exists from above
-        logger.error(
-            "Request %s: Inventory event did not contain required key '%s'",
-            request_id, key_name
-        )
-        prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
-        return
+        return log_missing_key(request_id, event_type, key_name)
 
     # These are the particular fields that Advisor and Tasks uses
     system_profile: dict[str, JsonValue] = {
@@ -244,12 +250,9 @@ def handle_deleted_event(message: dict[str, JsonValue]):
         key_name = str(missing_key).strip("'")
         if key_name == 'request_id':
             request_id = 'unknown request_id'
-        logger.error(
-            "Request %s: Inventory event did not contain required key %s",
-            request_id, key_name
-        )
-        prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
-        return
+        else:
+            request_id = message['request_id']
+        return log_missing_key(request_id, 'delete', key_name)
 
     payload_info = {
         'request_id': request_id,

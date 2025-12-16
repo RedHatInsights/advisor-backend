@@ -159,22 +159,21 @@ class TestAdvisorInventoryServer(TestCase):
         Test that the handle_inventory_event function dispatches messages
         correctly.
         """
-        # No 'type' field in message
         with self.assertLogs(logger='advisor-log') as logs:
+            # No 'type' field in message
             handle_inventory_event('topic', {'key': 'value'})
             self.assertEqual(len(logs.output), 1)
             self.assertEqual(
                 "ERROR:advisor-log:Message received on topic topic with no 'type' field",
                 logs.output[0]
             )
-        # Unknown message type
-        with self.assertLogs(logger='advisor-log') as logs:
+            # Unknown message type
             handle_inventory_event('topic', {'type': 'foo'})
-            self.assertEqual(len(logs.output), 1)
             self.assertEqual(
                 "ERROR:advisor-log:Inventory event: Unknown message type: foo",
-                logs.output[0]
+                logs.output[1]
             )
+            self.assertEqual(len(logs.output), 2)
         # Test the actual calls to create and delete in their own test methods.
 
     def test_created_message_success(self):
@@ -257,7 +256,7 @@ class TestAdvisorInventoryServer(TestCase):
                 else:
                     this_req_id = modified_msg['metadata']['request_id']
                 self.assertEqual(
-                    "ERROR:advisor-log:Request %s: Inventory event did not contain required key '%s'" % (
+                    "ERROR:advisor-log:Request %s: Inventory created event did not contain required key '%s'" % (
                         this_req_id, missing_field
                     ),
                     log_lines[1],
@@ -450,7 +449,7 @@ class TestAdvisorInventoryServer(TestCase):
                 else:
                     this_req_id = modified_msg['request_id']
                 self.assertEqual(
-                    "ERROR:advisor-log:Request %s: Inventory event did not contain required key %s" % (
+                    "ERROR:advisor-log:Request %s: Inventory delete event did not contain required key '%s'" % (
                         this_req_id, missing_field
                     ),
                     log_lines[1],
