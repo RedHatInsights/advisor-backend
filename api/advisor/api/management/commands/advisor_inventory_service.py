@@ -57,6 +57,26 @@ def log_missing_key(request_id: str, event_type: str, key_name: str):
 
 
 #############################################################################
+SYSTEM_PROFILE_KEYS = (
+    'ansible', 'bootc_status', 'host_type', 'mssql', 'operating_system',
+    'owner_id', 'rhc_client_id', 'sap', 'sap_system', 'sap_sids',
+    # need to phase out sap_system and sap_sids in favour of sap structure.
+    'system_update_method',
+)
+
+
+def extract_system_profile(source: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """
+    Grab just the keys we need from the given system profile.
+    """
+    return {
+        key: source[key]
+        for key in SYSTEM_PROFILE_KEYS
+        if key in source
+    }
+
+
+#############################################################################
 def handle_created_event(message: dict[str, JsonValue]):
     """
     Handle a 'created' or 'updated' event message.
@@ -152,15 +172,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         return log_missing_key(request_id, event_type, key_name)
 
     # These are the particular fields that Advisor and Tasks uses
-    system_profile: dict[str, JsonValue] = {
-        key: system_profile_field[key]
-        for key in (
-            'ansible', 'bootc_status', 'host_type', 'mssql', 'operating_system',
-            'owner_id', 'rhc_client_id', 'sap', 'sap_system', 'sap_sids',
-            # need to phase out sap_system and sap_sids in favour of sap structure.
-            'system_update_method',
-        ) if key in system_profile_field
-    }
+    system_profile: dict[str, JsonValue] = extract_system_profile(system_profile_field)
 
     # Create or update the inventory host.
     # If we're creating the host, we need to supply a system_profile.
