@@ -130,7 +130,9 @@ def handle_created_event(message: dict[str, JsonValue]):
         }
 
     """
-    logger.info(f"Handling '{message['type']}' event")
+    # We know this exists because handle_inventory_message used it
+    event_type: str = str(message['type'])
+    logger.info(f"Handling '{event_type}' event")
 
     # Maybe this is a weird way of handling checking the keys, but ... it
     # saves writing what amounts to an exception handler.
@@ -162,8 +164,6 @@ def handle_created_event(message: dict[str, JsonValue]):
     except KeyError as key_name:
         # Might be missing metadata or request_id...
         key_name = str(key_name).strip("'")  # Error is quoted in single quotes
-        # We know this exists because handle_inventory_message used it
-        event_type = message['type']
         if key_name == 'metadata':
             request_id = 'metadata'
         elif key_name == 'request_id':

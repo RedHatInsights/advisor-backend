@@ -42,7 +42,7 @@ plus7days: timedelta = timedelta(days=7)
 stale_time: str = (now + plus7days * 1).isoformat()
 stale_warn_time: str = (now + plus7days * 2).isoformat()
 cull_time: str = (now + plus7days * 3).isoformat()
-create_new_host_msg: JsonValue = {
+create_new_host_msg: dict[str, JsonValue] = {
     # A minimal structure for a new host event.  We don't really need to test
     # that fields we want to ignore are in fact ignored...
     'type': 'created',
@@ -77,7 +77,7 @@ create_new_host_msg: JsonValue = {
         "groups": [],
     }
 }
-update_host_msg: JsonValue = {
+update_host_msg: dict[str, JsonValue] = {
     # A minimal structure for a new host event.  We don't really need to test
     # that fields we want to ignore are in fact ignored...
     'type': 'updated',
@@ -124,7 +124,7 @@ update_host_msg: JsonValue = {
         "groups": [],
     }
 }
-delete_host_msg: dict[str, str] = {  # Pick a host with acks, hostacks, etc.
+delete_host_msg: dict[str, JsonValue] = {  # Pick a host with acks, hostacks, etc.
     "type": "delete",
     "id": constants.host_01_uuid,
     "timestamp": "<delete timestamp>",
@@ -226,12 +226,13 @@ class TestAdvisorInventoryServer(TestCase):
         """
         Test all the missing keys being detected in the create message
         """
+        modified_msg: dict[str, JsonValue]
         for missing_field in (
             'metadata', 'request_id', 'host', 'id', 'display_name', 'org_id',
             'tags', 'groups', 'created', 'updated', 'insights_id',
         ):
             with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-                modified_msg: JsonValue = deepcopy(create_new_host_msg)
+                modified_msg = deepcopy(create_new_host_msg)
                 # Have to delete bits of the structure - not linear
                 match missing_field:
                     case 'request_id':
@@ -267,7 +268,7 @@ class TestAdvisorInventoryServer(TestCase):
         # This also tests that receiving a 'create' event on a host that
         # already exists is treated as an update.
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            modified_msg: JsonValue = deepcopy(create_new_host_msg)
+            modified_msg = deepcopy(create_new_host_msg)
             del modified_msg['host']['account']
             handle_created_event(modified_msg)
             log_lines: list[str] = list(filter(
@@ -302,7 +303,7 @@ class TestAdvisorInventoryServer(TestCase):
             host = Host.objects.get(inventory_id=new_host_id)
             self.assertEqual(str(host.satellite_id), new_host_satid.lower())
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            modified_msg: JsonValue = deepcopy(create_new_host_msg)
+            modified_msg = deepcopy(create_new_host_msg)
             del modified_msg['host']['satellite_id']
             handle_created_event(modified_msg)
             log_lines: list[str] = list(filter(
@@ -433,7 +434,7 @@ class TestAdvisorInventoryServer(TestCase):
         # account is optional and missing account is tested above.
         for missing_field in ('id', 'org_id', 'request_id'):
             with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-                modified_msg: dict[str, str] = deepcopy(delete_host_msg)
+                modified_msg: dict[str, JsonValue] = deepcopy(delete_host_msg)
                 del modified_msg[missing_field]
                 handle_deleted_event(modified_msg)
                 # We aim to remove this debug log soon but in the meantime
