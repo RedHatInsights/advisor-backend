@@ -29,7 +29,7 @@ from api.permissions import (
     CertAuthPermission, InsightsRBACPermission, IsRedHatInternalUser,
     RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
-    auth_to_request, request_object_for_testing, request_to_username,
+    auth_to_request, has_kessel_permission, request_object_for_testing, request_to_username,
     turnpike_auth_header_for_testing, make_rbac_url, get_workspace_id,
 )
 from api.tests import constants
@@ -68,6 +68,7 @@ def fake_auth_check(request, auth_class):
 class FakeView(object):
     # Needs to supply get_view_name method for has_permission check
     view_name = 'List'
+    basename = 'list'
 
     def get_view_name(self):
         return self.view_name
@@ -105,7 +106,7 @@ class AuthFailTestCase(TestCase):
         """
         response = self.client.get(reverse('rule-list'))
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json(), {'detail': 'Authentication credentials were not provided.'})
+        self.assertEqual(response.json(), {'detail': 'No identity information'})
 
     def test_auth_req_view_with_no_base64(self):
         """
@@ -194,7 +195,10 @@ class AuthFailTestCase(TestCase):
         }
         response = self.client.get(reverse('rule-list'), **headers)
         self.assertEqual(response.status_code, 403)
-        self.assertIn("Authentication credentials were not provided", response.content.decode())
+        self.assertIn(
+            "'org_id' property not found in 'identity' section of HTTP_X_RH_IDENTITY",
+            response.content.decode()
+        )
 
     def test_auth_req_view_with_json_org_id_too_long(self):
         """
@@ -203,13 +207,17 @@ class AuthFailTestCase(TestCase):
         """
         headers = {
             auth_header_key: b64s(
-                '{"identity": {"org_id": "123456789012345678901234567890123456789012345678901", "user": '
-                '{"username": "test"}}}'
+                '{"identity": {"org_id": "123456789012345678901234567890123456789012345678901"'
+                ', "user": {"username": "test"}}}'
             )
         }
         response = self.client.get(reverse('rule-list'), **headers)
         self.assertEqual(response.status_code, 403)
-        self.assertIn('Authentication credentials were not provided', response.content.decode())
+        self.assertIn(
+            "Org ID '123456789012345678901234567890123456789012345678901' "
+            "greater than 50 characters",
+            response.content.decode()
+        )
 
     def test_auth_req_view_with_json_org_id_alpha_characters(self):
         """
@@ -301,18 +309,19 @@ class RHIdentityAuthFailTestCase(TestCase):
 class BadUseOfRBACPermission(TestCase):
     def test_permission_not_string(self):
         with self.assertRaisesMessage(
-            ValueError, 'permission given is not a string'
+            TypeError, 'permission given is not a string'
         ):
             RBACPermission(42)
 
 
 class BadUseOfCertAuthPermission(TestCase):
     def test_permission_not_string(self):
-        # request object given must have 'user' and 'auth' properties
+        # request object must have gone through authentication.
         cap = CertAuthPermission()
-        result = cap.has_permission('request', 'view')
+        request = request_object_for_testing()
+        result = cap.has_permission(request, 'view')
         self.assertFalse(result)
-        self.assertEqual(cap.message, 'not authenticated')
+        self.assertEqual(request.rbac_failure_message, 'not authenticated')
 
         # Failures in identity property of request.auth
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
@@ -325,8 +334,8 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
-            "'system' property is not an object in 'identity' section of HTTP_X_RH_IDENTITY in Cert authentication check"
+            request.rbac_failure_message,
+            "'identity.system' is not an object in Cert authentication check"
         )
         # system dict has no 'cn'
         request.auth = {
@@ -336,8 +345,8 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
-            "'cn' property not found in 'identity.system' section of HTTP_X_RH_IDENTITY in Cert authentication check"
+            request.rbac_failure_message,
+            "'identity.system' has no 'cn' property in Cert authentication check"
         )
         # system dict 'cn' value not a string
         request.auth = {
@@ -347,7 +356,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
+            request.rbac_failure_message,
             "'identity.system.cn' is not a string in Cert authentication check"
         )
         # system dict 'cn' value not a UUID
@@ -358,7 +367,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            cap.message,
+            request.rbac_failure_message,
             "'identity.system.cn' is not a UUID in Cert authentication check"
         )
 
@@ -369,6 +378,9 @@ class BadUseOfCertAuthPermission(TestCase):
         }
         result = cap.has_permission(request, view)
         self.assertTrue(result)
+        self.assertEqual(
+            request.rbac_failure_message, 'CertAuthPermission OK'
+        )
         # Check attributes now set on request
         self.assertTrue(hasattr(request, 'auth_system_type'))
         self.assertEqual(request.auth_system_type, 'system')
@@ -473,6 +485,16 @@ class BaseRedHatUserTestCase(TestCase):
             x = BaseRedHatUserPermission()
             x.has_red_hat_permission('request', 'view', 'user_data')
 
+    def test_has_permission_basic_fails(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        brhup = BaseRedHatUserPermission()
+        del request.auth['user']
+        self.assertFalse(brhup.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'Red Hat user - user field not in identity data')
+        request.auth = None
+        self.assertFalse(brhup.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'Red Hat user has no identity data')
+
 
 class OrgPermissionTestCase(TestCase):
     def test_basic_has_permission_steps(self):
@@ -480,7 +502,10 @@ class OrgPermissionTestCase(TestCase):
         view = FakeView()
         # Firstly, if no auth then false
         rq = request_object_for_testing()
-        self.assertFalse(hasattr(rq, 'user'))
+        # Request object has user and auth
+        self.assertTrue(hasattr(rq, 'user'))
+        self.assertTrue(hasattr(rq, 'auth'))
+        self.assertIsNone(rq.auth)
         self.assertFalse(orgperm.has_permission(rq, view))
         # Now for the second stage of the identity check
         rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
@@ -501,14 +526,32 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
     def test_get_unencode_value(self):
         self.assertEqual(auth_header_for_testing(unencoded=True), {'identity': {
             'account_number': constants.standard_acct,
+            'auth_type': 'jwt-auth',
             'org_id': constants.standard_org,
             'type': 'User',
-            'user': {'user_id': constants.test_user_id, 'username': constants.test_username}
+            'user': {'user_id': constants.test_user_id, 'username': constants.test_username},
+            'internal': {'org_id': constants.standard_org}
         }})
+
+    def test_get_raw_value(self):
+        # Test the 'raw' parameter
+        raw_result = auth_header_for_testing(raw='test')
+        # Normally the 'raw' structure would be a complete dict but we just
+        # want to check that you get back what you put in.
+        expected_raw = {auth_header_key: 'test'}
+        self.assertEqual(raw_result, expected_raw)
+
+    def test_no_account_org_id(self):
+        with self.assertRaises(AuthenticationFailed):
+            _ = auth_header_for_testing(org_id='', account='')
 
     def test_system_and_user_auth(self):
         with self.assertRaises(AuthenticationFailed):
-            auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
+            _ = auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
+
+    def test_user_id_not_uuid(self):
+        with self.assertRaises(AuthenticationFailed):
+            _ = auth_header_for_testing(user_id='not-a-uuid')
 
 
 class GetWorkspaceIdTestCase(TestCase):
@@ -521,7 +564,7 @@ class GetWorkspaceIdTestCase(TestCase):
         permissions.workspace_for_org = None  # prevents cache use
         with self.assertLogs(logger='advisor-log') as logs:
             # Non-200 response
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 status=404,
             )
@@ -533,19 +576,20 @@ class GetWorkspaceIdTestCase(TestCase):
                 logs.output
             )
             # Not a dict
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json='Foo!',
             )
             workspace_id, elapsed = get_workspace_id(request)
+            ehdr = 'ERROR:advisor-log:Error: '
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Response from RBAC is not a dictionary: 'Foo!'",
+                f"{ehdr}Response from RBAC is not a dictionary: 'Foo!'",
                 logs.output
             )
             # No 'data' item in dict
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'foo': 'bar'},
             )
@@ -553,12 +597,12 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Response from RBAC is missing 'data' "
-                "key: '{'foo': 'bar'}'",
+                f"{ehdr}Response from RBAC is missing 'data' key: '{{'foo': 'bar'}}'",
                 logs.output
             )
+            ehdr = 'ERROR:advisor-log:Error: '
             # Data not a list
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': 'bar'},
             )
@@ -566,12 +610,11 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Response from RBAC is not a list: "
-                "'bar'",
+                f"{ehdr}Response from RBAC is not a list: 'bar'",
                 logs.output
             )
             # Data list empty
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': []},
             )
@@ -579,12 +622,11 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: Data from RBAC is empty: "
-                "'[]'",
+                f"{ehdr}Data from RBAC is empty: '[]'",
                 logs.output
             )
             # Data list does not contain a dictionary
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': ['Foo part 2: Return of Foo']},
             )
@@ -592,12 +634,11 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: First data item from RBAC is not a "
-                "dictionary: 'Foo part 2: Return of Foo'",
+                f"{ehdr}First data item from RBAC is not a dictionary: 'Foo part 2: Return of Foo'",
                 logs.output
             )
             # Data list dictionary does not contain an 'id' element
-            responses.add(
+            _ = responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': [{'foo': 'bar'}]},
             )
@@ -605,8 +646,19 @@ class GetWorkspaceIdTestCase(TestCase):
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
             self.assertIn(
-                "ERROR:advisor-log:Error: First data item from RBAC is missing "
-                "'id' key: '{'foo': 'bar'}'",
+                f"{ehdr}First data item from RBAC is missing 'id' key: '{{'foo': 'bar'}}'",
+                logs.output
+            )
+            # Data list dictionary does not contain an 'id' element
+            _ = responses.add(
+                responses.GET, TEST_RBAC_V2_WKSPC,
+                json={'data': [{'foo': 'bar', 'id': None}]},
+            )
+            workspace_id, elapsed = get_workspace_id(request)
+            self.assertFalse(workspace_id)
+            self.assertGreater(elapsed, 0.0)
+            self.assertIn(
+                f"{ehdr}Workspace 'default' not found in RBAC response",
                 logs.output
             )
 
@@ -667,13 +719,9 @@ class TestInsightsRBACPermissionKessel(TestCase):
         self.assertFalse(result)
 
     def test_identity_object_property_fails(self):
-        rhia = RHIdentityAuthentication()
-        request = request_object_for_testing()
-        user_id, _ = rhia.authenticate(request)
-        self.assertEqual(user_id, constants.standard_org)
-        # Not sure yet why this isn't set but has_permission needs it.
-        self.assertFalse(hasattr(request, 'user'))
-        setattr(request, 'user', user_id)
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        self.assertTrue(hasattr(request, 'user'))
+        self.assertEqual(request.user, constants.standard_org)
         self.assertTrue(hasattr(request, 'auth'))
         view = FakeView()
         irbp = InsightsRBACPermission()
@@ -701,6 +749,21 @@ class TestInsightsRBACPermissionKessel(TestCase):
         }
         self.assertFalse(irbp.has_permission(request, view))
 
+    def test_kessel_permission_rbac_not_enabled(self):
+        # The request is not actually checked but it should be the right type.
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        perm = RBACPermission('advisor:*:*')
+        result, elapsed = has_kessel_permission(ResourceScope.ORG, perm, request)
+        self.assertTrue(result)
+        self.assertEqual(elapsed, 0.0)
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    def test_kessel_permission_rbac_no_url(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        perm = RBACPermission('advisor:*:*')
+        with self.assertRaises(ValueError):
+            _ = has_kessel_permission(ResourceScope.ORG, perm, request)
+
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @add_kessel_response(
         permission_checks=constants.kessel_allow_disable_recom_rw,
@@ -719,11 +782,26 @@ class TestInsightsRBACPermissionKessel(TestCase):
         view = FakeView()
         setattr(view, 'resource_name', 'recommendation-results')
         setattr(view, 'resource_scope', ResourceScope.HOST)
-        irbp = InsightsRBACPermission()
+        with self.assertLogs(logger='advisor-log') as logs:
+            irbp = InsightsRBACPermission()
 
-        # HOST resources get allowed at view level, relying on
-        # has_object_permission to handle specific host queries
-        self.assertTrue(irbp.has_permission(request, view))
+            # HOST resources get allowed at view level, relying on
+            # has_object_permission to handle specific host queries
+            self.assertTrue(irbp.has_permission(request, view))
+            # At this point, with a successful request, we should see a
+            # successful message in rbac_failure_message and logs
+            self.assertEqual(
+                logs.output[0],
+                'INFO:advisor-log:InsightsRBACPermission has_permission() check starting'
+            )
+            self.assertEqual(
+                logs.output[1],
+                'INFO:advisor-log:KESSEL: ResourceScope is HOST - defer to has_object_permission'
+            )
+            self.assertEqual(
+                request.rbac_failure_message,
+                'KESSEL: ResourceScope is HOST - defer to has_object_permission'
+            )
 
         # And then they would call has_object_permission, so let's exercise
         # that.
@@ -737,10 +815,13 @@ class TestInsightsRBACPermissionKessel(TestCase):
         view.resource_scope = ResourceScope.HOST
         # Object passed in has no 'id' attribute:
         self.assertFalse(hasattr(irbp, 'id'))
-        with self.assertRaisesMessage(
-            ValueError, "Permission scope is 'Host' but object has no 'id' attribute"
-        ):
-            irbp.has_object_permission(request, view, irbp)
+        self.assertFalse(irbp.has_object_permission(request, view, irbp))
+
+        self.assertTrue(hasattr(request, 'rbac_failure_message'))
+        self.assertEqual(
+            request.rbac_failure_message,
+            "Permission scope is 'Host' but object has no 'id' attribute"
+        )
         # Finally we actually get to do a has_kessel_permission check
         with add_kessel_response(
             permission_checks=constants.kessel_allow_host_01_read
@@ -759,13 +840,19 @@ class TestTurnpikeAuthentication(TestCase):
 
         # Standard auth identity fails
         rq = auth_to_request(auth_header_for_testing())
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.auth_type is not 'saml-auth'"
+        ):
+            self.TIAClass.authenticate(rq)
 
         # No auth header key in request seems to be the only way of returning
         # `None` from `get_identity_header()`...
         rq = auth_to_request({'foo': 'bar'})
         # That then returns None here:
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "could not decode identity header"
+        ):
+            self.TIAClass.authenticate(rq)
 
     def test_header_property_fails(self):
         # Specific property failures
@@ -773,47 +860,71 @@ class TestTurnpikeAuthentication(TestCase):
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"type": "Associate"}}')
         })
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "'auth_type' not found in identity header"
+        ):
+            self.TIAClass.authenticate(rq)
         # auth_type not a string
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"auth_type": 47}}')
         })
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.auth_type is not a string"
+        ):
+            self.TIAClass.authenticate(rq)
         # auth type doesn't match
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"auth_type": "Associate"}}')
         })
         # non-matching auth_type is OK, just fails out
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.auth_type is not 'saml-auth'"
+        ):
+            self.TIAClass.authenticate(rq)
 
         # no type property
         rq = auth_to_request({
             auth_header_key: b64s('{"identity": {"auth_type": "saml-auth"}}')
         })
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "'type' not found in identity header"
+        ):
+            self.TIAClass.authenticate(rq)
         # type property not a string
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": 2}}'
         )})
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.type is not a string"
+        ):
+            self.TIAClass.authenticate(rq)
         # type property doesn't match
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": "Manager"}}'
         )})
-        # non-matching type is OK, just fails out
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        # type not 'Associate'
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.type is not 'Associate'"
+        ):
+            self.TIAClass.authenticate(rq)
 
         # no associate property
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": "Associate"}}'
         )})
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "'associate' not found in identity header"
+        ):
+            self.TIAClass.authenticate(rq)
         # associate property not a dict
         rq = auth_to_request({auth_header_key: b64s(
             '{"identity": {"auth_type": "saml-auth", "type": "Associate"'
             ', "associate": "very yes"}}'
         )})
-        self.assertIsNone(self.TIAClass.authenticate(rq))
+        with self.assertRaisesRegex(
+            AuthenticationFailed, "identity.associate is not an object"
+        ):
+            self.TIAClass.authenticate(rq)
 
     def test_authenticate_success(self):
         # Completely minimal associate header
@@ -852,16 +963,18 @@ class TestBaseAssociatePermission(TestCase):
         request.user = 'username'
         request.auth = None
         self.assertFalse(self.BAPClass.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'No identity data in associate permission')
+        # Request() doesn't let us delete the auth or user properties...
+        request = HttpRequest()
+        self.assertFalse(self.BAPClass.has_permission(request, 'view'))
+        self.assertEqual(request.rbac_failure_message, 'Not yet authenticated in associate permission')
 
     def test_has_permission_allowed_views(self):
         local_bap = BaseAssociatePermission()
         # For ease of testing we mangle the has_associate_permission call
         local_bap.has_associate_permission = lambda r, v, i: True
         local_bap.allowed_views = ['List']
-        rhia = RHIdentityAuthentication()
-        request = request_object_for_testing()
-        user_id, _ = rhia.authenticate(request)
-        request.user = user_id
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
         # Check the handling of allowed_views in has_permission
         view = FakeView()
         # Normal handling should allow list view access
@@ -883,8 +996,8 @@ class TestAssociatePermission(TestCase):
 
     def test_associate_needed(self):
         ext_rq = auth_to_request(auth_header_for_testing())
-        fake_auth_check(ext_rq, TurnpikeIdentityAuthentication)
-        self.assertFalse(self.APClass.has_permission(ext_rq, self.view))
+        with self.assertRaises(AuthenticationFailed):
+            fake_auth_check(ext_rq, TurnpikeIdentityAuthentication)
         int_rq = auth_to_request(turnpike_auth_header_for_testing())
         fake_auth_check(int_rq, TurnpikeIdentityAuthentication)
         self.assertTrue(self.APClass.has_permission(int_rq, self.view))

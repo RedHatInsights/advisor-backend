@@ -18,7 +18,7 @@ from django.test import TestCase
 
 from api.models import RuleTopic
 from api.tests import constants, update_stale_dates
-from api.permissions import request_object_for_testing
+from api.permissions import RHIdentityAuthentication, request_object_for_testing
 
 import uuid
 
@@ -43,9 +43,9 @@ class RuleTopicModelTestCase(TestCase):
         )
         self.assertEqual(active_rules.tag.name, 'active')
         self.assertEqual(str(active_rules), "Topic Active rules")
-        rq = request_object_for_testing(account='1234567', org_id='9876543')
-        rq.account = '1234567'
-        rq.auth['org_id'] = '9876543'
+        rq = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        rq.account = constants.standard_acct
+        rq.auth['org_id'] = constants.standard_org
         self.assertEqual(
             list(active_rules.reports_for_account(rq).order_by(
                 'host_id'

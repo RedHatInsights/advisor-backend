@@ -37,7 +37,8 @@ class AdvisorRootView(APIRootView):
     """
     The Insights Advisor API root view.
     """
-    pass
+    # _get_resource needs a base name for all views.
+    basename = 'advisor-root'
 
 
 class AdvisorRouter(DefaultRouter):

@@ -120,15 +120,15 @@ class WeeklyReportAutoSubscribeTestCase(TestCase):
             **auth_header_for_testing(username=None)
         )
         self.assertEqual(response.status_code, 403)
-        self.assertIn(
-            "Red Hat RBAC has denied you permission", response.content.decode()
+        self.assertEqual(
+            response.json(), {"detail": "Red Hat RBAC has denied you permission"}
         )
 
         # Missing identity header altogether
         response = self.client.post(reverse("weeklyreportautosubscribe-list"))
         self.assertEqual(response.status_code, 403)
         self.assertEqual(
-            response.json(), {"detail": "Authentication credentials were not provided."}
+            response.json(), {"detail": "No identity information"}
         )
 
     def test_auto_subscribe_env_var_disabled(self):
