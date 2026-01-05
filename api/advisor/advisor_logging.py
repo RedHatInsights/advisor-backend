@@ -173,6 +173,7 @@ def update_record_from_request(record, request):
     copy_attr_to_record(record, request, 'rbac_elapsed_time_millis')
     # RBAC Permissions
     copy_attr_to_record(record, request, 'rbac_sought_permission')
+    copy_attr_to_record(record, request, 'rbac_failure_message')
     copy_attr_to_record(record, request, 'rbac_matched_permission')
     copy_attr_to_record(record, request, 'rbac_match_type')
 

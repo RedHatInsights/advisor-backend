@@ -23,7 +23,6 @@ import uuid
 
 from django.conf import settings
 from django.http import HttpRequest
-from django.utils.datastructures import MultiValueDict
 
 from rest_framework.authentication import BaseAuthentication
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
@@ -49,7 +48,7 @@ user_details_key = {
 }
 
 
-def make_rbac_url(path, version: int = 1, rbac_base: str | None = None):
+def make_rbac_url(path, version: int = 1, rbac_base: str | None = None) -> str:
     """
     Use the settings.RBAC_URL, or the rbac_base and the given path and version
     number to construct a URL for RBAC.
@@ -152,9 +151,14 @@ class RBACPermission(object):
     permission is included in an RBAC permission
     """
 
+    string: str
+    app: str
+    resource: str
+    method: str
+
     def __init__(self, permission_str):
         if not isinstance(permission_str, str):
-            raise ValueError('permission given is not a string')
+            raise TypeError("permission given is not a string")
         self.string: str = permission_str
         if not permission_str.count(':') == 2:
             raise ValueError("permission given does not contain exactly two ':' characters")
@@ -188,6 +192,36 @@ class RBACPermission(object):
         # entire rendered string.
         method = 'edit' if self.method == 'write' else 'view'
         return f"{self.app}_{self.resource.replace("-", "_")}_{method}"
+
+
+##############################################################################
+# RBAC utility functions
+##############################################################################
+
+def set_rbac_failure(request: Request, message: str) -> bool:
+    """
+    When authentication fails, it raises an AuthenticationError which allows
+    it to set the reason why authentication failed in the response.  But
+    there's no equivalent for permissions check failures, because they can be
+    combined with logical operators and there's no obvious single 'check' that
+    'failed'.  But we often need to know what failed in the permission check
+    process, at least in our logs, for debugging purposes.
+
+    Set the RBAC failure message on the request object.  This then gets
+    recorded in the log message.
+    """
+    setattr(request, 'rbac_failure_message', message)
+    logger.warning("RBAC failure during permissions check: %s", message)
+    return False
+
+
+def set_rbac_success(request: Request, message: str) -> None:
+    """
+    Also allow the same mechanism to report starting or completing a
+    permissions check.
+    """
+    setattr(request, 'rbac_failure_message', message)
+    logger.info(message)
 
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
@@ -233,7 +267,7 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
     return retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10)
 
 
-def find_host_groups(role_list, request):
+def find_host_groups(role_list: list[dict[str, str | dict[str, str]]], request):
     """
     We now also have to store the host group information we get from inventory.
     This comes in the resource definition within the RBAC response:
@@ -266,7 +300,7 @@ def find_host_groups(role_list, request):
     """
     if request is None:
         return  # we can't store any host groups on None
-    host_groups = []
+    host_groups: list[str] = []
     sought_permission = RBACPermission('inventory:hosts:read')
     for role in role_list:
         if 'permission' not in role:
@@ -318,7 +352,7 @@ def find_host_groups(role_list, request):
         logger.info(f"User has host groups {host_groups}")
 
 
-def has_rbac_permission(request, permission='advisor:*:*') -> tuple[bool, float]:
+def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
 
@@ -354,7 +388,7 @@ def has_rbac_permission(request, permission='advisor:*:*') -> tuple[bool, float]
     # only values RBAC cares about are the username and account, so that's the
     # key we use.
     username = request_to_username(request)
-    org_id = request.auth['org_id']
+    org_id = request_to_org(request)
     auth_tuple = (username, org_id)
     if rbac_perm_cache is not None and auth_tuple in rbac_perm_cache:
         response = rbac_perm_cache[auth_tuple]
@@ -366,19 +400,18 @@ def has_rbac_permission(request, permission='advisor:*:*') -> tuple[bool, float]
         response, elapsed = make_rbac_request(rbac_url, request)
         if (response is None) or response.status_code == 500:
             # Cannot reach RBAC at all, but should retry...
-            return (False, elapsed)
+            return (set_rbac_failure(request, 'Cannot reach RBAC'), elapsed)
         if rbac_perm_cache is not None:
             rbac_perm_cache[auth_tuple] = response
 
     if response.status_code == 200:
-        data = response.json()
+        data: dict[str, list[dict[str, str]]] = response.json()
         if 'data' not in data:
-            logger.warning(
-                "Warning: Response from RBAC did not contain a 'data' list: %s",
-                response.content.decode()
+            return (
+                set_rbac_failure(request, 'Response from RBAC did not contain a "data" list'),
+                elapsed
             )
-            return (False, elapsed)
-        tested_list = []
+        tested_list: list[str] = []
         # Find host group data
         find_host_groups(data['data'], request)
         # Find matching permission (ignoring resource definitions)
@@ -403,7 +436,7 @@ def has_rbac_permission(request, permission='advisor:*:*') -> tuple[bool, float]
                 # Log and return inexact match
                 logger.info(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
                 setattr(request._request, 'rbac_matched_permission', rbac_permission)
-                setattr(request._request, 'rbac_match_type', 'exact')
+                setattr(request._request, 'rbac_match_type', 'contains')
                 return (True, elapsed)
         logger.info(f"RBAC permissions list {tested_list} did not match sought permission {request_permission}")
         return (False, elapsed)
@@ -419,6 +452,12 @@ def get_workspace_id(
     Get the ID of the workspace from the RBAC REST API, for the given
     identity.
     """
+    elapsed = 0.0
+
+    def log_and_return_fail(message: str, *args) -> tuple[str, float]:
+        logger.error(message, *args)
+        return ('', elapsed)
+
     org_id = request.auth['org_id']
     workspace_key = (org_id, workspace)
     if workspace_for_org is not None and workspace_key in workspace_for_org:
@@ -428,58 +467,51 @@ def get_workspace_id(
     rbac_url = make_rbac_url(f"workspaces/?type={workspace}", version=2)
     response, elapsed = make_rbac_request(rbac_url, request)
     if response.status_code != 200:
-        logger.error(
+        # Report actual time to make RBAC request
+        return log_and_return_fail(
             "Error: Got status %d from RBAC: '%s'",
-            response.status_code, response.content.decode(),
+            response.status_code, response.content.decode()
         )
-        return (False, elapsed)
     # Check that the actual content is a list of workspaces
     page = response.json()
     if not isinstance(page, dict):
-        logger.error(
+        return log_and_return_fail(
             "Error: Response from RBAC is not a dictionary: '%s'",
             page,
         )
-        return (False, elapsed)
     if 'data' not in page:
-        logger.error(
+        return log_and_return_fail(
             "Error: Response from RBAC is missing 'data' key: '%s'",
             page,
         )
-        return (False, elapsed)
     if not isinstance(page['data'], list):
-        logger.error(
+        return log_and_return_fail(
             "Error: Response from RBAC is not a list: '%s'",
             page['data'],
         )
-        return (False, elapsed)
     if len(page['data']) == 0:
-        logger.error(
+        return log_and_return_fail(
             "Error: Data from RBAC is empty: '%s'",
             page['data'],
         )
-        return (False, elapsed)
     # There should only ever be one workspace with a given name, certainly
     # for 'default'.
     if not isinstance(page['data'][0], dict):
-        logger.error(
+        return log_and_return_fail(
             "Error: First data item from RBAC is not a dictionary: '%s'",
             page['data'][0],
         )
-        return (False, elapsed)
     if 'id' not in page['data'][0]:
-        logger.error(
+        return log_and_return_fail(
             "Error: First data item from RBAC is missing 'id' key: '%s'",
             page['data'][0],
         )
-        return (False, elapsed)
     workspace_id = page['data'][0]['id']
     if workspace_id is None:
-        logger.error(
+        return log_and_return_fail(
             "Error: Workspace '%s' not found in RBAC response",
             workspace,
         )
-        return (False, elapsed)
     if workspace_for_org is not None:
         workspace_for_org[workspace_key] = workspace_id
     return workspace_id, elapsed
@@ -560,7 +592,7 @@ def has_kessel_permission(
         return (False, elapsed)
 
 
-def get_identity_header(request):
+def get_identity_header(request: Request) -> None | dict[str, str]:
     """
     Get the identity structure from the request, `None` if no identity
     header was found in the request, or raise an error if decoding the
@@ -643,9 +675,8 @@ class RHIdentityAuthentication(BaseAuthentication):
     classes, which actually give permission.  Other fields, such as user, service_account
     in the identity object are not checked for here.
     """
-    message = 'Authentication failed'
 
-    def authenticate(self, request):
+    def authenticate(self, request: Request) -> tuple[str, dict[str, str]]:
         """
         If the user has an identity supplied in the X-RH-IDENTITY header
         (i.e. in {auth_header_key}), then they have authenticated with the
@@ -659,23 +690,23 @@ class RHIdentityAuthentication(BaseAuthentication):
         identity = get_identity_header(request)
         if identity is None:
             # If we can't authenticate, then return nothing
-            self.message = 'No identity information'
-            return None
+            raise AuthenticationFailed('No identity information')
 
         if 'org_id' not in identity:
-            self.message = f"'org_id' property not found in 'identity' section of {auth_header_key}"
-            return None
+            raise AuthenticationFailed(
+                f"'org_id' property not found in 'identity' section of {auth_header_key}"
+            )
         org_id = identity['org_id']
 
         if isinstance(org_id, int):
             org_id = str(org_id)
         if len(org_id) > 50:
-            self.message = f"Org ID '{org_id}' greater than 50 characters"
-            return None
+            raise AuthenticationFailed(f"Org ID '{org_id}' greater than 50 characters")
 
         if 'type' not in identity:
-            self.message = f"'type' property not found in 'identity' section of {auth_header_key}"
-            return None
+            raise AuthenticationFailed(
+                f"'type' property not found in 'identity' section of {auth_header_key}"
+            )
 
         # Set the org_id
         setattr(request, 'org_id', org_id)
@@ -716,38 +747,31 @@ class TurnpikeIdentityAuthentication(BaseAuthentication):
 
     We don't at this point handle the X509 certificate identity from Turnpike.
     """
-    def authenticate(self, request):
+    def authenticate(self, request: Request) -> tuple[str, dict[str, str]]:
         """
         Check the identity header for basic compliance.
         """
         identity = get_identity_header(request)
         if identity is None:
-            self.message = "could not decode identity header"
-            return None
+            raise AuthenticationFailed("could not decode identity header")
 
         # Check the properties we care about
         if "auth_type" not in identity:
-            self.message = "'auth_type' not found in identity header"
-            return None
+            raise AuthenticationFailed("'auth_type' not found in identity header")
         if not isinstance(identity['auth_type'], str):
-            self.message = "identity.auth_type is not a string"
-            return None
+            raise AuthenticationFailed("identity.auth_type is not a string")
         if identity['auth_type'] != "saml-auth":
-            return None
+            raise AuthenticationFailed("identity.auth_type is not 'saml-auth'")
         if "type" not in identity:
-            self.message = "'type' not found in identity header"
-            return None
+            raise AuthenticationFailed("'type' not found in identity header")
         if not isinstance(identity['type'], str):
-            self.message = "identity.type is not a string"
-            return None
+            raise AuthenticationFailed("identity.type is not a string")
         if identity['type'] != "Associate":
-            return None
+            raise AuthenticationFailed("identity.type is not 'Associate'")
         if "associate" not in identity:
-            self.message = "'associate' not found in identity header"
-            return None
+            raise AuthenticationFailed("'associate' not found in identity header")
         if not isinstance(identity['associate'], dict):
-            self.message = "identity.associate is not an object"
-            return None
+            raise AuthenticationFailed("identity.associate is not an object")
 
         # Save the associate identity in the request properties
         setattr(request, TP_ASSOCIATE, identity['associate'])
@@ -774,9 +798,8 @@ class ReadOnlyUser(BasePermission):
     """
     Authorise all users to use read-only methods.
     """
-    message = 'Only read access is permitted'
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         return request.method in SAFE_METHODS
 
 
@@ -815,49 +838,41 @@ class CertAuthPermission(BasePermission):
     We also set the `auth_system` attribute on the request, which allows
     queries to filter only on this system.
     """
-    message = 'Red Hat Certificate Authentication has denied permission'
 
-    def has_permission(self, request, view):
-        logger.debug("Started CertAuthPermission.has_permission")
-        if not (hasattr(request, 'user') and hasattr(request, 'auth')):
-            self.message = 'not authenticated'
-            return False
+    def has_permission(self, request: Request, view) -> bool:
+        set_rbac_success(request, 'CertAuthPermission has_permission() check starting')
         identity = request.auth
 
         if identity is None:
-            self.message = 'no identity'
-            return False
+            return set_rbac_failure(request, 'not authenticated')
         # This class only allows access for systems - see other classes such
         # as InsightsRBACPermission for allowing access to other types.
         if 'system' not in identity:
-            self.message = "'system' property absent from identity object"
-            return False
+            return set_rbac_failure(request, "'system' property absent from identity object")
 
         # Failures in what we expect the system property to be:
         if not isinstance(identity['system'], dict):
-            self.message = (
-                f"'system' property is not an object in 'identity' section of "
-                f"{auth_header_key} in Cert authentication check"
+            return set_rbac_failure(
+                request,
+                "'identity.system' is not an object in Cert authentication check"
             )
-            return False
         if 'cn' not in identity['system']:
-            self.message = (
-                f"'cn' property not found in 'identity.system' section of "
-                f"{auth_header_key} in Cert authentication check"
+            return set_rbac_failure(
+                request,
+                "'identity.system' has no 'cn' property in Cert authentication check"
             )
-            return False
         if not isinstance(identity['system']['cn'], str):
-            self.message = (
+            return set_rbac_failure(
+                request,
                 "'identity.system.cn' is not a string in Cert authentication check"
             )
-            return False
         try:
             uuid.UUID(identity['system']['cn'])
-        except:
-            self.message = (
+        except ValueError:
+            return set_rbac_failure(
+                request,
                 "'identity.system.cn' is not a UUID in Cert authentication check"
             )
-            return False
         # Less important - remember what type of certificate this is:
         setattr(request, 'auth_system_type', identity['system'].get('cert_type', 'system'))
 
@@ -868,6 +883,7 @@ class CertAuthPermission(BasePermission):
         # Set a username (for ack and hostack creation) - not really long enough for the CN...
         setattr(request, 'username', "Certified System")
         # We're a system, and we're allowed to access this view.
+        set_rbac_success(request, 'CertAuthPermission OK')
         return True
 
 
@@ -905,7 +921,7 @@ class InsightsRBACPermission(BasePermission):
     message = "Red Hat RBAC has denied you permission"
     app = 'advisor'
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         logger.debug("Started InsightsRBACPermission.has_permission")
         # Returns true or false
 
@@ -914,38 +930,37 @@ class InsightsRBACPermission(BasePermission):
         # to pluralising its basename.
         # The view's action property can be a name, or unset, or None - the
         # latter two we convert to 'list'.
+        set_rbac_success(request, 'InsightsRBACPermission has_permission() check starting')
+
         resource, scope = self._get_resource(view)
         if resource == 'denied':
-            return False
-
-        if scope is None:
-            # TODO: error
-            return False
+            return set_rbac_failure(request, 'view resource denies access')
 
         if not ((hasattr(request, 'user') or hasattr(request, 'service_account'))
                 and hasattr(request, 'auth')):
-            return False
+            return set_rbac_failure(request, 'authentication not yet complete')
 
         identity = request.auth
         # Do checks of the identity that we do have, in case some other class
         # allowed us:
         if identity is None:
-            return False
+            return set_rbac_failure(request, 'no identity')
         if not isinstance(identity, dict):
-            return False
+            return set_rbac_failure(request, 'identity not a dict')
         if 'org_id' not in identity:
-            return False
+            return set_rbac_failure(request, 'org_id not in identity')
         user_data = request_to_user_data(request)
         if not user_data:
-            return False
+            return set_rbac_failure(request, 'missing user data in request')
         if 'username' not in user_data:
-            return False
+            return set_rbac_failure(request, 'no "username" field in identity type data')
         if not isinstance(user_data['username'], str):
-            return False
+            return set_rbac_failure(request, 'identity type data username not a string')
 
         # Have to do this after the auth checks and view method check so that
         # views that deny access to RBAC can return False earlier than this.
         if not settings.RBAC_ENABLED:
+            set_rbac_success(request, 'RBAC not enabled')
             return True
 
         # Map the request and the view into the permission that the user
@@ -960,10 +975,11 @@ class InsightsRBACPermission(BasePermission):
         if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             # Kessel check requires a 'user_id' in the identity's user data.
             if 'user_id' not in user_data:
-                return False
+                return set_rbac_failure(request, 'KESSEL: user_data missing user_id')
 
             if scope == ResourceScope.HOST:
                 # Let has_object_permission take care of it
+                set_rbac_success(request, 'KESSEL: ResourceScope is HOST - defer to has_object_permission')
                 return True
             else:
                 result, elapsed = has_kessel_permission(
@@ -982,15 +998,20 @@ class InsightsRBACPermission(BasePermission):
         if elapsed > 0.0:
             setattr(request._request, 'rbac_elapsed_time_millis', int(elapsed * 1000))
         setattr(request._request, 'rbac_sought_permission', permission)
+        set_rbac_success(
+            request, 'InsightsRBACPermission has_permission returns %s' % bool(result)
+        )
         return bool(result)
 
-    def has_object_permission(self, request, view, obj) -> bool:
+    def has_object_permission(self, request: Request, view, obj) -> bool:
         if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
+            set_rbac_success(request, 'KESSEL not enabled, has_object_permission OK')
             return True
 
         resource, scope = self._get_resource(view)
 
         if scope != ResourceScope.HOST:
+            set_rbac_success(request, 'ResourceScope not HOST, has_object_permission OK')
             return True
 
         # Map the request and the view into the permission that the user
@@ -1004,7 +1025,9 @@ class InsightsRBACPermission(BasePermission):
 
         # This is assumed to be used on a view that gets InventoryHost objects.
         if not hasattr(obj, "id"):
-            raise ValueError("Permission scope is 'Host' but object has no 'id' attribute")
+            return set_rbac_failure(
+                request, "Permission scope is 'Host' but object has no 'id' attribute"
+            )
 
         result, elapsed = has_kessel_permission(
             scope, RBACPermission(permission), request, host_id=obj.id
@@ -1013,9 +1036,12 @@ class InsightsRBACPermission(BasePermission):
         if elapsed > 0.0:
             setattr(request._request, 'rbac_elapsed_time_millis', int(elapsed * 1000))
 
+        set_rbac_success(
+            request, f'InsightsRBACPermission successfully evaluated to {result}'
+        )
         return result
 
-    def _get_resource(self, view):
+    def _get_resource(self, view) -> tuple[str, ResourceScope]:
         """
         Returns the resource and its scope for a particular view.
         """
@@ -1025,6 +1051,7 @@ class InsightsRBACPermission(BasePermission):
         resource = getattr(view, 'resource_name', None)
         if resource is None and hasattr(view, 'basename'):
             resource = view.basename + ('' if view.basename[-1] == 's' else 's')
+        assert isinstance(resource, str), f'Cannot determine resource for {view} {view_name=}'
         if view_method is not None:
             resource = getattr(view_method, 'resource_name', resource)
 
@@ -1049,23 +1076,23 @@ class BaseAssociatePermission(BasePermission):
     behaviour.
     """
     allowed_views = []
-    message = "Access is restricted"
 
-    def has_associate_permission(self, request, view, identity):
+    def has_associate_permission(self, request: Request, view, identity) -> bool:
         """
         This method checks the associate's identity data supplied in the
         `x-rh-identity` header.  This must be overridden in derived classes.
         """
         raise NotImplementedError("Implement a check of Associate user data here")
 
-    def has_permission(self, request, view):
+    def has_permission(self, request: Request, view) -> bool:
         # Return OK if we're not restricting access, or we're viewing an
         # un-restricted view
+        set_rbac_success(request, 'BaseAssociatePermission has_permission() check started')
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
-            return False
+            return set_rbac_failure(request, 'Not yet authenticated in associate permission')
         identity = request.auth
         if identity is None:
-            return False
+            return set_rbac_failure(request, 'No identity data in associate permission')
 
         # If allowed_views is set then we deny access to anything else and
         # check permissions on accesses to those views.  Otherwise we assume
@@ -1076,11 +1103,17 @@ class BaseAssociatePermission(BasePermission):
                 self.allowed_view_methods = view_methods_dict(self.allowed_views)
             view_name = view.get_view_name()
             if view_name not in self.allowed_view_methods:
-                return False
+                return set_rbac_failure(
+                    request, f'view {view_name} not in allowed_views'
+                )
             if request.method not in self.allowed_view_methods[view_name]:
-                return False
+                return set_rbac_failure(
+                    request, f'{request.method} of {view_name} not allowed'
+                )
 
-        return self.has_associate_permission(request, view, identity)
+        result = self.has_associate_permission(request, view, identity)
+        set_rbac_success(request, f"Associate permission successfully returned {result}")
+        return result
 
 
 class AssociatePermission(BaseAssociatePermission):
@@ -1095,12 +1128,12 @@ class AssociatePermission(BaseAssociatePermission):
     permissions checks within Turnpike.
     """
 
-    def has_associate_permission(self, request, view, identity):
+    def has_associate_permission(self, request: Request, view, identity) -> bool:
         # Basic 'associate' structure within the Turnpike identity.
         return 'associate' in identity
 
 
-def view_methods_dict(allowed_views: list[str | tuple[str, str]]):
+def view_methods_dict(allowed_views: list[str | tuple[str, str]]) -> dict[str, list[str]]:
     """
     Construct the view methods dictionary for ease of reference later.
     Each view can occur more than once, as long as the associated method is
@@ -1141,16 +1174,15 @@ class BaseRedHatUserPermission(BasePermission):
     one of them will grant access.
     """
     allowed_views = []
-    message = "Access is restricted"
 
-    def has_red_hat_permission(self, request: Request, view, user_data):
+    def has_red_hat_permission(self, request: Request, view, user_data) -> bool:
         """
         This method checks the user data supplied in the `x-rh-identity`
         header.  This must be overridden in derived classes.
         """
         raise NotImplementedError("Implement a check of Red Hat user data here")
 
-    def has_permission(self, request: Request, view):
+    def has_permission(self, request: Request, view) -> bool:
         """
         Check if this user is allowed to view this view.
 
@@ -1169,13 +1201,14 @@ class BaseRedHatUserPermission(BasePermission):
         by default, so this class must be subclassed and that method
         implemented for this to work.
         """
+        set_rbac_success(request, 'Red Hat user has_permission() check starting')
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
-            return False
+            return set_rbac_failure(request, 'Red Hat user not authenticated')
         identity: dict[str, Any] = request.auth
         if identity is None:
-            return False
+            return set_rbac_failure(request, 'Red Hat user has no identity data')
         if 'user' not in identity:
-            return False
+            return set_rbac_failure(request, 'Red Hat user - user field not in identity data')
 
         # If allowed_views is set then we deny access to anything else and
         # check permissions on accesses to those views.  Otherwise we assume
@@ -1186,13 +1219,17 @@ class BaseRedHatUserPermission(BasePermission):
                 self.allowed_view_methods = view_methods_dict(self.allowed_views)
             view_name = view.get_view_name()
             if view_name not in self.allowed_view_methods:
-                self.message = f"{view_name} not in allowed views"
-                return False
+                return set_rbac_failure(
+                    request, f"{view_name} not in allowed views"
+                )
             if request.method not in self.allowed_view_methods[view_name]:
-                self.message = f"{request.method} of {view_name} not allowed"
-                return False
+                return set_rbac_failure(
+                    request, f"{request.method} of {view_name} not allowed"
+                )
 
-        return self.has_red_hat_permission(request, view, identity['user'])
+        result = self.has_red_hat_permission(request, view, identity['user'])
+        set_rbac_success(request, f"Red Hat permission successfully returned {result}")
+        return result
 
 
 class IsRedHatInternalUser(BaseRedHatUserPermission):
@@ -1200,9 +1237,8 @@ class IsRedHatInternalUser(BaseRedHatUserPermission):
     Authorise the user based on whether they have the 'is_internal' flag
     set in their user details.
     """
-    message = "Access is restricted to Red Hat users"
 
-    def has_red_hat_permission(self, request, view, user_data):
+    def has_red_hat_permission(self, request: Request, view, user_data) -> bool:
         return 'is_internal' in user_data and bool(user_data['is_internal'])
 
 
@@ -1210,12 +1246,9 @@ class OrgPermission(BasePermission):
     """
     Authorise any user with an `org_id` field in their identity.
     """
-    message = "Permissions require an organisation ID"
 
-    def has_permission(self, request, view):
-        if not (hasattr(request, 'user') and hasattr(request, 'auth')):
-            return False
-        identity = request.auth
+    def has_permission(self, request: Request, view) -> bool:
+        identity: dict[str, str] = request.auth
         if identity is None:
             return False
         return ('org_id' in identity)
@@ -1226,7 +1259,7 @@ class OrgPermission(BasePermission):
 ##############################################################################
 
 
-def request_to_user_data(request) -> dict:
+def request_to_user_data(request: Request) -> dict[str, str]:
     """
     Get the 'user' record out of the identity section of the request.  This
     uses the identity type to figure out which field in the identity to look
@@ -1245,7 +1278,7 @@ def request_to_user_data(request) -> dict:
     return identity[type_key]
 
 
-def request_to_username(request) -> str:
+def request_to_username(request: Request) -> str:
     """
     Get the user name from the current request, in the
     identity['user']['user_name'] field.
@@ -1254,15 +1287,12 @@ def request_to_username(request) -> str:
         return request.username
     user_data = request_to_user_data(request)
     if 'username' not in user_data:
-        error_and_deny(
-            f"'username' property not found in 'identity' user details of "
-            f"{auth_header_key}"
-        )
+        error_and_deny("'username' property not found in 'identity' user details")
     setattr(request, 'username', user_data['username'])
     return user_data['username']
 
 
-def request_to_org(request) -> str:
+def request_to_org(request: Request) -> str:
     """
     Get the org id from the current request.  This is a string, even
     though the values are always whole numbers.  This only makes sense if
@@ -1354,7 +1384,7 @@ def auth_header_for_testing(
     my_auth_header_key = http_auth_header_key if supply_http_header else auth_header_key
     if raw:
         return {my_auth_header_key: raw}
-    identity = {}
+    identity = {'auth_type': 'jwt-auth'}
     # Set account/org_id to default if not supplied, or value if not ''
     if org_id:
         identity['org_id'] = org_id
@@ -1364,20 +1394,21 @@ def auth_header_for_testing(
         identity['account_number'] = account
     elif account is None:
         identity['account_number'] = '1234567'
-    if org_id in identity:
+    if 'org_id' in identity:
         # org_id also appears in the 'internal' section for some reason
         identity['internal'] = {
             'org_id': identity['org_id']
         }
     # In the future, when account is no longer
     # We need at least one of those two to be valid...
-    if not identity:
+    if not ('org_id' in identity or 'account_number' in identity):
         error_and_deny("both account and org_id cannot be empty")
     if system_opts and user_opts:
         error_and_deny("'system-opts' cannot be used with 'user_opts'")
     if system_opts:
         identity['system'] = system_opts
         identity['type'] = 'System'
+        identity['auth_type'] = 'cert-auth'
     elif service_account:
         identity['service_account'] = service_account
         identity['type'] = 'ServiceAccount'
@@ -1391,9 +1422,8 @@ def auth_header_for_testing(
             try:
                 uuid.UUID(user_id)
             except ValueError:
-                raise ValueError(
-                    "'user_id' argument to auth_header_for_testing must be a "
-                    "valid UUID"
+                error_and_deny(
+                    "'user_id' argument to auth_header_for_testing must be a valid UUID"
                 )
             user_section['user_id'] = user_id
         identity['user'] = user_section
@@ -1423,21 +1453,19 @@ def turnpike_auth_header_for_testing(**kwargs) -> dict[str, str]:
     return {auth_header_key: base64.b64encode(json.dumps(auth_dict).encode())}
 
 
-def auth_to_request(auth_dict):
+def auth_to_request(auth_dict) -> Request:
     """
     Create a request object from a dictionary, given by either
     `auth_header_for_testing` or `turnpike_auth_header_for_testing`.
     """
-    request = HttpRequest()
+    request = Request(HttpRequest())
     request.META = auth_dict
     request.META['REMOTE_ADDR'] = 'test'
     request.method = 'GET'
-    request.query_params = MultiValueDict()
-    request.auth = {}
     return request
 
 
-def request_object_for_testing(auth_by=None, *args, **kwargs):
+def request_object_for_testing(auth_by=None, *args, **kwargs) -> Request:
     """
     Create a request object with the auth header constructed by
     `auth_header_for_testing` above.
@@ -1449,11 +1477,10 @@ def request_object_for_testing(auth_by=None, *args, **kwargs):
         if auth_tuple is not None:
             setattr(rq, 'user', auth_tuple[0])
             setattr(rq, 'auth', auth_tuple[1])
-    setattr(rq, '_request', HttpRequest())
     return rq
 
 
-def request_header_data(request):
+def request_header_data(request) -> dict[str, dict[str, str]]:
     """
     Reframe the request's authentication data in to a dict with the key that
     the 'requests' module can use.
