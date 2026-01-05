@@ -215,6 +215,15 @@ def set_rbac_failure(request: Request, message: str) -> bool:
     return False
 
 
+def set_rbac_success(request: Request, message: str) -> None:
+    """
+    Also allow the same mechanism to report starting or completing a
+    permissions check.
+    """
+    setattr(request, 'rbac_failure_message', message)
+    logger.info(message)
+
+
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
     """
     Make a request to the RBAC service.  With RBAC v1 we check permissions,
@@ -398,11 +407,10 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
     if response.status_code == 200:
         data: dict[str, list[dict[str, str]]] = response.json()
         if 'data' not in data:
-            logger.warning(
-                "Warning: Response from RBAC did not contain a 'data' list: %s",
-                response.content.decode()
+            return (
+                set_rbac_failure(request, 'Response from RBAC did not contain a "data" list'),
+                elapsed
             )
-            return (False, elapsed)
         tested_list: list[str] = []
         # Find host group data
         find_host_groups(data['data'], request)
@@ -428,7 +436,7 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
                 # Log and return inexact match
                 logger.info(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
                 setattr(request._request, 'rbac_matched_permission', rbac_permission)
-                setattr(request._request, 'rbac_match_type', 'exact')
+                setattr(request._request, 'rbac_match_type', 'contains')
                 return (True, elapsed)
         logger.info(f"RBAC permissions list {tested_list} did not match sought permission {request_permission}")
         return (False, elapsed)
@@ -832,7 +840,7 @@ class CertAuthPermission(BasePermission):
     """
 
     def has_permission(self, request: Request, view) -> bool:
-        _ = set_rbac_failure(request, 'CertAuthPermission has_permission() check starting')
+        set_rbac_success(request, 'CertAuthPermission has_permission() check starting')
         identity = request.auth
 
         if identity is None:
@@ -875,7 +883,7 @@ class CertAuthPermission(BasePermission):
         # Set a username (for ack and hostack creation) - not really long enough for the CN...
         setattr(request, 'username', "Certified System")
         # We're a system, and we're allowed to access this view.
-        _ = set_rbac_failure(request, 'CertAuthPermission OK')
+        set_rbac_success(request, 'CertAuthPermission OK')
         return True
 
 
@@ -922,7 +930,7 @@ class InsightsRBACPermission(BasePermission):
         # to pluralising its basename.
         # The view's action property can be a name, or unset, or None - the
         # latter two we convert to 'list'.
-        _ = set_rbac_failure(request, 'InsightsRBACPermission has_permission() check starting')
+        set_rbac_success(request, 'InsightsRBACPermission has_permission() check starting')
 
         resource, scope = self._get_resource(view)
         if resource == 'denied':
@@ -952,7 +960,7 @@ class InsightsRBACPermission(BasePermission):
         # Have to do this after the auth checks and view method check so that
         # views that deny access to RBAC can return False earlier than this.
         if not settings.RBAC_ENABLED:
-            _ = set_rbac_failure(request, 'RBAC not enabled')
+            set_rbac_success(request, 'RBAC not enabled')
             return True
 
         # Map the request and the view into the permission that the user
@@ -967,10 +975,11 @@ class InsightsRBACPermission(BasePermission):
         if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
             # Kessel check requires a 'user_id' in the identity's user data.
             if 'user_id' not in user_data:
-                return False
+                return set_rbac_failure(request, 'KESSEL: user_data missing user_id')
 
             if scope == ResourceScope.HOST:
                 # Let has_object_permission take care of it
+                set_rbac_success(request, 'KESSEL: ResourceScope is HOST - defer to has_object_permission')
                 return True
             else:
                 result, elapsed = has_kessel_permission(
@@ -989,15 +998,20 @@ class InsightsRBACPermission(BasePermission):
         if elapsed > 0.0:
             setattr(request._request, 'rbac_elapsed_time_millis', int(elapsed * 1000))
         setattr(request._request, 'rbac_sought_permission', permission)
+        set_rbac_success(
+            request, 'InsightsRBACPermission has_permission returns %s' % bool(result)
+        )
         return bool(result)
 
     def has_object_permission(self, request: Request, view, obj) -> bool:
         if not feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
+            set_rbac_success(request, 'KESSEL not enabled, has_object_permission OK')
             return True
 
         resource, scope = self._get_resource(view)
 
         if scope != ResourceScope.HOST:
+            set_rbac_success(request, 'ResourceScope not HOST, has_object_permission OK')
             return True
 
         # Map the request and the view into the permission that the user
@@ -1022,7 +1036,7 @@ class InsightsRBACPermission(BasePermission):
         if elapsed > 0.0:
             setattr(request._request, 'rbac_elapsed_time_millis', int(elapsed * 1000))
 
-        _ = set_rbac_failure(
+        set_rbac_success(
             request, f'InsightsRBACPermission successfully evaluated to {result}'
         )
         return result
@@ -1073,7 +1087,7 @@ class BaseAssociatePermission(BasePermission):
     def has_permission(self, request: Request, view) -> bool:
         # Return OK if we're not restricting access, or we're viewing an
         # un-restricted view
-        _ = set_rbac_failure(request, 'BaseAssociatePermission has_permission() check started')
+        set_rbac_success(request, 'BaseAssociatePermission has_permission() check started')
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
             return set_rbac_failure(request, 'Not yet authenticated in associate permission')
         identity = request.auth
@@ -1098,7 +1112,7 @@ class BaseAssociatePermission(BasePermission):
                 )
 
         result = self.has_associate_permission(request, view, identity)
-        _ = set_rbac_failure(request, f"Associate permission successfully returned {result}")
+        set_rbac_success(request, f"Associate permission successfully returned {result}")
         return result
 
 
@@ -1187,7 +1201,7 @@ class BaseRedHatUserPermission(BasePermission):
         by default, so this class must be subclassed and that method
         implemented for this to work.
         """
-        _ = set_rbac_failure(request, 'Red Hat user has_permission() check starting')
+        set_rbac_success(request, 'Red Hat user has_permission() check starting')
         if not (hasattr(request, 'user') and hasattr(request, 'auth')):
             return set_rbac_failure(request, 'Red Hat user not authenticated')
         identity: dict[str, Any] = request.auth
@@ -1214,7 +1228,7 @@ class BaseRedHatUserPermission(BasePermission):
                 )
 
         result = self.has_red_hat_permission(request, view, identity['user'])
-        _ = set_rbac_failure(request, f"Red Hat permission successfully returned {result}")
+        set_rbac_success(request, f"Red Hat permission successfully returned {result}")
         return result
 
 
