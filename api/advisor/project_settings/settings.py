@@ -420,7 +420,7 @@ EMAIL_HOST = os.getenv('MAIL_HOST', 'mail.corp.redhat.com')
 
 AUTOACK = {
     'TAG': 'autoack',
-    'CREATED_BY': 'Red Hat Insights',
+    'CREATED_BY': 'Red Hat Lightspeed',
     'JUSTIFICATION': 'Disabled by default - enable to begin detection'
 }
 
