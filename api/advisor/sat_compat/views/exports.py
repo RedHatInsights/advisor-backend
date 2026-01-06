@@ -25,7 +25,7 @@ from drf_spectacular.utils import extend_schema
 
 from api.filters import branch_id_param
 from api.models import Ack, CurrentReport, InventoryHost, get_reports_subquery
-from api.permissions import InsightsRBACPermission, CertAuthPermission, request_to_org
+from api.permissions import request_to_org
 from api.views.export import ExportViewSet, ExportRouter
 
 from sat_compat.serializers import (
@@ -93,7 +93,6 @@ class ReportsViewSet(ExportViewSet):
 
     Reports can be filtered by branch_id so far.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     queryset = CurrentReport.objects.all()
     serializer_class = SatExportReportSerializer
     renderer_classes = (ReportsCSVRenderer, JSONRenderer, )
@@ -140,7 +139,6 @@ class SystemsViewSet(ExportViewSet):
 
     Systems can be filtered by branch_id so far.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     queryset = InventoryHost.objects.all()
     serializer_class = SatExportSystemSerializer
     renderer_classes = (SystemsCSVRenderer, JSONRenderer, )

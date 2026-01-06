@@ -28,7 +28,7 @@ from api.filters import (
     OpenApiParameter
 )
 from api.models import InventoryHost, get_reports_subquery
-from api.permissions import InsightsRBACPermission, CertAuthPermission, request_to_org
+from api.permissions import request_to_org
 from sat_compat.serializers import (
     SatStatsSerializer, SatStatsSubRRSerializer, SatStatsSubSSerializer
 )
@@ -48,7 +48,6 @@ class StatsViewSet(ViewSet):
     A simple one-stop shop for all your statistical needs.
     """
     pagination_class = None
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatStatsSerializer
 
     def get_queryset(self):

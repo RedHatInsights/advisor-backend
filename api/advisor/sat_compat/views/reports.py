@@ -27,7 +27,6 @@ from api.filters import (
 )
 from api.models import CurrentReport, Host, get_reports_subquery
 from api.utils import PaginateMixin
-from api.permissions import InsightsRBACPermission, CertAuthPermission
 from sat_compat.serializers import SatReportSerializer
 from sat_compat.utils import ClassicPageNumberPagination
 
@@ -52,7 +51,6 @@ class ReportsViewSet(ReadOnlyModelViewSet, PaginateMixin):
     """
     queryset = CurrentReport.objects.all()
     pagination_class = ClassicPageNumberPagination
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatReportSerializer
 
     def get_queryset(self):

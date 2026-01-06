@@ -1062,6 +1062,12 @@ class InsightsRBACPermission(BasePermission):
         return resource, scope
 
 
+# We can't use | to combine the standard InsightsRBACPermission with
+# CertAuthPermission in the project settings, so we have to create a class
+# here that combines them there to be loaded lazily.
+DefaultAdvisorPermission = InsightsRBACPermission | CertAuthPermission
+
+
 class BaseAssociatePermission(BasePermission):
     """
     This is a base class for permissions that check the user data supplied in

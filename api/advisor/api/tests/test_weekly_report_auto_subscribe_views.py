@@ -121,7 +121,7 @@ class WeeklyReportAutoSubscribeTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(
-            response.json(), {"detail": "Red Hat RBAC has denied you permission"}
+            response.json(), {"detail": "You do not have permission to perform this action."}
         )
 
         # Missing identity header altogether

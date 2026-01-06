@@ -34,7 +34,7 @@ from api.models import (
     Ack, Playbook, Resolution, Rule, Tag,
     get_reports_subquery, convert_to_count_query
 )
-from api.permissions import InsightsRBACPermission, CertAuthPermission, request_to_org
+from api.permissions import request_to_org
 from api.utils import PaginateMixin
 
 from sat_compat.serializers import SatRuleSerializer, SatPlaybookSerializer
@@ -171,7 +171,6 @@ class RuleViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
     queryset = Rule.objects.all()
     serializer_class = SatRuleSerializer
     pagination_class = ClassicFakePagination
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     lookup_field = 'rule_id'
     # For handling the ansible_resolutions view
     extra_path_params = []

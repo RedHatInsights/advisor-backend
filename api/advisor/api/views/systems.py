@@ -37,9 +37,7 @@ from api.filters import (
 from api.models import (
     InventoryHost, get_systems_queryset, get_reports_subquery
 )
-from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission, ResourceScope,
-)
+from api.permissions import ResourceScope
 from api.serializers import ReportSerializer, SystemSerializer
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin,
@@ -82,7 +80,6 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = 'id'
     lookup_url_kwarg = 'uuid'
     pagination_class = CustomPageNumberPagination
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     queryset = InventoryHost.objects.all()
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.WORKSPACE
