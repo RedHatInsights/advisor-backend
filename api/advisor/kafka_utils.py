@@ -40,6 +40,15 @@ class HandlerEntry(TypedDict):
 type HandlerDataValue = HandlerEntry
 
 
+class ProducerEntry(TypedDict):
+    topic: str
+    message: bytes | None
+    callback: str | None
+
+
+type ProducerEntryValue = ProducerEntry
+
+
 duplicate_handler_warning_message = (
     'Topic %s already has function %s registered when trying to ' +  # noqa: W504
     'register function %s.  Ignoring this new handler.'
@@ -102,7 +111,7 @@ class DummyProducer:
     """
     def __init__(self, *args, **kwargs):
         self.poll_calls: int = 0
-        self.produce_calls: list[dict[str, str | None]] = []
+        self.produce_calls: list[ProducerEntryValue] = []
         self.flush_calls: int = 0
 
     def poll(self, _time: int):
@@ -120,6 +129,11 @@ class DummyProducer:
 
     def flush(self):
         self.flush_calls += 1
+
+    def reset_calls(self):
+        self.poll_calls = 0
+        self.produce_calls = []
+        self.flush_calls = 0
 
 
 class DummyConsumer():
