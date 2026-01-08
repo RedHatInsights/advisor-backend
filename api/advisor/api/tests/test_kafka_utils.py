@@ -114,6 +114,7 @@ class TestKafkaUtils(TestCase):
                 logs.output[0], "ERROR:advisor-log:Kafka producer is not initialized"
             )
         kafka_utils.producer = current_producer
+        current_producer.reset_calls()
 
         # Now test that we actually did something with our producer
         with self.assertLogs(logger='advisor-log') as logs:
