@@ -60,6 +60,42 @@ def write_cert(cert: str):
 #############################################################################
 # Dummy classes for use during testing
 
+class DummyMessage():
+    """
+    A dummy Kafka message for use during testing.
+
+    Do not base this on confluent_kafka.Message because it seems to have a
+    weird initialisation process that we don't want to follow for tests.
+    """
+    def __init__(self, topic: str, value: bytes, headers: list[tuple[str, bytes]] | None = None):
+        self._topic: str = topic
+        self._value: bytes = value
+        self._headers: list[tuple[str, bytes]] | None = headers
+        self._partition: int = 0
+        self._error: str = ''
+
+    def topic(self) -> str:
+        return self._topic
+
+    def value(self) -> bytes:
+        return self._value
+
+    def headers(self) -> list[tuple[str, bytes]] | None:
+        return self._headers
+
+    def set_partition(self, partition: int):
+        self._partition = partition
+
+    def partition(self) -> int:
+        return self._partition
+
+    def set_error(self, error: str):
+        self._error = error
+
+    def error(self):
+        return self._error
+
+
 class DummyProducer:
     """
     A dummy Kafka producer for use during testing.
@@ -72,44 +108,18 @@ class DummyProducer:
     def poll(self, _time: int):
         self.poll_calls += 1
 
-    def produce(self, topic: str, message: str, callback: str | None = None):
+    def produce(self, topic: str, message: bytes, callback: Callable | None = None):
         self.produce_calls.append({
             'topic': topic,
             'message': message,
-            'callback': callback,
+            'callback': callback.__name__ if callback else None,
         })
+        if callback:
+            dummy_message = DummyMessage(topic, message, headers=None)
+            callback(err=None, msg=dummy_message)
 
     def flush(self):
         self.flush_calls += 1
-
-
-class DummyMessage():
-    """
-    A dummy Kafka message for use during testing.
-
-    Do not base this on confluent_kafka.Message because it seems to have a
-    weird initialisation process that we don't want to follow for tests.
-    """
-    def __init__(self, topic: str, value: bytes, headers: list[tuple[str, bytes]] | None = None):
-        self._topic: str = topic
-        self._value: bytes = value
-        self._headers: list[tuple[str, bytes]] | None = headers
-        self._error: str = None
-
-    def topic(self) -> str:
-        return self._topic
-
-    def value(self) -> bytes:
-        return self._value
-
-    def headers(self) -> list[tuple[str, bytes]] | None:
-        return self._headers
-
-    def set_error(self, error: str):
-        self._error = error
-
-    def error(self):
-        return self._error
 
 
 class DummyConsumer():
@@ -207,19 +217,26 @@ else:
 #############################################################################
 # Message delivery callback
 
-def report_delivery_callback(err: Exception | None, msg: confluent_kafka.Message):
-    """ Called once for each message produced to indicate delivery result.
-        Triggered by poll() or flush(). """
+def report_delivery_callback(
+    err: Exception | None, msg: confluent_kafka.Message | DummyMessage
+):
+    """
+    Called once for each message produced to indicate delivery result.
+    Triggered by poll() or flush().
+    """
     if err is None:
         logger.info(
-            'Webhook event message delivered to %s [%s]',
+            'Kafka message delivered to %s [%s]',
             msg.topic(), msg.partition()
         )
     else:
-        logger.error('Webhook event message delivery failed: {}'.format(err))
+        logger.error('Kafka message delivery failed: {}'.format(err))
 
 
 def send_kafka_message(topic: str, message: JsonValue):
+    """
+    Simple helper to send a message on that topic.
+    """
     if producer is None:
         logger.error("Kafka producer is not initialized")
         return
@@ -322,6 +339,7 @@ class KafkaDispatcher(object):
         header_dict: dict[str, str] = {
             key: value.decode('utf-8')
             for key, value in headers
+            if value
         }
         filters_matched = all(
             (key in header_dict and header_dict[key] == value)
