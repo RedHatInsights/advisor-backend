@@ -27,9 +27,7 @@ from api.filters import (
     OpenApiParameter, value_of_param, branch_id_param,
 )
 from api.models import Ack, Rule
-from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission, request_to_org
-)
+from api.permissions import request_to_org
 from api.utils import store_post_data
 
 from sat_compat.serializers import (
@@ -56,7 +54,6 @@ class AckViewSet(viewsets.ReadOnlyModelViewSet, DestroyModelMixin):
     """
     queryset = Ack.objects.filter(rule__deleted_at__isnull=True, rule__active=True)
     pagination_class = None
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatAckSerializer
 
     def get_queryset(self):

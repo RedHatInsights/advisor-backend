@@ -361,7 +361,10 @@ REST_FRAMEWORK = {
         'api.permissions.RHIdentityAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'api.permissions.InsightsRBACPermission',
+        # We can't use | to combine the standard InsightsRBACPermission with
+        # CertAuthPermission here, so we have to create a class in
+        # api.permissions that combines them there to be loaded lazily.
+        'api.permissions.DefaultAdvisorPermission',
     ],
     'DEFAULT_PAGINATION_CLASS': 'api.utils.CustomPageNumberPagination',
     'PAGE_SIZE': 10,

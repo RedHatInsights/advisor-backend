@@ -40,9 +40,7 @@ from api.models import (
     InventoryHost, Playbook, Resolution, Rule, Tag, Upload,
     get_reports_subquery,
 )
-from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission, ResourceScope
-)
+from api.permissions import ResourceScope
 from api.serializers import (
     ExportHitsSerializer, RuleExportSerializer, ReportExportSerializer,
     SystemSerializer,
@@ -277,7 +275,6 @@ class HitsViewSet(ExportViewSet):
     """
     Export the hosts and rules listing as CSV or JSON.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     renderer_classes = (JSONRenderer, HitsCSVRenderer, )
     serializer_class = ExportHitsSerializer
 
@@ -356,7 +353,6 @@ class ReportsViewSet(ExportViewSet):
     Export the reports of rule hits on hosts as JSON.  Look up the rule and
     system in the named export views.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     renderer_classes = (JSONRenderer, )
     serializer_class = ReportExportSerializer
 
@@ -429,7 +425,6 @@ class SystemsViewSet(ExportViewSet):
 
     Systems can be sorted and filtered by display name and rule id.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     renderer_classes = (JSONRenderer, SystemsCSVRenderer, )
     serializer_class = SystemSerializer
 

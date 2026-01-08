@@ -47,8 +47,7 @@ from api.filters import (
 )
 from api.models import Ack, Host, InventoryHost, Playbook, Rule
 from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission, request_to_username,
-    http_auth_header_key, auth_header_key, request_to_org
+    request_to_username, http_auth_header_key, auth_header_key, request_to_org
 )
 from api.utils import retry_request, store_post_data
 
@@ -269,7 +268,6 @@ class MaintenanceViewSet(GenericViewSet):
     """
     pagination_class = None
     queryset = SatMaintenance.objects.all()
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatMaintenanceSerializer
     # For handling the plays_set_playbook view
     extra_path_params = []

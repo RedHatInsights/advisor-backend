@@ -30,8 +30,7 @@ from api.filters import (
 )
 from api.models import RuleCategory, get_reports_subquery
 from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission, RHIdentityAuthentication, ResourceScope,
-    request_object_for_testing,
+    RHIdentityAuthentication, ResourceScope, request_object_for_testing,
 )
 from api.serializers import (
     StatsSerializer, OverviewStatsSerializer
@@ -96,19 +95,16 @@ def overview_stats_counts(queryset):
 # simpler than decoding the parameter everywhere and handing that in.
 def get_rules_stats(org_id):
     request = request_object_for_testing(org_id=org_id, auth_by=RHIdentityAuthentication)
-    request.auth['org_id'] = org_id
     return stats_counts(get_reports_subquery(request), 'rule_id')
 
 
 def get_reports_stats(org_id):
     request = request_object_for_testing(org_id=org_id, auth_by=RHIdentityAuthentication)
-    request.auth['org_id'] = org_id
     return stats_counts(get_reports_subquery(request), 'id')
 
 
 def get_systems_stats(org_id):
     request = request_object_for_testing(org_id=org_id)
-    request.auth['org_id'] = org_id
     return stats_counts(get_reports_subquery(request), 'host_id')
 
 
@@ -123,7 +119,6 @@ class StatsViewSet(viewsets.ViewSet):
     """
     View the statistics for this account.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.ORG
     serializer_class = StatsSerializer

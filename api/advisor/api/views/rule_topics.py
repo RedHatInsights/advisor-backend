@@ -35,7 +35,6 @@ from api.models import (
     convert_to_count_query, get_reports_subquery, get_reporting_system_ids_queryset,
 )
 from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission,
     ResourceScope, TurnpikeIdentityAuthentication, AssociatePermission
 )
 from api.serializers import (
@@ -67,7 +66,6 @@ class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
     """
     lookup_field: str = 'slug'
     pagination_class = None
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     queryset = RuleTopic.objects.all()
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.ORG

@@ -43,7 +43,6 @@ from api.models import (
     Resolution, Rule, convert_to_count_query, get_reports_subquery
 )
 from api.permissions import (
-    InsightsRBACPermission, CertAuthPermission,
     http_auth_header_key, auth_header_key, request_to_org
 )
 from api.utils import (
@@ -164,7 +163,6 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
     # lookup_field not used as we override the views with code
     lookup_url_kwarg = 'uuid'
     pagination_class = ClassicPageNumberPagination
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatSystemsSerializer
 
     def get_queryset(self):
@@ -472,7 +470,6 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'insights_id'
     lookup_url_kwarg = 'uuid'
     pagination_class = None
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatSystemsSerializer
 
     def get_queryset(self):

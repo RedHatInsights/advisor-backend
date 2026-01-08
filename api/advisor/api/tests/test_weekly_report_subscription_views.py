@@ -253,7 +253,9 @@ class WeeklyReportSubscriptionTestCase(TestCase):
         # Missing username in header
         response = self.client.post(reverse('weeklyreportsubscription-list'), **auth_header_for_testing(username=None))
         self.assertEqual(response.status_code, 403)
-        self.assertIn("Red Hat RBAC has denied you permission", response.content.decode())
+        self.assertEqual(
+            response.json(), {"detail": "You do not have permission to perform this action."}
+        )
 
         # Missing identity header altogether
         response = self.client.post(reverse('weeklyreportsubscription-list'))
