@@ -30,7 +30,7 @@ from api.models import (
     Resolution, ResolutionRisk, Rule, RuleTopic,
     get_reports_subquery, convert_to_count_query,
 )
-from api.permissions import InsightsRBACPermission, CertAuthPermission, request_to_org
+from api.permissions import request_to_org
 
 from sat_compat.serializers import SatRuleTopicSerializer
 
@@ -53,7 +53,6 @@ class TopicsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = RuleTopic.objects.all()
     lookup_field = 'slug'
     pagination_class = None
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
     serializer_class = SatRuleTopicSerializer
 
     def get_reports_subquery(self, **report_filters):

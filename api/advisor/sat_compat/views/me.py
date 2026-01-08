@@ -19,7 +19,7 @@ from rest_framework.viewsets import ViewSet
 
 from drf_spectacular.utils import extend_schema
 
-from api.permissions import InsightsRBACPermission, CertAuthPermission, request_to_org
+from api.permissions import request_to_org
 
 from sat_compat.serializers import SatMeSerializer
 
@@ -29,7 +29,6 @@ class MeView(ViewSet):
     The only thing this provides is the account number, since that is the
     only thing that Satellite uses.
     """
-    permission_classes = [InsightsRBACPermission | CertAuthPermission]
 
     @extend_schema(
         responses={200: SatMeSerializer(many=False)},
