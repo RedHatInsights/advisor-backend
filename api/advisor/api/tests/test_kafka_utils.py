@@ -16,7 +16,10 @@
 
 from django.test import TestCase  # , override_settings
 
-from kafka_utils import DummyMessage, DummyConsumer, JsonValue, KafkaDispatcher
+from kafka_utils import (
+    DummyMessage, DummyConsumer, JsonValue, KafkaDispatcher,
+    send_kafka_message,
+)
 
 
 class DummyHandler:
@@ -97,4 +100,37 @@ class TestKafkaUtils(TestCase):
             self.assertIn(  # full log includes a traceback...
                 "ValueError: Error from topic='error' with body={'data': 'something else'}",
                 logs.output[4]
+            )
+
+    def test_send_kafka_message(self):
+        import kafka_utils
+        current_producer = kafka_utils.producer
+
+        # Test logs if no producer
+        kafka_utils.producer = None
+        with self.assertLogs(logger='advisor-log') as logs:
+            send_kafka_message('test_topic', {'data': 'test_data'})
+            self.assertEqual(
+                logs.output[0], "ERROR:advisor-log:Kafka producer is not initialized"
+            )
+        kafka_utils.producer = current_producer
+
+        # Now test that we actually did something with our producer
+        with self.assertLogs(logger='advisor-log') as logs:
+            send_kafka_message('test_topic', {'data': 'test_data'})
+            self.assertEqual(current_producer.poll_calls, 1)
+            self.assertEqual(
+                current_producer.produce_calls[0]['topic'], 'test_topic'
+            )
+            self.assertEqual(
+                current_producer.produce_calls[0]['message'], b'{"data": "test_data"}'
+            )
+            self.assertEqual(
+                current_producer.produce_calls[0]['callback'], 'report_delivery_callback'
+            )
+            self.assertEqual(current_producer.flush_calls, 1)
+            # The report_delivery_callback function should have logged
+            # delivery of the message.
+            self.assertEqual(
+                logs.output[0], "INFO:advisor-log:Kafka message delivered to test_topic [0]"
             )
