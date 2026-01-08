@@ -21,7 +21,7 @@ from UnleashClient import UnleashClient
 
 # Define actual feature flags here, to be used as module properties.
 FLAG_ADVISOR_KESSEL_ENABLED = "advisor.kessel_enabled"
-FLAG_INVENTORY_HOSTS_DB_LOGICAL_REPLICATION = "advisor.inventory_hosts_db_logical_replication"
+FLAG_INVENTORY_EVENT_REPLICATION = "advisor.inventory_event_replication"
 
 
 def setting(name, default=None):
@@ -121,7 +121,6 @@ def custom_fallback(feature_name: str, context: dict) -> bool:
 
     For example:
     - 'advisor.kessel_enabled' -> checks settings.KESSEL_ENABLED
-    - 'advisor.inventory_hosts_db_logical_replication' -> checks settings.INVENTORY_HOSTS_DB_LOGICAL_REPLICATION
 
     Args:
         feature_name: The feature flag name
