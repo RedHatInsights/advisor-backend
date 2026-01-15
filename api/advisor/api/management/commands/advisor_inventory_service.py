@@ -21,6 +21,9 @@ from project_settings import kafka_settings
 from django.core.management.base import BaseCommand
 
 from advisor_logging import logger
+from feature_flags import (
+    feature_flag_is_enabled, FLAG_INVENTORY_EVENT_REPLICATION
+)
 from api.models import InventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
 
 from kafka_utils import JsonValue, KafkaDispatcher  # , send_kafka_message
@@ -36,6 +39,14 @@ def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
     """
     if 'type' not in message:
         logger.error("Message received on topic %s with no 'type' field", topic)
+        return
+
+    if not feature_flag_is_enabled(FLAG_INVENTORY_EVENT_REPLICATION):
+        sys_uuid: str = message.get('host', {}).get('id', 'unknown UUID')
+        logger.info(
+            "Received Inventory %s event for %s - feature flag not enabled, ignoring",
+            message['type'], sys_uuid
+        )
         return
 
     match message['type']:

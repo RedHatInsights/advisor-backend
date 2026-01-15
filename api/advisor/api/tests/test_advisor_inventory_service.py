@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from django.test import TestCase  # , override_settings
 from django.utils import timezone
 
+from feature_flags import set_unleash_flag, FLAG_INVENTORY_EVENT_REPLICATION
 from kafka_utils import JsonValue
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
@@ -154,6 +155,7 @@ class TestAdvisorInventoryServer(TestCase):
         'basic_test_data'
     ]
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_message_dispatch(self):
         """
         Test that the handle_inventory_event function dispatches messages
@@ -176,6 +178,7 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertEqual(len(logs.output), 2)
         # Test the actual calls to create and delete in their own test methods.
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_created_message_success(self):
         """
         Test successful creation and updating of hosts.
@@ -222,6 +225,7 @@ class TestAdvisorInventoryServer(TestCase):
             new_host = Host.objects.get(inventory_id=new_host_id)
             self.assertEqual(str(new_host.satellite_id).upper(), new_host_satid)
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_created_message_fail_missing_key(self):
         """
         Test all the missing keys being detected in the create message
@@ -340,6 +344,7 @@ class TestAdvisorInventoryServer(TestCase):
             # over from the previous update.
             self.assertEqual(str(host.satellite_id), new_host_satid.lower())
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_updated_message_success(self):
         """
         Test successful updating of existing host.
@@ -370,6 +375,7 @@ class TestAdvisorInventoryServer(TestCase):
             )
             self.assertEqual(len(log_lines), 3)
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_deleted_message_success(self):
         """
         Test successful deletion of existing host.
@@ -427,6 +433,7 @@ class TestAdvisorInventoryServer(TestCase):
             0
         )
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_deleted_message_fail_missing_key(self):
         """
         Test all the missing keys being detected in the delete message
