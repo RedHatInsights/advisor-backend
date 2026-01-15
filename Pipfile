@@ -25,7 +25,6 @@ django-stubs = "*"
 [packages]
 app-common-python = "*"
 boto3 = "*"
-cel-python = "==0.3.0"
 django = "*"
 django-prometheus = "*"
 django-bulk-update = "*"
