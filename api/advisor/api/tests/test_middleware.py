@@ -15,10 +15,10 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import responses
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, Timeout
 
-from django.test import TestCase
-from rest_framework.serializers import ValidationError
+from django.test import TestCase, override_settings
+from django.core.exceptions import ValidationError
 
 from api.management.commands.weekly_report_emails import (
     MiddlewareClient, get_users_to_email, send_emails,
@@ -89,3 +89,66 @@ class MiddlewareTests(TestCase):
         )
         with self.settings(MIDDLEWARE_HOST_URL=test_middleware_url):
             user_account_details('username')
+
+    @responses.activate
+    @override_settings(MIDDLEWARE_HOST_URL=test_middleware_url)
+    def test_retry_request_timeout_error(self):
+        # Assert that user_account_details timeouts are retried but ultimately raise a ValidationError when all retries fail
+        responses.add(
+            responses.POST, test_middleware_url + '/users', body=Timeout('Read timed out')
+        )
+
+        with self.assertLogs(logger='advisor-log') as logs:
+            with self.assertRaisesRegex(ValidationError, 'Connection error retrieving account details'):
+                user_account_details('username')
+
+            # Assert the timeout error occurred 3 times
+            assert len(responses.calls) == 3
+            self.assertIn(constants.read_timeout_errmsg, logs.output[0])
+            self.assertIn(constants.read_timeout_errmsg, logs.output[1])
+            self.assertIn(constants.read_timeout_errmsg, logs.output[2])
+            self.assertIn("ERROR:advisor-log:Request to middleware failed after 3 tries.", logs.output)
+
+    @responses.activate
+    @override_settings(MIDDLEWARE_HOST_URL=test_middleware_url)
+    def test_retry_request_timeout_then_success(self):
+        """
+        Assert that when initial attempts time out but a later retry succeeds,
+        user_account_details returns the expected data without raising ValidationError.
+        """
+        # First N calls time out…
+        responses.add(
+            responses.POST,
+            test_middleware_url + '/users',
+            body=Timeout('Read timed out'),
+        )
+        responses.add(
+            responses.POST,
+            test_middleware_url + '/users',
+            body=Timeout('Read timed out'),
+        )
+        # …then a successful response with valid account details
+        expected_payload = {
+            'username': 'username',
+            'email': 'user@example.com',
+            'first_name': 'Test',
+            'last_name': 'User',
+        }
+        responses.add(
+            responses.POST,
+            test_middleware_url + '/users',
+            json=expected_payload,
+            status=200,
+        )
+
+        with self.assertLogs(logger='advisor-log') as logs:
+            result = user_account_details('username')
+
+            # Assert that timeouts were logged (i.e., we actually retried)
+            assert len(responses.calls) == 3  # 2 timeouts + 1 success
+            assert len(logs.output) == 2  # 2 timeout log entries
+            self.assertIn(constants.read_timeout_errmsg, logs.output[0])
+            self.assertIn(constants.read_timeout_errmsg, logs.output[1])
+
+            # Assert we stopped retrying after the successful response and returned the expected data
+            self.assertEqual(result, expected_payload)
