@@ -15,6 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import responses
+import json
 from requests.exceptions import HTTPError, Timeout
 
 from django.test import TestCase, override_settings
@@ -73,6 +74,26 @@ class MiddlewareTests(TestCase):
             )
             self.assertEqual(success, [], [])
             self.assertEqual(to_email, [{'username': 'user', 'address': 'user@example.com'}])
+
+    @responses.activate
+    @override_settings(MIDDLEWARE_HOST_URL=test_middleware_url)
+    def test_middleware_send_email_includes_email_sender(self):
+        # Verify that the emailSender field is included in the request
+        from project_settings import settings
+
+        def check_email_sender_field(request):
+            data = json.loads(request.body)
+            assert 'emailSender' in data
+            assert data['emailSender'] == constants.default_from_email
+            assert 'emails' in data
+            return (200, {}, json.dumps({'message': 'success'}))
+
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/sendEmails',
+            callback=check_email_sender_field, content_type=constants.json_mime
+        )
+        client = MiddlewareClient()
+        client.send_email('subject', settings.DEFAULT_FROM_EMAIL, 'recipient@example.com', 'body')
 
     @responses.activate
     def test_user_account_details_request_timeout(self):
