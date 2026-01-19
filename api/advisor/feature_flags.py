@@ -101,6 +101,38 @@ class Client:
 
 
 _client = Client().connect()
+_test_settings: dict[str, bool] = dict()
+
+
+class set_unleash_flag(object):
+    """
+    A context manager that sets a specific Unleash feature flag for the
+    duration of a test.  The feature flag is reverted to its previous 'state'
+    - either removed or reverted - on exiting.  This also operates as a
+    function or method decorator thanks to the __call__ method - thanks to
+    Granite LLM for teaching me this trick!
+    """
+    def __init__(self, feature: str, setting: bool) -> None:
+        self.feature = feature
+        self.setting = setting
+        self.prev_value = _test_settings.get(feature, None)
+
+    def __enter__(self):
+        _test_settings[self.feature] = self.setting
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.prev_value is None:
+            del _test_settings[self.feature]
+        else:
+            _test_settings[self.feature] = self.prev_value
+        # Return False to indicate no exception raised
+        return False
+
+    def __call__(self, fn):
+        def wrapper(*args, **kwargs):
+            with self:
+                fn(*args, **kwargs)
+        return wrapper
 
 
 def unleash_client() -> UnleashClient:
@@ -108,6 +140,8 @@ def unleash_client() -> UnleashClient:
 
 
 def feature_flag_is_enabled(feature: str, context: dict = None) -> bool:
+    if setting('ENVIRONMENT', 'prod') == 'dev' and feature in _test_settings:
+        return _test_settings[feature]
     return _client.is_enabled(feature, context=context, fallback_function=custom_fallback)
 
 
