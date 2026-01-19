@@ -301,44 +301,44 @@ def handle_emails(
             "Found no orgs subscribed for weekly emails, or all have emails sent "
             "within last %dhrs", MAIL_MINIMUM_HOURS
         )
-    else:
-        client = MiddlewareClient()
+        return 0, 0
 
-        for account_org in account_orgs:
-            (users_to_email, expired_users) = get_users_to_email(
-                account_org['org_id'], account_org['account'], latest_email_time
+    client = MiddlewareClient()
+    for account_org in account_orgs:
+        (users_to_email, expired_users) = get_users_to_email(
+            account_org['org_id'], account_org['account'], latest_email_time
+        )
+        if not users_to_email:
+            logger.error(
+                f"No users have valid email addresses in account {account_org['account']} org_id {account_org['org_id']}, or we"
+                " could not find the users in our WeeklyReportSubscription table"
             )
-            if not users_to_email:
-                logger.error(
-                    f"No users have valid email addresses in account {account_org['account']} org_id {account_org['org_id']}, or we"
-                    " could not find the users in our WeeklyReportSubscription table"
-                )
-                continue
+            continue
 
-            reports = get_reports(account_org['org_id'])
+        reports = get_reports(account_org['org_id'])
 
-            # Accounts that do not have systems should not receive the email
-            if 'systems' in reports and reports['systems']['total'] == 0:
-                logger.info("No systems found for org_id %s. Not sending email",
-                            account_org['org_id'])
-                continue
+        # Accounts that do not have systems should not receive the email
+        if 'systems' in reports and reports['systems']['total'] == 0:
+            logger.info("No systems found for org_id %s. Not sending email",
+                        account_org['org_id'])
+            continue
 
-            users_success, users_failed = send_emails(
-                account_org['org_id'], account_org['account'],
-                reports, users_to_email, subject, html_template, client
+        users_success, users_failed = send_emails(
+            account_org['org_id'], account_org['account'],
+            reports, users_to_email, subject, html_template, client
+        )
+        total_users_failed += len(users_failed)
+        total_users_success += len(users_success)
+
+        if expired_users and delete_expired_users:
+            delete_stats = WeeklyReportSubscription.objects.filter(
+                org_id=account_org['org_id'],
+                username__in=expired_users
+            ).delete()
+            logger.info(
+                "Deleted %d expired users from org_id %s",
+                delete_stats[0], account_org['org_id']
             )
-            total_users_failed += len(users_failed)
-            total_users_success += len(users_success)
-
-            if expired_users and delete_expired_users:
-                delete_stats = WeeklyReportSubscription.objects.filter(
-                    org_id=account_org['org_id'],
-                    username__in=expired_users
-                ).delete()
-                logger.info(
-                    "Deleted %d expired users from org_id %s",
-                    delete_stats[0], account_org['org_id']
-                )
 
     return total_users_success, total_users_failed
 

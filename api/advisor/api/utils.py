@@ -22,7 +22,7 @@ import time
 
 from django.conf import settings
 
-from rest_framework.serializers import ValidationError
+from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.utils.urls import replace_query_param
@@ -202,7 +202,7 @@ class PaginateMixin(object):
 ##############################################################################
 
 
-def retry_request(service, url, mode='get', max_retries=3, time_exponent=5, **kwargs):
+def retry_request(service, url, mode='get', max_retries=3, time_exponent=5, retry_timeouts=False, **kwargs):
     """
     Requests the given URL, by GET or `mode` if set, up to `max_retries` (3)
     times, with an exponential timeout (of `time_exponent ** (retry - 2)`
@@ -248,7 +248,8 @@ def retry_request(service, url, mode='get', max_retries=3, time_exponent=5, **kw
             logger.error(
                 f"Error: Timed out reached for {service}: '{e}'"
             )
-            return (response, time.monotonic() - req_start)
+            if not retry_timeouts:
+                return (response, time.monotonic() - req_start)
         if request_succeeded:
             break
         time.sleep(sleep_time)
@@ -282,7 +283,8 @@ def user_account_details(username):
             'x-rh-apitoken': settings.MIDDLEWARE_API_TOKEN,
             'x-rh-clientid': settings.MIDDLEWARE_CLIENT_ID,
         },
-        timeout=10
+        timeout=10,
+        retry_timeouts=True,
     )
     if response and response.status_code == 200:
         # The response is a list of dicts, with at least the 'username' key
