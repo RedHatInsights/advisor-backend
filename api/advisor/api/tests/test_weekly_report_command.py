@@ -107,6 +107,7 @@ def count_posted_emails(request):
     data = json.loads(request.body)
     assert 'emails' in data
     assert isinstance(data['emails'], list)
+    assert 'emailSender' in data
     mail.outbox.extend(data['emails'])
     return (200, {}, json.dumps({'message': "The emails were sent"}))
 

@@ -420,6 +420,7 @@ ADVISOR_API_VERSION.info({'build_name': BUILD_NAME,
                           'commit_url': COMMIT_URL})
 
 EMAIL_HOST = os.getenv('MAIL_HOST', 'mail.corp.redhat.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Red Hat Hybrid Cloud Console <noreply@redhat.com>')
 
 AUTOACK = {
     'TAG': 'autoack',

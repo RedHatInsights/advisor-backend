@@ -122,6 +122,7 @@ class MiddlewareClient:
         response = self.session.post(
             settings.MIDDLEWARE_HOST_URL + '/sendEmails',
             json={
+                'emailSender': from_email,
                 'emails': [
                     {
                         'subject': subject,
@@ -259,7 +260,7 @@ def send_emails(org_id, account, reports, users_to_email, subject, html_template
             try:
                 client.send_email(
                     subject=subject,
-                    from_email='Red Hat Lightspeed <noreply@redhat.com>',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient=user['address'],
                     body=render_to_string(html_template, context=reports),
                 )
