@@ -21,6 +21,7 @@ pytest-server-fixtures = {extras = ["http"],version = "*"}
 pytest-django = "*"
 unittest-xml-reporting = "*"
 django-stubs = "*"
+mypy = "*"
 
 [packages]
 app-common-python = "*"
