@@ -21,6 +21,7 @@ import random
 import re
 import responses
 from shutil import copyfile
+from typing import Callable
 import yaml
 
 from django.conf import settings
@@ -44,6 +45,10 @@ PATH_TO_TEST_CONTENT_REPO = resolve_path('api/test_content')
 ACTIVE_RULE_METADATA_FILE = join(
     PATH_TO_TEST_CONTENT_REPO,
     'content/fixture_data/test/Active_rule/metadata.yaml'
+)
+ACKED_RULE_METADATA_FILE = join(
+    PATH_TO_TEST_CONTENT_REPO,
+    'content/fixture_data/test/Acked_rule/metadata.yaml'
 )
 ACTIVE_RULE_MORE_INFO_FILE = join(
     PATH_TO_TEST_CONTENT_REPO,
@@ -131,9 +136,9 @@ class FileModifier(object):
         Given a list of tuples of (file to modify, modifier function),
         prepare a temporary name for the given file.
         """
-        self.modifier_tuples = modifier_tuples
+        self.modifier_tuples: tuple[tuple[str, Callable[[str], str]]] = modifier_tuples
         # Precalculate the temp file paths
-        self.temp_file_paths = {
+        self.temp_file_paths: dict[str, str] = {
             file_path: temp_file(file_path, 6)
             for file_path, _ in modifier_tuples
         }
@@ -147,12 +152,12 @@ class FileModifier(object):
             if file_path not in file_content_cache:
                 with open(file_path, 'r') as fh:
                     file_content_cache[file_path] = fh.read()
-            content = file_content_cache[file_path]
+            content: str = file_content_cache[file_path]
             # Rename the original file out of the way (leaves dates intact)
             rename(file_path, temp_file_path)
             # Write the modified content - in text mode.
             with open(file_path, 'w') as fh:
-                new_content = pipeline(content)
+                new_content: str = pipeline(content)
                 fh.write(new_content)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -167,14 +172,14 @@ class FileModifier(object):
 
 # YAML modifier
 
-def modify_yaml(**kwargs):
+def modify_yaml(**kwargs: dict[str, str]) -> Callable[[str], str]:
     """
     Returns a function that interprets text as YAML, treats it as a dictionary,
     modifies keys in it according to the keyword arguments, and returns it as
     text.
     """
-    def modify_yaml_text(text):
-        in_dict = yaml.load(text, yaml.Loader)
+    def modify_yaml_text(text: str) -> str:
+        in_dict: dict[str, str] = yaml.load(text, yaml.Loader)
         return yaml.dump({**in_dict, **kwargs})
 
     return modify_yaml_text
@@ -182,31 +187,31 @@ def modify_yaml(**kwargs):
 
 # Text modifiers
 
-def re_sub(pattern, repl):
+def re_sub(pattern: str, repl: str) -> Callable[[str], str]:
     """
     Return a function that can be given a line and will apply this regular
     expression substitution of pattern -> repl to it.
     """
     com_pattern = re.compile(pattern)
 
-    def apply_to_line(line):
+    def apply_to_line(line: str) -> str:
         return com_pattern.sub(repl, line)
 
     return apply_to_line
 
 
-def replace(match, repl):
+def replace(match: str, repl: str) -> Callable[[str], str]:
     """
     Return a function that can be given a line and will return it with
     the given match string replaced with the repl string.
     """
-    def apply_to_line(line):
+    def apply_to_line(line: str) -> str:
         return line.replace(match, repl)
 
     return apply_to_line
 
 
-def modify_text(*modifiers):
+def modify_text(*modifiers: list[Callable[[str], str]]) -> Callable[[str], str]:
     """
     Modify the text using a series of modifiers that act on lines in the text.
 
@@ -214,11 +219,12 @@ def modify_text(*modifiers):
     and are applied in the order given.
     """
 
-    def modify_text_def(in_text):
+    def modify_text_def(in_text: str):
         # splitlines seems to absorb a trailing newline...
         trailing_newline = in_text.endswith('\n')
 
-        def modify_line(line):
+        def modify_line(line: str) -> str:
+            modifier: Callable[[str], str]
             for modifier in modifiers:
                 line = modifier(line)
             return line
@@ -319,19 +325,21 @@ class ImportContentTestCase(TestCase):
         standard_ack_ids = set(Ack.objects.values_list('id', flat=True))
         # Tests won't work if there are no hosts, ergo no org_ids, to create acks for
         if Host.objects.count() == 0:
-            return
+            return self.skipTest("No hosts available to create auto-acks for")
+
+        print(Ack.objects.filter(rule__rule_id=constants.active_rule))
 
         with FileModifier(
-            (ACTIVE_RULE_METADATA_FILE, modify_yaml(
+            (ACKED_RULE_METADATA_FILE, modify_yaml(
                 tags=['active', 'kernel', 'testing', 'autoack']
             ))
         ):
             call_command('import_content', '-c', PATH_TO_TEST_CONTENT_REPO)
 
-            active_rule = Rule.objects.get(rule_id=constants.active_rule)
+            acked_rule = Rule.objects.get(rule_id=constants.active_rule)
             # Firstly, does the rule have the new tag?
             self.assertEqual(
-                set(t.name for t in active_rule.tags.all()),
+                set(t.name for t in acked_rule.tags.all()),
                 {'active', 'testing', 'kernel', 'autoack'}
             )
 
