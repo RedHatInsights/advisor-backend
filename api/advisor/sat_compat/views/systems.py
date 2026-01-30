@@ -559,9 +559,10 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
         way is to set the display_name in the upload or set it using
         the inventory service. Always return a 200 no matter what.
         """
+        # Make sure the system exists in this org before we try to update it.
+        org_id = request_to_org(request)
+        system = get_system_or_404(self.get_queryset(), uuid, org_id)
         try:
-            org_id = request_to_org(request)
-            system = get_system_or_404(self.get_queryset(), uuid, org_id)
             # Validate form
             store_post_data(request, SatSystemEditSerializer)
             serdata = SatSystemEditSerializer(data=request.data)
@@ -580,7 +581,9 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
             else:
                 logger.info(f'Inventory returned ${response.status_code} on PATCH host')
         except (Exception,):
-            logger.exception('Failed to PATCH display_name')
+            # Don't use logger.exception here, it raises an exception that DRF
+            # does not expect to handle.
+            logger.error('Failed to PATCH display_name')
 
         # System may not be created at this point.
         # The display_name will be set when the archive hits the inventory so always return 200.
