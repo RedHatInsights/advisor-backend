@@ -564,6 +564,7 @@ rule_id_query_param = OpenApiParameter(
 )
 
 
+# Note that this has nothing to do with the SystemType model....
 system_type_query_param = OpenApiParameter(
     name='system_type', location=OpenApiParameter.QUERY,
     description="Display only systems with this type ('all' = both types)",
@@ -742,20 +743,22 @@ def filter_on_host_tags(request, field_name='host_id'):
     )})
 
 
-def filter_on_system_type(request):
+def filter_on_system_type(request, relation: Optional[str] = None):
     """
     Filter on the host_type field (currently within system_profile).
     """
     system_type = value_of_param(system_type_query_param, request)
-    # relation='' ?
+    base_parameter = 'system_profile__'
+    if relation:
+        base_parameter = f"{relation}__{base_parameter}"
     if system_type is None or system_type == 'all':
         return Q()
     elif system_type == 'edge':
-        return Q(system_profile__host_type='edge')
+        return Q(**{f"{base_parameter}host_type": 'edge'})
     elif system_type == 'bootc':
-        return Q(system_profile__bootc_status__isnull=False)
+        return Q(**{f"{base_parameter}bootc_status__isnull": False})
     elif system_type == 'conventional':
-        return Q(system_profile__host_type__isnull=True)
+        return Q(**{f"{base_parameter}host_type__isnull": True})
 
 
 def filter_on_incident(request):
