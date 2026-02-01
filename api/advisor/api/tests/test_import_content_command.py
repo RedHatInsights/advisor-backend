@@ -327,27 +327,27 @@ class ImportContentTestCase(TestCase):
         if Host.objects.count() == 0:
             return self.skipTest("No hosts available to create auto-acks for")
 
-        print(Ack.objects.filter(rule__rule_id=constants.active_rule))
-
         with FileModifier(
             (ACKED_RULE_METADATA_FILE, modify_yaml(
-                tags=['active', 'kernel', 'testing', 'autoack']
+                tags=['acked', 'kernel', 'testing', 'autoack']
             ))
         ):
             call_command('import_content', '-c', PATH_TO_TEST_CONTENT_REPO)
 
-            acked_rule = Rule.objects.get(rule_id=constants.active_rule)
-            # Firstly, does the rule have the new tag?
+            acked_rule = Rule.objects.get(rule_id=constants.acked_rule)
+            # Firstly, does the rule have the new tag (and have the removed
+            # tags deleted)?
             self.assertEqual(
                 set(t.name for t in acked_rule.tags.all()),
-                {'active', 'testing', 'kernel', 'autoack'}
+                {'acked', 'testing', 'kernel', 'autoack'}
             )
 
-            # And have new Acks been created?
-            self.assertGreater(
+            # Because this rule is already acked, another ack should not have
+            # been created.
+            self.assertEqual(
                 Ack.objects.exclude(id__in=standard_ack_ids).count(), 0
             )
-            self.assertGreater(
+            self.assertEqual(
                 Ack.objects.filter(created_by=settings.AUTOACK['CREATED_BY']).count(),
                 0
             )
