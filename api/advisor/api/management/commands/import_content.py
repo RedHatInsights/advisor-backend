@@ -636,6 +636,7 @@ def load_all_rule_tags(rule_content):
         Rule.tags.through.objects.annotate(
             rule_id_tag=Concat(F('rule__rule_id'), F('tag__name'))
         ).select_related('tag'), rule_tag_content, 'rule_id_tag',
+        delete_missing=True,
     )
 
 
