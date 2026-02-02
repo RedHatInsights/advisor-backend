@@ -719,22 +719,26 @@ def load_all_autoacks(rule_content):
         org_has_rule_acked[ack['rule__rule_id']].add(ack['org_id'])
     # Build the list of autoacks that the content implies
     autoacks_from_content: dict[str, dict[str, str]] = {
-        row['rule_id'] + org_id: {
+        rule_id + org_id: {
             # We're leaving account null now...
-            'rule_id': rule_id_to_db_id[row['rule_id']],
+            'rule_id': rule_id_to_db_id[rule_id],
             'org_id': org_id,
             'created_by': settings.AUTOACK['CREATED_BY'],
             'justification': settings.AUTOACK['JUSTIFICATION'],
         }
-        for row in rule_content
+        for rule_id in autoack_rules
         for org_id in all_org_ids
-        if settings.AUTOACK['TAG'] in row['tags']
-        and not (row['rule_id'] in org_has_rule_acked and org_id in org_has_rule_acked[row['rule_id']])
+        if not (rule_id in org_has_rule_acked and org_id in org_has_rule_acked[rule_id])
     }
     logger.debug(f"{autoacks_from_content=}")
 
+    # We use the filter on auto-ack created rules because we have excluded the
+    # rules that do not need auto-acks.  Likewise delete_missing then only
+    # applies to auto-acked rules.
     update_model_from_config(
-        Ack.objects.annotate(
+        Ack.objects.filter(
+            created_by=settings.AUTOACK['CREATED_BY']
+        ).annotate(
             rule_id_org_id=Concat(F('rule__rule_id'), F('org_id'))
         ), autoacks_from_content, 'rule_id_org_id',
         delete_missing=True
