@@ -702,8 +702,18 @@ def load_all_autoacks(rule_content):
     # update_model_from_config function gets a 'do_update' option and we
     # set that to False here...  This is keyed on string rule_id not the
     # foreign key ID.
+    autoack_rules = set(
+        row['rule_id']
+        for row in rule_content
+        if settings.AUTOACK['TAG'] in row['tags']
+    )
+    logger.debug(f"{autoack_rules=}")
     org_has_rule_acked: dict[str, set[str]] = dict()
-    for ack in Ack.objects.select_related('rule').values('rule__rule_id', 'org_id'):
+    for ack in (
+        Ack.objects.filter(rule__rule_id__in=autoack_rules)
+        .select_related('rule').order_by()
+        .values('rule__rule_id', 'org_id')
+    ):
         if ack['rule__rule_id'] not in org_has_rule_acked:
             org_has_rule_acked[ack['rule__rule_id']] = set()
         org_has_rule_acked[ack['rule__rule_id']].add(ack['org_id'])
