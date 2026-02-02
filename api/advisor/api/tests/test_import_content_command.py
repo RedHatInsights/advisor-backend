@@ -50,6 +50,10 @@ ACKED_RULE_METADATA_FILE = join(
     PATH_TO_TEST_CONTENT_REPO,
     'content/fixture_data/test/Acked_rule/metadata.yaml'
 )
+SECOND_RULE_METADATA_FILE = join(
+    PATH_TO_TEST_CONTENT_REPO,
+    'content/fixture_data/test/Second_rule/metadata.yaml'
+)
 ACTIVE_RULE_MORE_INFO_FILE = join(
     PATH_TO_TEST_CONTENT_REPO,
     'content/fixture_data/test/Active_rule/more_info.md'
@@ -369,22 +373,23 @@ class ImportContentTestCase(TestCase):
             0
         )
 
-        # Now auto-ack a new rule that doesn't have existing acks.
+        # Now auto-ack a new rule that doesn't have existing acks in one
+        # org_id.
         with FileModifier(
-            (ACTIVE_RULE_METADATA_FILE, modify_yaml(
+            (SECOND_RULE_METADATA_FILE, modify_yaml(
                 tags=['acked', 'kernel', 'testing', 'autoack']
             ))
         ):
             call_command('import_content', '-c', PATH_TO_TEST_CONTENT_REPO)
 
-            active_rule = Rule.objects.get(rule_id=constants.active_rule)
+            second_rule = Rule.objects.get(rule_id=constants.second_rule)
             self.assertEqual(
-                set(t.name for t in active_rule.tags.all()),
+                set(t.name for t in second_rule.tags.all()),
                 {'acked', 'testing', 'kernel', 'autoack'}
             )
 
-            # Because this rule was not already acked, another ack should have
-            # been created.
+            # Because this rule was not already acked in one account, another
+            # ack should have been created.
             self.assertGreater(
                 Ack.objects.exclude(id__in=standard_ack_ids).count(), 0
             )
@@ -400,6 +405,11 @@ class ImportContentTestCase(TestCase):
             set(t.name for t in active_rule.tags.all()),
             {'active', 'testing', 'kernel'}
         )
+        second_rule.refresh_from_db()
+        self.assertEqual(
+            set(t.name for t in second_rule.tags.all()),
+            {'active', 'testing', 'second', 'kernel'}
+        )
         # We should see the standard test data acks.
         self.assertEqual(
             set(Ack.objects.values_list('id', flat=True)),
@@ -407,7 +417,7 @@ class ImportContentTestCase(TestCase):
         )
         # And the previously created auto-acks should be deleted.
         self.assertEqual(
-            Ack.objects.filter(rule=active_rule, created_by=settings.AUTOACK['CREATED_BY']).count(),
+            Ack.objects.filter(rule=second_rule, created_by=settings.AUTOACK['CREATED_BY']).count(),
             0
         )
 
