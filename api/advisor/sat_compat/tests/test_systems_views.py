@@ -966,7 +966,7 @@ class SystemViewTestCase(TestCase):
             status=200
         )
         responses.add(
-            responses.PATCH, INVENTORY_SERVER_URL + '/hosts/00112233-4455-6677-8899-0123456789FF',
+            responses.PATCH, INVENTORY_SERVER_URL + '/hosts/' + constants.missing_branch,
             status=404
         )
 
@@ -984,11 +984,11 @@ class SystemViewTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.content.decode())
 
-        # Unknown client gets a 200
+        # Unknown client gets a 404
         response = self.client.put(
             reverse(
                 'sat-compat-v1-systems-detail',
-                kwargs={'uuid': '00112233-4455-6677-8899-0123456789FF'}
+                kwargs={'uuid': constants.missing_branch}
             ),
             data={
                 'display_name': 'foo.bar.baz',
@@ -996,7 +996,7 @@ class SystemViewTestCase(TestCase):
             content_type=constants.json_mime,
             **auth_header_for_testing(),
         )
-        self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertEqual(response.status_code, 404, response.content.decode())
 
         # Check form validation still 200s
         response = self.client.put(
