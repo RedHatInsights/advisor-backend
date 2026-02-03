@@ -581,8 +581,6 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
             else:
                 logger.info(f'Inventory returned ${response.status_code} on PATCH host')
         except (Exception,):
-            # Don't use logger.exception here, it raises an exception that DRF
-            # does not expect to handle.
             logger.error('Failed to PATCH display_name')
 
         # System may not be created at this point.
