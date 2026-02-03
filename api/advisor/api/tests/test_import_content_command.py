@@ -838,7 +838,7 @@ class CoverageTestCase(TestCase):
 
     def test_read_playbook_failures(self):
         playbook_file = join(PATH_TO_TEST_CONTENT_REPO, 'playbook.yaml')
-        from api.management.commands.import_content import read_playbook
+        from api.scripts.compile_advisor_content import read_playbook
         with FileDeleter(playbook_file):
             # First: no name but first task is named
             playbook_content = [{
