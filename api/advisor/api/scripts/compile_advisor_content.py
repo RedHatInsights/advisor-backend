@@ -192,6 +192,15 @@ def read_playbook(this_path, file):
     return (playbook_content, name)
 
 
+def find_git_root(playbook_dir):
+    """
+    Find the root of the git repository.
+    """
+    command = ['git', '-C', playbook_dir, 'rev-parse', '--show-toplevel']
+    result = subprocess.run(command, capture_output=True, text=True)
+    return result.stdout.strip()
+
+
 def find_git_hashes(playbook_dir):
     """
     Read the git log to determine the latest hash for each file.  More or less
@@ -210,9 +219,10 @@ def find_git_hashes(playbook_dir):
             continue
         if not line.endswith('fixit.yml'):
             continue
-        full_path = path.join(playbook_dir, line)
-        if full_path not in hash_for_file:
-            hash_for_file[full_path] = last_hash
+        # Line here now is the file path and name, starting from the root of
+        # the repository, which might not be the 'playbook_dir' base.
+        if line not in hash_for_file:
+            hash_for_file[line] = last_hash
 
     return hash_for_file
 
@@ -245,6 +255,9 @@ def generate_playbook_content(playbook_dir):
             return 'fix'
 
     hash_for_file = find_git_hashes(playbook_dir)
+    git_root = find_git_root(playbook_dir)
+    # Note that this also has to cope with being given test data that's not
+    # in a git repository.  It seems to work now.
 
     for this_path, dirs, files in walk(path.join(playbook_dir, 'playbooks')):
         # If we ever find a playbook repository that uses anything other than
@@ -256,7 +269,6 @@ def generate_playbook_content(playbook_dir):
         # Rules are still only associated with one system type though so we
         # rely on the system type definition in the rule.
         if this_path.endswith('rhel_host'):
-            in_repo_path = this_path[len(playbook_dir):]
             rule_id = rule_path_to_id(path.dirname(this_path))
             # We're going to store some playbooks that might not appear in the
             # database here...
@@ -268,14 +280,19 @@ def generate_playbook_content(playbook_dir):
                 # annotation below, as the unique key we're comparing to.
                 fix = fix_type(file)
                 key = rule_id + fix
-                playbook_path = path.join(in_repo_path, file)
+
+                # Construct absolute path
+                playbook_abs_path = path.join(this_path, file)
+                # Convert to relative path from git root for hash lookup
+                playbook_rel_path = path.relpath(playbook_abs_path, git_root)
+
                 playbook_for_rule[key] = {
                     'rule_id': rule_id,
                     'type': fix,
                     'play': playbook_content,
                     'description': description,
-                    'path': playbook_path,
-                    'version': hash_for_file.get(playbook_path)
+                    'path': playbook_abs_path,
+                    'version': hash_for_file.get(playbook_rel_path)
                 }
 
     return playbook_for_rule

@@ -294,6 +294,8 @@ class ImportContentTestCase(TestCase):
             active_rule.playbooks()[0].description,
             'Fix for Active_rule on rhel/host'
         )
+        # Playbook version hash should be matched
+        self.assertIsNotNone(active_rule.playbooks()[0].version)
 
         # Then test the differences
         acked_rule = Rule.objects.get(rule_id=constants.acked_rule)
@@ -893,7 +895,8 @@ class CoverageTestCase(TestCase):
             playbook_3 = playbooks[rule_fix]
             self.assertEqual(playbook_3['description'], 'step 3')
             self.assertEqual(playbook_3['play'], '- name: step 3\n')
-            self.assertEqual(playbook_3['path'], '/playbooks/rhel_host/fixit.yml')
+            # No git repository = full path including temp_dir.
+            self.assertEqual(playbook_3['path'], f'{temp_dir}/playbooks/rhel_host/fixit.yml')
             # rule_id contains the temp_dir name
             self.assertEqual(playbook_3['rule_id'], rule_id)
             self.assertEqual(playbook_3['type'], 'fix')
