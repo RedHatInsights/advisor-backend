@@ -175,8 +175,8 @@ def read_playbook(this_path, file):
     know the description.
     """
     playbook_filename = path.join(this_path, file)
-    fh = open(playbook_filename, 'r')
-    playbook_content = fh.read()
+    with open(playbook_filename, 'r') as fh:
+        playbook_content = fh.read()
     playbook_data = yaml.load(playbook_content, yaml.Loader)
     assert len(playbook_data) > 0, f"Playbook {playbook_filename} empty?"
     assert isinstance(playbook_data[0], dict), f"Playbook {playbook_filename} not a dict?"
