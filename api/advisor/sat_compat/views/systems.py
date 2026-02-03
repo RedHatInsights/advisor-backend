@@ -557,7 +557,8 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
         that the system being updated is actually the system which has that
         hostname. This is best-effort to support compatibility. The official
         way is to set the display_name in the upload or set it using
-        the inventory service. Always return a 200 no matter what.
+        the inventory service.  This returns a 404 if the system doesn't exist,
+        or a 200 whether or not the actual PATCH to inventory was successful.
         """
         # Make sure the system exists in this org before we try to update it.
         org_id = request_to_org(request)
