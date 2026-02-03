@@ -287,14 +287,19 @@ def generate_playbook_content(playbook_dir):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(levelname)s: %(message)s',
+        stream=__import__('sys').stdout
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--content-repo-path', '-c', type=str, required=True,
         help='The path to the Insights content repository',
     )
     parser.add_argument(
-        '--playbook-repo-path', '-p', type=str, required=True,
-        help='The path to the Insights playbook repository',
+        '--playbook-repo-path', '-p', type=str,
+        help='The path to the Insights playbook repository (or -c dir)',
     )
     parser.add_argument(
         '--compress', '-z', default=False, action='store_true',
@@ -302,15 +307,15 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    if not ('content_repo_path' in args and 'playbook_repo_path' in args):
-        logger.error("Error: need both --content-repo-path and --playbook-repo-path arguments")
-        exit(1)
     if not path.exists(args.content_repo_path):
         logger.error(f"Cannot find path {args.content_repo_path}")
+    playbook_repo_path = args.playbook_repo_path
+    if not playbook_repo_path:
+        playbook_repo_path = args.content_repo_path
 
     content = generate_rule_content(args.content_repo_path)
     logger.info(f"{len(content)} rules loaded")
-    playbooks = generate_playbook_content(args.playbook_repo_path)
+    playbooks = generate_playbook_content(playbook_repo_path)
     logger.info(f"{len(playbooks)} playbooks loaded")
     content_extension = 'yaml.gz' if args.compress else 'yaml'
     dump_yaml(content, f'rule_content.{content_extension}')
