@@ -334,6 +334,6 @@ if __name__ == '__main__':
     logger.info(f"{len(content)} rules loaded")
     playbooks = generate_playbook_content(playbook_repo_path)
     logger.info(f"{len(playbooks)} playbooks loaded")
-    content_extension = 'yaml.gz' if args.compress else 'yaml'
-    dump_yaml(content, f'rule_content.{content_extension}')
-    dump_yaml(playbooks, f'playbook_content.{content_extension}')
+    gz_extension = '.gz' if args.compress else ''
+    dump_yaml(content, f'{RULE_CONTENT_YAML_FILE}{gz_extension}')
+    dump_yaml(playbooks, f'{PLAYBOOK_CONTENT_YAML_FILE}{gz_extension}')
