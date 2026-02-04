@@ -73,6 +73,16 @@ def get_field_content(plugin_path, field):
         return fd.read()
 
 
+def add_markdown_fields(base_data, base_path):
+    """
+    Add any found Markdown fields to the base data.  base_data is modified.
+    """
+    for field in content_fields:
+        content = get_field_content(base_path, field)
+        if content is not None:
+            base_data[field] = content
+
+
 def read_plugin_content(plugin_path):
     """
     Read the content in the plugin path and populate a dict with it.  This
@@ -82,13 +92,8 @@ def read_plugin_content(plugin_path):
     # this is a plugin directory and to read the plugin content.
     with open(path.join(plugin_path, 'plugin.yaml'), 'r') as fd:
         plugin_data = yaml.load(fd, yaml.Loader)
-    for field in content_fields:
-        content = get_field_content(plugin_path, field)
-        if content is not None:
-            plugin_data[field] = content
+    add_markdown_fields(plugin_data, plugin_path)
     return plugin_data
-    # This looks suspiciously similar to read_rule_content.  Is it worth
-    # merging the two?
 
 
 def read_rule_content(plugin_data, rule_path):
@@ -105,10 +110,7 @@ def read_rule_content(plugin_data, rule_path):
     # The actual rule metadata always supplies settings, right?
     assert metadata, f"Metadata file at {metadata_filename} must have settings"
     rule_content.update(metadata)
-    for field in content_fields:
-        content = get_field_content(rule_path, field)
-        if content is not None:  # but can be ''
-            rule_content[field] = content
+    add_markdown_fields(rule_content, rule_path)
     return rule_content
 
 
@@ -138,6 +140,25 @@ def generate_rule_content(content_dir):
     """
     all_rule_data = list()
     this_plugin_dir = 'no directory'
+    # The tree structure of the rule content dir is something like this:
+    # api/test_content/content/
+    # ├── config.yaml
+    # └── fixture_data
+    #     ├── README.md
+    #     └── test
+    #         ├── plugin.yaml
+    #         ├── Acked_rule
+    #         │   ├── generic.md
+    #         │   ├── metadata.yaml
+    #         │   ├── more_info.md
+    #         │   ├── reason.md
+    #         │   ├── resolution.md
+    #         │   └── summary.md
+    # We search for either the `plugin.yaml` or `metadata.yaml` files to
+    # then get the rule data.  The 'plugin' here is 'test' and the 'error_key'
+    # (though we don't refer to it) is 'Acked_rule'.  Because this is a
+    # depth-first search, the plugin_data will remain the same across all
+    # error keys, and will be read before the metadata.
     plugin_data = dict()
     for this_path, dirs, files in walk(content_dir):
         if 'plugin.yaml' in files:
@@ -168,6 +189,27 @@ def generate_rule_content(content_dir):
 # Playbook directory processing
 ##############################################################################
 
+def get_playbook_name(playbook_data, playbook_filename):
+    """
+    Read the playbook and find its name, possibly having to grab it from the
+    first task.
+    """
+    first = playbook_data[0]
+    if not isinstance(first, dict):
+        logger.error("Playbook %s is malformed", playbook_filename)
+        return 'Unknown playbook'
+    if 'name' in first:
+        return first['name']
+    logger.warning("Playbook %s has no name - trying to find first task?", playbook_filename)
+    if not ('tasks' in first and isinstance(first['tasks'], list)):
+        logger.error("Playbook %s has no tasks", playbook_filename)
+        return 'Unknown playbook'
+    if not (first['tasks'] and 'name' in first['tasks'][0]):
+        logger.error("Playbook %s has no named first task", playbook_filename)
+        return 'Unknown playbook'
+    return first['tasks'][0]['name']
+
+
 def read_playbook(this_path, file):
     """
     Read the playbook, and grab a few things from it.  We don't want to store
@@ -180,15 +222,7 @@ def read_playbook(this_path, file):
     playbook_data = yaml.load(playbook_content, yaml.Loader)
     assert len(playbook_data) > 0, f"Playbook {playbook_filename} empty?"
     assert isinstance(playbook_data[0], dict), f"Playbook {playbook_filename} not a dict?"
-    if 'name' in playbook_data[0]:
-        name = playbook_data[0]['name']
-    else:
-        logger.error(f"Playbook {playbook_filename} has no name?")
-        if 'tasks' in playbook_data[0] and 'name' in playbook_data[0]['tasks'][0]:
-            name = playbook_data[0]['tasks'][0]['name']
-        else:
-            logger.error(f"Playbook {playbook_filename} has no named first play?")
-            name = 'Unknown playbook'
+    name = get_playbook_name(playbook_data, playbook_filename)
     return (playbook_content, name)
 
 
