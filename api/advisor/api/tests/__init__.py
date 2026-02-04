@@ -45,9 +45,8 @@ class constants(object):
     alternate_org = '9988776'
     host_tag_org = '1000000'
     test_username = 'testing'
-    test_user_id = '01234567-0123-0123-0123-0123456789ab'
-    # SERVICEACCOUNT01
-    test_service_user_id = '53455256-4943-4541-4343-4f554e543031'
+    test_user_id = '16777216'
+    test_service_user_id = '33554432'
 
     service_account = {
         'client_id': '10203040-5060-7080-90a0-b0c0d0e0f000',

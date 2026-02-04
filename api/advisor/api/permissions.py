@@ -1316,7 +1316,7 @@ def request_to_org(request: Request) -> str:
 
 def auth_header_for_testing(
     org_id=None, account=None, supply_http_header=False, username='testing',
-    user_id='01234567-0123-0123-0123-0123456789ab', user_opts={},
+    user_id='16777216', user_opts={},
     system_opts=None, unencoded=False, raw=None, service_account=None
 ) -> dict[str, str]:
     """
@@ -1342,7 +1342,7 @@ def auth_header_for_testing(
             adds the HTTP_ prefix) as opposed to using Django's test client
             (which doesn't).
         username: the username to supply if required (default: 'testing')
-        user_id: the user id to supply if required (default: '123')
+        user_id: the user id to supply if required (default: '16777216')
         user_opts: a dictionary with any extra parameters for the user options
             section.
         system_opts: a dictionary with system options.
@@ -1423,14 +1423,8 @@ def auth_header_for_testing(
         if username is not None:
             user_section['username'] = username
         if user_id is not None:
-            # Don't actually store the user_id as a UUID, just validate that
-            # it is one.
-            try:
-                uuid.UUID(user_id)
-            except ValueError:
-                error_and_deny(
-                    "'user_id' argument to auth_header_for_testing must be a valid UUID"
-                )
+            # This is just a string in the schema, but most of the time it's
+            # given as a largish integer.  Dont do any validation here.
             user_section['user_id'] = user_id
         identity['user'] = user_section
         identity['type'] = 'User'
