@@ -14,10 +14,10 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-import base64
-from json import loads, dumps
+from json import loads
 import re
 import signal
+from typing import Optional
 
 from django.conf import settings
 from project_settings import kafka_settings
@@ -208,7 +208,7 @@ def handle_ansible_job_updates(topic, message):
     parse_json_from_stdout(job, stdout, TaskTypeChoices.ANSIBLE)
 
 
-def fetch_playbook_dispatcher_stdout(job):
+def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] = None):
     """
     This function retrieves the stdout of the playbook from a given run id.
     The auth header is constructed manually instead of auth_header_for_testing().
@@ -222,18 +222,16 @@ def fetch_playbook_dispatcher_stdout(job):
     # Only works if Playbook Dispatcher is actually set up
     if not settings.PLAYBOOK_DISPATCHER_URL:
         return
-    auth_header = {"x-rh-identity": base64.b64encode(dumps({
-        "identity": {
-            "org_id": job.executed_task.org_id,
-            "type": "User",
-            "user": {
-                "username": job.executed_task.initiated_by,
-                "is_org_admin": job.executed_task.is_org_admin,
+    # When used by the tasks service, we don't have an actual header.  So we
+    # need to use the service account to make this request.
+    if not auth_header:
+        auth_header = auth_header_for_testing(
+            username=job.executed_task.initiated_by,
+            org_id=job.executed_task.org_id,
+            supply_http_header=True, user_opts={
+                'is_org_admin': job.executed_task.is_org_admin
             },
-            "internal": {"org_id": job.executed_task.org_id}
-        }
-    }
-    ).encode())}
+        )
     job.new_log(
         True, f'Requesting data from Playbook Dispatcher for run ID {job.run_id}'
     )
