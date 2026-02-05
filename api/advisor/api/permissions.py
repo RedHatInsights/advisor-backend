@@ -1424,7 +1424,7 @@ def auth_header_for_testing(
             user_section['username'] = username
         if user_id is not None:
             # This is just a string in the schema, but most of the time it's
-            # given as a largish integer.  Dont do any validation here.
+            # given as a largish integer.  Don't do any validation here.
             user_section['user_id'] = user_id
         identity['user'] = user_section
         identity['type'] = 'User'
