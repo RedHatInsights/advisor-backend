@@ -7,7 +7,7 @@ Service look at their respective READMEs in "api" or "service" directories.
 
 # Internal documentation
 
-The [Advisor Architecture Document|https://spaces.redhat.com/pages/viewpage.action?spaceKey=RHIN&title=Advisor+Architecture+Document]
+The [Advisor Architecture Document](https://spaces.redhat.com/pages/viewpage.action?spaceKey=RHIN&title=Advisor+Architecture+Document)
 
 # Installation
 
@@ -326,5 +326,5 @@ pipenv run testapi
 Contributing
 --------------------
 All outstanding issues or feature requests should be filed as Issues on this GitHub
-page. MRs should be submitted against the master branch for any new features or changes,
+page. MRs should be submitted against the main branch for any new features or changes,
 and pass ALL testing above.
