@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from api import kessel
 from api.models import InventoryHost
-from api.permissions import identity_to_subject
+from api.permissions import identity_to_subject, auth_header_for_testing
 
 
 class constants(object):
@@ -293,12 +293,12 @@ class constants(object):
 
     # Kessel RBAC permission constants
     kessel_std_org_obj = kessel.Workspace(kessel_std_workspace_id).to_ref().as_pb2()
-    kessel_std_user_identity_dict = {  # very minimal
-        'type': 'User', 'user': {'user_id': test_user_id}
-    }
-    kessel_std_service_identity_dict = {  # also very minimal
-        'type': 'ServiceAccount', 'service_account': {'user_id': test_service_user_id}
-    }
+    kessel_std_user_identity_dict = auth_header_for_testing(
+        user_id=test_user_id, unencoded=True
+    )['identity']
+    kessel_std_service_identity_dict = auth_header_for_testing(
+        service_account={'user_id': test_service_user_id}, unencoded=True
+    )['identity']
     kessel_std_user_obj = identity_to_subject(kessel_std_user_identity_dict).as_pb2()
     kessel_std_svc_user_obj = identity_to_subject(kessel_std_service_identity_dict).as_pb2()
     kessel_host_01_obj = kessel.Host(host_01_uuid).to_ref().as_pb2()
