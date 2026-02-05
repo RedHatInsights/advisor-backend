@@ -1259,6 +1259,30 @@ class RuleTestCase(TestCase):
         self.assertEqual(hosts['host_ids'][3], constants.host_04_uuid)
         self.assertEqual(len(hosts['host_ids']), 4)
 
+        # Test system_type filtering
+        response = self.client.get(
+            reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
+            data={'system_type': 'bootc'},
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.accepted_media_type, constants.json_mime)
+        hosts = response.json()
+        self.assertIn('host_ids', hosts)
+        self.assertIsInstance(hosts['host_ids'], list)
+        self.assertEqual(hosts['host_ids'], [])
+        response = self.client.get(
+            reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
+            data={'system_type': 'edge'},
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.accepted_media_type, constants.json_mime)
+        hosts = response.json()
+        self.assertIn('host_ids', hosts)
+        self.assertIsInstance(hosts['host_ids'], list)
+        self.assertEqual(hosts['host_ids'], [])
+
         # Can't find a system if it's not in our account
         response = self.client.get(
             reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
@@ -1513,6 +1537,24 @@ class RuleTestCase(TestCase):
         self.assertEqual(hosts[3]['display_name'], constants.host_04_name)
         # Note that we're only seeing hits for the active rule, so system 5,
         # which is on RHEL 7.1, is not seen here.
+        self.assertEqual(len(hosts), 4)
+
+    def test_systems_detail_for_a_rule_system_type_filter(self):
+        # Test for 'conventional' systems, should exclude edge and bootc.
+        response = self.client.get(
+            reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
+            data={'system_type': 'conventional'},
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        page = response.json()
+        self.assertIn('data', page)
+        hosts = page['data']
+        self.assertIsInstance(hosts, list)
+        self.assertEqual(hosts[0]['system_uuid'], constants.host_06_uuid)
+        self.assertEqual(hosts[1]['system_uuid'], constants.host_01_uuid)
+        self.assertEqual(hosts[2]['system_uuid'], constants.host_03_uuid)
+        self.assertEqual(hosts[3]['system_uuid'], constants.host_04_uuid)
         self.assertEqual(len(hosts), 4)
 
     def test_systems_for_a_rule_acked(self):
