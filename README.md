@@ -50,6 +50,157 @@ Local development can be done by supplying bootstrapped feature flags via
 point to a JSON file conforming to Unleash's [API
 /api/client/features](https://docs.getunleash.io/api/client/features).
 
+# Environment Variables
+
+The following environment variables can be used to configure the Advisor API. Most have sensible defaults for local development.
+
+## General/Django Settings
+
+- `DJANGO_SESSION_KEY` -
+- `ENV_NAME` - Default: `local`
+- `ADVISOR_ENV` - Default: `dev`
+- `ALLOWED_HOSTS` - Default: `testserver,insights-advisor-api,advisor-api,localhost,127.0.0.1,.insights.openshiftapps.com,.svc.cluster.local`
+
+## API Path Configuration
+
+- `PATH_PREFIX` - Default: `api/`
+- `PLATFORM_BASE_PATH` - Default: `r/insights/platform/`
+- `ADVISOR_PATH_NAME` - Default: `insights`
+- `TASKS_PATH_NAME` - Default: `tasks`
+
+## Database Configuration
+
+- `ADVISOR_DB_HOST` - Default: `` (empty, allows local socket connection)
+- `ADVISOR_DB_PORT_NUM` - Default: `` (empty)
+- `ADVISOR_DB_NAME` - Default: `insightsapi`
+- `ADVISOR_DB_USER` - Default: `insightsapi`
+- `ADVISOR_DB_PASSWORD` - Default: `InsightsData`
+- `ADVISOR_DB_ENGINE` - Default: `django_prometheus.db.backends.postgresql`
+- `ADVISOR_DB_READONLY_HOST` -
+- `ADVISOR_DB_SSL_MODE` -
+- `ADVISOR_DB_SSL_CA` -
+
+## RBAC/Authentication
+
+- `RBAC_ENABLED` - Default: `false`
+- `RBAC_URL` -
+- `RBAC_PSK` -
+- `RBAC_CLIENT_ID` - Default: `advisor`
+- `KESSEL_ENABLED` - Default: `false`
+- `KESSEL_URL` - Default: `device under test`
+- `KESSEL_AUTH_ENABLED` - Default: `false`
+- `KESSEL_AUTH_CLIENT_ID` - Default: `` (empty)
+- `KESSEL_AUTH_CLIENT_SECRET` - Default: `` (empty)
+- `KESSEL_AUTH_OIDC_ISSUER` - Default: `` (empty)
+- `KESSEL_INSECURE` - Default: `true`
+
+## External Services
+
+- `CLOWDER_ENABLED` - Default: `false`
+- `INVENTORY_SERVER_URL` -
+- `PLAYBOOK_DISPATCHER_URL` -
+- `SOURCES_API_URL` -
+- `REMEDIATIONS_URL` -
+- `MIDDLEWARE_HOST_URL` -
+- `MIDDLEWARE_CERT_FILE` - Default: `./api/certs/backoffice-proxy.ca.crt`
+- `MIDDLEWARE_API_TOKEN` - Default: `PROXY_TOKEN`
+- `MIDDLEWARE_CLIENT_ID` - Default: `insights-advisor-mailer`
+- `PLATFORM_HOSTNAME_URL` - Default: `cert.console.stage.redhat.com`
+- `CLOUD_CONNECTOR_HOST` -
+- `CLOUD_CONNECTOR_PORT` -
+
+## Tasks API Configuration
+
+- `PDAPI_PSK` -
+- `GROUP_ID` - Default: `tasks_callback`
+- `TASKS_BATCH_SIZE` - Default: `50`
+- `TASKS_REWRITE_INTERNAL_URLS` - Default: `false`
+- `TASKS_REWRITE_INTERNAL_URLS_FOR` - Default: `internal.console.`
+
+## Feature Flags (Unleash)
+
+- `UNLEASH_TOKEN` - Default: `*:*.advisor`
+- `UNLEASH_URL` - Default: `http://localhost:4242/api`
+- `UNLEASH_APP_NAME` - Default: `insights-advisor-api`
+- `UNLEASH_CACHE_DIR` - Default: `/tmp/unleashcache`
+- `UNLEASH_REFRESH_INTERVAL` - Default: `5`
+- `UNLEASH_FAKE_INITIALIZE` - Default: `true`
+- `UNLEASH_BOOTSTRAP_FILE` -
+
+## Monitoring/Observability
+
+- `PROMETHEUS_PATH` - Default: `metrics` (or from Clowder config)
+- `PROMETHEUS_PORT` - Default: `8000` (or from Clowder config)
+- `SPLUNK_HEC_TOKEN` - Default: `` (empty)
+- `ENABLE_SPLUNK_HEC` - Default: `false`
+
+## OpenShift Build Info
+
+- `OPENSHIFT_BUILD_NAME` - Default: `dev`
+- `OPENSHIFT_BUILD_COMMIT` - Default: `dev`
+- `OPENSHIFT_BUILD_REFERENCE` - Default: `` (empty)
+
+## Email Configuration
+
+- `MAIL_HOST` - Default: `mail.corp.redhat.com`
+- `DEFAULT_FROM_EMAIL` - Default: `Red Hat Hybrid Cloud Console <noreply@redhat.com>`
+
+## Host-Based Inventory (HBI) Settings
+
+- `HBI_PUBLICATION` - Default: `hbi_hosts_pub_v1_0_2`
+- `HBI_SUBSCRIPTION` - Default: `advisor_hosts_sub_v1_0_2`
+- `HBI_DROP_SUBSCRIPTION` - Default: `` (empty)
+- `HBI_DROP_TABLES` - Default: `false`
+- `HBI_SSL_MODE` - Default: `` (empty)
+- `HBI_TABLES_NUM_PARTITIONS` - Default: `1`
+
+## Kafka Configuration
+
+- `BOOTSTRAP_SERVERS` -
+- `ENGINE_RESULTS_TOPIC` - Default: `platform.engine.results`
+- `INVENTORY_EVENTS_TOPIC` - Default: `platform.inventory.events`
+- `RULE_HITS_TOPIC` - Default: `platform.insights.rule-hits`
+- `PAYLOAD_TRACKER_TOPIC` -
+- `REMEDIATIONS_HOOK_TOPIC` - Default: `platform.remediation-updates.advisor`
+- `WEBHOOKS_TOPIC` -
+- `TASKS_UPDATES_TOPIC` - Default: `platform.playbook-dispatcher.runs`
+- `TASKS_SOURCES_TOPIC` - Default: `platform.sources.event-stream`
+- `TASKS_UPLOAD_TOPIC` - Default: `platform.upload.announce`
+- `ENABLE_KAFKA_SSL` - Default: `false`
+- `KAFKA_SSL_CERT` - Default: `/opt/certs/kafka-cacert`
+- `KAFKA_SECURITY_PROTOCOL` - Default: `SASL_SSL`
+- `KAFKA_SASL_MECHANISMS` - Default: `SCRAM-SHA-512`
+- `KAFKA_SASL_USERNAME` -
+- `KAFKA_SASL_PASSWORD` -
+
+## Service-Specific Settings
+
+- `LOG_LEVEL` - Default: `INFO`
+- `DB_RETRY_CONSTANT` - Default: `3`
+- `THREAD_POOL_SIZE` - Default: `30`
+- `DISABLE_PROMETHEUS` - Default: `false`
+- `FILTER_OUT_NON_RHEL` - Default: `true`
+- `FILTER_OUT_NON_RHEL_RULE_ID` - Default: `other_linux_system|OTHER_LINUX_SYSTEM,other_linux_system|OTHER_LINUX_SYSTEM_V2,other_linux_system|CONVERT2RHEL_SUPPORTED`
+- `FILTER_OUT_RHEL6` - Default: `true`
+- `FILTER_OUT_RHEL6_RULE_IDS` - Default: `rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN,rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1,rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_ERROR`
+- `LOG_DB_QUERIES` - Default: `false`
+
+## AWS CloudWatch Logging
+
+- `AWS_ACCESS_KEY_ID` -
+- `AWS_SECRET_ACCESS_KEY` -
+- `AWS_REGION_NAME` -
+- `CW_LOG_GROUP` - Default: `platform-dev` (non-Clowder)
+- `CW_LOG_STREAM` -
+- `CW_CREATE_LOG_GROUP` - Default: `false`
+- `HOSTNAME` -
+
+## Other Settings
+
+- `STATIC_URL` - Default: `/apps/insights/`
+- `STATIC_ROOT` - Default: `/tmp/static`
+- `ENABLE_AUTOSUB` - Default: `false`
+
 # Advisor overview
 
 ## Data structure and flows
@@ -322,6 +473,37 @@ pipenv run testapi
 ```
 
 ![Ingress Pipeline](./ingress-pipeline.png)
+
+# TODO - Documentation Improvements
+
+The following items would improve the README documentation:
+
+## Environment Setup
+- [ ] Add installation instructions for prerequisites (podman, podman-compose, specific versions)
+- [ ] Document location and contents of podman-compose.yml file
+- [ ] Create a complete first-time setup checklist (start to finish)
+
+## Architecture & Dependencies
+- [ ] Explain what Clowder is and how it's used
+- [ ] Clarify the relationship between API and Service (when to run each, how they interact)
+- [ ] Document external dependencies:
+  - What is the Inventory database and where is it?
+  - What is Cyndi exactly? (service? process? library?)
+  - Location of insights-content and insights-playbooks repositories
+- [ ] Add production authentication/authorization flow explanation
+
+## Development Workflow
+- [ ] Document typical development workflow (running API only, Service only, or both)
+- [ ] Add complete port reference (database, services, etc.)
+- [ ] Explain send_fake_engine_results.py and other manual test scripts
+
+## Repository Structure
+- [ ] Add repository structure overview (what's in api/ vs service/ directories)
+- [ ] Document where to find specific functionality
+
+## Operations
+- [ ] Add troubleshooting section with common issues and solutions
+- [ ] Document CI/CD process (PR checks, deployment workflow)
 
 Contributing
 --------------------
