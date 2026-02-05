@@ -363,7 +363,7 @@ def get_reports_subquery(
     if not org_id:
         return CurrentReport.objects.none()
     host_tags_q = filter_on_host_tags(request)
-    system_type_q = filter_on_system_type(request)
+    system_type_q = filter_on_system_type(request, relation='inventory')
 
     system_profile_filter = filter_multi_param(
         request, 'system_profile', field_prefix='inventory'
