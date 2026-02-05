@@ -15,10 +15,9 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
-from os import path, walk
+from os import path
 import pytz
 import requests
-import subprocess
 import yaml
 import zlib
 
@@ -32,6 +31,9 @@ from django.utils.dateparse import parse_datetime
 from api.models import (
     Ack, Host, Pathway, Playbook, Resolution, ResolutionRisk, Rule,
     RuleCategory, RuleImpact, RuleSet, SystemType, Tag,
+)
+from api.scripts.compile_advisor_content import (
+    dump_yaml, generate_rule_content, generate_playbook_content
 )
 
 import logging
@@ -96,18 +98,6 @@ def load_previous_dump_from_url(url):
         # wbits=25 means expect the gzip header here.
         dump_data = zlib.decompress(dump_data, wbits=25)
     return yaml.load(dump_data.decode('utf-8'), yaml.Loader)
-
-
-def dump_yaml(content, yaml_filename):
-    """
-    Dump data to a YAML file, compressing it if it ends with the .gz extension.
-    """
-    with open(yaml_filename, 'wb') as fh:
-        dump_data = yaml.dump(content).encode('utf-8')
-        if yaml_filename.endswith('.gz'):
-            # Write with max compression and gzip header
-            dump_data = zlib.compress(dump_data, level=9, wbits=25)
-        fh.write(dump_data)
 
 
 ##############################################################################
@@ -421,68 +411,6 @@ def load_rule_id_map():
     }
 
 
-def get_field_content(plugin_path, field):
-    """
-    If the content MarkDown file for this field exists in this path, return
-    its content, otherwise return None.
-    """
-    markdown_file = path.join(plugin_path, f"{field}.md")
-    if not path.exists(markdown_file):
-        return None
-    with open(markdown_file, 'r') as fd:
-        return fd.read()
-
-
-def read_plugin_content(plugin_path):
-    """
-    Read the content in the plugin path and populate a dict with it.  This
-    includes both the plugin.yaml file and any metadata files
-    """
-    # We know there's a plugin.yaml file here because that's what tells us
-    # this is a plugin directory and to read the plugin content.
-    with open(path.join(plugin_path, 'plugin.yaml'), 'r') as fd:
-        plugin_data = yaml.load(fd, yaml.Loader)
-    for field in content_fields:
-        content = get_field_content(plugin_path, field)
-        if content is not None:
-            plugin_data[field] = content
-    return plugin_data
-    # This looks suspiciously similar to read_rule_content.  Is it worth
-    # merging the two?
-
-
-def read_rule_content(plugin_data, rule_path):
-    """
-    Read the content in the rule path and populate a dict with it.  This
-    includes both the plugin.yaml file and any metadata files
-    """
-    # We know there's a metadata.yaml file here because that's what tells us
-    # this is a rule directory and to read the rule content.
-    rule_content = dict(plugin_data)
-    metadata_filename = path.join(rule_path, 'metadata.yaml')
-    with open(metadata_filename, 'r') as fd:
-        metadata = yaml.load(fd, yaml.Loader)
-    # The actual rule metadata always supplies settings, right?
-    assert metadata, f"Metadata file at {metadata_filename} must have settings"
-    rule_content.update(metadata)
-    for field in content_fields:
-        content = get_field_content(rule_path, field)
-        if content is not None:  # but can be ''
-            rule_content[field] = content
-    return rule_content
-
-
-def rule_path_to_id(rule_path):
-    """
-    Transform the path into its plugin_name|ERROR_KEY format.
-    """
-    error_key = path.basename(rule_path)
-    plugin_path = path.dirname(rule_path)
-    plugin_name = path.basename(plugin_path)
-    rule_id = "%s|%s" % (plugin_name, error_key)
-    return rule_id
-
-
 def find_ruleset_model(content_row):
     """
     Look up the ruleset for this rule.  This is somewhat complicated because
@@ -544,47 +472,6 @@ def rule_content_to_model_fields(content_row):
     # relationship.
 
     return rule_row
-
-
-def generate_rule_content(content_dir):
-    """
-    Go through the content directory and construct it into rule data.
-    This looks for the `plugin.yaml` as the base directory of a plugin, and
-    then the directories underneath that for the rule data.
-
-    Originally I thought it would be worth using this code just for bulk
-    import, and then using other code for when we only wanted to pick up
-    just the updates since the last time a rule was changed in the database.
-    But it turns out this is fast enough, at least in testing so far, that
-    it's not worth yet trying to write code that reads the `git diff --since`
-    output and just parses those things.
-    """
-    all_rule_data = list()
-    this_plugin_dir = 'no directory'
-    plugin_data = dict()
-    for this_path, dirs, files in walk(content_dir):
-        if 'plugin.yaml' in files:
-            this_plugin_dir = this_path
-            # This is the plugin part of the rule content, which loads the
-            # 'default' content for this rule.  This is then copied and
-            # overwritten by the rule content.
-            plugin_data = read_plugin_content(this_path)
-        # By tradition, rules have an upper-case error key.  Guess what the
-        # test data fixtures do not have?  So no 'path.basename(this_path).isupper()'
-        # test here.  And really we shouldn't assume that error keys will
-        # always be upper case - what distinguishes a rule content directory
-        # is that it's got a metadata.yaml file.
-        elif 'metadata.yaml' in files:
-            assert this_path.startswith(this_plugin_dir)
-            # There's a weird extra condition in the content server manager
-            # code that looks for paths with no yaml files, but we don't seem
-            # to see any of those in the content repository.
-            rule_id = rule_path_to_id(this_path)
-            rule_content = read_rule_content(plugin_data, this_path)
-            rule_content['rule_id'] = rule_id
-            all_rule_data.append(rule_content)
-
-    return all_rule_data
 
 
 def load_all_rules(rule_content):
@@ -805,119 +692,6 @@ def process_content_from_url(base_url):
 ##############################################################################
 # Playbook directory processing
 ##############################################################################
-
-def read_playbook(this_path, file):
-    """
-    Read the playbook, and grab a few things from it.  We don't want to store
-    the actual YAML, we store the raw file content, but OTOH we do need to
-    know the description.
-    """
-    playbook_filename = path.join(this_path, file)
-    fh = open(playbook_filename, 'r')
-    playbook_content = fh.read()
-    playbook_data = yaml.load(playbook_content, yaml.Loader)
-    assert len(playbook_data) > 0, f"Playbook {playbook_filename} empty?"
-    assert isinstance(playbook_data[0], dict), f"Playbook {playbook_filename} not a dict?"
-    if 'name' in playbook_data[0]:
-        name = playbook_data[0]['name']
-    else:
-        logger.error(f"Playbook {playbook_filename} has no name?")
-        if 'tasks' in playbook_data[0] and 'name' in playbook_data[0]['tasks'][0]:
-            name = playbook_data[0]['tasks'][0]['name']
-        else:
-            logger.error(f"Playbook {playbook_filename} has no named first play?")
-            name = 'Unknown playbook'
-    return (playbook_content, name)
-
-
-def find_git_hashes(playbook_dir):
-    """
-    Read the git log to determine the latest hash for each file.  More or less
-    drawn from the content server.
-    """
-    command = ['git', '-C', playbook_dir, 'log', '--stat', '--name-only', "--pretty=hash:%H"]
-    last_hash = None
-    hash_for_file = dict()
-    git_proc = subprocess.run(command, capture_output=True)
-    for line in git_proc.stdout.decode().splitlines():
-        # line = line.strip()  -- necessary?
-        if not line:
-            continue
-        if line.startswith('hash:'):
-            last_hash = line[5:]
-            continue
-        if not line.endswith('fixit.yml'):
-            continue
-        full_path = path.join(playbook_dir, line)
-        if full_path not in hash_for_file:
-            hash_for_file[full_path] = last_hash
-
-    return hash_for_file
-
-
-def generate_playbook_content(playbook_dir):
-    """
-    Go through the playbook content directory and get a list of playbooks.
-
-    Advisor currently does not care what's in the Playbook model, it is never
-    served.  It only cares that they exist, and RHINENG-12950 will simplify
-    this down to a simple count in the Rule data.  So we do the minimum we
-    have to at this stage.
-    """
-    if not path.exists(path.join(playbook_dir, 'playbooks')):
-        logger.error(
-            f"Directory {playbook_dir} does not seem to have the playbooks directory"
-        )
-        return
-
-    # In generating content we should not refer to the database.  It's
-    # tempting to cheat here and include the resolution ID, but we can't
-    # store that in a dump...
-
-    playbook_for_rule = dict()
-
-    def fix_type(file):
-        if file.endswith('_fixit.yml'):
-            return file[:-len('_fixit.yml')]
-        else:
-            return 'fix'
-
-    hash_for_file = find_git_hashes(playbook_dir)
-
-    for this_path, dirs, files in walk(path.join(playbook_dir, 'playbooks')):
-        # If we ever find a playbook repository that uses anything other than
-        # 'rhel_host' as its system type... then we need to change to something
-        # like...
-        # for dir_name in dirsp
-        #     if dir_name in system_type_set:
-        #         # remember this path and associate with this system type
-        # Rules are still only associated with one system type though so we
-        # rely on the system type definition in the rule.
-        if this_path.endswith('rhel_host'):
-            in_repo_path = this_path[len(playbook_dir):]
-            rule_id = rule_path_to_id(path.dirname(this_path))
-            # We're going to store some playbooks that might not appear in the
-            # database here...
-            for file in files:
-                if not file.endswith('fixit.yml'):
-                    continue
-                (playbook_content, description) = read_playbook(this_path, file)
-                # This key must match the construction of the `rule_id_type`
-                # annotation below, as the unique key we're comparing to.
-                fix = fix_type(file)
-                key = rule_id + fix
-                playbook_path = path.join(in_repo_path, file)
-                playbook_for_rule[key] = {
-                    'rule_id': rule_id,
-                    'type': fix,
-                    'play': playbook_content,
-                    'description': description,
-                    'path': playbook_path,
-                    'version': hash_for_file.get(playbook_path)
-                }
-
-    return playbook_for_rule
-
 
 def load_all_playbooks(all_playbook_data):
     """
