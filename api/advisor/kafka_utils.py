@@ -56,17 +56,6 @@ duplicate_handler_warning_message = (
 
 
 #############################################################################
-# These two copied from the service, but do we use them?
-def topic(t: str) -> str:
-    return app_common_python.KafkaTopics[t].name
-
-
-def write_cert(cert: str):
-    with open('/opt/certs/kafka-cacert', 'w') as f:
-        f.write(cert)
-
-
-#############################################################################
 # Dummy classes for use during testing
 
 class DummyMessage():
