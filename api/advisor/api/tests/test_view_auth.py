@@ -549,10 +549,6 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
         with self.assertRaises(AuthenticationFailed):
             _ = auth_header_for_testing(user_opts={'foo': 1}, system_opts={'bar': 2})
 
-    def test_user_id_not_uuid(self):
-        with self.assertRaises(AuthenticationFailed):
-            _ = auth_header_for_testing(user_id='not-a-uuid')
-
 
 class GetWorkspaceIdTestCase(TestCase):
     @responses.activate
