@@ -57,6 +57,8 @@ class TestKafkaUtils(TestCase):
         # A message with a set error
         error_msg = DummyMessage(topic="error", value=b'{"error": "error"}')
         error_msg.set_error("Dramatic exit, scene left!")
+        # Just test that we can set a partition, it's ignored.
+        error_msg.set_partition(1)
         consumer.add_message_obj(error_msg)
 
         def error_prone_handler(topic: str, body: JsonValue):
