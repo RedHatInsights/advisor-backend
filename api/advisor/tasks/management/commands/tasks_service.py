@@ -58,6 +58,15 @@ JSON_DELIMITERS = {
 }
 
 
+def get_stdout_url(run_id: str) -> str:
+    """
+    Construct the URL to get the stdout from the playbook dispatcher for a run
+    """
+    # path = 'api/playbook-dispatcher/v1/run_hosts?fields[data]=stdout&filter[run][id]'
+    # return = f'{settings.PLAYBOOK_DISPATCHER_URL}/{path}={run_id}'
+    return f'{settings.PLAYBOOK_DISPATCHER_URL}/internal/v2/run/{run_id}/stdout'
+
+
 def parse_json_from_stdout(job, stdout, task_type: TaskTypeChoices):
     """
     Find the job for this run and try to process the stdout for it.  If
@@ -220,28 +229,33 @@ def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] 
     You get back the stdout text.
     """
     # Only works if Playbook Dispatcher is actually set up
-    if not settings.PLAYBOOK_DISPATCHER_URL:
-        return
+    if not (settings.PLAYBOOK_DISPATCHER_URL and settings.PDAPI_PSK):
+        raise AttributeError("Need both PLAYBOOK_DISPATCHER_URL and PDAPI_PSK set")
     # When used by the tasks service, we don't have an actual header.  So we
     # need to use the service account to make this request.
     if not auth_header:
         auth_header = auth_header_for_testing(
             username=job.executed_task.initiated_by,
             org_id=job.executed_task.org_id,
-            supply_http_header=True, user_opts={
-                'is_org_admin': job.executed_task.is_org_admin
-            },
+            supply_http_header=True
         )
+    auth_header["Authorization"] = f"PSK {settings.PDAPI_PSK}"
     job.new_log(
         True, f'Requesting data from Playbook Dispatcher for run ID {job.run_id}'
     )
+    STDOUT_URL = get_stdout_url(job.run_id)
     (response, elapsed) = retry_request(
-        'Playbook Dispatcher',
-        f'{settings.PLAYBOOK_DISPATCHER_URL}/api/playbook-dispatcher/v1/run_hosts'
-        f'?fields[data]=stdout&filter[run][id]={job.run_id}',
-        max_retries=1,
-        headers=auth_header
+        'Playbook Dispatcher', STDOUT_URL, max_retries=1, headers=auth_header
     )
+    if response.status_code == 404:
+        logger.error({
+            'message': f'Playbook Dispatcher does not know of run ID {job.run_id}',
+            'status': response.status_code, 'text': response.text
+        })
+        job.new_log(
+            False, f'Playbook Dispatcher does not know of run ID {job.run_id}'
+        )
+        return
     if response.status_code != 200:
         logger.error({
             'message': 'Error getting playbook-dispatcher stdout response',
@@ -251,6 +265,9 @@ def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] 
             False, f'Playbook Dispatcher returned {response.status_code} for run ID {job.run_id}'
         )
         return
+    # New response simply returns the stdout as text/plain
+    return response.content.decode()
+    # Old code had to parse the JSON response
     json = response.json()
     if not isinstance(json, dict):
         logger.error({

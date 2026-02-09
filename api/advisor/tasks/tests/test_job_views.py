@@ -23,6 +23,7 @@ from api.tests import update_stale_dates
 from api.permissions import auth_header_for_testing
 from tasks.models import Job, JobStatusChoices, TaskTypeChoices
 from tasks.tests import constants
+from tasks.management.commands.tasks_service import get_stdout_url
 
 
 job_stdout = r"""
@@ -184,14 +185,14 @@ class JobViewTestCase(TestCase):
         self.assertEqual(len(page), 2)
 
     def test_job_stdout(self):
-        # Without Playbook Dispatcher enabled, it gets no stdout
-        res = self.client.get(
-            reverse('tasks-job-stdout', kwargs={'id': constants.job_1_id}),
-            **self.std_auth
-        )
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.accepted_media_type, 'text/plain')
-        self.assertEqual(res.content.decode(), '')
+        # Without Playbook Dispatcher enabled, getting the stdout from a
+        # running job is an AttributeError
+        with self.assertRaises(AttributeError):
+            res = self.client.get(
+                reverse('tasks-job-stdout', kwargs={'id': constants.job_1_id}),
+                **self.std_auth
+            )
+        # But getting the stdout from a completed job is fine
         res = self.client.get(
             reverse('tasks-job-stdout', kwargs={'id': constants.job_3_id}),
             **self.std_auth
@@ -210,7 +211,7 @@ PLAY RECAP *
         """.strip())
 
     @responses.activate
-    @override_settings(PLAYBOOK_DISPATCHER_URL='http://localhost')
+    @override_settings(PLAYBOOK_DISPATCHER_URL='http://localhost', PDAPI_PSK='test')
     def test_job_live_stdout(self):
         # Make sure this job is running and it normally has no stdout.
         job1 = Job.objects.get(id=1)
@@ -219,16 +220,15 @@ PLAY RECAP *
         self.assertEqual(job1.executed_task.task.type, TaskTypeChoices.ANSIBLE)
         # Set up our partial response
         responses.get(
-            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
-            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            get_stdout_url(constants.job_1_run_id),
             status=200,
-            json=json_playbook_dispatcher_partial_reply()
+            body=job_stdout
         )
         # Request it from PD
         res = self.client.get(
             reverse('tasks-job-stdout', kwargs={'id': constants.job_1_id}),
             **self.std_auth
         )
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, 200, res.content.decode())
         self.assertEqual(res.accepted_media_type, 'text/plain')
         self.assertEqual(res.content.decode(), job_stdout)
