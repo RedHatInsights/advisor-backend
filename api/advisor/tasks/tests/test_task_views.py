@@ -373,10 +373,7 @@ class TaskViewTestCase(TestCase):
         )
         error = res.content.decode()
         self.assertEqual(res.status_code, 400, error)
-        self.assertIn(
-            "The value is required to be one of the following "
-            "values: ", error
-        )
+        self.assertIn("The value did not match the pattern", error)
 
         # Nonexistent task should just return a 404
         res = self.client.get(
