@@ -14,77 +14,15 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from confluent_kafka import Consumer, Producer
 from datetime import datetime
-import json
 from uuid import uuid4
 
 from django.conf import settings
-from django.core.signals import request_started, request_finished
 from project_settings import kafka_settings as kafka_settings
 kafka_settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
 
 from advisor_logging import logger
-
-
-class DummyProducer(object):
-    """
-    A dummy Kafka producer for use during testing
-    """
-    def __init__(self, *args, **kwargs):
-        self.poll_calls = 0
-        self.produce_calls = []
-        self.flush_calls = 0
-
-    def poll(self, time):
-        self.poll_calls += 1
-
-    def produce(self, topic, message, callback=None):
-        self.produce_calls.append({
-            'topic': topic,
-            'message': message,
-            'callback': callback,
-        })
-
-    def flush(self):
-        self.flush_calls += 1
-
-
-if not kafka_settings.KAFKA_SETTINGS:
-    # This means that we've been misconfigured
-    logger.error("Tasks views require Kafka producer settings to send messages")
-elif not kafka_settings.KAFKA_SETTINGS['bootstrap.servers']:
-    # This means that we've been configured but from the Dev environment,
-    # which doesn't include a default bootstrap server.  So we use the dummy
-    # class above to just pretend to do stuff.
-    logger.warning("Using dummy Kakfa producer")
-    producer = DummyProducer()
-else:
-    producer = Producer(kafka_settings.KAFKA_SETTINGS)
-
-
-# Message delivery callback
-
-def msg_delivery_callback(err, msg):
-    """
-    Called once for each message produced to indicate delivery result.
-    Triggered by poll() or flush().
-    Reused from the Advisor service reporting, with a view to the Tasks app
-    being self-contained in the future.
-    """
-    if err is not None:
-        logger.error('Message delivery failed: {}'.format(err))
-    else:
-        logger.debug('Message delivered to {} [{}]'.format(
-            msg.topic(), msg.partition())
-        )
-
-
-def send_kakfa_message(topic, message):
-    producer.poll(0)
-    encoded_message = json.dumps(message).encode('utf8')
-    producer.produce(topic, encoded_message, callback=msg_delivery_callback)
-    producer.flush()
+from kafka_utils import send_kafka_message
 
 
 def send_event_message(event_type, account=None, org_id=None, context={}, event_payloads=[]):
@@ -173,119 +111,6 @@ def send_event_message(event_type, account=None, org_id=None, context={}, event_
         "id": str(uuid4()),
     }
     try:
-        send_kakfa_message(kafka_settings.WEBHOOKS_TOPIC, send_msg)
+        send_kafka_message(kafka_settings.WEBHOOKS_TOPIC, send_msg)
     except Exception as e:
         logger.exception('Could not send event of type %s (%s)', event_type, e)
-
-
-class KafkaDispatcher(object):
-    """
-    Dispatches messages from Kafka to handlers based on their topic.  This
-    handles the necessary boilerplate around receiving the message from Kafka,
-    checking that it's valid, decoding it from JSON into a structure, and
-    then processing that structure.
-
-    Usage:
-
-    >>> def topic_handler_fn(topic, body):
-    ...     print(f"Received {body['name']} message from {topic}")
-    ...
-    >>> dispatcher = KafkaDispatcher()
-    >>> dispatcher.register_handler("this topic", topic_handler_fn)
-    >>> dispatcher.receive()
-
-    A topic handler function can do anything, including setting the object's
-    `quit` property to True which will cause the receive loop to exit at the
-    next timeout of the wait for Kafka (defaults to 10 seconds).  Any return
-    value from the topic handler function is ignored.
-
-    Only one message handler can be registered to any topic.  If you need to
-    do two or more things with a message, then give this a single handler
-    function that then calls your other handlers.  This makes sure they're
-    called in the order _you_ want, rather than the arbitrary order we might
-    call them here.  Calling `register_handler` more than once will generate
-    a warning and ignore the new handler function given.
-    """
-    def __init__(self):
-        self.registered_handlers = dict()
-        self.quit = False
-        self.loop_timeout = 1
-        # Own consumer for own set of topics
-        self.consumer = Consumer(kafka_settings.KAFKA_SETTINGS)
-
-    def register_handler(self, topic, handler_fn, **kwargs):
-        if topic in self.registered_handlers:
-            logger.warning(
-                f"Warning: topic {topic} already has function "
-                f"{self.registered_handlers[topic]['handler'].__name__} "
-                f"registered when trying to register function "
-                f"{handler_fn.__name__}.  Ignoring this new handler."
-            )
-        self.registered_handlers[topic] = {
-            'handler': handler_fn,
-            'filters': kwargs
-        }
-
-    def _handle_message(self, message):
-        """
-        Receive a message, find the handler for this topic, and run the
-        message handler for this topic.
-        """
-        if message is None:
-            return
-        if message.error():
-            logger.error(message.error())
-            return
-
-        topic = message.topic()
-        if topic not in self.registered_handlers:
-            return
-
-        # It is important we filter by headers so that we don't json.loads every upload that is sent to CRC
-        # The headers come in as a list of tuples.  The filters is a dictionary.
-        # Example Filters: {'service': 'tasks'}
-        # Example Headers: [('service', b'tasks')]
-        headers = message.headers()
-        if headers is None:
-            headers = []
-        header_filters = self.registered_handlers[topic]['filters']
-
-        filters_matched = all(
-            any(header[0] == k and header[1].decode('utf-8') == v for header in headers)
-            for k, v in header_filters.items()
-        )
-
-        if not filters_matched:
-            return
-
-        # Decode JSON
-        try:
-            body = json.loads(message.value().decode('utf-8').strip('"'))
-        except:
-            logger.exception(f"Malformed JSON when handling {topic}")
-            return
-        # Tell Django we're starting a 'request' (db connection restarts...)
-        request_started.send(sender=self.__class__)
-        # Call handler with JSON
-        try:
-            self.registered_handlers[topic]['handler'](topic, body)
-        except:
-            logger.exception({
-                'message': "Error processing kafka message",
-                'topic': topic,
-                'payload': body
-            })
-        # and we're finishing the 'request'
-        request_finished.send(sender=self.__class__)
-
-    def receive(self):
-        """
-        Run the receive loop continuously until told to stop.
-        """
-        self.consumer.subscribe(list(self.registered_handlers.keys()))
-
-        while not self.quit:
-            # longer polling timeouts mean fewer iterations through this loop,
-            # but a longer time to respond to SIGTERM.  Here's the compromise:
-            self._handle_message(self.consumer.poll(self.loop_timeout))
-        self.consumer.close()
