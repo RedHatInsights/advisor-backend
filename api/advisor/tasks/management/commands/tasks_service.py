@@ -267,63 +267,6 @@ def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] 
         return
     # New response simply returns the stdout as text/plain
     return response.content.decode()
-    # Old code had to parse the JSON response
-    json = response.json()
-    if not isinstance(json, dict):
-        logger.error({
-            'message': 'Error in parsing playbook-dispatcher stdout response',
-            'original_text': response.text, 'problem': "Did not get a JSON object"
-        })
-        job.new_log(
-            False, f'Playbook Dispatcher returned non-JSON response for run ID {job.run_id}'
-        )
-        return
-    if 'data' not in json:
-        logger.error({
-            'message': 'Error in parsing playbook-dispatcher stdout response',
-            'original_text': response.text, 'problem': "'data' not found in JSON object"
-        })
-        job.new_log(
-            False, f'Playbook Dispatcher returned JSON response with no data object for run ID {job.run_id}'
-        )
-        return
-    if not isinstance(json['data'], list):
-        logger.error({
-            'message': 'Error in parsing playbook-dispatcher stdout response',
-            'original_text': response.text, 'problem': "'data' value not a list"
-        })
-        job.new_log(
-            False, f'Playbook Dispatcher JSON data is not a list for run ID {job.run_id}'
-        )
-        return
-    if len(json['data']) < 1:
-        logger.error({
-            'message': 'Error in parsing playbook-dispatcher stdout response',
-            'original_text': response.text, 'problem': "'data' list is empty"
-        })
-        job.new_log(
-            False, f'Playbook Dispatcher an empty JSON data list for run ID {job.run_id}'
-        )
-        return
-    if not isinstance(json['data'][0], dict):
-        logger.error({
-            'message': 'Error in parsing playbook-dispatcher stdout response',
-            'original_text': response.text, 'problem': "'data' list element 0 is not a JSON object"
-        })
-        job.new_log(
-            False, f'Playbook Dispatcher JSON data list with non-object for run ID {job.run_id}'
-        )
-        return
-    if 'stdout' not in json['data'][0]:
-        logger.error({
-            'message': 'Error in parsing playbook-dispatcher stdout response',
-            'original_text': response.text, 'problem': "'data' list element 0 does not have the 'stdout' key"
-        })
-        job.new_log(
-            False, f'Playbook Dispatcher JSON data list item has no stdout data for run ID {job.run_id}'
-        )
-        return
-    return json['data'][0]['stdout']
 
 
 def handle_script_job_updates(topic, message):
