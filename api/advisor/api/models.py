@@ -683,6 +683,22 @@ class InventoryHost(models.Model):
         "Helper to display RHEL version from Inventory"
         return self.get_rhel_version(self.system_profile)
 
+    @staticmethod
+    def get_os_name(profile):
+        "Derive the OS name from the system profile"
+        if 'operating_system' not in profile:
+            return "Unknown operating system"
+        os_details = profile['operating_system']
+        if 'name' in os_details:
+            return os_details['name']
+        else:
+            return "Unknown OS name"
+
+    @property
+    def os_name(self):
+        "Helper to display OS name from Inventory"
+        return self.get_os_name(self.system_profile)
+
     @property
     def group_name(self):
         return self.groups[0].get('name', None) if self.groups and len(self.groups) > 0 else None

@@ -69,6 +69,7 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[0]['system_uuid'], constants.host_03_uuid)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
         self.assertEqual(systems[0]['last_seen'], '2018-09-22T02:00:51Z')
+        self.assertEqual(systems[0]['os_name'], 'RHEL')
         self.assertEqual(systems[0]['rhel_version'], '7.5')
         self.assertEqual(systems[0]['hits'], 2)
         self.assertEqual(systems[0]['critical_hits'], 0)
@@ -639,6 +640,8 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(system['system_uuid'], constants.host_01_uuid)
         self.assertEqual(system['display_name'], constants.host_01_name)
         self.assertEqual(system['last_seen'], '2018-12-04T05:10:36Z')
+        self.assertEqual(system['os_name'], 'RHEL')
+        self.assertEqual(system['rhel_version'], '7.5')
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @kessel.add_kessel_response(

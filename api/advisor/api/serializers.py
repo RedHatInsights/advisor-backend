@@ -757,7 +757,6 @@ class SystemSerializer(serializers.ModelSerializer):
     hits = serializers.IntegerField(read_only=True)
     last_seen = serializers.DateTimeField(read_only=True, allow_null=True)
     stale_at = serializers.DateTimeField(source='stale_timestamp', read_only=True)
-    rhel_version = serializers.CharField()
     critical_hits = serializers.IntegerField(read_only=True)
     important_hits = serializers.IntegerField(read_only=True)
     moderate_hits = serializers.IntegerField(read_only=True)
@@ -765,6 +764,8 @@ class SystemSerializer(serializers.ModelSerializer):
     incident_hits = serializers.IntegerField(read_only=True)
     all_pathway_hits = serializers.IntegerField(read_only=True)
     pathway_filter_hits = serializers.IntegerField(read_only=True)
+    os_name = serializers.CharField(read_only=True)
+    rhel_version = serializers.CharField(read_only=True)
     group_name = serializers.CharField(allow_null=True, read_only=True)
 
     class Meta:
@@ -773,7 +774,7 @@ class SystemSerializer(serializers.ModelSerializer):
             'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
-            'rhel_version', 'group_name'
+            'os_name', 'rhel_version', 'group_name'
         )
 
 
@@ -785,7 +786,7 @@ class SystemsDetailSerializer(SystemSerializer):
             'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
-            'rhel_version', 'impacted_date'
+            'os_name', 'rhel_version', 'impacted_date'
         )
 
 
