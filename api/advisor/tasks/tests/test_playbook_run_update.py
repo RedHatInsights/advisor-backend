@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import base64
+import json
+
 import responses
 from project_settings import kafka_settings as kafka_settings
 from django.test import TestCase, override_settings
@@ -21,14 +24,10 @@ from django.urls import reverse
 
 from api.permissions import auth_header_for_testing
 from tasks.management.commands.tasks_service import (
-    handle_ansible_job_updates, get_stdout_url
+    handle_ansible_job_updates, fetch_playbook_dispatcher_stdout
 )
 from tasks.models import Job
 from tasks.tests import constants
-
-
-PLAYBOOK_DISPATCHER_URL = 'http://localhost'
-PDAPI_PSK = 'test'
 
 
 def run_update_message():
@@ -58,7 +57,11 @@ def run_update_message():
     }
 
 
-STDOUT = r"""
+def json_playbook_dispatcher_reply():
+    return {
+        "data": [
+            {
+                "stdout": r"""
 [WARNING]: provided hosts list is empty, only localhost is available. Note that
 the implicit localhost does not match 'all'
 
@@ -131,13 +134,6 @@ PLAY RECAP *********************************************************************
 localhost                  : ok=12   changed=5    unreachable=0    failed=0    skipped=1    rescued=0    ignored=1
 
 """
-
-
-def json_playbook_dispatcher_reply():
-    return {
-        "data": [
-            {
-                "stdout": STDOUT
             }
         ],
         "links": {
@@ -151,15 +147,11 @@ def json_playbook_dispatcher_reply():
     }
 
 
-# Probably need a better way to encode a lot of carriage return line feed stuff here.
-STDOUT_EOLN = "[WARNING]: provided hosts list is empty, only localhost is available. Note thatthe implicit localhost does not match 'all'\r\nPLAY [run insights] ************************************************************\r\nTASK [run insights] ************************************************************ok: [localhost]\r\nTASK [Set result] **************************************************************ok: [localhost]\r\nTASK [Print Task Result] *******************************************************ok: [localhost] =\u003e {\r\n    \"task_results\": {\r\n        \"alert\": \"false\",\r\n        \"message\": \"WARN: BASIC authentication method is being deprecated. Please consider using CERT authentication method.\\nStarting to collect Insights data for rhel8-vm\\nWriting RHSM facts to /etc/rhsm/facts/insights-client.facts ...\\nUploading Insights data.\\nSuccessfully uploaded report from rhel8-vm to account 6089719.\\nView details about this system on console.redhat.com:\\nhttps://console.redhat.com/insights/inventory/67ec0940-444c-49ea-b091-cb1f8cd00d31\",\r\n        \"report\": {\r\n            \"changed\": false,\r\n            \"cmd\": [\r\n                \"insights-client\"\r\n            ],\r\n            \"delta\": \"0:00:40.879763\",\r\n            \"end\": \"2024-04-17 13:38:15.726133\",\r\n            \"failed\": false,\r\n            \"msg\": \"\",\r\n            \"rc\": 0,\r\n            \"start\": \"2024-04-17 13:37:34.846370\",\r\n            \"stderr\": \"\",\r\n            \"stderr_lines\": [],\r\n            \"stdout\": \"WARN: BASIC authentication method is being deprecated. Please consider using CERT authentication method.\\nStarting to collect Insights data for rhel8-vm\\nWriting RHSM facts to /etc/rhsm/facts/insights-client.facts ...\\nUploading Insights data.\\nSuccessfully uploaded report from rhel8-vm to account 6089719.\\nView details about this system on console.redhat.com:\\nhttps://console.redhat.com/insights/inventory/67ec0940-444c-49ea-b091-cb1f8cd00d31\",\r\n            \"stdout_lines\": [\r\n                \"WARN: BASIC authentication method is being deprecated. Please consider using CERT authentication method.\",\r\n                \"Starting to collect Insights data for rhel8-vm\",\r\n                \"Writing RHSM facts to /etc/rhsm/facts/insights-client.facts ...\",\r\n                \"Uploading Insights data.\",\r\n                \"Successfully uploaded report from rhel8-vm to account 6089719.\",\r\n                \"View details about this system on console.redhat.com:\",\r\n                \"https://console.redhat.com/insights/inventory/67ec0940-444c-49ea-b091-cb1f8cd00d31\"\r\n            ]\r\n        }\r\n    }\r\n}\r\nPLAY RECAP *********************************************************************\r\nlocalhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   \r\n"
-
-
 def json_playbook_dispatcher_reply_eoln():
-    return {"data": [{"stdout": STDOUT_EOLN}], "error": ""}
+    return {"data": [{"stdout": "[WARNING]: provided hosts list is empty, only localhost is available. Note thatthe implicit localhost does not match 'all'\r\nPLAY [run insights] ************************************************************\r\nTASK [run insights] ************************************************************ok: [localhost]\r\nTASK [Set result] **************************************************************ok: [localhost]\r\nTASK [Print Task Result] *******************************************************ok: [localhost] =\u003e {\r\n    \"task_results\": {\r\n        \"alert\": \"false\",\r\n        \"message\": \"WARN: BASIC authentication method is being deprecated. Please consider using CERT authentication method.\\nStarting to collect Insights data for rhel8-vm\\nWriting RHSM facts to /etc/rhsm/facts/insights-client.facts ...\\nUploading Insights data.\\nSuccessfully uploaded report from rhel8-vm to account 6089719.\\nView details about this system on console.redhat.com:\\nhttps://console.redhat.com/insights/inventory/67ec0940-444c-49ea-b091-cb1f8cd00d31\",\r\n        \"report\": {\r\n            \"changed\": false,\r\n            \"cmd\": [\r\n                \"insights-client\"\r\n            ],\r\n            \"delta\": \"0:00:40.879763\",\r\n            \"end\": \"2024-04-17 13:38:15.726133\",\r\n            \"failed\": false,\r\n            \"msg\": \"\",\r\n            \"rc\": 0,\r\n            \"start\": \"2024-04-17 13:37:34.846370\",\r\n            \"stderr\": \"\",\r\n            \"stderr_lines\": [],\r\n            \"stdout\": \"WARN: BASIC authentication method is being deprecated. Please consider using CERT authentication method.\\nStarting to collect Insights data for rhel8-vm\\nWriting RHSM facts to /etc/rhsm/facts/insights-client.facts ...\\nUploading Insights data.\\nSuccessfully uploaded report from rhel8-vm to account 6089719.\\nView details about this system on console.redhat.com:\\nhttps://console.redhat.com/insights/inventory/67ec0940-444c-49ea-b091-cb1f8cd00d31\",\r\n            \"stdout_lines\": [\r\n                \"WARN: BASIC authentication method is being deprecated. Please consider using CERT authentication method.\",\r\n                \"Starting to collect Insights data for rhel8-vm\",\r\n                \"Writing RHSM facts to /etc/rhsm/facts/insights-client.facts ...\",\r\n                \"Uploading Insights data.\",\r\n                \"Successfully uploaded report from rhel8-vm to account 6089719.\",\r\n                \"View details about this system on console.redhat.com:\",\r\n                \"https://console.redhat.com/insights/inventory/67ec0940-444c-49ea-b091-cb1f8cd00d31\"\r\n            ]\r\n        }\r\n    }\r\n}\r\nPLAY RECAP *********************************************************************\r\nlocalhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   \r\n"}], "error": ""} # noqa
 
 
-@override_settings(PLAYBOOK_DISPATCHER_URL=PLAYBOOK_DISPATCHER_URL, PDAPI_PSK=PDAPI_PSK)
+@override_settings(PLAYBOOK_DISPATCHER_URL='http://localhost')
 class TaskJobUpdateTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()
@@ -167,11 +159,15 @@ class TaskJobUpdateTestCase(TestCase):
     @responses.activate
     def test_job_update_complete_json_response(self):
         responses.get(
-            get_stdout_url(constants.job_1_run_id),
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
             status=200,
-            body=STDOUT
+            json=json_playbook_dispatcher_reply()
         )
         handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
+        request = responses.calls[0].request
+        auth_header = json.loads(base64.b64decode(request.headers['x-rh-identity']))
+        self.assertTrue(auth_header['identity']['user']['is_org_admin'])
 
         res = self.client.get(
             reverse('tasks-executedtask-detail', kwargs={'id': constants.executed_task_id}),
@@ -218,15 +214,16 @@ class TaskJobUpdateTestCase(TestCase):
         self.assertEqual(res.accepted_media_type, constants.text_mime)
         self.assertEqual(
             res.content.decode(),
-            STDOUT
+            json_playbook_dispatcher_reply()['data'][0]['stdout']
         )
 
     @responses.activate
     def test_job_update_complete_json_response_eoln(self):
         responses.get(
-            get_stdout_url(constants.job_1_run_id),
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
             status=200,
-            body=STDOUT_EOLN
+            json=json_playbook_dispatcher_reply_eoln()
         )
         handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
         res = self.client.get(
@@ -283,9 +280,10 @@ class TaskJobUpdateTestCase(TestCase):
     @responses.activate
     def test_job_update_deleted_system(self):
         responses.get(
-            get_stdout_url(constants.job_1_run_id),
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
             status=200,
-            body=STDOUT
+            json=json_playbook_dispatcher_reply()
         )
         job = Job.objects.filter(run_id=constants.job_1_run_id)[0]
         job.system_id = '00000000-0000-0000-0000-000000000000'  # non existent system.
@@ -307,13 +305,17 @@ class TaskJobUpdateTestCase(TestCase):
     @responses.activate
     def test_job_update_non_org_admin(self):
         responses.get(
-            get_stdout_url(constants.job_3_run_id),
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_3_run_id,
             status=200,
-            body=STDOUT
+            json=json_playbook_dispatcher_reply()
         )
         update_message = run_update_message()
         update_message['payload']['id'] = constants.job_3_run_id
         handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, update_message)
+        request = responses.calls[0].request
+        auth_header = json.loads(base64.b64decode(request.headers['x-rh-identity']))
+        self.assertFalse(auth_header['identity']['user']['is_org_admin'])
 
     def test_job_update_bad_status(self):
         update_message = run_update_message()
@@ -326,11 +328,15 @@ class TaskJobUpdateTestCase(TestCase):
 
     @responses.activate
     def test_job_update_mangled_json_response(self):
-        this_stdout = STDOUT.replace('"message"', "bad keyword")
+        mangled_json_reply = json_playbook_dispatcher_reply()
+        this_stdout = mangled_json_reply['data'][0]['stdout']
+        this_stdout = this_stdout.replace('"message"', "bad keyword")
+        mangled_json_reply['data'][0]['stdout'] = this_stdout
         responses.get(
-            get_stdout_url(constants.job_1_run_id),
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
             status=200,
-            body=this_stdout
+            json=mangled_json_reply
         )
         handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
 
@@ -356,7 +362,8 @@ class TaskJobUpdateTestCase(TestCase):
     def test_job_update_failure(self):
         # Playbook dispatcher here returns a 403...
         responses.get(
-            get_stdout_url(constants.job_1_run_id),
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
             status=403,
         )
         # So the handle_ansible_job_updates function should call fetch_playbook_dispatcher_stdout because
@@ -379,3 +386,75 @@ class TaskJobUpdateTestCase(TestCase):
         self.assertEqual(job['status'], constants.status_success)
         # But the message is still an empty dict.
         self.assertEqual(job['results'], {})
+
+    @responses.activate
+    def test_job_update_no_data(self):
+        this_job = Job.objects.get(id=constants.job_1_id)
+        orig_json = json_playbook_dispatcher_reply()
+        mangled_json_reply = orig_json
+
+        del mangled_json_reply['data']
+        responses.get(
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            status=200,
+            json=mangled_json_reply
+        )
+        with self.assertLogs(logger='advisor-log', level='ERROR') as log:
+            self.assertIsNone(fetch_playbook_dispatcher_stdout(this_job))
+            self.assertIn("'data' not found in JSON object", log.output[0])
+
+        mangled_json_reply['data'] = "fruitcake"
+        responses.get(
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            status=200,
+            json=mangled_json_reply
+        )
+        with self.assertLogs(logger='advisor-log', level='ERROR') as log:
+            self.assertIsNone(fetch_playbook_dispatcher_stdout(this_job))
+            self.assertIn("'data' value not a list", log.output[0])
+
+        mangled_json_reply['data'] = []
+        responses.get(
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            status=200,
+            json=mangled_json_reply
+        )
+        with self.assertLogs(logger='advisor-log', level='ERROR') as log:
+            self.assertIsNone(fetch_playbook_dispatcher_stdout(this_job))
+            self.assertIn("'data' list is empty", log.output[0])
+
+        mangled_json_reply['data'] = ["failure"]
+        responses.get(
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            status=200,
+            json=mangled_json_reply
+        )
+        with self.assertLogs(logger='advisor-log', level='ERROR') as log:
+            self.assertIsNone(fetch_playbook_dispatcher_stdout(this_job))
+            self.assertIn("'data' list element 0 is not a JSON object", log.output[0])
+
+        mangled_json_reply['data'] = [{"failure": True}]
+        responses.get(
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            status=200,
+            json=mangled_json_reply
+        )
+        with self.assertLogs(logger='advisor-log', level='ERROR') as log:
+            self.assertIsNone(fetch_playbook_dispatcher_stdout(this_job))
+            self.assertIn("'data' list element 0 does not have the 'stdout' key", log.output[0])
+
+        mangled_json_reply = "Failure"
+        responses.get(
+            'http://localhost/api/playbook-dispatcher/v1/run_hosts?'
+            'fields[data]=stdout&filter[run][id]=' + constants.job_1_run_id,
+            status=200,
+            json=mangled_json_reply
+        )
+        with self.assertLogs(logger='advisor-log', level='ERROR') as log:
+            self.assertIsNone(fetch_playbook_dispatcher_stdout(this_job))
+            self.assertIn("Did not get a JSON object", log.output[0])
