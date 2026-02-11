@@ -2282,7 +2282,7 @@ class RuleHostTagsTestCase(TestCase):
             'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
-            'rhel_version', 'impacted_date'
+            'os_name', 'rhel_version', 'impacted_date'
         ]))
         self.assertEqual(hosts['meta']['count'], 4)
         self.assertEqual(list(map(lambda h: h['display_name'], hosts['data'])), [
