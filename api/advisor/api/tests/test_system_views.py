@@ -152,6 +152,60 @@ class SystemViewTestCase(TestCase):
 
         self.assertEqual(len(systems), 6)
 
+    def test_get_system_different_os_names_and_versions(self):
+        """
+        Test different failure modes in retrieving the os_name and version.
+        """
+        # First test the properties and static methods directly
+        # No operating_system structure at all
+        host_01 = InventoryHost.objects.get(id=constants.host_01_uuid)
+        del host_01.system_profile['operating_system']
+        host_01.save()
+        self.assertEqual(host_01.os_name, 'Unknown operating system')
+        self.assertEqual(host_01.rhel_version, 'Unknown system version')
+        # operating_system structure but with no name, no version
+        host_03 = InventoryHost.objects.get(id=constants.host_03_uuid)
+        host_03.system_profile['operating_system'] = {'foo': 'bar'}
+        host_03.save()
+        self.assertEqual(host_03.os_name, 'Unknown OS name')
+        self.assertEqual(host_03.rhel_version, 'Unknown OS version')
+        # Name only
+        host_04 = InventoryHost.objects.get(id=constants.host_04_uuid)
+        host_04.system_profile['operating_system'] = {'name': 'Shark Linux'}
+        host_04.save()
+        self.assertEqual(host_04.os_name, 'Shark Linux')
+        self.assertEqual(host_04.rhel_version, 'Unknown Shark Linux version')
+        # Name, major version only
+        host_05 = InventoryHost.objects.get(id=constants.host_05_uuid)
+        host_05.system_profile['operating_system'] = {'name': 'CentOS', 'major': '30'}
+        host_05.save()
+        self.assertEqual(host_05.os_name, 'CentOS')
+        self.assertEqual(host_05.rhel_version, '30')
+        # Normal path is tested in the regular view tests.
+
+        # Now test how they appear in the API response
+        response = self.client.get(
+            reverse('system-list'), **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        # Easy look up of systems by ID
+        systems = {
+            system['system_uuid']: system
+            for system in json['data']
+        }
+        self.assertIn(constants.host_01_uuid, systems)
+        self.assertEqual(systems[constants.host_01_uuid]['os_name'], 'Unknown operating system')
+        self.assertEqual(systems[constants.host_01_uuid]['rhel_version'], 'Unknown system version')
+        self.assertIn(constants.host_03_uuid, systems)
+        self.assertEqual(systems[constants.host_03_uuid]['os_name'], 'Unknown OS name')
+        self.assertEqual(systems[constants.host_03_uuid]['rhel_version'], 'Unknown OS version')
+        self.assertIn(constants.host_04_uuid, systems)
+        self.assertEqual(systems[constants.host_04_uuid]['os_name'], 'Shark Linux')
+        self.assertEqual(systems[constants.host_04_uuid]['rhel_version'], 'Unknown Shark Linux version')
+        self.assertIn(constants.host_05_uuid, systems)
+        self.assertEqual(systems[constants.host_05_uuid]['os_name'], 'CentOS')
+        self.assertEqual(systems[constants.host_05_uuid]['rhel_version'], '30')
+
     def test_list_system_name_filter(self):
         response = self.client.get(
             reverse('system-list'), data={
