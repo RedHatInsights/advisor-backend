@@ -28,7 +28,7 @@ from api.filters import (
     sort_params_to_fields, sort_param_enum, filter_on_param, value_of_param,
     display_name_query_param, filter_on_display_name,
 )
-from api.permissions import OrgPermission, ResourceScope
+from api.permissions import request_header_data, OrgPermission, ResourceScope
 from tasks.models import Job, JobLog, JobStatusChoices, TaskTypeChoices
 from tasks.permissions import TasksRBACPermission
 from tasks.serializers import JobSerializer, JobLogSerializer
@@ -137,7 +137,10 @@ class JobViewSet(ReadOnlyModelViewSet, PaginateMixin):
             # We don't have a STDOUT yet, request it from Playbook Dispatcher.
             # Don't store it because we only want to process the output when
             # it's actually fully complete.
-            stdout = fetch_playbook_dispatcher_stdout(job)
+            # Make the request to Playbook Dispatcher with the user's identity
+            stdout = fetch_playbook_dispatcher_stdout(
+                job, auth_header=request_header_data(request)
+            )
             if stdout is None:
                 stdout = ''
             return Response(stdout)

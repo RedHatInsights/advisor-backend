@@ -202,7 +202,11 @@ class PaginateMixin(object):
 ##############################################################################
 
 
-def retry_request(service, url, mode='get', max_retries=3, time_exponent=5, retry_timeouts=False, **kwargs):
+def retry_request(
+    service: str, url: str,
+    mode: str = 'get', max_retries: int = 3, time_exponent: float = 5.0,
+    retry_timeouts: bool = False, **kwargs
+) -> tuple[requests.Response, float]:
     """
     Requests the given URL, by GET or `mode` if set, up to `max_retries` (3)
     times, with an exponential timeout (of `time_exponent ** (retry - 2)`
@@ -218,7 +222,12 @@ def retry_request(service, url, mode='get', max_retries=3, time_exponent=5, retr
     req_start = time.monotonic()
     retry = 0
     request_succeeded = False
-    response = None
+    # Set up a valid but failed response object to let type checking get the
+    # return value right.  We always get to the `response = requests.request`
+    # lines, so we should always have a valid Response object in `response`.
+    response = requests.Response()
+    response.status_code = 599
+    response._content = b'No connection made'
     # request_succeeded = true breaks out later
     while retry < max_retries:
         retry += 1

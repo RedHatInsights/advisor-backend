@@ -14,10 +14,10 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-import base64
-from json import loads, dumps
+from json import loads
 import re
 import signal
+from typing import Optional
 
 from django.conf import settings
 from project_settings import kafka_settings
@@ -57,6 +57,16 @@ JSON_DELIMITERS = {
         'source': 'Cloud Connector',
     }
 }
+
+
+def get_stdout_url(run_id: str) -> str:
+    """
+    Construct the URL to get the stdout from the playbook dispatcher for a run
+    """
+    # path = f'api/playbook-dispatcher/v1/run_hosts?fields[data]=stdout&filter[run][id]={run_id}'
+    path = f'internal/v2/run_hosts?fields[data]=stdout&filter[run][id]={run_id}'
+    return f'{settings.PLAYBOOK_DISPATCHER_URL}/{path}'
+    # return f'{settings.PLAYBOOK_DISPATCHER_URL}/internal/v2/run/{run_id}/stdout'
 
 
 def parse_json_from_stdout(job, stdout, task_type: TaskTypeChoices):
@@ -209,7 +219,7 @@ def handle_ansible_job_updates(topic, message):
     parse_json_from_stdout(job, stdout, TaskTypeChoices.ANSIBLE)
 
 
-def fetch_playbook_dispatcher_stdout(job):
+def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] = None):
     """
     This function retrieves the stdout of the playbook from a given run id.
     The auth header is constructed manually instead of auth_header_for_testing().
@@ -220,31 +230,35 @@ def fetch_playbook_dispatcher_stdout(job):
 
     You get back the stdout text.
     """
-    # Only works if Playbook Dispatcher is actually set up
-    if not settings.PLAYBOOK_DISPATCHER_URL:
-        return
-    auth_header = {"x-rh-identity": base64.b64encode(dumps({
-        "identity": {
-            "org_id": job.executed_task.org_id,
-            "type": "User",
-            "user": {
-                "username": job.executed_task.initiated_by,
-                "is_org_admin": job.executed_task.is_org_admin,
-            },
-            "internal": {"org_id": job.executed_task.org_id}
-        }
-    }
-    ).encode())}
+    # Only works if Playbook Dispatcher is actually available and we can use the PSK
+    if not (settings.PLAYBOOK_DISPATCHER_URL and settings.PDAPI_PSK):
+        logger.error('Need both PLAYBOOK_DISPATCHER_URL and PDAPI_PSK set')
+        return None
+    # When used by the tasks service, we don't have an actual header.  So we
+    # need to use the service account to make this request.
+    if not auth_header:
+        auth_header = auth_header_for_testing(
+            username=job.executed_task.initiated_by,
+            org_id=job.executed_task.org_id,
+            supply_http_header=True,
+        )
+    auth_header["Authorization"] = f"PSK {settings.PDAPI_PSK}"
     job.new_log(
         True, f'Requesting data from Playbook Dispatcher for run ID {job.run_id}'
     )
+    STDOUT_URL = get_stdout_url(job.run_id)
     (response, elapsed) = retry_request(
-        'Playbook Dispatcher',
-        f'{settings.PLAYBOOK_DISPATCHER_URL}/api/playbook-dispatcher/v1/run_hosts'
-        f'?fields[data]=stdout&filter[run][id]={job.run_id}',
-        max_retries=1,
-        headers=auth_header
+        'Playbook Dispatcher', STDOUT_URL, max_retries=1, headers=auth_header
     )
+    if response.status_code == 404:
+        logger.error({
+            'message': f'Playbook Dispatcher does not know of run ID {job.run_id}',
+            'status': response.status_code, 'text': response.text
+        })
+        job.new_log(
+            False, f'Playbook Dispatcher does not know of run ID {job.run_id}'
+        )
+        return
     if response.status_code != 200:
         logger.error({
             'message': 'Error getting playbook-dispatcher stdout response',
