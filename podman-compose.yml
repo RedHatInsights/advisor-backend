@@ -98,6 +98,7 @@ services:
       - ENABLE_AUTOSUB="true" # enable auto-subscribe endpoint
       - ENABLE_INIT_CONTAINER_IMPORT_CONTENT=true
       - ENABLE_INIT_CONTAINER_MIGRATIONS=true
+      - IMAGE=latest
       - LOG_LEVEL=INFO
       - TASKS_REWRITE_INTERNAL_URLS_FOR=internal.localhost
       - TASKS_REWRITE_INTERNAL_URLS=true

@@ -432,37 +432,46 @@ class ExecutedTaskViewTestCase(TestCase):
         self.assertEqual(len(data['jobs']), 3)
         # Check that the data passed in was for the 'right' recipients:
         self.assertEqual(len(responses.calls), 1)
+        # Decode the raw list to as a dict based on recipient, for comparison
+        recipients = {
+            run_item['recipient']: run_item
+            for run_item in json.loads(responses.calls[0].request.body)
+        }
         self.assertEqual(
-            json.loads(responses.calls[0].request.body),
-            [
-                {
-                    "recipient": constants.host_01_clid,
-                    "org_id": constants.standard_org,
-                    "url": "https://cert.console.stage.redhat.com/api/tasks/v1/task/log4shell/playbook",
-                    "principal": constants.test_user,
-                    "name": "Log4Shell vulnerability detection",
-                }, {
-                    "recipient": constants.host_03_clid,
-                    "org_id": constants.standard_org,
-                    "url": "https://cert.console.stage.redhat.com/api/tasks/v1/task/log4shell/playbook",
-                    "principal": constants.test_user,
-                    "name": "Log4Shell vulnerability detection",
-                }, {
-                    "recipient": constants.host_04_recip,
-                    "org_id": constants.standard_org,
-                    "url": "https://cert.console.stage.redhat.com/api/tasks/v1/task/log4shell/playbook?inventory_id=00112233-4455-6677-8899-012345678904",
-                    "principal": constants.test_user,
-                    "name": "Log4Shell vulnerability detection",
-                    "recipient_config": {
-                        "sat_id": constants.host_04_satid,
-                        "sat_org_id": "1"
-                    },
-                    "hosts": [
-                        {"inventory_id": constants.host_04_uuid}
-                    ]
-                }
-            ]
+            recipients[constants.host_01_clid], {
+                "recipient": constants.host_01_clid,
+                "org_id": constants.standard_org,
+                "url": "https://cert.console.stage.redhat.com/api/tasks/v1/task/log4shell/playbook",
+                "principal": constants.test_user,
+                "name": "Log4Shell vulnerability detection",
+            }
         )
+        self.assertEqual(
+            recipients[constants.host_03_clid], {
+                "recipient": constants.host_03_clid,
+                "org_id": constants.standard_org,
+                "url": "https://cert.console.stage.redhat.com/api/tasks/v1/task/log4shell/playbook",
+                "principal": constants.test_user,
+                "name": "Log4Shell vulnerability detection",
+            }
+        )
+        self.assertEqual(
+            recipients[constants.host_04_recip], {
+                "recipient": constants.host_04_recip,
+                "org_id": constants.standard_org,
+                "url": "https://cert.console.stage.redhat.com/api/tasks/v1/task/log4shell/playbook",
+                "principal": constants.test_user,
+                "name": "Log4Shell vulnerability detection",
+                "recipient_config": {
+                    "sat_id": constants.host_04_satid,
+                    "sat_org_id": "1"
+                },
+                "hosts": [
+                    {"inventory_id": constants.host_04_uuid}
+                ]
+            }
+        )
+        self.assertEqual(len(recipients), 3)
 
         # Also check that the jobs were given the run IDs our fake playbook
         # dispatcher gave them

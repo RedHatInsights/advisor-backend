@@ -124,25 +124,58 @@ def satellite_id_from_tags(tags):
 
 
 def execute_playbook_dispatcher(hosts, org_id, task, user, executed_task_url):
-    dispatch_body = []
+    # First assemble the hosts by recipient - Satellite or individual
+    individual_hosts = []
+    satellite_hosts = dict()
     for host in hosts:
         if host['rhc_client_id'] is None:
-            raise ValidationError({'hosts': f'host {host["id"]} does not have an associated RHC client id'})
+            raise ValidationError({
+                'hosts': f'host {host["id"]} does not have an associated RHC client id'
+            })
+        if host['satellite_instance_id']:
+            if host['satellite_instance_id'] not in satellite_hosts:
+                satellite_hosts[host['satellite_instance_id']] = {
+                    'sat_rhc_id': str(host['rhc_client_id']),
+                    'org_id': host['satellite_org_id'],
+                    'hosts': []
+                }
+            satellite_hosts[host['satellite_instance_id']]['hosts'].append(
+                str(host['id'])
+            )
+        else:
+            individual_hosts.append(str(host['rhc_client_id']))
+
+    dispatch_body = []
+    # Now assemble the runs to be dispatched: by Satellite then individual
+    for satellite_id, sat_data in satellite_hosts.items():
         run = {
-            'recipient': str(host['rhc_client_id']),
+            'recipient': sat_data['sat_rhc_id'],
+            'recipient_config': {
+                "sat_id": satellite_id,
+                "sat_org_id": sat_data['org_id'],
+            },
+            'org_id': org_id,
+            'url': executed_task_url,
+            'principal': user,
+            'name': task.title,
+            'hosts': [
+                {'inventory_id': host_id}
+                for host_id in sat_data['hosts']
+            ],
+        }
+        dispatch_body.append(run)
+
+    for host_id in individual_hosts:
+        run = {
+            'recipient': host_id,
             'org_id': org_id,
             'url': executed_task_url,
             'principal': user,
             'name': task.title,
         }
-        if host['satellite_instance_id']:
-            run['recipient_config'] = {
-                "sat_id": host['satellite_instance_id'],
-                "sat_org_id": host['satellite_org_id']
-            }
-            run['hosts'] = [{'inventory_id': str(host['id'])}]
-            run['url'] = f"{run['url']}?inventory_id={str(host['id'])}"
         dispatch_body.append(run)
+
+    # Now we can actually dispatch the run list
     logger.info(dispatch_body)
     (response, elapsed) = retry_request(
         'Playbook Dispatcher', settings.PLAYBOOK_DISPATCHER_URL + '/internal/v2/dispatch',
