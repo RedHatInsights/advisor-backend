@@ -21,6 +21,18 @@ from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing
 
 
+class PathwayModelTestCase(TestCase):
+    fixtures = [
+        'resolution_risks', 'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'pathways', 'basic_test_data', 'pathways_test_data',
+    ]
+
+    def test_str(self):
+        from api.models import Pathway
+        pathway = Pathway.objects.get(slug=constants.first_pathway['slug'])
+        self.assertEqual(str(pathway), constants.first_pathway['name'])
+
+
 class PathwayViewTestCase(TestCase):
     fixtures = [
         'resolution_risks', 'rulesets', 'system_types', 'rule_categories', 'upload_sources',
