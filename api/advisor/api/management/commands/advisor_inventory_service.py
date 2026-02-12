@@ -17,7 +17,8 @@
 import prometheus
 import signal
 
-from project_settings import kafka_settings
+# Import directly - causes an error if you get the name wrong.
+from project_settings.kafka_settings import INVENTORY_EVENTS_TOPIC
 from django.core.management.base import BaseCommand
 
 from advisor_logging import logger
@@ -314,9 +315,8 @@ class Command(BaseCommand):
         Run the handler loop continuously until interrupted by SIGTERM.
         """
         logger.info('Advisor Inventory replication service starting up')
-
         receiver = KafkaDispatcher()
-        receiver.register_handler(kafka_settings.INVENTORY_TOPIC, handle_inventory_event)
+        receiver.register_handler(INVENTORY_EVENTS_TOPIC, handle_inventory_event)
 
         def terminate(signum: int, _):
             logger.info("Signal %d received, triggering shutdown", signum)
