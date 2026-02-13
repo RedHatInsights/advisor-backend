@@ -318,6 +318,135 @@ def handle_deleted_event(message: dict[str, JsonValue]):
 
 
 #############################################################################
+# Engine results and rule hits handlers
+
+
+@prometheus.INSIGHTS_ADVISOR_SERVICE_HANDLE_ENGINE_RESULTS.time()
+def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> None:
+    """
+    Handle engine results received from the shared engine instance.
+    This comes in on platform.engine.results topic.
+    """
+    # Clean threading cruft and start function metrics
+    utils.clean_threading_cruft()
+    engine_results_started = time.time()
+    thread_storage.set_value('engine_results_started', engine_results_started)
+    thread_storage.set_value('engine_results_error', 0)
+    logger.debug("Handling engine results %s", engine_results)
+
+    # Required engine results keys
+    # Account number has been removed as it is no longer required, only optional
+    key_paths = {
+        "engine_reports": ["results", "reports"],
+        "system_data": ["results", "system"],
+        "platform_data": ["input", "platform_metadata"],
+        "request_id": ["input", "platform_metadata", "request_id"],
+        "inventory_uuid": ["input", "host", "id"],
+        "org_id": ["input", "platform_metadata", "org_id"]
+    }
+
+    def bad_payload(data, null_keys):
+        payload_info = {
+            'source': 'insights-client',
+            'request_id': data.get('request_id'),
+            'account': utils.traverse_keys(engine_results, ["input", "host", "account"]),
+            'org_id': data.get('org_id'),
+            'inventory_id': data.get('inventory_uuid')
+        }
+        payload_tracker.bad_payload('insights-client', payload_info)
+        missing_paths = ["/".join(key_paths[key]) for key in null_keys]
+        logger.error("Key paths not found/null in engine results at paths: %s",
+                     ",".join(missing_paths))
+        return False
+
+    data = {key: utils.traverse_keys(engine_results, key_path)
+                 for key, key_path in key_paths.items()}
+    null_keys = [key for key, val in data.items() if val is None]
+    if len(null_keys):
+        return bad_payload(data, null_keys)
+
+    # get host and platform data
+    try:
+        engine_reports = data.get('engine_reports')
+        system_data = data.get('system_data')
+        platform_data = data.get('platform_data')
+        request_id = data.get('request_id')
+        inventory_uuid = data.get('inventory_uuid')
+        account = utils.traverse_keys(engine_results, ["input", "host", "account"])
+        org_id = data.get('org_id')
+    except Exception:
+        return bad_payload(data, null_keys)
+
+    # attempt to get the system ID for easy debugging/lookup
+    # this is not necessarily guaranteed or required
+    # so we dont include it in the above "key_paths"
+    system_id = system_data.get('system_id')
+    if system_id:
+        thread_storage.set_value('system_id', system_id)
+
+    # send processing metrics
+    thread_storage.set_value('request_id', request_id)
+    thread_storage.set_value('inventory_id', inventory_uuid)
+    thread_storage.set_value('source', 'insights-client')
+    thread_storage.set_value('account', account)
+    thread_storage.set_value('org_id', org_id)
+    payload_tracker.payload_status('received', 'Processing engine results')
+    logger.info("Processing engine results for Inventory ID %s on account %s and org_id %s",
+                inventory_uuid, account, org_id)
+
+    # system type and produce code information
+    system_type = system_data.get('type')
+    system_product = system_data.get('product')
+    db_system_type = SystemType.objects.filter(
+        role=system_type,
+        product_code=system_product
+    ).first()
+
+    if not db_system_type:
+        thread_storage.set_value('engine_results_error', 1)
+        thread_storage.set_value('engine_results_error_msg', 'missing system_type')
+        engine_results_finished = time.time()
+        engine_results_elapsed = engine_results_finished - engine_results_started
+        thread_storage.set_value('engine_results_finished', engine_results_finished)
+        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+        logger.error(
+            f"Unable to get system type {system_product} / "
+            f"{system_type} from DB - load fixtures!"
+        )
+        payload_tracker.payload_status('invalid', 'Invalid system type.')
+        return False
+
+    # add reports to the database
+    satellite_managed = platform_data.get('satellite_managed', False)
+    satellite_id = system_data.get('remote_leaf', None)
+    if satellite_id == -1:
+        satellite_id = None
+    branch_id = system_data.get('remote_branch', None)
+    if branch_id == -1:
+        branch_id = None
+
+    if create_db_reports(
+        engine_reports, inventory_uuid, account, org_id, db_system_type, 'insights-client',
+        satellite_managed, satellite_id, branch_id,
+    ):
+        engine_results_finished = time.time()
+        engine_results_elapsed = engine_results_finished - engine_results_started
+        thread_storage.set_value('engine_results_finished', engine_results_finished)
+        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+        return True
+    else:
+        engine_results_finished = time.time()
+        engine_results_elapsed = engine_results_finished - engine_results_started
+        thread_storage.set_value('engine_results_error', 1)
+        thread_storage.set_value('engine_results_error_msg', 'Failure processing engine results.')
+        thread_storage.set_value('engine_results_finished', engine_results_finished)
+        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+        payload_tracker.payload_status('error', 'Failure processing engine results.')
+        logger.error('Failure processing engine results.')
+        return False
+
+
+#############################################################################
 @prometheus.INSIGHTS_ADVISOR_SERVICE_DB_ELAPSED.time()
 def create_db_reports(
     reports, inventory_uuid, account, org_id, system_type, source,
