@@ -446,6 +446,91 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
         return False
 
 
+@prometheus.INSIGHTS_ADVISOR_SERVICE_RULE_HITS_ELAPSED.time()
+def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
+    """
+    Handle third-party rule hits from platform.insights.rule-hits topic.
+    """
+    utils.clean_threading_cruft()
+
+    rule_hits_started = time.time()
+    thread_storage.set_value('rule_hits_started', rule_hits_started)
+    thread_storage.set_value('rule_hits_error', 0)
+
+    required_keys = ['org_id', 'source', 'host_product', 'host_role', 'inventory_id', 'hits']
+    missing_keys = [key for key in required_keys if key not in rule_hits_json]
+    if missing_keys:
+        rule_hits_finished = time.time()
+        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+        thread_storage.set_value('rule_hits_error', 1)
+        thread_storage.set_value('rule_hits_error_msg', 'missing_keys')
+        prometheus.THIRD_PARTY_RULE_HIT_MISSING_KEYS.inc()
+        payload_info = {'request_id': 'third-party'}
+        for key in required_keys:
+            if key in rule_hits_json:
+                payload_info[key] = rule_hits_json[key]
+        payload_tracker.payload_status('invalid',
+                       f"Third party rule hits did not contain valid keys {required_keys}",
+                       payload_info)
+        logger.error(f"Third party rule hits did not contain valid keys {required_keys}")
+        return False
+
+    thread_storage.set_value('request_id', 'third-party')
+    thread_storage.set_value('inventory_id', rule_hits_json['inventory_id'])
+    thread_storage.set_value('source', rule_hits_json['source'])
+    thread_storage.set_value('account', rule_hits_json.get('account'))
+    thread_storage.set_value('org_id', rule_hits_json['org_id'])
+    payload_tracker.payload_status('processing', 'Beginning rule hit analysis.')
+
+    system_type = None
+    rule_hits_json['host_role'] = rule_hits_json['host_role'].lower()
+    rule_hits_json['host_product'] = rule_hits_json['host_product'].lower()
+    system_type = SystemType.objects.filter(
+        role=rule_hits_json['host_role'],
+        product_code=rule_hits_json['host_product']
+    ).first()
+
+    if not system_type:
+        thread_storage.set_value('rule_hits_error', 1)
+        thread_storage.set_value('rule_hits_error_msg', 'missing system_type')
+        rule_hits_finished = time.time()
+        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+        logger.error(
+            f"Unable to get system type {rule_hits_json['host_product']} / "
+            f"{rule_hits_json['host_role']} from DB - load fixtures!"
+        )
+        payload_tracker.payload_status('invalid', 'Invalid system type.')
+        return False
+    else:
+        logger.debug("Valid system type found for system type:%s, system product:%s.",
+            rule_hits_json['host_product'],
+            rule_hits_json['host_role'])
+
+    logger.debug("Generating reports for Inventory ID:%s, Account:%s, Org ID: %s.",
+                rule_hits_json['inventory_id'], rule_hits_json.get('account'), rule_hits_json['org_id'])
+    payload_tracker.payload_status('processing', 'Creating reports.')
+    if create_db_reports(rule_hits_json['hits'], rule_hits_json['inventory_id'],
+                      rule_hits_json.get('account'), rule_hits_json['org_id'],
+                      system_type, rule_hits_json['source']):
+        rule_hits_finished = time.time()
+        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+    else:
+        rule_hits_finished = time.time()
+        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+        thread_storage.set_value('rule_hits_error', 1)
+        thread_storage.set_value('rule_hits_error_msg', "Error processing third party rule hits.")
+        extra_info = {}
+        for key in required_keys:
+            if key in rule_hits_json:
+                extra_info[key] = rule_hits_json[key]
+        logger.error("Error processing third party rule hits.", extra=extra_info)
+    return True
+
+
 #############################################################################
 @prometheus.INSIGHTS_ADVISOR_SERVICE_DB_ELAPSED.time()
 def create_db_reports(
