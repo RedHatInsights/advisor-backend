@@ -16,17 +16,30 @@
 
 import prometheus
 import signal
+import time
+import traceback
 
-from project_settings import kafka_settings
+from bounded_executor import BoundedExecutor
+from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
+from project_settings import kafka_settings
 
+import build_info
+import payload_tracker
+import reports as report_hooks
+import thread_storage
+import utils
 from advisor_logging import logger
+from api.models import (  # pyright: ignore[reportImplicitRelativeImport]
+    Ack, CurrentReport, Host, HostAck, InventoryHost,
+    Rule, SystemType, Upload, UploadSource
+)
 from feature_flags import (
     feature_flag_is_enabled, FLAG_INVENTORY_EVENT_REPLICATION
 )
-from api.models import InventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
-
-from kafka_utils import JsonValue, KafkaDispatcher  # , send_kafka_message
+from kafka_utils import JsonValue, KafkaDispatcher
 
 
 #############################################################################
@@ -301,6 +314,30 @@ def handle_deleted_event(message: dict[str, JsonValue]):
     ).delete()
     logger.info("Deleted %d records based on InventoryHost: %s.", *deleted_records)
     prometheus.INVENTORY_HOST_DELETED.inc()
+
+
+#############################################################################
+# Helper functions for thread pool integration
+
+
+def make_async_handler(handler_func, executor):
+    """
+    Wraps a handler to submit it to the thread pool executor.
+    Handler executes asynchronously while wrapper returns immediately.
+    """
+    def wrapped_handler(topic, message):
+        future = executor.submit(handler_func, topic, message)
+        future.add_done_callback(on_thread_done)
+        logger.debug("Submitted %s to executor", handler_func.__name__)
+    return wrapped_handler
+
+
+def on_thread_done(future):
+    """Callback for completed futures to catch exceptions"""
+    try:
+        future.result()
+    except Exception:
+        logger.exception("Future %s hit exception", future)
 
 
 # Main command

@@ -428,6 +428,27 @@ AUTOACK = {
     'JUSTIFICATION': 'Disabled by default - enable to begin detection'
 }
 
+# Thread pool configuration for advisor service
+THREAD_POOL_SIZE = int(os.environ.get('THREAD_POOL_SIZE', 30))
+
+# Service configuration
+SERVICE_APP_NAME = os.environ.get('SERVICE_APP_NAME', 'insights-advisor-service')
+SERVICE_GROUP_ID = os.environ.get('SERVICE_GROUP_ID', 'advisor_results')
+
+# Prometheus configuration
+DISABLE_PROMETHEUS = os.environ.get('DISABLE_PROMETHEUS', "").lower() == "true"
+
+# Report filtering configuration
+# FILTER_OUT_NON_RHEL should be true by default
+FILTER_OUT_NON_RHEL = os.environ.get('FILTER_OUT_NON_RHEL', "true").lower() == "true"
+OTHER_LINUX_SYSTEM_IDS = 'other_linux_system|OTHER_LINUX_SYSTEM,other_linux_system|OTHER_LINUX_SYSTEM_V2,other_linux_system|CONVERT2RHEL_SUPPORTED'
+FILTER_OUT_NON_RHEL_RULE_ID = os.environ.get('FILTER_OUT_NON_RHEL_RULE_ID',
+                                             OTHER_LINUX_SYSTEM_IDS).split(',')
+# RHEL6 systems will only report RHEL6_UPGRADE_RULE_IDS from July 1st, 2024
+FILTER_OUT_RHEL6 = os.environ.get('FILTER_OUT_RHEL6', "true").lower() == "true"
+RHEL6_UPGRADE_RULE_IDS = 'rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN,rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1,rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_ERROR'
+FILTER_OUT_RHEL6_RULE_IDS = os.environ.get('FILTER_OUT_RHEL6_RULE_IDS', RHEL6_UPGRADE_RULE_IDS).split(',')
+
 # Increase max request sizes for content-server posting content to Advisor
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000  # Content currently about 5M bytes
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 200000  # Content currently about 40000 fields
