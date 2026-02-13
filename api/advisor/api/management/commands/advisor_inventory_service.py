@@ -44,9 +44,13 @@ from kafka_utils import JsonValue, KafkaDispatcher
 
 
 #############################################################################
+# Inventory event handler
+
+
+@prometheus.INSIGHTS_ADVISOR_SERVICE_INVENTORY_EVENTS_ELAPSED.time()
 def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
     """
-    Handle inventory events.
+    Handle inventory events from platform.inventory.events topic.
 
     The inventory event messages are documented at:
     https://inscope.corp.redhat.com/docs/default/component/host-based-inventory/#created-event
