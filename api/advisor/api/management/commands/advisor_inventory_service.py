@@ -17,8 +17,11 @@
 import prometheus
 import signal
 
-# Import directly - causes an error if you get the name wrong.
-from project_settings.kafka_settings import INVENTORY_EVENTS_TOPIC
+from django.conf import settings
+# NB: it would be better if we imported the topics directly, because that
+# detects a name error at compile time rather than run time (cf Rusty's API
+# design manifesto, level 9 is better than level 5).
+# Reference: https://gist.github.com/mjball/9cd028ac793ae8b351df1379f1e721f9
 from django.core.management.base import BaseCommand
 
 from advisor_logging import logger
@@ -319,7 +322,7 @@ class Command(BaseCommand):
         """
         logger.info('Advisor Inventory replication service starting up')
         receiver = KafkaDispatcher()
-        receiver.register_handler(INVENTORY_EVENTS_TOPIC, handle_inventory_event)
+        receiver.register_handler(settings.INVENTORY_EVENTS_TOPIC, handle_inventory_event)
 
         def terminate(signum: int, _):
             logger.info("Signal %d received, triggering shutdown", signum)
