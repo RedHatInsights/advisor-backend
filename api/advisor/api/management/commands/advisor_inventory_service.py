@@ -29,7 +29,6 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
-from project_settings import kafka_settings
 
 import build_info
 import payload_tracker
@@ -761,7 +760,7 @@ def create_db_reports(
                     logger.debug("%s current report object rule_id: %s, "
                                  "inventory_id: %s, account: %s, org_id: %s",
                                  "Creating" if created else "Updating", rule['rule_id'], inventory_uuid, account, org_id)
-                    if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+                    if settings.WEBHOOKS_TOPIC or settings.REMEDIATIONS_HOOK_TOPIC:
                         webhook_report_rule_objs.append(rule)
                 else:
                     logger.debug(
@@ -796,7 +795,7 @@ def create_db_reports(
             # Trigger the webhook report comparisons
             # figure out which reports are NEW
             # figure out which reports are resolved
-            if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+            if settings.WEBHOOKS_TOPIC or settings.REMEDIATIONS_HOOK_TOPIC:
                 # Fetch some of these fields from the InventoryHost object
                 # Catch errors and do not fail entire upload on this
                 try:
@@ -856,23 +855,63 @@ def on_thread_done(future):
 
 
 class Command(BaseCommand):
-    help = "Manage InventoryHost table replication from Inventory Event messages"
+    help = "Advisor service for processing engine results, rule hits, and inventory events"
 
     def handle(self, *args, **options):
         """
-        Run the handler loop continuously until interrupted by SIGTERM.
+        Run the Advisor service continuously until interrupted by SIGTERM.
         """
         logger.info('Advisor Inventory replication service starting up')
-        receiver = KafkaDispatcher()
-        receiver.register_handler(settings.INVENTORY_EVENTS_TOPIC, handle_inventory_event)
 
+        # Log build information for Prometheus
+        prometheus.ADVISOR_SERVICE_VERSION.info(build_info.get_build_info())
+
+        # Initialize thread pool executor
+        executor = BoundedExecutor(0, settings.THREAD_POOL_SIZE)
+        logger.info('Started thread pool with %d workers', settings.THREAD_POOL_SIZE)
+
+        # Start Prometheus server if enabled
+        if not settings.DISABLE_PROMETHEUS:
+            logger.debug('Starting Prometheus server')
+            future = executor.submit(prometheus.start_prometheus)
+            future.add_done_callback(on_thread_done)
+
+        # Setup initial prometheus metrics
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('starting')
+        prometheus.INSIGHTS_ADVISOR_UP.set(1)
+
+        # Create Kafka dispatcher
+        receiver = KafkaDispatcher()
+
+        # Register async handlers (wrapped to use thread pool)
+        receiver.register_handler(
+            settings.ENGINE_RESULTS_TOPIC,
+            make_async_handler(handle_engine_results, executor)
+        )
+        receiver.register_handler(
+            settings.RULE_HITS_TOPIC,
+            make_async_handler(handle_rule_hits, executor)
+        )
+        receiver.register_handler(
+            settings.INVENTORY_EVENTS_TOPIC,
+            make_async_handler(handle_inventory_event, executor)
+        )
+
+        # Setup signal handlers
         def terminate(signum: int, _):
             logger.info("Signal %d received, triggering shutdown", signum)
             receiver.quit = True
 
-        _ = signal.signal(signal.SIGTERM, terminate)
-        _ = signal.signal(signal.SIGINT, terminate)
+        signal.signal(signal.SIGTERM, terminate)
+        signal.signal(signal.SIGINT, terminate)
 
-        # Loops until receiver.quit is set
+        # Run receiver loop
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('running')
         receiver.receive()
-        logger.info('Advisor Inventory replication service shutting down')
+
+        # Cleanup
+        prometheus.INSIGHTS_ADVISOR_UP.set(0)
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('stopped')
+        executor.shutdown()
+
+        logger.info('Advisor Service shutting down')
