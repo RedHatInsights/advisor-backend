@@ -849,24 +849,64 @@ def on_thread_done(future):
 
 
 class Command(BaseCommand):
-    help = "Manage InventoryHost table replication from Inventory Event messages"
+    help = "Advisor service for processing engine results, rule hits, and inventory events"
 
     def handle(self, *args, **options):
         """
-        Run the handler loop continuously until interrupted by SIGTERM.
+        Run the Advisor service continuously until interrupted by SIGTERM.
         """
-        logger.info('Advisor Inventory replication service starting up')
+        # Initialize logging
+        logger.info('Advisor Service starting up')
 
+        # Log build information for Prometheus
+        prometheus.ADVISOR_SERVICE_VERSION.info(build_info.get_build_info())
+
+        # Initialize thread pool executor
+        executor = BoundedExecutor(0, settings.THREAD_POOL_SIZE)
+        logger.info('Started thread pool with %d workers', settings.THREAD_POOL_SIZE)
+
+        # Start Prometheus server if enabled
+        if not settings.DISABLE_PROMETHEUS:
+            logger.debug('Starting Prometheus server')
+            future = executor.submit(prometheus.start_prometheus)
+            future.add_done_callback(on_thread_done)
+
+        # Setup initial prometheus metrics
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('starting')
+        prometheus.INSIGHTS_ADVISOR_UP.set(1)
+
+        # Create Kafka dispatcher
         receiver = KafkaDispatcher()
-        receiver.register_handler(kafka_settings.INVENTORY_TOPIC, handle_inventory_event)
 
-        def terminate(signum: int, _):
+        # Register async handlers (wrapped to use thread pool)
+        receiver.register_handler(
+            kafka_settings.ENGINE_RESULTS_TOPIC,
+            make_async_handler(handle_engine_results, executor)
+        )
+        receiver.register_handler(
+            kafka_settings.RULE_HITS_TOPIC,
+            make_async_handler(handle_rule_hits, executor)
+        )
+        receiver.register_handler(
+            kafka_settings.INVENTORY_TOPIC,
+            make_async_handler(handle_inventory_event, executor)
+        )
+
+        # Setup signal handlers
+        def terminate(signum, _):
             logger.info("Signal %d received, triggering shutdown", signum)
             receiver.quit = True
 
-        _ = signal.signal(signal.SIGTERM, terminate)
-        _ = signal.signal(signal.SIGINT, terminate)
+        signal.signal(signal.SIGTERM, terminate)
+        signal.signal(signal.SIGINT, terminate)
 
-        # Loops until receiver.quit is set
+        # Run receiver loop
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('running')
         receiver.receive()
-        logger.info('Advisor Inventory replication service shutting down')
+
+        # Cleanup
+        prometheus.INSIGHTS_ADVISOR_UP.set(0)
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('stopped')
+        executor.shutdown()
+
+        logger.info('Advisor Service shutting down')
