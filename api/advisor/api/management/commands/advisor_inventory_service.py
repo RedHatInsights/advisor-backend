@@ -23,6 +23,7 @@ from bounded_executor import BoundedExecutor
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from project_settings import kafka_settings
 
@@ -314,6 +315,292 @@ def handle_deleted_event(message: dict[str, JsonValue]):
     ).delete()
     logger.info("Deleted %d records based on InventoryHost: %s.", *deleted_records)
     prometheus.INVENTORY_HOST_DELETED.inc()
+
+
+#############################################################################
+@prometheus.INSIGHTS_ADVISOR_SERVICE_DB_ELAPSED.time()
+def create_db_reports(
+    reports, inventory_uuid, account, org_id, system_type, source,
+    satellite_managed=None, satellite_id=None, branch_id=None,
+):
+    """
+    Create all the reports for a given inventory host from engine results or rule hits.
+
+    This function:
+    - Creates/updates Host records
+    - Creates/updates Upload records
+    - Creates/updates CurrentReport records
+    - Handles autoack logic for new accounts
+    - Filters reports by RHEL version
+    - Triggers webhooks and remediations
+    """
+    # Satisfy the DB's requirement that this field be a non-null boolean
+    if not satellite_managed:
+        satellite_managed = False
+    else:
+        satellite_managed = True
+
+    new_report_objs = []
+    existing_report_objs = []
+    webhook_report_rule_objs = []
+    db_started = time.time()
+    thread_storage.set_value('db_started', db_started)
+    thread_storage.set_value('db_error', 0)
+
+    logger.debug(f"Retrieving upload source type for {source}")
+    upload_source = None
+    upload_source_created = None
+
+    def log_db_failure(message, get_exception=False):
+        if get_exception:
+            the_error = traceback.format_exc()
+            message += f': {the_error}'
+        db_finished = time.time()
+        db_elapsed = db_finished - db_started
+        thread_storage.set_value('db_finished', db_finished)
+        thread_storage.set_value('db_elapsed', db_elapsed)
+        thread_storage.set_value('db_error', 1)
+        thread_storage.set_value('db_error_msg', message)
+        prometheus.INSIGHTS_ADVISOR_DB_ERRORS.inc()
+        payload_tracker.payload_status('error', message)
+        logger.error(message)
+
+    # Create/Update Host information
+    try:
+        # search for an existing host
+        host_obj = Host.objects.filter(inventory_id=inventory_uuid).first()
+
+        def update_host(host_obj, **kwargs):
+            """
+            Update the host with a set of key=value pairs.  If the field value
+            is different from the key value, the host_obj's field is updated.
+            A list of updated fields is returned.
+            """
+            updated_fields = list()
+            for key, value in kwargs.items():
+                if value and getattr(host_obj, key) != value:
+                    setattr(host_obj, key, value)
+                    updated_fields.append(key)
+            return updated_fields
+
+        # if no host was found, create a new one
+        if not host_obj:
+            # Good point to check if this is a new account and if so, add
+            # autoacked rules for them.  We assume a new account if no
+            # existing (current) uploads from that account.  Since the latest
+            # upload is always the current one, the only situation in which
+            # an account can have only non-current uploads is if they send a
+            # delete for every single host they have; here, and in the
+            # sat-compat API, we only delete current uploads, not historic.
+            # However, since we only create the acks if they don't already
+            # exist, we don't need to worry about that rare case.
+            if not Upload.objects.filter(org_id=org_id, current=True).exists():
+                logger.debug(
+                    "No uploads for account %s org_id %s - assuming new account, creating autoacks",
+                    account, org_id
+                )
+                new_acks = []
+                autoack_rules = Rule.objects.filter(
+                    tags__name=settings.AUTOACK['TAG'], ack__isnull=True
+                )
+                for autoack_rule in autoack_rules:
+                    new_acks.append(Ack(
+                        rule=autoack_rule, account=account, org_id=org_id,
+                        justification=settings.AUTOACK['JUSTIFICATION'],
+                        created_by=settings.AUTOACK['CREATED_BY']
+                    ))
+                if new_acks:
+                    Ack.objects.bulk_create(new_acks)
+                    logger.debug("Created %d new acks", len(new_acks))
+
+            host_obj = Host(inventory_id=inventory_uuid, account=account, org_id=org_id)
+            update_host(
+                host_obj,
+                satellite_id=satellite_id, branch_id=branch_id
+            )
+            host_obj.save()
+
+        # if a host object was found and we are updating information
+        elif host_obj:
+            updated_fields = update_host(
+                host_obj,
+                satellite_id=satellite_id, branch_id=branch_id
+            )
+
+            if updated_fields:
+                host_obj.save(update_fields=updated_fields)
+
+    except Exception:
+        log_db_failure('Could not create host', get_exception=True)
+        return False
+
+    try:
+        with transaction.atomic():
+            # lock on system uuid to avoid race conditions
+            Host.objects.select_for_update().get(inventory_id=inventory_uuid)
+
+            # Get the current reports before we archive them
+            # so that we can filter for webhooks
+            db_reports = CurrentReport.objects.filter(
+                host=inventory_uuid, org_id=org_id
+            ).order_by('rule__rule_id')
+            db_report_values = list(db_reports.values(
+                'id', 'rule_id', 'rule__active', 'rule__total_risk',
+                'rule__description', 'rule__publish_date', 'rule__rule_id',
+                'rule__reboot_required', 'impacted_date'
+            ).annotate(
+                has_incident=Exists(Rule.objects.filter(
+                    id=OuterRef('rule'), tags__name='incident'))
+            ))
+            logger.debug("Got DB reports %s", db_report_values)
+
+            upload_source, upload_source_created = UploadSource.objects.get_or_create(name=source)
+
+            if not upload_source:
+                raise Exception('upload source is missing')
+
+            # Update existing or create new upload
+            upload, created = Upload.objects.update_or_create(
+                host_id=inventory_uuid,
+                org_id=org_id,
+                source=upload_source,
+                defaults={
+                    'account': account,
+                    'checked_on': timezone.now(),
+                    'is_satellite': satellite_managed,
+                    'system_type': system_type
+                }
+            )
+            message = "Created new" if created else "Updated existing"
+            logger.debug(
+                f"{message} upload for system UUID (inventory ID) "
+                f"{inventory_uuid} with ID {upload.id} ready for (up to) "
+                f"{len(reports)} reports"
+            )
+
+            # Filter out reports/rules for non-rhel systems (if turned on)
+            report_rule_ids = [x['rule_id'] for x in reports]
+            logger.debug("Getting report rule IDs %s", report_rule_ids)
+            if settings.FILTER_OUT_NON_RHEL:
+                if any(r_id in settings.FILTER_OUT_NON_RHEL_RULE_ID for r_id in report_rule_ids):
+                    logger.debug("Filtering out non rhel rule id %s",
+                                 settings.FILTER_OUT_NON_RHEL_RULE_ID)
+                    report_rule_ids = settings.FILTER_OUT_NON_RHEL_RULE_ID
+
+            # Filter out reports/rules for RHEL6 systems to only include ones to upgrade
+            if settings.FILTER_OUT_RHEL6:
+                reported_rhel6_rules = list(set(report_rule_ids).intersection(set(settings.FILTER_OUT_RHEL6_RULE_IDS)))
+                if reported_rhel6_rules:
+                    logger.debug("Filtering out rhel6 rule id %s", reported_rhel6_rules)
+                    report_rule_ids = reported_rhel6_rules
+
+            logger.debug("Final report rule IDs %s", report_rule_ids)
+            report_rules = Rule.objects.filter(rule_id__in=report_rule_ids).values(
+                'id', 'rule_id', 'active', 'total_risk', 'description',
+                'publish_date', 'reboot_required'
+            ).annotate(
+                has_incident=Exists(Rule.objects.filter(id=OuterRef('id'), tags__name='incident'))
+            ).order_by('rule_id')
+            logger.debug("Report rules from database %s", report_rules)
+            report_rules_map = dict((i['rule_id'], i) for i in report_rules)
+            logger.debug("Report rules map %s", report_rules_map)
+
+            now = timezone.now()
+            db_report_rules = [dbr['rule_id'] for dbr in db_report_values]
+            for report in reports:
+                # Get rule object for report
+                if report['rule_id'] in report_rules_map:
+                    rule = report_rules_map[report['rule_id']]
+                    logger.debug(f"Using rule: {rule}")
+
+                    # Get the impacted_date for this report rule from the DB
+                    # If it exists and isn't None, use its impacted date for the new report, otherwise use now()
+                    impacted_date = now
+                    db_report_impacted_date = [dbr['impacted_date'] for dbr in db_report_values
+                                               if dbr['rule_id'] == rule['id']]
+                    if db_report_impacted_date and db_report_impacted_date[0]:
+                        impacted_date = db_report_impacted_date[0]
+
+                    created = True
+                    report_obj = CurrentReport(
+                        rule_id=rule['id'], upload=upload, details=report["details"],
+                        host_id=inventory_uuid, account=account, org_id=org_id,
+                        impacted_date=impacted_date)
+
+                    if rule['id'] in db_report_rules:
+                        created = False
+                        existing_report_objs.append(report_obj)
+                    else:
+                        new_report_objs.append(report_obj)
+
+                    logger.debug("%s current report object rule_id: %s, "
+                                 "inventory_id: %s, account: %s, org_id: %s",
+                                 "Creating" if created else "Updating", rule['rule_id'], inventory_uuid, account, org_id)
+                    if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+                        webhook_report_rule_objs.append(rule)
+                else:
+                    logger.debug(
+                        f"Rule {report['rule_id']} not found in DB - content refresh needed!")
+                    prometheus.INSIGHTS_ADVISOR_MISSING_CONTENT.inc()
+            logger.debug("Final generated reports %s", new_report_objs + existing_report_objs)
+            num_report_objs = len(new_report_objs) + len(existing_report_objs)
+
+            # Bulk insert new reports
+            CurrentReport.objects.bulk_create(new_report_objs)
+            # Update existing reports
+            for existing_report in existing_report_objs:
+                CurrentReport.objects.filter(
+                    rule_id=existing_report.rule_id,
+                    host_id=existing_report.host_id,
+                    account=existing_report.account,
+                    org_id=existing_report.org_id
+                ).update(
+                    upload=existing_report.upload,
+                    details=existing_report.details,
+                    impacted_date=existing_report.impacted_date
+                )
+            # And (bulk) delete any db_reports that weren't in the report
+            delete_db_reports = [dbr['rule__rule_id'] for dbr in db_report_values
+                                 if dbr['rule__rule_id'] not in report_rule_ids]
+            if delete_db_reports:
+                logger.debug("Deleting current report object(s) rule_id(s): %s, "
+                             "inventory_id: %s, account: %s, org_id: %s",
+                             delete_db_reports, inventory_uuid, account, org_id)
+                db_reports.filter(rule__rule_id__in=delete_db_reports).delete()
+
+            # Trigger the webhook report comparisons
+            # figure out which reports are NEW
+            # figure out which reports are resolved
+            if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+                # Fetch some of these fields from the InventoryHost object
+                # Catch errors and do not fail entire upload on this
+                try:
+                    report_hooks.trigger_report_hooks(
+                        host_obj.inventory, webhook_report_rule_objs, db_report_values
+                    )
+                except:
+                    logger.exception("Error sending Report Hooks",
+                                     extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id})
+                    the_error = traceback.format_exc()
+                    payload_tracker.payload_status('error', the_error)
+
+            # update prometheus stats
+            prometheus.INSIGHTS_ADVISOR_SUCCESSFUL_REQUESTS.inc()
+
+            # set thread storage values for kibana
+            db_finished = time.time()
+            thread_storage.set_value('db_finished', db_finished)
+            thread_storage.set_value('db_elapsed', db_finished - db_started)
+            payload_msg = f'Successfully logged {num_report_objs} reports.'
+            payload_tracker.payload_status('success', payload_msg)
+            logger.info(
+                f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
+                f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
+                extra={'db_duration': db_finished - db_started})
+    except Exception:
+        log_db_failure("Failed to process upload", get_exception=True)
+        return False
+    return True
 
 
 #############################################################################
