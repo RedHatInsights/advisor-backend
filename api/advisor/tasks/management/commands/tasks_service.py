@@ -20,7 +20,6 @@ import signal
 from typing import Optional
 
 from django.conf import settings
-from project_settings import kafka_settings
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
 from django.utils import timezone
@@ -337,7 +336,7 @@ def handle_script_job_updates(topic, message):
         "ingress_kafka_message": message
     })
     updated_on = message['timestamp']
-    send_kafka_message(kafka_settings.PAYLOAD_TRACKER_TOPIC, {
+    send_kafka_message(settings.PAYLOAD_TRACKER_TOPIC, {
         'status': 'received',
         'service': 'tasks',
         'source': 'rhc-worker-script',
@@ -613,9 +612,9 @@ class Command(BaseCommand):
         logger.info('Tasks service starting up')
 
         receiver = KafkaDispatcher()
-        receiver.register_handler(kafka_settings.TASKS_UPDATES_TOPIC, handle_ansible_job_updates, service='tasks')
-        receiver.register_handler(kafka_settings.TASKS_SOURCES_TOPIC, handle_sources_event)
-        receiver.register_handler(kafka_settings.TASKS_UPLOAD_TOPIC, handle_script_job_updates, service='tasks')
+        receiver.register_handler(settings.TASKS_UPDATES_TOPIC, handle_ansible_job_updates, service='tasks')
+        receiver.register_handler(settings.TASKS_SOURCES_TOPIC, handle_sources_event)
+        receiver.register_handler(settings.TASKS_UPLOAD_TOPIC, handle_script_job_updates, service='tasks')
 
         def terminate(signum, frame):
             logger.info("SIGTERM received, triggering shutdown")

@@ -17,7 +17,7 @@
 import responses
 from uuid import UUID
 
-from project_settings import kafka_settings as kafka_settings
+from django.conf import settings
 from django.test import TestCase, override_settings
 
 from api.permissions import auth_header_for_testing
@@ -147,13 +147,13 @@ class TaskSatTrackingTestCase(TestCase):
 
     @responses.activate
     def test_correlate_satellite_to_rhc(self):
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, satellite_source_message())
+        handle_sources_event(settings.WEBHOOKS_TOPIC, satellite_source_message())
         sr = SatelliteRhc.objects.get(instance_id='357b7360-c0d6-11ec-a1f5-abea1b2200b3')
         self.assertEqual(sr.instance_id, UUID('357b7360-c0d6-11ec-a1f5-abea1b2200b3'))
         self.assertEqual(sr.source_id, 147)
         self.assertIsNone(sr.rhc_client_id)
 
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, rhc_source_message())
+        handle_sources_event(settings.WEBHOOKS_TOPIC, rhc_source_message())
         sr = SatelliteRhc.objects.get(instance_id='357b7360-c0d6-11ec-a1f5-abea1b2200b3')
         self.assertEqual(sr.instance_id, UUID('357b7360-c0d6-11ec-a1f5-abea1b2200b3'))
         self.assertEqual(sr.source_id, 147)
@@ -166,12 +166,12 @@ class TaskSatTrackingTestCase(TestCase):
         message = satellite_source_message()
         message['source_ref'] = 'bogus non uuid'
         # The test is that no exception is raised - so no error is generated.
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, message)
+        handle_sources_event(settings.WEBHOOKS_TOPIC, message)
 
     @responses.activate
     def test_update_satellite_source_id(self):
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, satellite_source_message())
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, rhc_source_message())
+        handle_sources_event(settings.WEBHOOKS_TOPIC, satellite_source_message())
+        handle_sources_event(settings.WEBHOOKS_TOPIC, rhc_source_message())
 
         sr = SatelliteRhc.objects.get(instance_id='357b7360-c0d6-11ec-a1f5-abea1b2200b3')
         self.assertEqual(sr.source_id, 147)
@@ -180,7 +180,7 @@ class TaskSatTrackingTestCase(TestCase):
         message_new_id = satellite_source_message()
         message_new_id['id'] = 1337
 
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, message_new_id)
+        handle_sources_event(settings.WEBHOOKS_TOPIC, message_new_id)
         sr = SatelliteRhc.objects.get(instance_id='357b7360-c0d6-11ec-a1f5-abea1b2200b3')
         self.assertEqual(sr.source_id, 1337)
         self.assertEqual(sr.rhc_client_id, UUID('52321130-c0d6-11ec-a1f5-abea1b2200b3'))
@@ -189,14 +189,14 @@ class TaskSatTrackingTestCase(TestCase):
     def test_non_satellite_source_type(self):
         message_new_source_id = satellite_source_message()
         message_new_source_id['source_type_id'] = -1
-        handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, message_new_source_id)
+        handle_sources_event(settings.WEBHOOKS_TOPIC, message_new_source_id)
 
         sr_count = SatelliteRhc.objects.filter(instance_id='357b7360-c0d6-11ec-a1f5-abea1b2200b3').count()
         self.assertEqual(sr_count, 0)
 
     def test_rhc_id_not_uuid(self):
         with self.assertLogs(logger='advisor-log') as log:
-            _ = handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, {
+            _ = handle_sources_event(settings.WEBHOOKS_TOPIC, {
                 'rhc_id': '“1337-8888”', 'source_ids': [1]
             })
             self.assertEqual(len(log.output), 1)
@@ -204,7 +204,7 @@ class TaskSatTrackingTestCase(TestCase):
 
     def test_no_source_ids(self):
         with self.assertLogs(logger='advisor-log') as log:
-            _ = handle_sources_event(kafka_settings.WEBHOOKS_TOPIC, {
+            _ = handle_sources_event(settings.WEBHOOKS_TOPIC, {
                 'rhc_id': '52321130-c0d6-11ec-a1f5-abea1b2200b3', 'source_ids': []
             })
             self.assertEqual(len(log.output), 1)

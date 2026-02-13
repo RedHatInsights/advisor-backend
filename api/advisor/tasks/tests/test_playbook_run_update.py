@@ -15,7 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import responses
-from project_settings import kafka_settings as kafka_settings
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -160,7 +160,7 @@ class TaskJobUpdateTestCase(TestCase):
             status=200,
             json=json_playbook_dispatcher_reply()
         )
-        handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
+        handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, run_update_message())
 
         res = self.client.get(
             reverse('tasks-executedtask-detail', kwargs={'id': constants.executed_task_id}),
@@ -217,7 +217,7 @@ class TaskJobUpdateTestCase(TestCase):
             status=200,
             json=json_playbook_dispatcher_reply_eoln()
         )
-        handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
+        handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, run_update_message())
         res = self.client.get(
             reverse('tasks-executedtask-detail', kwargs={'id': constants.executed_task_id}),
             **self.std_auth
@@ -280,7 +280,7 @@ class TaskJobUpdateTestCase(TestCase):
         job.system_id = '00000000-0000-0000-0000-000000000000'  # non existent system.
         job.save()
 
-        handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
+        handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, run_update_message())
 
         res = self.client.get(
             reverse('tasks-executedtask-detail', kwargs={'id': constants.executed_task_id}),
@@ -302,14 +302,14 @@ class TaskJobUpdateTestCase(TestCase):
         )
         update_message = run_update_message()
         update_message['payload']['id'] = constants.job_3_run_id
-        handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, update_message)
+        handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, update_message)
 
     def test_job_update_bad_status(self):
         update_message = run_update_message()
         update_message['payload']['status'] = "bad status"
         job_count = Job.objects.count()
         with self.assertRaises(KeyError):
-            handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, update_message)
+            handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, update_message)
         # Should be no extra jobs
         self.assertEqual(Job.objects.count(), job_count)
 
@@ -324,7 +324,7 @@ class TaskJobUpdateTestCase(TestCase):
             status=200,
             json=mangled_json_reply
         )
-        handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
+        handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, run_update_message())
 
         res = self.client.get(
             reverse('tasks-executedtask-detail', kwargs={'id': constants.executed_task_id}),
@@ -354,7 +354,7 @@ class TaskJobUpdateTestCase(TestCase):
         # So the handle_ansible_job_updates function should call fetch_playbook_dispatcher_stdout because
         # the status is 'success'.  That then tries to fetch the stdout from
         # the playbook dispatcher, which gets a non-200 and fails.
-        handle_ansible_job_updates(kafka_settings.WEBHOOKS_TOPIC, run_update_message())
+        handle_ansible_job_updates(settings.WEBHOOKS_TOPIC, run_update_message())
 
         # In that case we can still request the detail for the executed task...
         res = self.client.get(

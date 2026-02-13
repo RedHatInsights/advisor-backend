@@ -41,8 +41,7 @@ import api.models as db  # noqa
 from advisor_logging import logger
 
 # Import Kafka stuff
-import project_settings.kafka_settings as kafka_settings
-kafka_settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
+settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
 
 # Retry constants
 DB_RETRY_COUNT_MAX = 3
@@ -93,9 +92,9 @@ def check_kafka_connection():
         try:
             logger.debug('Kafka connection attempt %s', (count + 1))
             # Setup Consumer
-            c = Consumer(kafka_settings.KAFKA_SETTINGS)
+            c = Consumer(settings.KAFKA_SETTINGS)
             # Get topics
-            kafka_topics = [kafka_settings.TASKS_SOURCES_TOPIC, kafka_settings.TASKS_UPDATES_TOPIC]
+            kafka_topics = [settings.TASKS_SOURCES_TOPIC, settings.TASKS_UPDATES_TOPIC]
             for topic in kafka_topics:
                 topic_info = c.list_topics(topic, timeout=KAFKA_SOCKET_TIMEOUT_MS)
                 logger.debug('Topic info found for %s: %s', topic, topic_info)

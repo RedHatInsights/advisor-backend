@@ -22,7 +22,7 @@ import json
 from typing import Callable, TypedDict
 
 import confluent_kafka
-from project_settings import kafka_settings as kafka_settings
+from django.conf import settings
 
 from django.core.signals import request_started, request_finished
 
@@ -204,17 +204,17 @@ class DummyConsumer():
 # Setup
 
 producer = None
-if not kafka_settings.KAFKA_SETTINGS:
+if not settings.KAFKA_SETTINGS:
     # This means that we've been misconfigured
     logger.error("Kafka producer settings required to send messages")
-elif not kafka_settings.KAFKA_SETTINGS.get('bootstrap.servers'):
+elif not settings.KAFKA_SETTINGS.get('bootstrap.servers'):
     # This means that we've been configured but from the Dev environment,
     # which doesn't include a default bootstrap server.  So we use the dummy
     # class above to just pretend to do stuff.
     logger.warning("Using dummy Kakfa producer")
     producer = DummyProducer()
 else:
-    producer = Producer(kafka_settings.KAFKA_SETTINGS)
+    producer = Producer(settings.KAFKA_SETTINGS)
 
 
 #############################################################################
@@ -251,7 +251,7 @@ def send_kafka_message(topic: str, message: JsonValue):
 
 def send_webhook_event(event_msg: JsonValue):
     # For compatibility - replace with direct calls to send_kafka_message
-    send_kafka_message(kafka_settings.WEBHOOKS_TOPIC, event_msg)
+    send_kafka_message(settings.WEBHOOKS_TOPIC, event_msg)
 
 
 #############################################################################
@@ -295,7 +295,7 @@ class KafkaDispatcher(object):
         if consumer is not None:
             self.consumer = consumer
         else:
-            self.consumer: Consumer = Consumer(kafka_settings.KAFKA_SETTINGS)
+            self.consumer: Consumer = Consumer(settings.KAFKA_SETTINGS)
 
     def register_handler(self, topic: str, handler_fn: HandlerFunc, **filters: dict[str, str]):
         if topic in self.registered_handlers:

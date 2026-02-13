@@ -18,8 +18,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from django.conf import settings
-from project_settings import kafka_settings as kafka_settings
-kafka_settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
+settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
 
 from advisor_logging import logger
 from kafka_utils import send_kafka_message
@@ -93,7 +92,7 @@ def send_event_message(event_type, account=None, org_id=None, context={}, event_
     # If no payloads, don't send a message
     if not event_payloads:
         return
-    logger.info("Sending %s event on topic %s", event_type, kafka_settings.WEBHOOKS_TOPIC)
+    logger.info("Sending %s event on topic %s", event_type, settings.WEBHOOKS_TOPIC)
     send_msg = {
         "version": "v1.2.0",
         "bundle": "rhel",
@@ -111,6 +110,6 @@ def send_event_message(event_type, account=None, org_id=None, context={}, event_
         "id": str(uuid4()),
     }
     try:
-        send_kafka_message(kafka_settings.WEBHOOKS_TOPIC, send_msg)
+        send_kafka_message(settings.WEBHOOKS_TOPIC, send_msg)
     except Exception as e:
         logger.exception('Could not send event of type %s (%s)', event_type, e)

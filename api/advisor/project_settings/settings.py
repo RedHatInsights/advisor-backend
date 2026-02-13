@@ -32,7 +32,7 @@ import sys
 
 from prometheus_client import Info
 from logging_conf import LOGGING  # noqa
-from app_common_python import LoadedConfig
+from app_common_python import LoadedConfig, KafkaTopics, KafkaServers
 
 
 def string_to_bool(s):
@@ -453,10 +453,77 @@ UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
 UNLEASH_REFRESH_INTERVAL = os.getenv("UNLEASH_REFRESH_INTERVAL", 5)
 UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
 
-# HBI settings for the logical replication
-HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
-HBI_SUBSCRIPTION = os.getenv("HBI_SUBSCRIPTION", "advisor_hosts_sub_v1_0_2")
-HBI_DROP_SUBSCRIPTION = os.getenv("HBI_DROP_SUBSCRIPTION", "")
-HBI_DROP_TABLES = os.getenv("HBI_DROP_TABLES", "false").lower() == "true"
-HBI_SSL_MODE = os.getenv("HBI_SSL_MODE", "")
-HBI_TABLES_NUM_PARTITIONS = int(os.getenv("HBI_TABLES_NUM_PARTITIONS", 1))
+
+# Kafka settings
+
+def topic(requestedName):
+    kafka_topic = KafkaTopics.get(requestedName)
+    return kafka_topic.name if kafka_topic else requestedName
+
+
+CLOWDER_ENABLED = os.getenv('CLOWDER_ENABLED', '').lower() == 'true'
+if CLOWDER_ENABLED:
+    ENGINE_RESULTS_TOPIC = topic('platform.engine.results')
+    INVENTORY_EVENTS_TOPIC = topic('platform.inventory.events')
+    RULE_HITS_TOPIC = topic('platform.insights.rule-hits')
+    PAYLOAD_TRACKER_TOPIC = topic('platform.payload-status')
+    REMEDIATIONS_HOOK_TOPIC = topic('platform.remediation-updates.advisor')
+    WEBHOOKS_TOPIC = topic('platform.notifications.ingress')
+    TASKS_UPDATES_TOPIC = topic('platform.playbook-dispatcher.runs')
+    TASKS_SOURCES_TOPIC = topic('platform.sources.event-stream')
+    TASKS_UPLOAD_TOPIC = topic('platform.upload.announce')
+
+    kafka_broker = LoadedConfig.kafka.brokers[0]
+    BOOTSTRAP_SERVERS = ",".join(KafkaServers)
+    ENABLE_KAFKA_SSL = False
+    KAFKA_SSL_CERT = None
+    if kafka_broker.cacert:
+        with open('/tmp/cacert', 'w') as f:
+            f.write(kafka_broker.cacert)
+        KAFKA_SSL_CERT = '/tmp/cacert'
+    if kafka_broker.sasl and kafka_broker.sasl.securityProtocol and \
+            'SSL' in kafka_broker.sasl.securityProtocol:
+        ENABLE_KAFKA_SSL = True
+    if kafka_broker.sasl and kafka_broker.sasl.username:
+        ENABLE_KAFKA_SSL = True
+        KAFKA_SASL_USERNAME = kafka_broker.sasl.username
+        KAFKA_SASL_PASSWORD = kafka_broker.sasl.password
+        KAFKA_SECURITY_PROTOCOL = kafka_broker.sasl.securityProtocol
+        KAFKA_SASL_MECHANISMS = kafka_broker.sasl.saslMechanism
+else:
+    ENGINE_RESULTS_TOPIC = os.environ.get('ENGINE_RESULTS_TOPIC', 'platform.engine.results')
+    INVENTORY_EVENTS_TOPIC = os.environ.get('INVENTORY_EVENTS_TOPIC', 'platform.inventory.events')
+    RULE_HITS_TOPIC = os.environ.get('RULE_HITS_TOPIC', 'platform.insights.rule-hits')
+    PAYLOAD_TRACKER_TOPIC = os.environ.get('PAYLOAD_TRACKER_TOPIC')
+    REMEDIATIONS_HOOK_TOPIC = os.environ.get('REMEDIATIONS_HOOK_TOPIC',
+                                             'platform.remediation-updates.advisor')
+    WEBHOOKS_TOPIC = os.environ.get('WEBHOOKS_TOPIC')
+    TASKS_UPDATES_TOPIC = os.environ.get('TASKS_UPDATES_TOPIC', 'platform.playbook-dispatcher.runs')
+    TASKS_SOURCES_TOPIC = os.environ.get('TASKS_SOURCES_TOPIC', 'platform.sources.event-stream')
+    TASKS_UPLOAD_TOPIC = os.environ.get('TASKS_UPLOAD_TOPIC', 'platform.upload.announce')
+    BOOTSTRAP_SERVERS = os.environ.get('BOOTSTRAP_SERVERS')
+    ENABLE_KAFKA_SSL = os.environ.get('ENABLE_KAFKA_SSL', '').lower() == "true"
+    KAFKA_SSL_CERT = os.environ.get('KAFKA_SSL_CERT', '/opt/certs/kafka-cacert')
+    KAFKA_SECURITY_PROTOCOL = os.environ.get('KAFKA_SECURITY_PROTOCOL', 'SASL_SSL')
+    KAFKA_SASL_MECHANISMS = os.environ.get('KAFKA_SASL_MECHANISMS', 'SCRAM-SHA-512')
+    KAFKA_SASL_USERNAME = os.environ.get('KAFKA_SASL_USERNAME')
+    KAFKA_SASL_PASSWORD = os.environ.get('KAFKA_SASL_PASSWORD')
+
+KAFKA_SETTINGS = {
+    'bootstrap.servers': BOOTSTRAP_SERVERS,
+    'auto.offset.reset': 'latest',
+    'enable.auto.commit': True,
+    'enable.auto.offset.store': True,
+}
+if ENABLE_KAFKA_SSL:
+    KAFKA_SETTINGS.update({
+        'security.protocol': KAFKA_SECURITY_PROTOCOL,
+        'sasl.mechanisms': KAFKA_SASL_MECHANISMS,
+        'sasl.username': KAFKA_SASL_USERNAME,
+        'sasl.password': KAFKA_SASL_PASSWORD,
+        #  'group.id' is defined in api/tasks/service instantation for consumer group and in respective settings
+    })
+if KAFKA_SSL_CERT:
+    KAFKA_SETTINGS.update({
+        'ssl.ca.location': KAFKA_SSL_CERT,
+    })
