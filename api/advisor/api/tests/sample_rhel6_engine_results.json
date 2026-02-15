@@ -1,0 +1,160 @@
+{
+  "input": {
+    "platform_metadata": {
+      "account": "477931",
+      "b64_identity": "eyJpZGVudGl0eSI6eyJpbnRlcm5hbCI6eyJhdXRoX3RpbWUiOjAsImNyb3NzX2FjY2VzcyI6ZmFsc2UsIm9yZ19pZCI6IjU4ODIxMDMifSwiYWNjb3VudF9udW1iZXIiOiIxMjA1MzQxIiwiYXV0aF90eXBlIjoiY2VydC1hdXRoIiwib3JnX2lkIjoiNTg4MjEwMyIsInN5c3RlbSI6eyJjbiI6IjBkODNmYjUyLWExNDItNDExZC1iYjc3LTJhYWZlYmUwOWZmYSIsImNlcnRfdHlwZSI6InNhdGVsbGl0ZSJ9LCJ0eXBlIjoiU3lzdGVtIn0sImVudGl0bGVtZW50cyI6eyJpbnNpZ2h0cyI6eyJpc19lbnRpdGxlZCI6dHJ1ZSwiaXNfdHJpYWwiOmZhbHNlfSwiY29zdF9tYW5hZ2VtZW50Ijp7ImlzX2VudGl0bGVkIjp0cnVlLCJpc190cmlhbCI6ZmFsc2V9LCJtaWdyYXRpb25zIjp7ImlzX2VudGl0bGVkIjp0cnVlLCJpc190cmlhbCI6ZmFsc2V9LCJyaG9kcyI6eyJpc19lbnRpdGxlZCI6ZmFsc2UsImlzX3RyaWFsIjpmYWxzZX0sInVzZXJfcHJlZmVyZW5jZXMiOnsiaXNfZW50aXRsZWQiOnRydWUsImlzX3RyaWFsIjpmYWxzZX0sInJoZWwiOnsiaXNfZW50aXRsZWQiOnRydWUsImlzX3RyaWFsIjpmYWxzZX0sImludGVybmFsIjp7ImlzX2VudGl0bGVkIjpmYWxzZSwiaXNfdHJpYWwiOmZhbHNlfSwiYW5zaWJsZSI6eyJpc19lbnRpdGxlZCI6dHJ1ZSwiaXNfdHJpYWwiOmZhbHNlfSwic21hcnRfbWFuYWdlbWVudCI6eyJpc19lbnRpdGxlZCI6dHJ1ZSwiaXNfdHJpYWwiOmZhbHNlfSwib3BlbnNoaWZ0Ijp7ImlzX2VudGl0bGVkIjp0cnVlLCJpc190cmlhbCI6ZmFsc2V9LCJzZXR0aW5ncyI6eyJpc19lbnRpdGxlZCI6dHJ1ZSwiaXNfdHJpYWwiOmZhbHNlfSwic3Vic2NyaXB0aW9ucyI6eyJpc19lbnRpdGxlZCI6dHJ1ZSwiaXNfdHJpYWwiOmZhbHNlfSwicmhvYW0iOnsiaXNfZW50aXRsZWQiOmZhbHNlLCJpc190cmlhbCI6ZmFsc2V9fX0=",
+      "category": "upload",
+      "content_type": "application/x-gzip; charset=binary",
+      "elapsed_time": 1650290461.3501074,
+      "extras": {},
+      "host": {},
+      "id": null,
+      "metadata": {
+        "reporter": "",
+        "stale_timestamp": "0001-01-01T00:00:00Z"
+      },
+      "org_id": "5882103",
+      "payload_id": null,
+      "principal": "5882103",
+      "request_id": "15a69bd8db3045db801b6a587cb56499",
+      "satellite_managed": null,
+      "service": "advisor",
+      "size": 279317,
+      "timestamp": "2022-04-18T14:01:01.338500595Z",
+      "url": "https://s3.us-east-1.amazonaws.com/insights-ingress-prod/15a69bd8db3045db801b6a587cb56499?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAUKARNPA6LGLHRM7Q%2F20220418%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20220418T140101Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&X-Amz-Signature=6a169482a96b5e85188ee10af860e9928d89ef6bbca06c47c1ae2249bac5392a",
+      "validation": null,
+      "test": null,
+      "is_ros": null
+    },
+    "metadata": {
+      "request_id": "15a69bd8db3045db801b6a587cb56499"
+    },
+    "host": {
+      "display_name": "RHEL6-OUTATIME",
+      "updated": "2022-04-18T14:01:02.017817+00:00",
+      "system_profile": {
+        "os_release": "6.10",
+        "os_kernel_version": "2.6.32",
+        "example_satellite_managed": true
+      },
+      "insights_id": "45bdd8ce-36e6-4861-a4dd-cd69af79f6f1",
+      "stale_warning_timestamp": "2022-04-26T19:01:01.977460+00:00",
+      "fqdn": "rhel6.example.com",
+      "id": "57c4c38b-a8c6-4289-9897-223681fd804d",
+      "provider_id": null,
+      "created": "2020-07-07T08:01:25.953992+00:00",
+      "reporter": "puptoo",
+      "bios_uuid": "cb732b42-3fca-3947-5b72-48b49dc12002",
+      "provider_type": null,
+      "per_reporter_staleness": {
+        "puptoo": {
+          "last_check_in": "2022-04-18T14:01:02.017571+00:00",
+          "stale_timestamp": "2022-04-19T19:01:01.977460+00:00",
+          "check_in_succeeded": true
+        }
+      },
+      "account": "477931",
+      "mac_addresses": [
+        "00:50:56:ab:bd:a4",
+        "00:00:00:00:00:00"
+      ],
+      "ansible_host": null,
+      "example_satellite_id": "738ad1aa-3313-44e9-b3ac-cb1d702a208c",
+      "satellite_id": null,
+      "ip_addresses": [
+        "172.30.105.55"
+      ],
+      "subscription_manager_id": "738ad1aa-3313-44e9-b3ac-cb1d702a208c",
+      "stale_timestamp": "2022-04-19T19:01:01.977460+00:00",
+      "culled_timestamp": "2022-05-03T19:01:01.977460+00:00"
+    },
+    "type": "updated",
+    "timestamp": "2022-04-18T14:01:02.028890+00:00"
+  },
+  "results": {
+    "system": {
+      "metadata": {
+        "timezone_information": {
+          "utcoffset": -18000,
+          "timezone": "CDT"
+        },
+        "rhel_version": "7.9",
+        "bios_information": {
+          "bios_revision": "4.6",
+          "release_date": "12/12/2018",
+          "vendor": "Phoenix Technologies LTD",
+          "version": "6.00"
+        },
+        "system_information": {
+          "product_name": "VMware Virtual Platform",
+          "family": "Not Specified",
+          "manufacturer": "VMware, Inc.",
+          "virtual_machine": true
+        },
+        "release": "Red Hat Enterprise Linux Server release 7.9 (Maipo)"
+      },
+      "hostname": "RHEL6-OUTATIME",
+      "example_remote_branch": "0d83fb52-a142-411d-bb77-2aafebe09ffa",
+      "remote_branch": null,
+      "example_remote_leaf": "738ad1aa-3313-44e9-b3ac-cb1d702a208c",
+      "remote_leaf": null,
+      "system_id": "7d7ef554-7812-460a-b4b7-519544251e2c",
+      "product": "rhel",
+      "type": "host"
+    },
+    "reports": [
+      {
+        "rule_id": "rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1",
+        "component": "telemetry.rules.plugins.leapp.rhel6_upgrade.report",
+        "type": "rule",
+        "key": "RHEL6_HAS_TO_UPGRADE_WARN_V1",
+        "details": {
+          "release": "Red Hat Enterprise Linux Server release 6.10 (Santiago)",
+          "kernel": "2.6.32-754.50.1.el6.x86_64",
+          "type": "rule",
+          "error_key": "RHEL6_HAS_TO_UPGRADE_WARN_V1"
+        },
+        "tags": [],
+        "links": {
+          "jira": [
+            "https://issues.redhat.com/browse/RHINENG-10287"
+          ],
+          "kcs": [
+            "https://access.redhat.com/solutions/7073474"
+          ]
+        }
+      }, {
+        "rule_id": "hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED",
+        "component": "prodsec.rules.hardening_gpg_pubkey.report",
+        "type": "rule",
+        "key": "REDHAT_GPGKEY_NOT_INSTALLED",
+        "details": {
+          "type": "rule",
+          "none_key": "REDHAT_GPGKEY_NOT_INSTALLED"
+        },
+        "tags": [],
+        "links": {}
+      }
+    ],
+    "fingerprints": [],
+    "analysis_metadata": {
+      "start": "2022-04-18T14:01:07.664715+00:00",
+      "finish": "2022-04-18T14:01:08.865629+00:00",
+      "execution_context": "insights.core.context.SerializedArchiveContext",
+      "plugin_sets": {
+        "insights-core": {
+          "version": "insights-core-3.0.270-1",
+          "commit": "placeholder"
+        },
+        "insights-plugins": {
+          "version": "insights-plugins-2.0.214-1",
+          "commit": "placeholder"
+        },
+        "insights-prodsec-rules": {
+          "version": "insights-prodsec-rules-1.0.144-1",
+          "commit": "placeholder"
+        }
+      }
+    }
+  }
+}

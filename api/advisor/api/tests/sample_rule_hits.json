@@ -1,0 +1,28 @@
+{
+ "source": "aiops",
+ "host_product": "OSP",
+ "host_role": "Cluster",
+ "inventory_id": "2db7adeb-e3e8-4d40-bf68-bd00064e252b",
+ "account": "123456",
+ "org_id": "1234567",
+ "hits": [
+   {
+     "rule_id": "aiops_rule_1",
+     "details": {
+       "error_key": "lol",
+       "recommended_volume": "gp2",
+       "ebs_volumes": [
+         "uuid1",
+         "uuid2"
+       ]
+     }
+   },
+   {
+     "rule_id": "aiops_rule_2",
+     "details": {
+       "error_key": "roflsauce",
+       "any_data": "arbitrary data"
+     }
+   }
+ ]
+}
