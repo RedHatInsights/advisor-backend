@@ -26,8 +26,7 @@ from django.utils import timezone
 from api.management.commands.advisor_inventory_service import (
     handle_engine_results, handle_rule_hits
 )
-from api.models import Ack, CurrentReport, Host, Rule, SystemType, Tag, Upload
-from api.tests import constants
+from api.models import Ack, CurrentReport, Host, Rule, Tag, Upload
 
 
 # Test constants
