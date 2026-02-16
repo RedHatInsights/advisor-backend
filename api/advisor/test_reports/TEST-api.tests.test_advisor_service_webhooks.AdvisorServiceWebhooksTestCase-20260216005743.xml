@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_advisor_service_webhooks.AdvisorServiceWebhooksTestCase-20260216005743" tests="2" file="api/tests/test_advisor_service_webhooks.py" time="0.028" timestamp="2026-02-16T00:57:43" failures="2" errors="0" skipped="0">
+	<testcase classname="api.tests.test_advisor_service_webhooks.AdvisorServiceWebhooksTestCase" name="test_generate_webhook_msgs_new_report" time="0.011" timestamp="2026-02-16T00:57:43" file="api/tests/test_advisor_service_webhooks.py" line="51">
+		<!--Test that webhook messages are correctly generated for new reports.-->
+		<failure type="AssertionError" message="0 != 1"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_webhooks.py", line 124, in test_generate_webhook_msgs_new_report
+    self.assertEqual(new, 1)
+AssertionError: 0 != 1
+]]></failure>
+	</testcase>
+	<testcase classname="api.tests.test_advisor_service_webhooks.AdvisorServiceWebhooksTestCase" name="test_generate_webhook_msgs_resolved_report" time="0.017" timestamp="2026-02-16T00:57:43" file="api/tests/test_advisor_service_webhooks.py" line="128">
+		<!--Test that webhook messages are correctly generated for resolved reports.-->
+		<failure type="AssertionError" message="0 != 1"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_webhooks.py", line 184, in test_generate_webhook_msgs_resolved_report
+    self.assertEqual(reports._producer.poll_calls, 1)
+AssertionError: 0 != 1
+]]></failure>
+	</testcase>
+</testsuite>
