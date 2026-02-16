@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_parameter_parsing.ParameterParsingTestCase-20260212002758" tests="6" file="api/tests/test_parameter_parsing.py" time="0.072" timestamp="2026-02-12T00:28:47" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_parameter_parsing.ParameterParsingTestCase" name="test_array_already_supplied" time="0.003" timestamp="2026-02-12T00:28:47" file="advisor/api/tests/test_parameter_parsing.py" line="108"/>
-	<testcase classname="api.tests.test_parameter_parsing.ParameterParsingTestCase" name="test_array_not_supplied" time="0.002" timestamp="2026-02-12T00:28:47" file="advisor/api/tests/test_parameter_parsing.py" line="132"/>
-	<testcase classname="api.tests.test_parameter_parsing.ParameterParsingTestCase" name="test_array_on_single_param" time="0.003" timestamp="2026-02-12T00:28:47" file="advisor/api/tests/test_parameter_parsing.py" line="80"/>
-	<testcase classname="api.tests.test_parameter_parsing.ParameterParsingTestCase" name="test_bad_array_collection_format" time="0.037" timestamp="2026-02-12T00:28:47" file="advisor/api/tests/test_parameter_parsing.py" line="41"/>
-	<testcase classname="api.tests.test_parameter_parsing.ParameterParsingTestCase" name="test_datetime_parameter" time="0.020" timestamp="2026-02-12T00:28:47" file="advisor/api/tests/test_parameter_parsing.py" line="164"/>
-	<testcase classname="api.tests.test_parameter_parsing.ParameterParsingTestCase" name="test_numeric_parameter" time="0.008" timestamp="2026-02-12T00:28:47" file="advisor/api/tests/test_parameter_parsing.py" line="142"/>
-</testsuite>

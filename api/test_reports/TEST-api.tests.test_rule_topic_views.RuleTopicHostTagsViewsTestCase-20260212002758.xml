@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_rule_topic_views.RuleTopicHostTagsViewsTestCase-20260212002758" tests="2" file="api/tests/test_rule_topic_views.py" time="0.140" timestamp="2026-02-12T00:29:08" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_rule_topic_views.RuleTopicHostTagsViewsTestCase" name="test_topic_list" time="0.068" timestamp="2026-02-12T00:29:08" file="advisor/api/tests/test_rule_topic_views.py" line="392"/>
-	<testcase classname="api.tests.test_rule_topic_views.RuleTopicHostTagsViewsTestCase" name="test_topic_systems" time="0.072" timestamp="2026-02-12T00:29:08" file="advisor/api/tests/test_rule_topic_views.py" line="424"/>
-</testsuite>

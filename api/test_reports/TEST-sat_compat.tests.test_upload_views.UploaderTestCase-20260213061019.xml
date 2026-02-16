@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="sat_compat.tests.test_upload_views.UploaderTestCase-20260213061019" tests="2" file="sat_compat/tests/test_upload_views.py" time="0.029" timestamp="2026-02-13T06:11:09" failures="0" errors="0" skipped="0">
-	<testcase classname="sat_compat.tests.test_upload_views.UploaderTestCase" name="test_ping_view" time="0.005" timestamp="2026-02-13T06:11:09" file="advisor/sat_compat/tests/test_upload_views.py" line="35"/>
-	<testcase classname="sat_compat.tests.test_upload_views.UploaderTestCase" name="test_system_views" time="0.024" timestamp="2026-02-13T06:11:09" file="advisor/sat_compat/tests/test_upload_views.py" line="44"/>
-</testsuite>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_autosubexclusion_views.AutosubExclusionViewTestCase-20260213061019" tests="5" file="api/tests/test_autosubexclusion_views.py" time="0.047" timestamp="2026-02-13T06:10:24" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_autosubexclusion_views.AutosubExclusionViewTestCase" name="test_pathway_create" time="0.009" timestamp="2026-02-13T06:10:23" file="advisor/api/tests/test_autosubexclusion_views.py" line="107"/>
-	<testcase classname="api.tests.test_autosubexclusion_views.AutosubExclusionViewTestCase" name="test_pathway_destroy" time="0.021" timestamp="2026-02-13T06:10:23" file="advisor/api/tests/test_autosubexclusion_views.py" line="138"/>
-	<testcase classname="api.tests.test_autosubexclusion_views.AutosubExclusionViewTestCase" name="test_pathway_list" time="0.004" timestamp="2026-02-13T06:10:23" file="advisor/api/tests/test_autosubexclusion_views.py" line="44"/>
-	<testcase classname="api.tests.test_autosubexclusion_views.AutosubExclusionViewTestCase" name="test_pathway_retrieve" time="0.003" timestamp="2026-02-13T06:10:23" file="advisor/api/tests/test_autosubexclusion_views.py" line="34"/>
-	<testcase classname="api.tests.test_autosubexclusion_views.AutosubExclusionViewTestCase" name="test_pathway_sorting" time="0.010" timestamp="2026-02-13T06:10:24" file="advisor/api/tests/test_autosubexclusion_views.py" line="66"/>
-</testsuite>

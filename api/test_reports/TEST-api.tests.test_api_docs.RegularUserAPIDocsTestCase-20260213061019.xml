@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_api_docs.RegularUserAPIDocsTestCase-20260213061019" tests="1" file="api/tests/test_api_docs.py" time="0.001" timestamp="2026-02-13T06:10:23" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_api_docs.RegularUserAPIDocsTestCase" name="test_schema_has_docs" time="0.001" timestamp="2026-02-13T06:10:23" file="advisor/api/tests/test_api_docs.py" line="74"/>
-</testsuite>

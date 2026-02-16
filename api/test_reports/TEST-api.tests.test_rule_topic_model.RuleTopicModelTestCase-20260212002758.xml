@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_rule_topic_model.RuleTopicModelTestCase-20260212002758" tests="1" file="api/tests/test_rule_topic_model.py" time="0.070" timestamp="2026-02-12T00:29:07" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_rule_topic_model.RuleTopicModelTestCase" name="test_active_rules_topic_model" time="0.070" timestamp="2026-02-12T00:29:07" file="advisor/api/tests/test_rule_topic_model.py" line="35"/>
-</testsuite>

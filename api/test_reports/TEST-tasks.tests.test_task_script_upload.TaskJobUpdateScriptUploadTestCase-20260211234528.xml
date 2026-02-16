@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="tasks.tests.test_task_script_upload.TaskJobUpdateScriptUploadTestCase-20260211234528" tests="5" file="tasks/tests/test_task_script_upload.py" time="0.205" timestamp="2026-02-11T23:50:03" failures="0" errors="0" skipped="0">
-	<testcase classname="tasks.tests.test_task_script_upload.TaskJobUpdateScriptUploadTestCase" name="test_job_update_script_upload" time="0.038" timestamp="2026-02-11T23:50:03" file="advisor/tasks/tests/test_task_script_upload.py" line="66"/>
-	<testcase classname="tasks.tests.test_task_script_upload.TaskJobUpdateScriptUploadTestCase" name="test_job_update_script_upload_completed_with_alert_true" time="0.042" timestamp="2026-02-11T23:50:03" file="advisor/tasks/tests/test_task_script_upload.py" line="165"/>
-	<testcase classname="tasks.tests.test_task_script_upload.TaskJobUpdateScriptUploadTestCase" name="test_job_update_script_upload_failure" time="0.042" timestamp="2026-02-11T23:50:03" file="advisor/tasks/tests/test_task_script_upload.py" line="90"/>
-	<testcase classname="tasks.tests.test_task_script_upload.TaskJobUpdateScriptUploadTestCase" name="test_job_update_script_upload_missing_alert_flag" time="0.043" timestamp="2026-02-11T23:50:03" file="advisor/tasks/tests/test_task_script_upload.py" line="136"/>
-	<testcase classname="tasks.tests.test_task_script_upload.TaskJobUpdateScriptUploadTestCase" name="test_job_update_script_upload_parse_fail" time="0.040" timestamp="2026-02-11T23:50:03" file="advisor/tasks/tests/test_task_script_upload.py" line="116"/>
-</testsuite>
