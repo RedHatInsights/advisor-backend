@@ -105,6 +105,44 @@ def track_operation_success(operation_name: str, start_time: float) -> None:
 
 
 #############################################################################
+# System type validation helper
+
+
+def get_system_type_or_fail(
+    operation_name: str,
+    operation_start_time: float,
+    role: str,
+    product_code: str
+) -> SystemType | None:
+    """
+    Look up SystemType by role and product_code.
+
+    If not found, logs error, tracks failure, and returns None.
+
+    Args:
+        operation_name: Name of the operation for tracking (e.g., 'engine_results')
+        operation_start_time: Start time from start_operation_tracking
+        role: System role (e.g., 'rhel', 'ocp')
+        product_code: Product code (e.g., 'rhel', 'ocp')
+
+    Returns:
+        SystemType object if found, None otherwise
+    """
+    try:
+        return SystemType.objects.get(role=role, product_code=product_code)
+    except SystemType.DoesNotExist:
+        track_operation_failure(
+            operation_name, operation_start_time, 'missing system_type'
+        )
+        logger.error(
+            "Unable to get system type %s / %s from DB - load fixtures!",
+            product_code, role
+        )
+        payload_tracker.payload_status('invalid', 'Invalid system type.')
+        return None
+
+
+#############################################################################
 # Inventory event handler
 
 
@@ -458,18 +496,11 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
     # system type and produce code information
     system_type = system_data.get('type')
     system_product = system_data.get('product')
-    db_system_type = SystemType.objects.filter(
-        role=system_type,
-        product_code=system_product
-    ).first()
+    db_system_type = get_system_type_or_fail(
+        'engine_results', engine_results_started, system_type, system_product
+    )
 
     if not db_system_type:
-        track_operation_failure('engine_results', engine_results_started, 'missing system_type')
-        logger.error(
-            f"Unable to get system type {system_product} / "
-            f"{system_type} from DB - load fixtures!"
-        )
-        payload_tracker.payload_status('invalid', 'Invalid system type.')
         return False
 
     # add reports to the database
@@ -527,26 +558,23 @@ def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
     )
     payload_tracker.payload_status('processing', 'Beginning rule hit analysis.')
 
-    system_type = None
     rule_hits_json['host_role'] = rule_hits_json['host_role'].lower()
     rule_hits_json['host_product'] = rule_hits_json['host_product'].lower()
-    system_type = SystemType.objects.filter(
-        role=rule_hits_json['host_role'],
-        product_code=rule_hits_json['host_product']
-    ).first()
+    system_type = get_system_type_or_fail(
+        'rule_hits',
+        rule_hits_started,
+        rule_hits_json['host_role'],
+        rule_hits_json['host_product']
+    )
 
     if not system_type:
-        track_operation_failure('rule_hits', rule_hits_started, 'missing system_type')
-        logger.error(
-            f"Unable to get system type {rule_hits_json['host_product']} / "
-            f"{rule_hits_json['host_role']} from DB - load fixtures!"
-        )
-        payload_tracker.payload_status('invalid', 'Invalid system type.')
         return False
-    else:
-        logger.debug("Valid system type found for system type:%s, system product:%s.",
-            rule_hits_json['host_product'],
-            rule_hits_json['host_role'])
+
+    logger.debug(
+        "Valid system type found for system type:%s, system product:%s.",
+        rule_hits_json['host_product'],
+        rule_hits_json['host_role']
+    )
 
     logger.debug("Generating reports for Inventory ID:%s, Account:%s, Org ID: %s.",
                 rule_hits_json['inventory_id'], rule_hits_json.get('account'), rule_hits_json['org_id'])
