@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_api_docs.PlatformPathTestCase-20260216011819" tests="1" file="api/tests/test_api_docs.py" time="0.053" timestamp="2026-02-16T01:18:23" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_api_docs.PlatformPathTestCase" name="test_paths" time="0.053" timestamp="2026-02-16T01:18:23" file="api/tests/test_api_docs.py" line="492"/>
-</testsuite>

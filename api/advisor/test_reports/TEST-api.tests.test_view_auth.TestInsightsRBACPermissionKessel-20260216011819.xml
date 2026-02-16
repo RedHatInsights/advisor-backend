@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_view_auth.TestInsightsRBACPermissionKessel-20260216011819" tests="6" file="api/tests/test_view_auth.py" time="0.007" timestamp="2026-02-16T01:19:06" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_identity_object_property_fails" time="0.001" timestamp="2026-02-16T01:19:06" file="api/tests/test_view_auth.py" line="717"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_permission_rbac_no_url" time="0.001" timestamp="2026-02-16T01:19:06" file="api/tests/test_view_auth.py" line="756"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_permission_rbac_not_enabled" time="0.000" timestamp="2026-02-16T01:19:06" file="api/tests/test_view_auth.py" line="748"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_resourcescope_host_object_permissions" time="0.003" timestamp="2026-02-16T01:19:06" file="api/tests/test_view_auth.py" line="226"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_request_has_user_auth" time="0.000" timestamp="2026-02-16T01:19:06" file="api/tests/test_view_auth.py" line="691"/>
-	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_view_has_no_scope" time="0.000" timestamp="2026-02-16T01:19:06" file="api/tests/test_view_auth.py" line="699"/>
-</testsuite>

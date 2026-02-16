@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_rule_views.RuleHostTagsTestCase-20260216011819" tests="5" file="api/tests/test_rule_views.py" time="1.017" timestamp="2026-02-16T01:18:54" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_rule_list" time="0.137" timestamp="2026-02-16T01:18:53" file="api/tests/test_rule_views.py" line="2134"/>
-	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_sorting_by_group_name" time="0.288" timestamp="2026-02-16T01:18:53" file="api/tests/test_rule_views.py" line="2392"/>
-	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_systems_detail_has_impacted_date" time="0.065" timestamp="2026-02-16T01:18:53" file="api/tests/test_rule_views.py" line="2369"/>
-	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_systems_details_for_a_rule" time="0.471" timestamp="2026-02-16T01:18:54" file="api/tests/test_rule_views.py" line="2271"/>
-	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_systems_for_a_rule" time="0.057" timestamp="2026-02-16T01:18:54" file="api/tests/test_rule_views.py" line="2197"/>
-</testsuite>

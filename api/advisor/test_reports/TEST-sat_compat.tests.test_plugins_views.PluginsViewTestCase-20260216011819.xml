@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="sat_compat.tests.test_plugins_views.PluginsViewTestCase-20260216011819" tests="1" file="sat_compat/tests/test_plugins_views.py" time="0.006" timestamp="2026-02-16T01:19:12" failures="0" errors="0" skipped="0">
-	<testcase classname="sat_compat.tests.test_plugins_views.PluginsViewTestCase" name="test_plugin_list" time="0.006" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_plugins_views.py" line="30"/>
-</testsuite>
