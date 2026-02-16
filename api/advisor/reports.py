@@ -31,12 +31,6 @@ import project_settings.kafka_settings as kafka_settings
 # Import Django models
 import api.models as db
 
-# Import Producer based on test mode
-if settings.TESTING:
-    from kafka_utils import DummyProducer as Producer
-else:
-    from confluent_kafka import Producer
-
 NEW_REPORT_EVENT = "new-recommendation"
 RESOLVED_REPORT_EVENT = "resolved-recommendation"
 
@@ -46,11 +40,17 @@ ADVISOR_URL_PREFIX = os.environ.get(
 
 logger = logging.getLogger(settings.APP_NAME)
 
+# Initialize producer - use DummyProducer in tests to avoid Kafka connection
 _producer = None
 if kafka_settings.REMEDIATIONS_HOOK_TOPIC or kafka_settings.WEBHOOKS_TOPIC:
     topics = ', '.join([t for t in [kafka_settings.REMEDIATIONS_HOOK_TOPIC, kafka_settings.WEBHOOKS_TOPIC] if t])
     logger.debug(f"Creating producer for topics: {topics}")
-    _producer = Producer(kafka_settings.KAFKA_SETTINGS)
+    if settings.TESTING:
+        from kafka_utils import DummyProducer
+        _producer = DummyProducer(kafka_settings.KAFKA_SETTINGS)
+    else:
+        from confluent_kafka import Producer
+        _producer = Producer(kafka_settings.KAFKA_SETTINGS)
 
 
 def report_delivery_callback(err, msg):
