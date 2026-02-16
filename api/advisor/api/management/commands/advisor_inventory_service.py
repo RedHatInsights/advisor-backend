@@ -33,8 +33,8 @@ import reports as report_hooks
 import thread_storage
 import utils
 from advisor_logging import logger
-from api.models import (  # pyright: ignore[reportImplicitRelativeImport]
-    Ack, CurrentReport, Host, HostAck, InventoryHost,
+from api.models import (
+    Ack, CurrentReport, Host, InventoryHost,
     Rule, SystemType, Upload, UploadSource
 )
 from feature_flags import (
