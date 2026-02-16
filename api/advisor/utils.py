@@ -17,6 +17,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from thread_storage import thread_storage_object
+from typing import Optional
 
 
 def clean_threading_cruft():
@@ -28,7 +29,7 @@ def clean_threading_cruft():
     thread_storage_object.__dict__.clear()
 
 
-def traverse_keys(d, keys, default=None):
+def traverse_keys(d: dict[str, dict[str, ...]], keys: list[str], default: Optional[str] = None):
     """
     Allows you to look up a 'path' of keys in nested dicts without knowing whether each key exists
     """
