@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="tasks.tests.test_rbac.KesselTestCase-20260213061019" tests="2" file="tasks/tests/test_rbac.py" time="0.031" timestamp="2026-02-13T06:11:11" failures="0" errors="0" skipped="0">
-	<testcase classname="tasks.tests.test_rbac.KesselTestCase" name="test_rbac_basic_allowed_full" time="0.017" timestamp="2026-02-13T06:11:11" file="advisor/tasks/tests/test_rbac.py" line="226"/>
-	<testcase classname="tasks.tests.test_rbac.KesselTestCase" name="test_rbac_basic_allowed_read_only" time="0.014" timestamp="2026-02-13T06:11:11" file="advisor/tasks/tests/test_rbac.py" line="226"/>
-</testsuite>

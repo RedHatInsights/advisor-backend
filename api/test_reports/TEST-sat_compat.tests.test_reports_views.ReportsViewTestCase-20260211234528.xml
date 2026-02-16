@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="sat_compat.tests.test_reports_views.ReportsViewTestCase-20260211234528" tests="2" file="sat_compat/tests/test_reports_views.py" time="0.140" timestamp="2026-02-11T23:49:42" failures="0" errors="0" skipped="0">
-	<testcase classname="sat_compat.tests.test_reports_views.ReportsViewTestCase" name="test_list_reports" time="0.091" timestamp="2026-02-11T23:49:42" file="advisor/sat_compat/tests/test_reports_views.py" line="45"/>
-	<testcase classname="sat_compat.tests.test_reports_views.ReportsViewTestCase" name="test_list_reports_cert_auth" time="0.049" timestamp="2026-02-11T23:49:42" file="advisor/sat_compat/tests/test_reports_views.py" line="99"/>
-</testsuite>

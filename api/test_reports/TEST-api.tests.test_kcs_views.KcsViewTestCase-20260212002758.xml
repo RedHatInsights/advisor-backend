@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_kcs_views.KcsViewTestCase-20260212002758" tests="5" file="api/tests/test_kcs_views.py" time="0.111" timestamp="2026-02-12T00:28:46" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_kcs_views.KcsViewTestCase" name="test_kcs_detail" time="0.027" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kcs_views.py" line="41"/>
-	<testcase classname="api.tests.test_kcs_views.KcsViewTestCase" name="test_kcs_detail_invalid_node_id" time="0.030" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kcs_views.py" line="58"/>
-	<testcase classname="api.tests.test_kcs_views.KcsViewTestCase" name="test_kcs_list" time="0.007" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kcs_views.py" line="29"/>
-	<testcase classname="api.tests.test_kcs_views.KcsViewTestCase" name="test_node_ids_bad_parameters" time="0.018" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kcs_views.py" line="107"/>
-	<testcase classname="api.tests.test_kcs_views.KcsViewTestCase" name="test_node_ids_parameter" time="0.029" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kcs_views.py" line="79"/>
-</testsuite>
