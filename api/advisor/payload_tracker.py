@@ -27,19 +27,18 @@ import prometheus
 # Import kafka stuff
 import project_settings.kafka_settings as kafka_settings
 
-# Import Producer based on test mode
-if settings.TESTING:
-    from kafka_utils import DummyProducer as Producer
-else:
-    from confluent_kafka import Producer
-
 logger = logging.getLogger(settings.APP_NAME)
 
-# Setup producer to communicate with payload tracker
+# Setup producer to communicate with payload tracker - use DummyProducer in tests
 _producer = None
 if kafka_settings.PAYLOAD_TRACKER_TOPIC:
     logger.debug(f"Creating producer for payload tracker topic {kafka_settings.PAYLOAD_TRACKER_TOPIC}.")
-    _producer = Producer(kafka_settings.KAFKA_SETTINGS)
+    if settings.TESTING:
+        from kafka_utils import DummyProducer
+        _producer = DummyProducer(kafka_settings.KAFKA_SETTINGS)
+    else:
+        from confluent_kafka import Producer
+        _producer = Producer(kafka_settings.KAFKA_SETTINGS)
 
 
 def payload_delivery_report(err, msg):
