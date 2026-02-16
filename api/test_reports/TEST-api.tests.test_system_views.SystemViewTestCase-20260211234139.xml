@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_system_views.SystemViewTestCase-20260211234139" tests="1" file="api/tests/test_system_views.py" time="1.202" timestamp="2026-02-11T23:41:41" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_different_os_names_and_versions" time="1.202" timestamp="2026-02-11T23:41:41" file="advisor/api/tests/test_system_views.py" line="155">
-		<!--
-        Test different failure modes in retrieving the os_name and version.
-        -->
-	</testcase>
-</testsuite>

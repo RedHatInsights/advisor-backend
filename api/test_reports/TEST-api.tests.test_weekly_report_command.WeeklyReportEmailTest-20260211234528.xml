@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_weekly_report_command.WeeklyReportEmailTest-20260211234528" tests="6" file="api/tests/test_weekly_report_command.py" time="3.355" timestamp="2026-02-11T23:49:33" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_weekly_report_command.WeeklyReportEmailTest" name="test_user_account_details_middleware_users_not_in_response" time="0.034" timestamp="2026-02-11T23:49:30" file="advisor/api/tests/test_weekly_report_command.py" line="319"/>
-	<testcase classname="api.tests.test_weekly_report_command.WeeklyReportEmailTest" name="test_weekly_report_emails_command" time="2.211" timestamp="2026-02-11T23:49:32" file="advisor/api/tests/test_weekly_report_command.py" line="149"/>
-	<testcase classname="api.tests.test_weekly_report_command.WeeklyReportEmailTest" name="test_weekly_report_emails_command_with_rbac" time="0.751" timestamp="2026-02-11T23:49:33" file="advisor/api/tests/test_weekly_report_command.py" line="333"/>
-	<testcase classname="api.tests.test_weekly_report_command.WeeklyReportEmailTest" name="test_weekly_report_emails_command_with_rbac_delete_expired" time="0.334" timestamp="2026-02-11T23:49:33" file="advisor/api/tests/test_weekly_report_command.py" line="395"/>
-	<testcase classname="api.tests.test_weekly_report_command.WeeklyReportEmailTest" name="test_weekly_report_emails_command_with_rbac_no_weekly_report" time="0.011" timestamp="2026-02-11T23:49:33" file="advisor/api/tests/test_weekly_report_command.py" line="437"/>
-	<testcase classname="api.tests.test_weekly_report_command.WeeklyReportEmailTest" name="test_weekly_report_emails_command_with_rbac_unknown_user" time="0.012" timestamp="2026-02-11T23:49:33" file="advisor/api/tests/test_weekly_report_command.py" line="417"/>
-</testsuite>

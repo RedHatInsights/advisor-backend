@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_system_views.SystemHighSevViewTestCase-20260211232347" tests="1" file="api/tests/test_system_views.py" time="1.090" timestamp="2026-02-11T23:23:49" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_system_views.SystemHighSevViewTestCase" name="test_list_impacting_filter" time="1.090" timestamp="2026-02-11T23:23:49" file="advisor/api/tests/test_system_views.py" line="927"/>
-</testsuite>

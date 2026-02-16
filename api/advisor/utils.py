@@ -16,17 +16,7 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from thread_storage import thread_storage_object
 from typing import Optional
-
-
-def clean_threading_cruft():
-    """
-    TODO: use thread pool executor initializer once on python 3.7
-    We do this because there is cruft leftover with Python ThreadPoolExecutor
-    and old Threading.local() thread storage objects/values
-    """
-    thread_storage_object.__dict__.clear()
 
 
 def traverse_keys(d: dict[str, dict[str, ...]], keys: list[str], default: Optional[str] = None):

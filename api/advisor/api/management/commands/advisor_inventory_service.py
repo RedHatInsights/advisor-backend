@@ -331,8 +331,7 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
     Handle engine results received from the shared engine instance.
     This comes in on platform.engine.results topic.
     """
-    # Clean threading cruft and start function metrics
-    utils.clean_threading_cruft()
+    # Start function metrics
     engine_results_started = time.time()
     thread_storage.set_value('engine_results_started', engine_results_started)
     thread_storage.set_value('engine_results_error', 0)
@@ -457,8 +456,6 @@ def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
     """
     Handle third-party rule hits from platform.insights.rule-hits topic.
     """
-    utils.clean_threading_cruft()
-
     rule_hits_started = time.time()
     thread_storage.set_value('rule_hits_started', rule_hits_started)
     thread_storage.set_value('rule_hits_error', 0)
@@ -833,7 +830,13 @@ def make_async_handler(handler_func, executor):
     Handler executes asynchronously while wrapper returns immediately.
     """
     def wrapped_handler(topic, message):
-        future = executor.submit(handler_func, topic, message)
+        def task_with_cleanup(topic, message):
+            # Clear thread-local storage before each task to prevent data leakage
+            # between tasks when threads are reused by the pool
+            thread_storage.thread_storage_object.__dict__.clear()
+            return handler_func(topic, message)
+
+        future = executor.submit(task_with_cleanup, topic, message)
         future.add_done_callback(on_thread_done)
         logger.debug("Submitted %s to executor", handler_func.__name__)
     return wrapped_handler

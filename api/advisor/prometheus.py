@@ -17,7 +17,6 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.conf import settings
-import utils
 from prometheus_client import start_http_server, Counter, Enum, Gauge, Histogram, Info
 
 # Prometheus configuration
@@ -107,5 +106,4 @@ ADVISOR_SERVICE_VERSION = Info(
 
 
 def start_prometheus():
-    utils.clean_threading_cruft()
     start_http_server(settings.PROMETHEUS_PORT)

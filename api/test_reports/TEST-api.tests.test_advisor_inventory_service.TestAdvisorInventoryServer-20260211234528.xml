@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer-20260211234528" tests="6" file="api/tests/test_advisor_inventory_service.py" time="0.327" timestamp="2026-02-11T23:45:38" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_created_message_fail_missing_key" time="0.132" timestamp="2026-02-11T23:45:38" file="advisor/api/tests/test_advisor_inventory_service.py" line="132"/>
-	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_created_message_success" time="0.055" timestamp="2026-02-11T23:45:38" file="advisor/api/tests/test_advisor_inventory_service.py" line="132"/>
-	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_deleted_message_fail_missing_key" time="0.008" timestamp="2026-02-11T23:45:38" file="advisor/api/tests/test_advisor_inventory_service.py" line="132"/>
-	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_deleted_message_success" time="0.089" timestamp="2026-02-11T23:45:38" file="advisor/api/tests/test_advisor_inventory_service.py" line="132"/>
-	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_message_dispatch" time="0.005" timestamp="2026-02-11T23:45:38" file="advisor/api/tests/test_advisor_inventory_service.py" line="132"/>
-	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_updated_message_success" time="0.037" timestamp="2026-02-11T23:45:38" file="advisor/api/tests/test_advisor_inventory_service.py" line="132"/>
-</testsuite>

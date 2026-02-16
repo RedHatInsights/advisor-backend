@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_kafka_utils.TestKafkaUtils-20260212002758" tests="2" file="api/tests/test_kafka_utils.py" time="0.009" timestamp="2026-02-12T00:28:46" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_kafka_utils.TestKafkaUtils" name="test_message_failures" time="0.007" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kafka_utils.py" line="47">
-		<!--
-        Test that the server handles malformed and incorrect messages correctly.
-        -->
-	</testcase>
-	<testcase classname="api.tests.test_kafka_utils.TestKafkaUtils" name="test_send_kafka_message" time="0.002" timestamp="2026-02-12T00:28:46" file="advisor/api/tests/test_kafka_utils.py" line="107"/>
-</testsuite>

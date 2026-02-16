@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_playbook_views.PlaybookViewTestCase-20260211234528" tests="2" file="api/tests/test_playbook_views.py" time="0.104" timestamp="2026-02-11T23:48:36" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_playbook_views.PlaybookViewTestCase" name="test_playbook_detail" time="0.049" timestamp="2026-02-11T23:48:36" file="advisor/api/tests/test_playbook_views.py" line="48"/>
-	<testcase classname="api.tests.test_playbook_views.PlaybookViewTestCase" name="test_playbook_list" time="0.055" timestamp="2026-02-11T23:48:36" file="advisor/api/tests/test_playbook_views.py" line="29"/>
-</testsuite>
