@@ -1,0 +1,712 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_system_views.SystemViewTestCase-20260318051709" tests="10" file="tasks/tests/test_system_views.py" time="0.141" timestamp="2026-03-18T05:17:11" failures="0" errors="9" skipped="0">
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_bad_os_filter" time="0.004" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="386"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_all_systems_param" time="0.014" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="542">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 546, in test_all_systems_param
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_detail" time="0.012" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="480">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 487, in test_system_detail
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 300, in retrieve
+    return Response(HostSerializer(host).data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 573, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_detail_connection_status_pd_available" time="0.012" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="514">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/responses/__init__.py", line 232, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/utils.py", line 456, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 523, in test_system_detail_connection_status_pd_available
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 300, in retrieve
+    return Response(HostSerializer(host).data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 573, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list" time="0.015" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="88">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 93, in test_system_list
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_connection_status_pd_available" time="0.015" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="399">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/responses/__init__.py", line 232, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/utils.py", line 456, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 409, in test_system_list_connection_status_pd_available
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_connection_status_pd_available_multiple_parts" time="0.016" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="428">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/responses/__init__.py", line 232, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/utils.py", line 456, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 460, in test_system_list_connection_status_pd_available_multiple_parts
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_filtering" time="0.020" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="234">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 246, in test_system_list_filtering
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_filtering_new_rhc_connection" time="0.018" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="366">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 380, in test_system_list_filtering_new_rhc_connection
+    res = self.client.get(reverse('tasks-system-list'), data={'os_name': 'CentOS Linux'}, **self.std_auth)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_sort" time="0.013" timestamp="2026-03-18T05:17:11" file="advisor/tasks/tests/test_system_views.py" line="160">
+		<error type="ImproperlyConfigured" message="Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`."><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/tests/test_system_views.py", line 161, in test_system_list_sort
+    res = self.client.get(
+          ^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1124, in get
+    response = super().get(
+               ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 475, in get
+    return self.generic(
+           ^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 671, in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 1087, in request
+    self.check_exception(response)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/client.py", line 802, in check_exception
+    raise exc_value
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/tasks/views/system.py", line 289, in list
+    return self._paginated_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/utils.py", line 190, in _paginated_response
+    data = serializer.data
+           ^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+                 ^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+                 ^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+                                ^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `stale_warning_timestamp` is not valid for model `Host` in `tasks.serializers.HostSerializer`.
+]]></error>
+	</testcase>
+</testsuite>

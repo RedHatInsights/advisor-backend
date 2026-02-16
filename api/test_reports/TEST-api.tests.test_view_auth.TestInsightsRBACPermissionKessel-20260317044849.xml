@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.TestInsightsRBACPermissionKessel-20260317044849" tests="1" file="api/tests/test_view_auth.py" time="0.011" timestamp="2026-03-17T04:48:49" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_resourcescope_host_object_permissions" time="0.011" timestamp="2026-03-17T04:48:49" file="advisor/api/tests/test_view_auth.py" line="226">
+		<system-err><![CDATA[Returning default value for feature: advisor.kessel_enabled
+Error checking feature flag: 'advisor.kessel_enabled'
+]]></system-err>
+	</testcase>
+</testsuite>

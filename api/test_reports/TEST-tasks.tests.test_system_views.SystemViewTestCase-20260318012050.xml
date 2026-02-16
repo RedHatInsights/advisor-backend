@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_system_views.SystemViewTestCase-20260318012050" tests="10" file="tasks/tests/test_system_views.py" time="0.537" timestamp="2026-03-18T01:21:23" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_all_systems_param" time="0.070" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="542"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_bad_os_filter" time="0.006" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="386"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_detail" time="0.022" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="480"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_detail_connection_status_pd_available" time="0.033" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="514"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list" time="0.029" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="88"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_connection_status_pd_available" time="0.025" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="399"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_connection_status_pd_available_multiple_parts" time="0.023" timestamp="2026-03-18T01:21:22" file="advisor/tasks/tests/test_system_views.py" line="428"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_filtering" time="0.230" timestamp="2026-03-18T01:21:23" file="advisor/tasks/tests/test_system_views.py" line="234"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_filtering_new_rhc_connection" time="0.035" timestamp="2026-03-18T01:21:23" file="advisor/tasks/tests/test_system_views.py" line="366"/>
+	<testcase classname="tasks.tests.test_system_views.SystemViewTestCase" name="test_system_list_sort" time="0.064" timestamp="2026-03-18T01:21:23" file="advisor/tasks/tests/test_system_views.py" line="160"/>
+</testsuite>

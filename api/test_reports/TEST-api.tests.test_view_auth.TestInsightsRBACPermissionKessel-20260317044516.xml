@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.TestInsightsRBACPermissionKessel-20260317044516" tests="1" file="api/tests/test_view_auth.py" time="0.009" timestamp="2026-03-17T04:45:16" failures="1" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_resourcescope_host_object_permissions" time="0.009" timestamp="2026-03-17T04:45:16" file="advisor/api/tests/test_view_auth.py" line="226">
+		<failure type="AssertionError" message="'DEBUG:advisor-log:Started InsightsRBACPermission.has_permission' != 'INFO:advisor-log:InsightsRBACPermission has_permission() check starting'
+- DEBUG:advisor-log:Started InsightsRBACPermission.has_permission
++ INFO:advisor-log:InsightsRBACPermission has_permission() check starting
+"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/utils.py", line 456, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/kessel.py", line 228, in wrapper
+    fn(*args, **kwargs)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/responses/__init__.py", line 232, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_view_auth.py", line 789, in test_kessel_resourcescope_host_object_permissions
+    self.assertEqual(
+AssertionError: 'DEBUG:advisor-log:Started InsightsRBACPermission.has_permission' != 'INFO:advisor-log:InsightsRBACPermission has_permission() check starting'
+- DEBUG:advisor-log:Started InsightsRBACPermission.has_permission
++ INFO:advisor-log:InsightsRBACPermission has_permission() check starting
+
+]]></failure>
+		<system-err><![CDATA[Returning default value for feature: advisor.kessel_enabled
+Error checking feature flag: 'advisor.kessel_enabled'
+]]></system-err>
+	</testcase>
+</testsuite>

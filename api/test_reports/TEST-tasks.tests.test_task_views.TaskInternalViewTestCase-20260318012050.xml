@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_task_views.TaskInternalViewTestCase-20260318012050" tests="4" file="tasks/tests/test_task_views.py" time="0.353" timestamp="2026-03-18T01:21:24" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_task_views.TaskInternalViewTestCase" name="test_task_create_update_delete" time="0.195" timestamp="2026-03-18T01:21:24" file="advisor/tasks/tests/test_task_views.py" line="807"/>
+	<testcase classname="tasks.tests.test_task_views.TaskInternalViewTestCase" name="test_task_create_update_param_index_uniqueness" time="0.087" timestamp="2026-03-18T01:21:24" file="advisor/tasks/tests/test_task_views.py" line="1002">
+		<!--
+        Test that task creation and update is allowed only when parameters have unique indexes.
+        -->
+	</testcase>
+	<testcase classname="tasks.tests.test_task_views.TaskInternalViewTestCase" name="test_task_edit_filters" time="0.049" timestamp="2026-03-18T01:21:24" file="advisor/tasks/tests/test_task_views.py" line="1070"/>
+	<testcase classname="tasks.tests.test_task_views.TaskInternalViewTestCase" name="test_task_list" time="0.022" timestamp="2026-03-18T01:21:24" file="advisor/tasks/tests/test_task_views.py" line="772"/>
+</testsuite>
