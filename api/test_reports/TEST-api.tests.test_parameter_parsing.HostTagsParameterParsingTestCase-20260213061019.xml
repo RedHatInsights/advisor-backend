@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_parameter_parsing.HostTagsParameterParsingTestCase-20260213061019" tests="4" file="api/tests/test_parameter_parsing.py" time="0.005" timestamp="2026-02-13T06:10:39" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_parameter_parsing.HostTagsParameterParsingTestCase" name="test_invalid_tags" time="0.001" timestamp="2026-02-13T06:10:39" file="advisor/api/tests/test_parameter_parsing.py" line="221"/>
+	<testcase classname="api.tests.test_parameter_parsing.HostTagsParameterParsingTestCase" name="test_multiple_tags_in_parameter" time="0.001" timestamp="2026-02-13T06:10:39" file="advisor/api/tests/test_parameter_parsing.py" line="237"/>
+	<testcase classname="api.tests.test_parameter_parsing.HostTagsParameterParsingTestCase" name="test_quoted_parameters" time="0.001" timestamp="2026-02-13T06:10:39" file="advisor/api/tests/test_parameter_parsing.py" line="244"/>
+	<testcase classname="api.tests.test_parameter_parsing.HostTagsParameterParsingTestCase" name="test_single_tag_parameter" time="0.003" timestamp="2026-02-13T06:10:39" file="advisor/api/tests/test_parameter_parsing.py" line="206"/>
+</testsuite>

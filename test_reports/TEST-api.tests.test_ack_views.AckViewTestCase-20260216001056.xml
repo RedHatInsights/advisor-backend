@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_ack_views.AckViewTestCase-20260216001056" tests="16" file="api/tests/test_ack_views.py" time="0.325" timestamp="2026-02-16T00:10:58" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_add" time="0.071" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="103"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_add_cert_auth" time="0.039" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="229"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_add_exceptions" time="0.011" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="294"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_add_kessel_enabled_full_write" time="0.052" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="226"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_add_kessel_enabled_only_read" time="0.015" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="226"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_add_service_account" time="0.042" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="260"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_delete" time="0.009" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="344"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_delete_cert_auth" time="0.012" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="360"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_delete_errors" time="0.005" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="392"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_delete_service_account" time="0.010" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="376"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_list" time="0.011" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="47"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_list_all" time="0.015" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="81"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_list_other_account" time="0.005" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="71"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_update_justification" time="0.012" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="309"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_update_justification_cert_auth" time="0.011" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="322"/>
+	<testcase classname="api.tests.test_ack_views.AckViewTestCase" name="test_ack_update_justification_exceptions" time="0.005" timestamp="2026-02-16T00:10:58" file="api/advisor/api/tests/test_ack_views.py" line="335"/>
+</testsuite>

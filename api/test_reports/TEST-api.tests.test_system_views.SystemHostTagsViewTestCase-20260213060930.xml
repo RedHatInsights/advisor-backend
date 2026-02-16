@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_system_views.SystemHostTagsViewTestCase-20260213060930" tests="5" file="api/tests/test_system_views.py" time="0.503" timestamp="2026-02-13T06:09:31" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_get_system" time="0.112" timestamp="2026-02-13T06:09:31" file="advisor/api/tests/test_system_views.py" line="1085">
+		<system-err><![CDATA[Returning default value for feature: advisor.kessel_enabled
+Error checking feature flag: 'advisor.kessel_enabled'
+]]></system-err>
+	</testcase>
+	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_reports_on_system" time="0.076" timestamp="2026-02-13T06:09:31" file="advisor/api/tests/test_system_views.py" line="1127"/>
+	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_system_list" time="0.217" timestamp="2026-02-13T06:09:31" file="advisor/api/tests/test_system_views.py" line="972"/>
+	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_system_tags_query_param_format" time="0.044" timestamp="2026-02-13T06:09:31" file="advisor/api/tests/test_system_views.py" line="1059"/>
+	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_system_tags_query_param_format_inventory" time="0.053" timestamp="2026-02-13T06:09:31" file="advisor/api/tests/test_system_views.py" line="1072"/>
+</testsuite>

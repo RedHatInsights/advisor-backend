@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.TestTurnpikeAuthentication-20260216001056" tests="3" file="api/tests/test_view_auth.py" time="0.041" timestamp="2026-02-16T00:12:03" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.TestTurnpikeAuthentication" name="test_authenticate_success" time="0.001" timestamp="2026-02-16T00:12:03" file="api/advisor/api/tests/test_view_auth.py" line="925"/>
+	<testcase classname="api.tests.test_view_auth.TestTurnpikeAuthentication" name="test_header_property_fails" time="0.030" timestamp="2026-02-16T00:12:03" file="api/advisor/api/tests/test_view_auth.py" line="853"/>
+	<testcase classname="api.tests.test_view_auth.TestTurnpikeAuthentication" name="test_identity_fails" time="0.010" timestamp="2026-02-16T00:12:03" file="api/advisor/api/tests/test_view_auth.py" line="831"/>
+</testsuite>

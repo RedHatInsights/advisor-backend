@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_static_views.StaticViewsTestCase-20260211234528" tests="9" file="sat_compat/tests/test_static_views.py" time="0.133" timestamp="2026-02-11T23:49:46" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_account_products" time="0.015" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="33"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_account_settings" time="0.017" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="48"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_account_v2_products" time="0.016" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="67"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_account_v2_settings" time="0.019" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="82"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_articles_overview" time="0.023" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="101"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_branch_info" time="0.009" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="122"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_evaluation_status" time="0.011" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="133"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_group_v1_list" time="0.011" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="143"/>
+	<testcase classname="sat_compat.tests.test_static_views.StaticViewsTestCase" name="test_group_v3_list" time="0.010" timestamp="2026-02-11T23:49:46" file="advisor/sat_compat/tests/test_static_views.py" line="151"/>
+</testsuite>

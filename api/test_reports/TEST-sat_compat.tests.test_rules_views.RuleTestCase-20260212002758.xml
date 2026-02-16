@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_rules_views.RuleTestCase-20260212002758" tests="14" file="sat_compat/tests/test_rules_views.py" time="3.711" timestamp="2026-02-12T00:29:58" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_ansible_resolutions" time="0.368" timestamp="2026-02-12T00:29:55" file="advisor/sat_compat/tests/test_rules_views.py" line="397"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_detail" time="0.185" timestamp="2026-02-12T00:29:55" file="advisor/sat_compat/tests/test_rules_views.py" line="372"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list" time="0.319" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="69"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_ansible_search" time="0.086" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="234"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_category_search" time="0.076" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="243"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_cert_auth" time="0.295" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="144"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_ignored_rules_search" time="0.164" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="262"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_incident_search" time="0.070" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="253"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_rec_impact_search" time="0.090" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="285"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_rec_likelihood_search" time="0.099" timestamp="2026-02-12T00:29:56" file="advisor/sat_compat/tests/test_rules_views.py" line="297"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_report_count" time="0.182" timestamp="2026-02-12T00:29:57" file="advisor/sat_compat/tests/test_rules_views.py" line="330"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_severity_search" time="0.102" timestamp="2026-02-12T00:29:57" file="advisor/sat_compat/tests/test_rules_views.py" line="309"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_sort_options" time="1.597" timestamp="2026-02-12T00:29:58" file="advisor/sat_compat/tests/test_rules_views.py" line="222"/>
+	<testcase classname="sat_compat.tests.test_rules_views.RuleTestCase" name="test_rule_list_text_search" time="0.077" timestamp="2026-02-12T00:29:58" file="advisor/sat_compat/tests/test_rules_views.py" line="320"/>
+</testsuite>

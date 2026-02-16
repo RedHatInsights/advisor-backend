@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_task_views.TaskViewTestCase-20260212002758" tests="13" file="tasks/tests/test_task_views.py" time="1.646" timestamp="2026-02-12T00:30:17" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_detail" time="0.027" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="108"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_list" time="0.025" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="53"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_no_public_edit" time="0.009" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="142"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_playbook" time="0.115" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="156"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_playbook_with_host_ansible" time="0.026" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="282"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_playbook_with_host_fqdn" time="0.022" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="254"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_system_list_connection_status_pd_available" time="0.074" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="739"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_systems_all_systems_new_rhc_connection" time="0.098" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="707"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_systems_host_group_filtering" time="0.114" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="388"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_systems_requirements" time="0.138" timestamp="2026-02-12T00:30:16" file="advisor/tasks/tests/test_task_views.py" line="311"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_systems_requirements_bootc_image" time="0.152" timestamp="2026-02-12T00:30:17" file="advisor/tasks/tests/test_task_views.py" line="422"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_systems_requirements_rhel_os_versions" time="0.540" timestamp="2026-02-12T00:30:17" file="advisor/tasks/tests/test_task_views.py" line="579"/>
+	<testcase classname="tasks.tests.test_task_views.TaskViewTestCase" name="test_task_systems_requirements_rhelai_image" time="0.305" timestamp="2026-02-12T00:30:17" file="advisor/tasks/tests/test_task_views.py" line="495"/>
+</testsuite>

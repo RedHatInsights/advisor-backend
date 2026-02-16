@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_reports_views.ReportsDupInsightsIDViewTestCase-20260212002758" tests="1" file="sat_compat/tests/test_reports_views.py" time="0.074" timestamp="2026-02-12T00:29:54" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_reports_views.ReportsDupInsightsIDViewTestCase" name="test_list_reports" time="0.074" timestamp="2026-02-12T00:29:54" file="advisor/sat_compat/tests/test_reports_views.py" line="150"/>
+</testsuite>

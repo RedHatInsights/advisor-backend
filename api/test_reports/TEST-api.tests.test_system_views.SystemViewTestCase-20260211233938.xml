@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_system_views.SystemViewTestCase-20260211233938" tests="1" file="api/tests/test_system_views.py" time="0.033" timestamp="2026-02-11T23:39:38" failures="1" errors="0" skipped="0">
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_different_os_names_and_versions" time="0.033" timestamp="2026-02-11T23:39:38" file="advisor/api/tests/test_system_views.py" line="155">
+		<!--
+        Test different failure modes in retrieving the os_name and version.
+        -->
+		<failure type="AssertionError" message="'CentOS' != 'Centos'
+- CentOS
++ Centos
+"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_system_views.py", line 176, in test_get_system_different_os_names_and_versions
+    self.assertEqual(host_04.os_name, 'Centos')
+AssertionError: 'CentOS' != 'Centos'
+- CentOS
++ Centos
+
+]]></failure>
+	</testcase>
+</testsuite>

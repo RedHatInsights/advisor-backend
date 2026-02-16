@@ -1,0 +1,2576 @@
+openapi: 3.0.3
+info:
+  title: Advisor Satellite Compatibility API
+  version: 1.0.1
+  description: The Satellite Compatibility API of the Advisor project in Insights
+paths:
+  /r/insights/v3/account/products:
+    get:
+      operationId: account_products_list
+      description: |-
+        This is the list of products available for this account.
+
+        At the moment we just return a single value, 'rhel'.
+      tags:
+      - account
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+          description: ''
+  /r/insights/v3/account/settings:
+    get:
+      operationId: account_settings_list
+      description: |-
+        The list of settings for this account.
+
+        At the moment this just lists the 'Show Satellite Systems' setting
+        as 'True'.
+      tags:
+      - account
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatAccountSettings'
+          description: ''
+  /r/insights/v3/acks:
+    get:
+      operationId: acks_list
+      description: |-
+        List acks from this account where the rule is active
+
+        Will return an empty list if this account has no acks.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: include
+        schema:
+          type: string
+          enum:
+          - rule
+        description: Include details of associated table
+      tags:
+      - acks
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatAck'
+          description: ''
+    post:
+      operationId: acks_create
+      description: |-
+        Add an acknowledgement for a rule, by rule ID.
+
+        If there's already an acknowledgement of this rule by this
+        account, then return that.  Otherwise, a new ack is created.
+      tags:
+      - acks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SatAckInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SatAckInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SatAckInput'
+        required: true
+      security:
+      - x-rh-identity: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatAck'
+          description: ''
+  /r/insights/v3/acks/{id}:
+    get:
+      operationId: acks_retrieve
+      description: |-
+        Acks acknowledge (and therefore hide) a rule from view in an account.
+
+        This view handles listing, retrieving, creating and deleting acks.  Acks
+        are created by supplying the rle to ack, but are deleted here by their
+        own ack ID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ack.
+        required: true
+      tags:
+      - acks
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatAck'
+          description: ''
+    delete:
+      operationId: acks_destroy
+      description: |-
+        Delete an acknowledgement for a rule, by ack ID.
+
+        Only acknowledgements in this account with the given branch ID can
+        be deleted.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ack.
+        required: true
+      tags:
+      - acks
+      security:
+      - x-rh-identity: []
+      responses:
+        '204':
+          description: No response body
+  /r/insights/v3/articles/overview-satellite6:
+    get:
+      operationId: articles_overview_satellite6_retrieve
+      description: |-
+        A list of articles giving an overview of Satellite 6 features.
+
+        Just copying the ones given in Classic.
+      tags:
+      - articles
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatArticleOverview'
+          description: ''
+  /r/insights/v3/cves:
+    get:
+      operationId: cves_list
+      description: |-
+        List the available CVEs.
+
+        CVEs are now handled by the separate Vulnerability application and
+        are no longer provided by Classic or Advisor.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - cves
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSatReportList'
+          description: ''
+  /r/insights/v3/evaluation/status:
+    get:
+      operationId: evaluation_status_retrieve
+      description: |-
+        List the status of the account's Insights evaluation.
+
+        This just returns static fields indicating that Insights has been
+        purchased and is not expired.
+      tags:
+      - evaluation
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatEvaluationStatus'
+          description: ''
+  /r/insights/v3/exports/reports:
+    get:
+      operationId: exports_reports_list
+      description: |-
+        Export reports as CSV or JSON.
+
+        Reports can be filtered by branch_id so far.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - csv
+          - json
+      tags:
+      - exports
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatExportReport'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatExportReport'
+          description: ''
+  /r/insights/v3/exports/systems:
+    get:
+      operationId: exports_systems_list
+      description: |-
+        Export systems as CSV or JSON.
+
+        Systems can be filtered by branch_id so far.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - csv
+          - json
+      tags:
+      - exports
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatExportSystem'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatExportSystem'
+          description: ''
+  /r/insights/v3/groups:
+    get:
+      operationId: groups_list
+      description: |-
+        List the available groups.
+
+        At the moment we do not support any groups, so this will be an empty
+        list.
+      tags:
+      - groups
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          description: No response body
+  /r/insights/v3/maintenance:
+    get:
+      operationId: maintenance_list
+      description: List the maintenance plans currently available for this Satellite.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      tags:
+      - maintenance
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatMaintenance'
+          description: ''
+    post:
+      operationId: maintenance_create
+      description: |-
+        Create a new maintenance plan.
+
+        This basically takes a name and the 'add' field, which is a list of
+        actions.  Each action can be either a rule_id and host_id to
+        remediate that rule on that host, or just a rule_id to remediate that
+        rule on all hosts.
+
+        Branch ID (i.e. Satellite ID) must be specified.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+        required: true
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SatMaintenanceAdd'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SatMaintenanceAdd'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SatMaintenanceAdd'
+        required: true
+      security:
+      - x-rh-identity: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatMaintenanceNewMaintenancePlan'
+          description: ''
+  /r/insights/v3/maintenance/{id}:
+    get:
+      operationId: maintenance_retrieve
+      description: Retrieve details of a single maintenance action.
+      parameters:
+      - in: query
+        name: accept
+        schema:
+          type: string
+          enum:
+          - csv
+          - json
+          default: json
+        description: Set output format type (json or CSV)
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sat maintenance.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatMaintenance'
+          description: ''
+    put:
+      operationId: maintenance_update
+      description: |-
+        Update a maintenance plan.
+
+        This can be used to both edit the plan's details, and to add to and
+        delete from the plan's actions.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sat maintenance.
+        required: true
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SatMaintenanceEdit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SatMaintenanceEdit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SatMaintenanceEdit'
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatMaintenance'
+          description: ''
+    delete:
+      operationId: maintenance_destroy
+      description: |-
+        Delete an existing maintenance plan.
+
+        All actions associated with this plan are also deleted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sat maintenance.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - x-rh-identity: []
+      responses:
+        '204':
+          description: No response body
+  /r/insights/v3/maintenance/{id}/playbook:
+    get:
+      operationId: maintenance_playbook_retrieve
+      description: |-
+        Return the Ansible Playbook for this maintenance plan, in YAML.
+
+        Actions in this plan that do not have playbooks will be ignored.
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sat maintenance.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          description: YAML content
+  /r/insights/v3/maintenance/{id}/playbook/plays:
+    get:
+      operationId: maintenance_playbook_plays_list
+      description: |-
+        List the metadata of the plays in this maintenance plan.
+
+        This gives the rule and the list of Ansible resolutions available for
+        each action in the plan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sat maintenance.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatMaintenancePlay'
+          description: ''
+  /r/insights/v3/maintenance/{id}/playbook/plays/{rule_id}/{system_type_id}:
+    put:
+      operationId: maintenance_playbook_plays_update
+      description: |-
+        List the metadata of the plays in this maintenance plan.
+
+        This gives the rule and the list of Ansible resolutions available for
+        each action in the plan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sat maintenance.
+        required: true
+      - in: path
+        name: rule_id
+        schema:
+          type: string
+          pattern: ^\w+\|[\w-]+$
+        required: true
+      - in: path
+        name: system_type_id
+        schema:
+          type: string
+          pattern: ^[+-]?\d+$
+        required: true
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SatMaintenance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SatMaintenance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SatMaintenance'
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatMaintenance'
+          description: ''
+  /r/insights/v3/plugins:
+    get:
+      operationId: plugins_list
+      description: Gives a contained list of plugin names and descriptions
+      summary: List the plugin names and descriptions
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - plugins
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSatPluginList'
+          description: ''
+  /r/insights/v3/plugins/{id}:
+    get:
+      operationId: plugins_retrieve
+      description: Gives a plugin name and description selected by plugin name
+      summary: Retrieve a single plugin names and description
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this rule.
+        required: true
+      tags:
+      - plugins
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatPlugin'
+          description: ''
+  /r/insights/v3/reports:
+    get:
+      operationId: reports_list
+      description: |-
+        List the reports for this account.
+
+        Reports can be filtered by rule ID.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: rule
+        schema:
+          type: string
+        description: Filter reports by this rule ID
+      tags:
+      - reports
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSatReportList'
+          description: ''
+  /r/insights/v3/reports/{id}:
+    get:
+      operationId: reports_retrieve
+      description: Describes a single report
+      summary: A single report about a rule impacting a system
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this current report.
+        required: true
+      tags:
+      - reports
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatReport'
+          description: ''
+  /r/insights/v3/rules:
+    get:
+      operationId: rules_list
+      description: |-
+        Information about rules in Insights Classic format.
+
+        This provides a list of rules in the format used by Satellite, from
+        Insights Classic.
+      parameters:
+      - in: query
+        name: ansible
+        schema:
+          type: boolean
+        description: Select rules that provide Ansible resolutions (or not)
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - availability
+          - performance
+          - security
+          - stability
+        description: Select rules by category name
+      - in: query
+        name: ignoredRules
+        schema:
+          type: string
+          enum:
+          - active
+          - ignored
+        description: Select rules by whether they are enabled or disabled
+      - in: query
+        name: incidents
+        schema:
+          type: boolean
+        description: Select rules based on whether they cause an incident (or not)
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: rec_impact
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - ERROR
+          - INFO
+          - WARN
+        description: Select rules based on their impact level
+      - in: query
+        name: rec_likelihood
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - ERROR
+          - INFO
+          - WARN
+        description: Select rules based on their likelihood level
+      - in: query
+        name: search_term
+        schema:
+          type: string
+        description: Search for rules with this text (case insensitive)
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+          enum:
+          - impacted_systems
+          - node_id
+          - resolution_risk
+          - rule_id
+          - severity
+          default: rule_id
+        description: Order by this field
+      - in: query
+        name: sort_dir
+        schema:
+          type: string
+          enum:
+          - ASC
+          - DESC
+          default: ASC
+        description: Ordering direction
+      tags:
+      - rules
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSatRuleList'
+          description: ''
+  /r/insights/v3/rules/{rule_id}:
+    get:
+      operationId: rules_retrieve
+      description: |-
+        Retrieve the information for a single rule.
+
+        Retrieve the information for a single rule by Insights rule ID.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: rule_id
+        schema:
+          type: string
+          description: Rule ID from Insights
+        required: true
+      tags:
+      - rules
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatRule'
+          description: ''
+  /r/insights/v3/rules/{rule_id}/ansible-resolutions/{system_type_id}/{playbook_type}:
+    get:
+      operationId: rules_ansible_resolutions_retrieve
+      description: |-
+        Retrieve the ansible resolution for a given rule, system type and
+        playbook.
+
+        This gives all the information about the given playbook, including
+        the actual play.
+      parameters:
+      - in: path
+        name: playbook_type
+        schema:
+          type: string
+          pattern: ^\w+$
+        required: true
+      - in: path
+        name: rule_id
+        schema:
+          type: string
+          description: Rule ID from Insights
+        required: true
+      - in: path
+        name: system_type_id
+        schema:
+          type: string
+          pattern: ^[+-]?\d+$
+        required: true
+      tags:
+      - rules
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatRule'
+          description: ''
+  /r/insights/v3/stats:
+    get:
+      operationId: stats_list
+      description: |-
+        List the complete Classic Insights statistics structure.
+
+        This lists counts of total and affected systems, and reports and rules
+        by category and total risk.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: minSeverity
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - ERROR
+          - INFO
+          - WARN
+        description: Select the minimum risk level for rules affecting systems
+      tags:
+      - stats
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatStats'
+          description: ''
+  /r/insights/v3/stats/rules:
+    get:
+      operationId: stats_rules_retrieve
+      description: |-
+        List the Satellite rules statistics.
+
+        This lists the total count of rules, as well as the counts broken
+        down by severity and category.
+      tags:
+      - stats
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatStats'
+          description: ''
+  /r/insights/v3/stats/systems:
+    get:
+      operationId: stats_systems_retrieve
+      description: |-
+        List the Satellite rules statistics.
+
+        This lists the total count of rules, as well as the counts broken
+        down by severity and category.
+      tags:
+      - stats
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatStats'
+          description: ''
+  /r/insights/v3/system_types:
+    get:
+      operationId: system_types_list
+      description: List all system types by role and product code
+      summary: List all system types
+      tags:
+      - system_types
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SystemType'
+          description: ''
+  /r/insights/v3/system_types/{id}:
+    get:
+      operationId: system_types_retrieve
+      description: Retrieve details of a single system type
+      summary: Retrieve a system type
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this system type.
+        required: true
+      tags:
+      - system_types
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemType'
+          description: ''
+  /r/insights/v3/systems:
+    get:
+      operationId: systems_list
+      description: |-
+        List the systems in this account.
+
+        Only systems not yet past their stale warning date with current
+        reports are shown.  List can be sorted and paginated.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: offline
+        schema:
+          type: boolean
+        description: Search for systems that are current (or stale)
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: report_count
+        schema:
+          type: string
+          enum:
+          - gt0
+          - lt1
+        description: Report count
+      - in: query
+        name: rule
+        schema:
+          type: string
+        description: Search for systems impacted by a specific rule
+      - in: query
+        name: search_term
+        schema:
+          type: string
+        description: Search for systems that include this term in their name
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+          enum:
+          - created_at
+          - display_name
+          - hostname
+          - last_check_in
+          - report_count
+          - system_id
+          - toString
+          default: toString
+        description: Order by this field
+      - in: query
+        name: sort_dir
+        schema:
+          type: string
+          enum:
+          - ASC
+          - DESC
+          default: ASC
+        description: Ordering direction
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSatSystemsList'
+          description: ''
+  /r/insights/v3/systems/{uuid}:
+    get:
+      operationId: systems_retrieve
+      description: |-
+        Retrieve a single system in this account.
+
+        Only systems that are still reporting and that have current reports
+        are shown.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory host.
+        required: true
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatSystems'
+          description: ''
+    delete:
+      operationId: systems_destroy
+      description: |-
+        Unregister a current system.
+
+        This basically just deletes the current reports and marks the current
+        upload as non-current.  This should then remove the system from view,
+        while not actually deleting the host and associated upload and report
+        history.
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory host.
+        required: true
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '204':
+          description: No response body
+  /r/insights/v3/systems/{uuid}/groups:
+    get:
+      operationId: systems_groups_list
+      description: |-
+        Retrieve the list of groups this system is in.
+
+        Because we don't implement system groups, this is an empty list.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory host.
+        required: true
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          description: No response body
+  /r/insights/v3/systems/{uuid}/links:
+    get:
+      operationId: systems_links_retrieve
+      description: |-
+        Show links to other systems.
+
+        Classic once tried to understand the links between systems - e.g.
+        systems managed by a Satellite, hosts virtualised using OpenStack,
+        and so forth.  Then we gave up.  Now we just return an empty list.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory host.
+        required: true
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /r/insights/v3/systems/{uuid}/metadata:
+    get:
+      operationId: systems_metadata_retrieve
+      description: |-
+        Retrieve the system metadata for a single system in this account.
+
+        Only systems that are still reporting and that have current reports
+        are shown.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory host.
+        required: true
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatSystemMetadata'
+          description: ''
+  /r/insights/v3/systems/{uuid}/reports:
+    get:
+      operationId: systems_reports_retrieve
+      description: |-
+        Retrieve the reports for a single system in this account.
+
+        Only systems that are still reporting and that have current reports
+        are shown.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory host.
+        required: true
+      tags:
+      - systems
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatSystemReports'
+          description: ''
+  /r/insights/v3/topics:
+    get:
+      operationId: topics_list
+      description: List the rule topics and their impacted systems counts.
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: query
+        name: include
+        schema:
+          type: string
+          enum:
+          - resolution
+        description: Include details of associated table
+      tags:
+      - topics
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatRuleTopic'
+          description: ''
+  /r/insights/v3/topics/{slug}:
+    get:
+      operationId: topics_retrieve
+      description: |-
+        Information about a specific topic of recommendations
+
+        This recognises the specific topic names:
+        - {low,medium,high-critical}-risk - select by total-risk value
+        - {availability,security,stability,performance} - select by category
+        - 'incident' - selects rules with the tag 'incident'
+      parameters:
+      - in: query
+        name: branch_id
+        schema:
+          type: string
+          format: uuid
+        description: Select hosts owned by this Satellite ID
+      - in: path
+        name: slug
+        schema:
+          type: string
+          description: Rule topic slug
+        required: true
+      tags:
+      - topics
+      security:
+      - x-rh-identity: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatRuleTopic'
+          description: ''
+components:
+  schemas:
+    NullEnum:
+      enum:
+      - null
+    PaginatedSatPluginList:
+      type: object
+      properties:
+        total:
+          type: integer
+          examples: '23'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatPlugin'
+    PaginatedSatReportList:
+      type: object
+      properties:
+        total:
+          type: integer
+          examples: '23'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatReport'
+    PaginatedSatRuleList:
+      type: object
+      properties:
+        total:
+          type: integer
+          examples: '23'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatRule'
+    PaginatedSatSystemsList:
+      type: object
+      properties:
+        total:
+          type: integer
+          examples: '23'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatSystems'
+    SatAccountSettings:
+      type: object
+      description: Account settings object
+      properties:
+        name:
+          type: string
+        value:
+          type: boolean
+      required:
+      - name
+      - value
+    SatAck:
+      type: object
+      description: Rule acknowledgement object (disable viewing of a rule)
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rule_id:
+          type: string
+          readOnly: true
+        account_number:
+          type: string
+        org_id:
+          type: string
+      required:
+      - account_number
+      - id
+      - org_id
+      - rule_id
+    SatAckInput:
+      type: object
+      description: Select a rule to be disabled in the rule list
+      properties:
+        rule_id:
+          type: string
+          maxLength: 240
+      required:
+      - rule_id
+    SatArticleOverview:
+      type: object
+      description: Articles overview object
+      properties:
+        content_html:
+          type: string
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+      required:
+      - content
+      - content_html
+      - id
+      - title
+    SatEvaluationStatus:
+      type: object
+      description: Evaluation status object
+      properties:
+        expired:
+          type: boolean
+        purchased:
+          type: boolean
+        available:
+          type: array
+          items:
+            type: string
+      required:
+      - available
+      - expired
+      - purchased
+    SatExportReport:
+      type: object
+      properties:
+        display_name:
+          type: string
+        insights_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        rule_id_name:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+          readOnly: true
+        url:
+          type: string
+        article:
+          type: string
+        reported_time:
+          type: string
+          format: date-time
+      required:
+      - article
+      - category
+      - display_name
+      - insights_id
+      - reported_time
+      - rule_id_name
+      - severity
+      - title
+      - url
+    SatExportSystem:
+      type: object
+      properties:
+        display_name:
+          type: string
+          maxLength: 200
+        insights_id:
+          type: string
+          format: uuid
+        system_type:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+        stale:
+          type: boolean
+        actions:
+          type: integer
+        url:
+          type: string
+      required:
+      - actions
+      - created
+      - display_name
+      - insights_id
+      - stale
+      - system_type
+      - updated
+      - url
+    SatMaintenance:
+      type: object
+      description: Maintenance details object
+      properties:
+        maintenance_id:
+          type: integer
+          readOnly: true
+        remote_branch:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          nullable: true
+          maxLength: 255
+        suggestion:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SuggestionEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        start:
+          type: string
+          format: date-time
+          nullable: true
+        end:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: string
+          readOnly: true
+          nullable: true
+        overdue:
+          type: boolean
+          readOnly: true
+        silenced:
+          type: boolean
+        hidden:
+          type: boolean
+        allow_reboot:
+          type: boolean
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatMaintenanceAction'
+          nullable: true
+      required:
+      - created_by
+      - maintenance_id
+      - overdue
+      - remote_branch
+      - suggestion
+    SatMaintenanceAction:
+      type: object
+      description: An available action for maintenance
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        maintenance_id:
+          type: integer
+        system:
+          $ref: '#/components/schemas/SatMaintenanceActionSystem'
+        rule:
+          $ref: '#/components/schemas/SatMaintenanceActionRule'
+        current_report:
+          $ref: '#/components/schemas/SatMaintenanceActionReport'
+        done:
+          type: boolean
+      required:
+      - done
+      - id
+      - maintenance_id
+      - rule
+      - system
+    SatMaintenanceActionReport:
+      type: object
+      description: (Optional) report information for action detail of maintenance
+        object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        details: {}
+      required:
+      - details
+      - id
+    SatMaintenanceActionRule:
+      type: object
+      description: Rule details in action detail of maintenance object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+          maxLength: 240
+        description_html:
+          type: string
+        severity:
+          type: string
+          readOnly: true
+        ansible:
+          type: boolean
+        ansible_fix:
+          type: boolean
+        ansible_mitigation:
+          type: boolean
+        category:
+          type: string
+        reboot_required:
+          type: boolean
+        rec_impact:
+          type: integer
+        rec_likelihood:
+          type: integer
+      required:
+      - ansible
+      - ansible_fix
+      - ansible_mitigation
+      - category
+      - description
+      - description_html
+      - id
+      - rec_impact
+      - rec_likelihood
+      - severity
+    SatMaintenanceActionSimple:
+      type: object
+      description: An available action for maintenance, without sub-data
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        maintenance_id:
+          type: integer
+        done:
+          type: boolean
+      required:
+      - done
+      - id
+      - maintenance_id
+    SatMaintenanceActionSystem:
+      type: object
+      description: System details in action detail of maintenance object
+      properties:
+        toString:
+          type: string
+        isCheckingIn:
+          type: boolean
+        system_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          maxLength: 200
+        hostname:
+          type: string
+        last_check_in:
+          type: string
+          format: date-time
+        system_type_id:
+          type: integer
+      required:
+      - display_name
+      - hostname
+      - isCheckingIn
+      - last_check_in
+      - system_id
+      - system_type_id
+      - toString
+    SatMaintenanceAdd:
+      type: object
+      description: |-
+        Satellite creates a plan by supplying a name and the 'add' field, which
+        is a list of SatMaintenanceAddActionSerializer actions.
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        hidden:
+          type: boolean
+        add:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatMaintenanceAddAction'
+      required:
+      - add
+      - name
+    SatMaintenanceAddAction:
+      type: object
+      description: |-
+        A rule, applied to either a single host or (when null) to all hosts on
+        this Satellite.
+      properties:
+        rule_id:
+          type: string
+        system_id:
+          type: string
+          format: uuid
+      required:
+      - rule_id
+    SatMaintenanceEdit:
+      type: object
+      description: |-
+        Almost like the add and view serializers but has extra fields that can
+        remove, change and add actions.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          nullable: true
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        start:
+          type: string
+          format: date-time
+          nullable: true
+        end:
+          type: string
+          format: date-time
+          nullable: true
+        silenced:
+          type: boolean
+        hidden:
+          type: boolean
+        delete:
+          type: array
+          items:
+            type: integer
+            description: A list of action IDs to delete from this plan
+        actions:
+          type: array
+          items:
+            type: integer
+            description: A list of action IDs to leave in this plan, removing all
+              others
+        add:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatMaintenanceAddAction'
+      required:
+      - id
+    SatMaintenanceNewMaintenancePlan:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+      required:
+      - id
+    SatMaintenancePlay:
+      type: object
+      description: A set of resolutions for the rules in a plan
+      properties:
+        system_type_id:
+          type: integer
+          readOnly: true
+        rule:
+          $ref: '#/components/schemas/SatMaintenancePlayRule'
+        ansible_resolutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatMaintenancePlayResolution'
+      required:
+      - ansible_resolutions
+      - rule
+      - system_type_id
+    SatMaintenancePlayResolution:
+      type: object
+      description: List of playbook information for this rule.
+      properties:
+        resolution_type:
+          type: string
+        description:
+          type: string
+          maxLength: 255
+        rule_id:
+          type: string
+        system_type_id:
+          type: integer
+        needs_reboot:
+          type: boolean
+        resolution_risk:
+          type: integer
+      required:
+      - description
+      - needs_reboot
+      - resolution_risk
+      - resolution_type
+      - rule_id
+      - system_type_id
+    SatMaintenancePlayRule:
+      type: object
+      description: Rule details in play detail of maintenance plan
+      properties:
+        rule_id:
+          type: string
+          description: Rule ID from Insights
+          maxLength: 240
+        description:
+          type: string
+          maxLength: 240
+        category:
+          type: string
+        severity:
+          type: string
+          readOnly: true
+      required:
+      - category
+      - description
+      - rule_id
+      - severity
+    SatPlugin:
+      type: object
+      properties:
+        plugin:
+          type: string
+        name:
+          type: string
+      required:
+      - name
+      - plugin
+    SatReport:
+      type: object
+      description: Reports of a rule impacting a host.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rule_id:
+          type: string
+        system_id:
+          type: string
+          format: uuid
+        account_number:
+          type: string
+        org_id:
+          type: string
+          maxLength: 50
+        date:
+          type: string
+          format: date-time
+        system:
+          $ref: '#/components/schemas/SatReportSystem'
+      required:
+      - account_number
+      - date
+      - id
+      - org_id
+      - rule_id
+      - system
+      - system_id
+    SatReportRule:
+      type: object
+      description: Rule information related to reports of this rule
+      properties:
+        rule_id:
+          type: string
+          description: Rule ID from Insights
+          maxLength: 240
+        error_key:
+          type: string
+          readOnly: true
+        plugin:
+          type: string
+          readOnly: true
+        active:
+          type: boolean
+        node_id:
+          type: string
+          description: KCS solution number
+          maxLength: 10
+        reboot_required:
+          type: boolean
+        publish_date:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 240
+        summary:
+          type: string
+        generic:
+          type: string
+        reason:
+          type: string
+        more_info:
+          type: string
+        more_info_html:
+          type: string
+        severity:
+          type: string
+          readOnly: true
+        resolution:
+          type: string
+        resolution_risk:
+          type: integer
+        category:
+          type: string
+        rec_impact:
+          type: integer
+        rec_likelihood:
+          type: integer
+        ansible:
+          type: boolean
+        ansible_fix:
+          type: boolean
+        ansible_mitigation:
+          type: boolean
+        retired:
+          type: boolean
+      required:
+      - ansible
+      - ansible_fix
+      - ansible_mitigation
+      - category
+      - description
+      - error_key
+      - generic
+      - more_info_html
+      - plugin
+      - reason
+      - rec_impact
+      - rec_likelihood
+      - resolution
+      - resolution_risk
+      - retired
+      - rule_id
+      - severity
+      - summary
+    SatReportSystem:
+      type: object
+      description: System information for the reports view
+      properties:
+        system_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        last_check_in:
+          type: string
+          format: date-time
+      required:
+      - display_name
+      - last_check_in
+      - system_id
+    SatResolution:
+      type: object
+      description: List of resolutions for this rule.
+      properties:
+        system_type_id:
+          type: string
+        resolution:
+          type: string
+        resolution_risk:
+          type: integer
+      required:
+      - resolution
+      - resolution_risk
+      - system_type_id
+    SatRule:
+      type: object
+      description: |-
+        Rule information when we know the account, and therefore know which
+        systems are affected by this rule.
+      properties:
+        rule_id:
+          type: string
+          description: Rule ID from Insights
+          maxLength: 240
+        active:
+          type: boolean
+        node_id:
+          type: string
+          description: KCS solution number
+          maxLength: 10
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatRuleTag'
+        reboot_required:
+          type: boolean
+        publish_date:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 240
+        summary:
+          type: string
+        generic:
+          type: string
+        reason:
+          type: string
+        more_info:
+          type: string
+        description_html:
+          type: string
+        summary_html:
+          type: string
+        generic_html:
+          type: string
+        reason_html:
+          type: string
+        more_info_html:
+          type: string
+        plugin_name:
+          type: string
+        severity:
+          type: string
+          readOnly: true
+        error_key:
+          type: string
+        plugin:
+          type: string
+        resolution_risk:
+          type: integer
+        category:
+          type: string
+        rec_impact:
+          type: integer
+        rec_likelihood:
+          type: integer
+        id:
+          type: string
+        name:
+          type: string
+        impacted_systems:
+          type: integer
+        hasIncidents:
+          type: integer
+        ack_id:
+          type: integer
+          readOnly: true
+        resolution_set:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatResolution'
+        report_count:
+          type: integer
+        ansible:
+          type: integer
+          readOnly: true
+        retired:
+          type: boolean
+        system_acks:
+          type: array
+          items: {}
+          readOnly: true
+        group_acks:
+          type: array
+          items: {}
+          readOnly: true
+        article:
+          type: string
+      required:
+      - ack_id
+      - ansible
+      - article
+      - category
+      - description
+      - description_html
+      - error_key
+      - generic
+      - generic_html
+      - group_acks
+      - hasIncidents
+      - id
+      - impacted_systems
+      - more_info_html
+      - name
+      - plugin
+      - plugin_name
+      - reason
+      - reason_html
+      - rec_impact
+      - rec_likelihood
+      - report_count
+      - resolution_risk
+      - resolution_set
+      - retired
+      - rule_id
+      - severity
+      - summary
+      - summary_html
+      - system_acks
+      - tags
+    SatRuleTag:
+      type: object
+      description: |-
+        A list of tag names.  Since tags in the content, and in Advisor, don't
+        actually have a description, we omit this.
+      properties:
+        name:
+          type: string
+          maxLength: 32
+      required:
+      - name
+    SatRuleTopic:
+      type: object
+      description: The view of rule topics for Satellite compatibility.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatRuleTopicRule'
+        hitCount:
+          type: integer
+        affectedSystemCount:
+          type: integer
+        slug:
+          type: string
+        ruleBinding:
+          type: string
+        alwaysShow:
+          type: boolean
+        title:
+          type: string
+        summary:
+          type: string
+        summary_html:
+          type: string
+        content:
+          type: string
+        content_html:
+          type: string
+        priority:
+          type: integer
+        listed:
+          type: string
+        tag:
+          type: string
+        hidden:
+          type: boolean
+      required:
+      - affectedSystemCount
+      - alwaysShow
+      - content
+      - content_html
+      - hidden
+      - hitCount
+      - id
+      - listed
+      - priority
+      - ruleBinding
+      - rules
+      - slug
+      - summary
+      - summary_html
+      - tag
+      - title
+    SatRuleTopicRule:
+      type: object
+      description: The rule list within a topic for Satellite compatibility.
+      properties:
+        rule_id:
+          type: string
+          description: Rule ID from Insights
+          maxLength: 240
+        description:
+          type: string
+          maxLength: 240
+        category:
+          type: string
+        severity:
+          type: string
+          readOnly: true
+        hitCount:
+          type: integer
+        summary:
+          type: string
+        summary_html:
+          type: string
+        plugin:
+          type: string
+        error_key:
+          type: string
+        plugin_name:
+          type: string
+        ansible:
+          type: integer
+        rec_impact:
+          type: integer
+        rec_likelihood:
+          type: integer
+        resolution_risk:
+          type: integer
+        acked:
+          type: integer
+      required:
+      - acked
+      - ansible
+      - category
+      - description
+      - error_key
+      - hitCount
+      - plugin
+      - plugin_name
+      - rec_impact
+      - rec_likelihood
+      - resolution_risk
+      - rule_id
+      - severity
+      - summary
+      - summary_html
+    SatStats:
+      type: object
+      description: Statistics about systems, reports and rules.
+      properties:
+        systems:
+          $ref: '#/components/schemas/SatStatsSubS'
+        reports:
+          $ref: '#/components/schemas/SatStatsSubRR'
+        rules:
+          $ref: '#/components/schemas/SatStatsSubRR'
+      required:
+      - reports
+      - rules
+      - systems
+    SatStatsSubRR:
+      type: object
+      description: |-
+        Rules and reports both get a total count and a per-risk and per-category
+        count.
+      properties:
+        total:
+          type: integer
+        info:
+          type: integer
+        warn:
+          type: integer
+        error:
+          type: integer
+        critical:
+          type: integer
+        availability:
+          type: integer
+        security:
+          type: integer
+        stability:
+          type: integer
+        performance:
+          type: integer
+      required:
+      - availability
+      - critical
+      - error
+      - info
+      - performance
+      - security
+      - stability
+      - total
+      - warn
+    SatStatsSubS:
+      type: object
+      description: A count of total and affected systems.
+      properties:
+        total:
+          type: integer
+        affected:
+          type: integer
+      required:
+      - affected
+      - total
+    SatSystemAcks:
+      type: object
+      description: A combined list of global and system recommendation disablements.
+      properties:
+        system:
+          type: boolean
+        groups:
+          type: array
+          items: {}
+          readOnly: true
+        is_global:
+          type: boolean
+          title: global
+        rule_id:
+          type: string
+      required:
+      - groups
+      - is_global
+      - rule_id
+      - system
+    SatSystemMetadata:
+      type: object
+      description: Metadata for a system.
+      properties:
+        bios_release_date:
+          type: string
+          title: bios_information.release_date
+        bios_vendor:
+          type: string
+          title: bios_information.vendor
+        bios_version:
+          type: string
+          title: bios_information.version
+        release:
+          type: string
+        rhel_version:
+          type: string
+        system_family:
+          type: string
+          title: system_information.family
+        system_type:
+          type: string
+          title: system_information.machine_type
+        system_vm:
+          type: string
+          title: system_information.virtual_machine
+    SatSystemReport:
+      type: object
+      description: Details of a report affecting a system.
+      properties:
+        details: {}
+        id:
+          type: integer
+          readOnly: true
+        rule_id:
+          type: string
+        system_id:
+          type: string
+        account_number:
+          type: string
+        org_id:
+          type: string
+        date:
+          type: string
+          format: date-time
+        rule:
+          $ref: '#/components/schemas/SatReportRule'
+        maintenance_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatMaintenanceActionSimple'
+      required:
+      - account_number
+      - date
+      - details
+      - id
+      - maintenance_actions
+      - org_id
+      - rule
+      - rule_id
+      - system_id
+    SatSystemReports:
+      type: object
+      description: System information and reports for a single system.
+      properties:
+        toString:
+          type: string
+        isCheckingIn:
+          type: boolean
+        system_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          maxLength: 200
+        account_number:
+          type: string
+        org_id:
+          type: string
+        hostname:
+          type: string
+        last_check_in:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        system_type_id:
+          type: integer
+        role:
+          type: string
+        product_code:
+          type: string
+        remote_branch:
+          type: string
+          format: uuid
+        remote_leaf:
+          type: string
+          format: uuid
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatSystemReport'
+      required:
+      - account_number
+      - created_at
+      - display_name
+      - hostname
+      - isCheckingIn
+      - last_check_in
+      - org_id
+      - product_code
+      - remote_branch
+      - remote_leaf
+      - reports
+      - role
+      - system_id
+      - system_type_id
+      - toString
+      - updated_at
+    SatSystems:
+      type: object
+      description: |-
+        System information when we know the account, and therefore can count
+        how many reports of enabled recommendations the system has.
+      properties:
+        toString:
+          type: string
+        isCheckingIn:
+          type: boolean
+        system_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          maxLength: 200
+        account_number:
+          type: string
+        org_id:
+          type: string
+        hostname:
+          type: string
+        last_check_in:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        unregistered_at:
+          type: string
+          format: date-time
+          nullable: true
+        system_type_id:
+          type: integer
+        role:
+          type: string
+        product_code:
+          type: string
+        report_count:
+          type: integer
+        remote_branch:
+          type: string
+          format: uuid
+        remote_leaf:
+          type: string
+          format: uuid
+        acks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatSystemAcks'
+      required:
+      - account_number
+      - acks
+      - created_at
+      - display_name
+      - hostname
+      - isCheckingIn
+      - last_check_in
+      - org_id
+      - product_code
+      - remote_branch
+      - remote_leaf
+      - report_count
+      - role
+      - system_id
+      - system_type_id
+      - toString
+      - updated_at
+    SuggestionEnum:
+      enum:
+      - P
+      - A
+      - R
+      type: string
+      description: |-
+        * `P` - proposed
+        * `A` - accepted
+        * `R` - rejected
+    SystemType:
+      type: object
+      description: RHN-based system types classified by role and product code.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        role:
+          type: string
+          maxLength: 15
+        product_code:
+          type: string
+          maxLength: 10
+      required:
+      - id
+      - product_code
+      - role
+  securitySchemes:
+    x-rh-identity:
+      type: apiKey
+      in: header
+      name: x-rh-identity
+servers:
+- url: http://localhost:8000/
+  description: The API of the Advisor project in Insights

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.AuthFailTestCase-20260212002758" tests="13" file="api/tests/test_view_auth.py" time="0.159" timestamp="2026-02-12T00:29:39" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_bad_json_in_auth" time="0.005" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="139">
+		<!--
+        A view that requires authentication should return a 403 if the
+        Base64 authentication header supplied contains incomplete JSON.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_json_identity_not_a_struct" time="0.005" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="175">
+		<!--
+        A view that requires authentication should return a 403 if the
+        Base64 authentication header supplied contains no identity structure.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_json_no_identity" time="0.006" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="163">
+		<!--
+        A view that requires authentication should return a 403 if the
+        Base64 authentication header supplied contains no identity section.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_json_not_a_struct" time="0.004" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="151">
+		<!--
+        A view that requires authentication should return a 403 if the
+        Base64 authentication header supplied contains just a string.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_json_org_id_alpha_characters" time="0.032" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="222">
+		<!--
+        A view that requires authentication should return a 200 if the
+        authentication header supplied contains org_id with non number characters.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_json_org_id_not_in_identity" time="0.004" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="187">
+		<!--
+        A view that requires authentication should return a 403 if the
+        Base64 authentication header supplied contains no org_id
+        in the identity section.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_json_org_id_too_long" time="0.004" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="203">
+		<!--
+        A view that requires authentication should return a 403 if the
+        authentication header supplied contains an over-long org_id.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_no_auth" time="0.007" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="102">
+		<!--
+        A view that requires authentication should return a 403 if no
+        authentication header is supplied.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_no_base64" time="0.006" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="111">
+		<!--
+        A view that requires authentication should return a 403 if the
+        authentication header supplied isn't Base64 encoded.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_no_json_in_auth" time="0.004" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="127">
+		<!--
+        A view that requires authentication should return a 403 if the
+        Base64 authentication header supplied contains no JSON.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_auth_req_view_with_org_id_as_int" time="0.065" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="236">
+		<!--
+        A view that requires authentication should gracefully handle an
+        integer for the org_id.  We also need to supply at least the
+        username or service account.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_non_auth_view_with_auth" time="0.007" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="91">
+		<!--
+        A view that doesn't require authentication should work even if we do
+        supply valid authentication headers.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.AuthFailTestCase" name="test_non_auth_view_with_no_auth" time="0.010" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="80">
+		<!--
+        A view that doesn't require authentication should work without
+        authentication headers.
+        -->
+	</testcase>
+</testsuite>

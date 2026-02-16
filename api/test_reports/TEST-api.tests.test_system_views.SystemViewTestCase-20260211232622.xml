@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_system_views.SystemViewTestCase-20260211232622" tests="1" file="api/tests/test_system_views.py" time="0.013" timestamp="2026-02-11T23:26:23" failures="1" errors="0" skipped="0">
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_different_os_names_and_versions" time="0.013" timestamp="2026-02-11T23:26:23" file="advisor/api/tests/test_system_views.py" line="155">
+		<!--
+        Test different failure modes in retrieving the os_name and version.
+        -->
+		<failure type="AssertionError" message="'Unknown system version' != 'Unknown operating system'
+- Unknown system version
++ Unknown operating system
+"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_system_views.py", line 165, in test_get_system_different_os_names_and_versions
+    self.assertEqual(host_01.rhel_version, 'Unknown operating system')
+AssertionError: 'Unknown system version' != 'Unknown operating system'
+- Unknown system version
++ Unknown operating system
+
+]]></failure>
+	</testcase>
+</testsuite>

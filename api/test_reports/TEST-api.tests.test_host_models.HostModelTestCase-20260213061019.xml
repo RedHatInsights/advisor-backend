@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_host_models.HostModelTestCase-20260213061019" tests="1" file="api/tests/test_host_models.py" time="0.002" timestamp="2026-02-13T06:10:28" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_host_models.HostModelTestCase" name="test_host_properties" time="0.002" timestamp="2026-02-13T06:10:28" file="advisor/api/tests/test_host_models.py" line="29"/>
+</testsuite>

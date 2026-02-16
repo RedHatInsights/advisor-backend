@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_topics_views.TopicTestCase-20260216000108" tests="4" file="sat_compat/tests/test_topics_views.py" time="1.809" timestamp="2026-02-16T00:02:45" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_topics_views.TopicTestCase" name="test_topics_detail" time="0.228" timestamp="2026-02-16T00:02:43" file="api/advisor/sat_compat/tests/test_topics_views.py" line="120"/>
+	<testcase classname="sat_compat.tests.test_topics_views.TopicTestCase" name="test_topics_detail_satellite_specials" time="1.242" timestamp="2026-02-16T00:02:44" file="api/advisor/sat_compat/tests/test_topics_views.py" line="176"/>
+	<testcase classname="sat_compat.tests.test_topics_views.TopicTestCase" name="test_topics_list" time="0.168" timestamp="2026-02-16T00:02:44" file="api/advisor/sat_compat/tests/test_topics_views.py" line="35"/>
+	<testcase classname="sat_compat.tests.test_topics_views.TopicTestCase" name="test_topics_list_cert_auth" time="0.171" timestamp="2026-02-16T00:02:45" file="api/advisor/sat_compat/tests/test_topics_views.py" line="76"/>
+</testsuite>

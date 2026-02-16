@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_cert_auth.CertAuthTestCase-20260211234528" tests="9" file="api/tests/test_cert_auth.py" time="2.128" timestamp="2026-02-11T23:46:07" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_auth_failures" time="0.074" timestamp="2026-02-11T23:46:04" file="advisor/api/tests/test_cert_auth.py" line="62"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_get_non_owned_system" time="0.264" timestamp="2026-02-11T23:46:05" file="advisor/api/tests/test_cert_auth.py" line="132"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_get_non_owned_system_reports" time="0.121" timestamp="2026-02-11T23:46:05" file="advisor/api/tests/test_cert_auth.py" line="139"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_list_system_kessel_on_cert_auth" time="0.520" timestamp="2026-02-11T23:46:05" file="advisor/api/tests/test_cert_auth.py" line="226"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_list_system_satellite" time="0.309" timestamp="2026-02-11T23:46:06" file="advisor/api/tests/test_cert_auth.py" line="103"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_list_system_self_owned" time="0.289" timestamp="2026-02-11T23:46:06" file="advisor/api/tests/test_cert_auth.py" line="120"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_rule_list" time="0.314" timestamp="2026-02-11T23:46:06" file="advisor/api/tests/test_cert_auth.py" line="148"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_systems_stats" time="0.126" timestamp="2026-02-11T23:46:06" file="advisor/api/tests/test_cert_auth.py" line="164"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_topic_list" time="0.110" timestamp="2026-02-11T23:46:07" file="advisor/api/tests/test_cert_auth.py" line="186"/>
+</testsuite>

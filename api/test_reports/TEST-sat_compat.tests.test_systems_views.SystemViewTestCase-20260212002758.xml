@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_systems_views.SystemViewTestCase-20260212002758" tests="20" file="sat_compat/tests/test_systems_views.py" time="2.774" timestamp="2026-02-12T00:30:04" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_bad_labelserializer" time="0.003" timestamp="2026-02-12T00:30:01" file="advisor/sat_compat/tests/test_systems_views.py" line="742">
+		<!--
+        Tests for completeness of the LabelSerializer class, including how
+        it handles null values.
+        -->
+	</testcase>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_bad_branch_id" time="0.005" timestamp="2026-02-12T00:30:01" file="advisor/sat_compat/tests/test_systems_views.py" line="243"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems" time="0.298" timestamp="2026-02-12T00:30:02" file="advisor/sat_compat/tests/test_systems_views.py" line="168"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_cert_auth" time="0.045" timestamp="2026-02-12T00:30:02" file="advisor/sat_compat/tests/test_systems_views.py" line="376"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_for_rule" time="0.156" timestamp="2026-02-12T00:30:02" file="advisor/sat_compat/tests/test_systems_views.py" line="386"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_name_filter" time="0.081" timestamp="2026-02-12T00:30:02" file="advisor/sat_compat/tests/test_systems_views.py" line="356"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_offline_filter" time="0.086" timestamp="2026-02-12T00:30:02" file="advisor/sat_compat/tests/test_systems_views.py" line="265"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_report_count_filter" time="0.111" timestamp="2026-02-12T00:30:02" file="advisor/sat_compat/tests/test_systems_views.py" line="333"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_sort_options" time="0.948" timestamp="2026-02-12T00:30:03" file="advisor/sat_compat/tests/test_systems_views.py" line="252"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_list_systems_unregistered_at" time="0.043" timestamp="2026-02-12T00:30:03" file="advisor/sat_compat/tests/test_systems_views.py" line="302"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_delete" time="0.018" timestamp="2026-02-12T00:30:03" file="advisor/sat_compat/tests/test_systems_views.py" line="938"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_detail" time="0.099" timestamp="2026-02-12T00:30:03" file="advisor/sat_compat/tests/test_systems_views.py" line="418"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_groups" time="0.127" timestamp="2026-02-12T00:30:03" file="advisor/sat_compat/tests/test_systems_views.py" line="484"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_links" time="0.100" timestamp="2026-02-12T00:30:03" file="advisor/sat_compat/tests/test_systems_views.py" line="783"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_metadata" time="0.114" timestamp="2026-02-12T00:30:04" file="advisor/sat_compat/tests/test_systems_views.py" line="690"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_register" time="0.070" timestamp="2026-02-12T00:30:04" file="advisor/sat_compat/tests/test_systems_views.py" line="815"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_rename" time="0.061" timestamp="2026-02-12T00:30:04" file="advisor/sat_compat/tests/test_systems_views.py" line="956"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_rename_no_inventory_server" time="0.017" timestamp="2026-02-12T00:30:04" file="advisor/sat_compat/tests/test_systems_views.py" line="1015"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_reports" time="0.278" timestamp="2026-02-12T00:30:04" file="advisor/sat_compat/tests/test_systems_views.py" line="520"/>
+	<testcase classname="sat_compat.tests.test_systems_views.SystemViewTestCase" name="test_systems_unregister" time="0.113" timestamp="2026-02-12T00:30:04" file="advisor/sat_compat/tests/test_systems_views.py" line="909"/>
+</testsuite>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="unittest.loader._FailedTest-20260216001056" tests="4" file="unittest/loader.py" time="0.002" timestamp="2026-02-16T00:10:56" failures="0" errors="4" skipped="0">
+	<testcase classname="unittest.loader._FailedTest.api.tests" name="test_advisor_inventory_service" time="0.001" timestamp="2026-02-16T00:10:56" file="/usr/lib64/python3.12/unittest/loader.py" line="32">
+		<error type="ImportError" message="Failed to import test module: api.tests.test_advisor_inventory_service
+Traceback (most recent call last):
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 339, in _get_module_from_name
+    __import__(name)
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py&quot;, line 27, in &lt;module&gt;
+    from api.management.commands.advisor_inventory_service import (
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py&quot;, line 17, in &lt;module&gt;
+    import prometheus
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/prometheus.py&quot;, line 19, in &lt;module&gt;
+    import settings
+ModuleNotFoundError: No module named 'settings'
+"><![CDATA[ImportError: Failed to import test module: api.tests.test_advisor_inventory_service
+Traceback (most recent call last):
+  File "/usr/lib64/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py", line 27, in <module>
+    from api.management.commands.advisor_inventory_service import (
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 17, in <module>
+    import prometheus
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/prometheus.py", line 19, in <module>
+    import settings
+ModuleNotFoundError: No module named 'settings'
+
+]]></error>
+	</testcase>
+	<testcase classname="unittest.loader._FailedTest.api.tests" name="test_advisor_service_database" time="0.000" timestamp="2026-02-16T00:10:56" file="/usr/lib64/python3.12/unittest/loader.py" line="32">
+		<error type="ImportError" message="Failed to import test module: api.tests.test_advisor_service_database
+Traceback (most recent call last):
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 339, in _get_module_from_name
+    __import__(name)
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_database.py&quot;, line 21, in &lt;module&gt;
+    from api.management.commands.advisor_inventory_service import create_db_reports
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py&quot;, line 17, in &lt;module&gt;
+    import prometheus
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/prometheus.py&quot;, line 19, in &lt;module&gt;
+    import settings
+ModuleNotFoundError: No module named 'settings'
+"><![CDATA[ImportError: Failed to import test module: api.tests.test_advisor_service_database
+Traceback (most recent call last):
+  File "/usr/lib64/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_database.py", line 21, in <module>
+    from api.management.commands.advisor_inventory_service import create_db_reports
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 17, in <module>
+    import prometheus
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/prometheus.py", line 19, in <module>
+    import settings
+ModuleNotFoundError: No module named 'settings'
+
+]]></error>
+	</testcase>
+	<testcase classname="unittest.loader._FailedTest.api.tests" name="test_advisor_service_engine_rule_hits" time="0.001" timestamp="2026-02-16T00:10:56" file="/usr/lib64/python3.12/unittest/loader.py" line="32">
+		<error type="ImportError" message="Failed to import test module: api.tests.test_advisor_service_engine_rule_hits
+Traceback (most recent call last):
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 339, in _get_module_from_name
+    __import__(name)
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_engine_rule_hits.py&quot;, line 26, in &lt;module&gt;
+    from api.management.commands.advisor_inventory_service import (
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py&quot;, line 17, in &lt;module&gt;
+    import prometheus
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/prometheus.py&quot;, line 19, in &lt;module&gt;
+    import settings
+ModuleNotFoundError: No module named 'settings'
+"><![CDATA[ImportError: Failed to import test module: api.tests.test_advisor_service_engine_rule_hits
+Traceback (most recent call last):
+  File "/usr/lib64/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_engine_rule_hits.py", line 26, in <module>
+    from api.management.commands.advisor_inventory_service import (
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 17, in <module>
+    import prometheus
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/prometheus.py", line 19, in <module>
+    import settings
+ModuleNotFoundError: No module named 'settings'
+
+]]></error>
+	</testcase>
+	<testcase classname="unittest.loader._FailedTest.api.tests" name="test_advisor_service_webhooks" time="0.001" timestamp="2026-02-16T00:10:56" file="/usr/lib64/python3.12/unittest/loader.py" line="32">
+		<error type="ImportError" message="Failed to import test module: api.tests.test_advisor_service_webhooks
+Traceback (most recent call last):
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 339, in _get_module_from_name
+    __import__(name)
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_webhooks.py&quot;, line 24, in &lt;module&gt;
+    import reports
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/reports.py&quot;, line 24, in &lt;module&gt;
+    import settings
+ModuleNotFoundError: No module named 'settings'
+"><![CDATA[ImportError: Failed to import test module: api.tests.test_advisor_service_webhooks
+Traceback (most recent call last):
+  File "/usr/lib64/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_webhooks.py", line 24, in <module>
+    import reports
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/reports.py", line 24, in <module>
+    import settings
+ModuleNotFoundError: No module named 'settings'
+
+]]></error>
+	</testcase>
+</testsuite>

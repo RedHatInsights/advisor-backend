@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rule_rating_views.RuleRatingViewsTestCase-20260216000108" tests="6" file="api/tests/test_rule_rating_views.py" time="0.170" timestamp="2026-02-16T00:02:00" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rule_rating_views.RuleRatingViewsTestCase" name="test_rule_all_ratings_list" time="0.019" timestamp="2026-02-16T00:02:00" file="api/advisor/api/tests/test_rule_rating_views.py" line="178"/>
+	<testcase classname="api.tests.test_rule_rating_views.RuleRatingViewsTestCase" name="test_rule_rating_creation" time="0.090" timestamp="2026-02-16T00:02:00" file="api/advisor/api/tests/test_rule_rating_views.py" line="107"/>
+	<testcase classname="api.tests.test_rule_rating_views.RuleRatingViewsTestCase" name="test_rule_rating_detail" time="0.026" timestamp="2026-02-16T00:02:00" file="api/advisor/api/tests/test_rule_rating_views.py" line="84"/>
+	<testcase classname="api.tests.test_rule_rating_views.RuleRatingViewsTestCase" name="test_rule_rating_list" time="0.017" timestamp="2026-02-16T00:02:00" file="api/advisor/api/tests/test_rule_rating_views.py" line="58"/>
+	<testcase classname="api.tests.test_rule_rating_views.RuleRatingViewsTestCase" name="test_rule_rating_model" time="0.005" timestamp="2026-02-16T00:02:00" file="api/advisor/api/tests/test_rule_rating_views.py" line="33"/>
+	<testcase classname="api.tests.test_rule_rating_views.RuleRatingViewsTestCase" name="test_rule_rating_stats" time="0.013" timestamp="2026-02-16T00:02:00" file="api/advisor/api/tests/test_rule_rating_views.py" line="229"/>
+</testsuite>

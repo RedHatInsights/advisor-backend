@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_ack_views.AckCountViewTestCase-20260211234528" tests="5" file="api/tests/test_ack_views.py" time="2.990" timestamp="2026-02-11T23:45:33" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_detail" time="2.700" timestamp="2026-02-11T23:45:33" file="advisor/api/tests/test_ack_views.py" line="429"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_detail_invalid_rule_id" time="0.047" timestamp="2026-02-11T23:45:33" file="advisor/api/tests/test_ack_views.py" line="466"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_endpoint_access_fails_for_non_internal_user" time="0.044" timestamp="2026-02-11T23:45:33" file="advisor/api/tests/test_ack_views.py" line="483"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_ackcount_list" time="0.029" timestamp="2026-02-11T23:45:33" file="advisor/api/tests/test_ack_views.py" line="414"/>
+	<testcase classname="api.tests.test_ack_views.AckCountViewTestCase" name="test_add_deleting_acks_to_modify_ack_counts" time="0.170" timestamp="2026-02-11T23:45:33" file="advisor/api/tests/test_ack_views.py" line="440">
+		<system-err><![CDATA[Returning default value for feature: advisor.kessel_enabled
+Error checking feature flag: 'advisor.kessel_enabled'
+]]></system-err>
+	</testcase>
+</testsuite>
