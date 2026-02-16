@@ -44,6 +44,67 @@ from kafka_utils import JsonValue, KafkaDispatcher
 
 
 #############################################################################
+# Payload tracking helper functions
+
+
+def start_operation_tracking(operation_name: str, **context) -> float:
+    """
+    Start tracking an operation by recording start time and context information
+    in thread-local storage for payload tracking and metrics.
+
+    Args:
+        operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
+        **context: Context fields like request_id, inventory_id, source, account, org_id
+
+    Returns:
+        start_time: The time when operation started (for use in success/failure tracking)
+    """
+    start_time = time.time()
+    thread_storage.set_value(f'{operation_name}_started', start_time)
+    thread_storage.set_value(f'{operation_name}_error', 0)
+
+    # Set context fields for payload tracking
+    for key, value in context.items():
+        if value is not None:
+            thread_storage.set_value(key, value)
+
+    return start_time
+
+
+def track_operation_failure(operation_name: str, start_time: float, error_msg: str) -> None:
+    """
+    Record operation failure with timing and error information in thread-local storage.
+
+    Args:
+        operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
+        start_time: The time when operation started (from start_operation_tracking)
+        error_msg: Error message describing the failure
+    """
+    finished_time = time.time()
+    elapsed_time = finished_time - start_time
+
+    thread_storage.set_value(f'{operation_name}_error', 1)
+    thread_storage.set_value(f'{operation_name}_error_msg', error_msg)
+    thread_storage.set_value(f'{operation_name}_finished', finished_time)
+    thread_storage.set_value(f'{operation_name}_elapsed', elapsed_time)
+
+
+def track_operation_success(operation_name: str, start_time: float) -> None:
+    """
+    Record successful operation completion with timing information in thread-local storage.
+
+    Args:
+        operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
+        start_time: The time when operation started (from start_operation_tracking)
+    """
+    finished_time = time.time()
+    elapsed_time = finished_time - start_time
+
+    thread_storage.set_value(f'{operation_name}_finished', finished_time)
+    thread_storage.set_value(f'{operation_name}_elapsed', elapsed_time)
+
+
+#############################################################################
 # Inventory event handler
 
 
@@ -331,10 +392,6 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
     Handle engine results received from the shared engine instance.
     This comes in on platform.engine.results topic.
     """
-    # Start function metrics
-    engine_results_started = time.time()
-    thread_storage.set_value('engine_results_started', engine_results_started)
-    thread_storage.set_value('engine_results_error', 0)
     logger.debug("Handling engine results %s", engine_results)
 
     # Required engine results keys
@@ -382,19 +439,18 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
     except Exception:
         return send_bad_payload_msg(data, null_keys)
 
-    # attempt to get the system ID for easy debugging/lookup
-    # this is not necessarily guaranteed or required
-    # so we dont include it in the above "key_paths"
+    # Start operation tracking with full context
+    # system_id is optional for debugging/lookup, not required
     system_id = system_data.get('system_id')
-    if system_id:
-        thread_storage.set_value('system_id', system_id)
-
-    # send processing metrics
-    thread_storage.set_value('request_id', request_id)
-    thread_storage.set_value('inventory_id', inventory_uuid)
-    thread_storage.set_value('source', 'insights-client')
-    thread_storage.set_value('account', account)
-    thread_storage.set_value('org_id', org_id)
+    engine_results_started = start_operation_tracking(
+        'engine_results',
+        request_id=request_id,
+        inventory_id=inventory_uuid,
+        source='insights-client',
+        account=account,
+        org_id=org_id,
+        system_id=system_id
+    )
     payload_tracker.payload_status('received', 'Processing engine results')
     logger.info("Processing engine results for Inventory ID %s on account %s and org_id %s",
                 inventory_uuid, account, org_id)
@@ -408,12 +464,7 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
     ).first()
 
     if not db_system_type:
-        thread_storage.set_value('engine_results_error', 1)
-        thread_storage.set_value('engine_results_error_msg', 'missing system_type')
-        engine_results_finished = time.time()
-        engine_results_elapsed = engine_results_finished - engine_results_started
-        thread_storage.set_value('engine_results_finished', engine_results_finished)
-        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+        track_operation_failure('engine_results', engine_results_started, 'missing system_type')
         logger.error(
             f"Unable to get system type {system_product} / "
             f"{system_type} from DB - load fixtures!"
@@ -434,18 +485,10 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
         engine_reports, inventory_uuid, account, org_id, db_system_type, 'insights-client',
         satellite_managed, satellite_id, branch_id,
     ):
-        engine_results_finished = time.time()
-        engine_results_elapsed = engine_results_finished - engine_results_started
-        thread_storage.set_value('engine_results_finished', engine_results_finished)
-        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+        track_operation_success('engine_results', engine_results_started)
         return True
     else:
-        engine_results_finished = time.time()
-        engine_results_elapsed = engine_results_finished - engine_results_started
-        thread_storage.set_value('engine_results_error', 1)
-        thread_storage.set_value('engine_results_error_msg', 'Failure processing engine results.')
-        thread_storage.set_value('engine_results_finished', engine_results_finished)
-        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+        track_operation_failure('engine_results', engine_results_started, 'Failure processing engine results.')
         payload_tracker.payload_status('error', 'Failure processing engine results.')
         logger.error('Failure processing engine results.')
         return False
@@ -456,18 +499,12 @@ def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
     """
     Handle third-party rule hits from platform.insights.rule-hits topic.
     """
-    rule_hits_started = time.time()
-    thread_storage.set_value('rule_hits_started', rule_hits_started)
-    thread_storage.set_value('rule_hits_error', 0)
-
     required_keys = ['org_id', 'source', 'host_product', 'host_role', 'inventory_id', 'hits']
     missing_keys = [key for key in required_keys if key not in rule_hits_json]
     if missing_keys:
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
-        thread_storage.set_value('rule_hits_error', 1)
-        thread_storage.set_value('rule_hits_error_msg', 'missing_keys')
+        # Start tracking to record the error even though we exit early
+        rule_hits_started = start_operation_tracking('rule_hits')
+        track_operation_failure('rule_hits', rule_hits_started, 'missing_keys')
         prometheus.THIRD_PARTY_RULE_HIT_MISSING_KEYS.inc()
         payload_info = {'request_id': 'third-party'}
         for key in required_keys:
@@ -479,11 +516,15 @@ def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
         logger.error(f"Third party rule hits did not contain valid keys {required_keys}")
         return False
 
-    thread_storage.set_value('request_id', 'third-party')
-    thread_storage.set_value('inventory_id', rule_hits_json['inventory_id'])
-    thread_storage.set_value('source', rule_hits_json['source'])
-    thread_storage.set_value('account', rule_hits_json.get('account'))
-    thread_storage.set_value('org_id', rule_hits_json['org_id'])
+    # Start operation tracking with full context
+    rule_hits_started = start_operation_tracking(
+        'rule_hits',
+        request_id='third-party',
+        inventory_id=rule_hits_json['inventory_id'],
+        source=rule_hits_json['source'],
+        account=rule_hits_json.get('account'),
+        org_id=rule_hits_json['org_id']
+    )
     payload_tracker.payload_status('processing', 'Beginning rule hit analysis.')
 
     system_type = None
@@ -495,11 +536,7 @@ def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
     ).first()
 
     if not system_type:
-        thread_storage.set_value('rule_hits_error', 1)
-        thread_storage.set_value('rule_hits_error_msg', 'missing system_type')
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+        track_operation_failure('rule_hits', rule_hits_started, 'missing system_type')
         logger.error(
             f"Unable to get system type {rule_hits_json['host_product']} / "
             f"{rule_hits_json['host_role']} from DB - load fixtures!"
@@ -517,15 +554,9 @@ def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
     if create_db_reports(rule_hits_json['hits'], rule_hits_json['inventory_id'],
                       rule_hits_json.get('account'), rule_hits_json['org_id'],
                       system_type, rule_hits_json['source']):
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+        track_operation_success('rule_hits', rule_hits_started)
     else:
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
-        thread_storage.set_value('rule_hits_error', 1)
-        thread_storage.set_value('rule_hits_error_msg', "Error processing third party rule hits.")
+        track_operation_failure('rule_hits', rule_hits_started, "Error processing third party rule hits.")
         extra_info = {}
         for key in required_keys:
             if key in rule_hits_json:
@@ -560,9 +591,15 @@ def create_db_reports(
     new_report_objs = []
     existing_report_objs = []
     webhook_report_rule_objs = []
-    db_started = time.time()
-    thread_storage.set_value('db_started', db_started)
-    thread_storage.set_value('db_error', 0)
+
+    # Start tracking database operations with context
+    db_started = start_operation_tracking(
+        'db',
+        inventory_id=inventory_uuid,
+        account=account,
+        org_id=org_id,
+        source=source
+    )
 
     logger.debug(f"Retrieving upload source type for {source}")
     upload_source = None
@@ -572,12 +609,7 @@ def create_db_reports(
         if get_exception:
             the_error = traceback.format_exc()
             message += f': {the_error}'
-        db_finished = time.time()
-        db_elapsed = db_finished - db_started
-        thread_storage.set_value('db_finished', db_finished)
-        thread_storage.set_value('db_elapsed', db_elapsed)
-        thread_storage.set_value('db_error', 1)
-        thread_storage.set_value('db_error_msg', message)
+        track_operation_failure('db', db_started, message)
         prometheus.INSIGHTS_ADVISOR_DB_ERRORS.inc()
         payload_tracker.payload_status('error', message)
         logger.error(message)
@@ -804,16 +836,15 @@ def create_db_reports(
             # update prometheus stats
             prometheus.INSIGHTS_ADVISOR_SUCCESSFUL_REQUESTS.inc()
 
-            # set thread storage values for kibana
-            db_finished = time.time()
-            thread_storage.set_value('db_finished', db_finished)
-            thread_storage.set_value('db_elapsed', db_finished - db_started)
+            # Track successful completion
+            track_operation_success('db', db_started)
+            db_elapsed = thread_storage.get_value('db_elapsed')
             payload_msg = f'Successfully logged {num_report_objs} reports.'
             payload_tracker.payload_status('success', payload_msg)
             logger.info(
                 f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
                 f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
-                extra={'db_duration': db_finished - db_started})
+                extra={'db_duration': db_elapsed})
     except Exception:
         log_db_failure("Failed to process upload", get_exception=True)
         return False
