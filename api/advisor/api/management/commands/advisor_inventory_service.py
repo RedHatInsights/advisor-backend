@@ -349,7 +349,7 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
         "org_id": ["input", "platform_metadata", "org_id"]
     }
 
-    def bad_payload(data, null_keys):
+    def send_bad_payload_msg(data: dict[str, str], null_keys: list[str]):
         payload_info = {
             'source': 'insights-client',
             'request_id': data.get('request_id'),
@@ -357,17 +357,19 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
             'org_id': data.get('org_id'),
             'inventory_id': data.get('inventory_uuid')
         }
-        payload_tracker.bad_payload('insights-client', payload_info)
-        missing_paths = ["/".join(key_paths[key]) for key in null_keys]
-        logger.error("Key paths not found/null in engine results at paths: %s",
-                     ",".join(missing_paths))
-        return False
+        missing_paths = ",".join(["/".join(key_paths[key]) for key in null_keys])
+        payload_tracker.bad_payload('insights-client', payload_info, missing_paths)
+        logger.error(
+            "Key paths not found/null in engine results at paths: %s",
+            missing_paths
+        )
+        return None
 
     data = {key: utils.traverse_keys(engine_results, key_path)
                  for key, key_path in key_paths.items()}
     null_keys = [key for key, val in data.items() if val is None]
     if len(null_keys):
-        return bad_payload(data, null_keys)
+        return send_bad_payload_msg(data, null_keys)
 
     # get host and platform data
     try:
@@ -379,7 +381,7 @@ def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> N
         account = utils.traverse_keys(engine_results, ["input", "host", "account"])
         org_id = data.get('org_id')
     except Exception:
-        return bad_payload(data, null_keys)
+        return send_bad_payload_msg(data, null_keys)
 
     # attempt to get the system ID for easy debugging/lookup
     # this is not necessarily guaranteed or required
