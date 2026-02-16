@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_advisor_service_database.AdvisorServiceDatabaseTestCase-20260216011741" tests="3" file="api/tests/test_advisor_service_database.py" time="0.032" timestamp="2026-02-16T01:17:42" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_advisor_service_database.AdvisorServiceDatabaseTestCase" name="test_db_reports_bad_upload" time="0.004" timestamp="2026-02-16T01:17:42" file="api/tests/test_advisor_service_database.py" line="38">
+		<!--Test that database failures in upload operations are handled gracefully.-->
+	</testcase>
+	<testcase classname="api.tests.test_advisor_service_database.AdvisorServiceDatabaseTestCase" name="test_db_reports_bad_upload_source" time="0.017" timestamp="2026-02-16T01:17:42" file="api/tests/test_advisor_service_database.py" line="54">
+		<!--Test that None upload source is handled correctly.-->
+	</testcase>
+	<testcase classname="api.tests.test_advisor_service_database.AdvisorServiceDatabaseTestCase" name="test_db_reports_upload_source_exception" time="0.011" timestamp="2026-02-16T01:17:42" file="api/tests/test_advisor_service_database.py" line="68">
+		<!--Test that exceptions in upload source operations are handled.-->
+	</testcase>
+</testsuite>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_api_docs.APIDocsTestCase-20260216011819" tests="10" file="api/tests/test_api_docs.py" time="0.218" timestamp="2026-02-16T01:18:22" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_all_methods_have_description" time="0.001" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="114"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_list_views_are_paginated" time="0.001" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="308"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_parameter_default_types" time="0.001" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="182"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_regex_parameters_have_pattern" time="0.000" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="251"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_schema_has_docs" time="0.000" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="105"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_schema_has_docs_with_rbac" time="0.106" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="387"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_schema_has_is_internal_views" time="0.106" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="427"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_stats_views_take_parameters" time="0.000" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="243"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_system_detail_reports_lists_unpaginated" time="0.001" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="283"/>
+	<testcase classname="api.tests.test_api_docs.APIDocsTestCase" name="test_unique_operation_ids" time="0.000" timestamp="2026-02-16T01:18:22" file="api/tests/test_api_docs.py" line="265"/>
+</testsuite>

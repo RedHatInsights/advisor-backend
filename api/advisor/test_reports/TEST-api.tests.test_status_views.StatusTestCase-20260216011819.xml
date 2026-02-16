@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_status_views.StatusTestCase-20260216011819" tests="8" file="api/tests/test_status_views.py" time="0.066" timestamp="2026-02-16T01:19:02" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_list" time="0.006" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="42"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_live_all_good" time="0.011" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="237"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_live_rbac_failing" time="0.009" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="269"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_ready_all_good" time="0.009" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="50"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_ready_environment_not_set" time="0.008" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="119"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_ready_rbac_bad_connection" time="0.009" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="166"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_ready_rbac_failing" time="0.008" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="201"/>
+	<testcase classname="api.tests.test_status_views.StatusTestCase" name="test_status_ready_rbac_timing_out" time="0.008" timestamp="2026-02-16T01:19:02" file="api/tests/test_status_views.py" line="81"/>
+</testsuite>
