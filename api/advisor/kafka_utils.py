@@ -19,7 +19,7 @@ from advisor_logging import logger
 # from collections.abc import Callable as AbcCallable
 from confluent_kafka import Consumer, KafkaError, Producer
 import json
-from typing import Callable, TypedDict
+from typing import Callable, Optional, TypedDict
 
 import confluent_kafka
 from project_settings import kafka_settings as kafka_settings
@@ -106,14 +106,18 @@ class DummyProducer:
     def poll(self, _time: int):
         self.poll_calls += 1
 
-    def produce(self, topic: str, message: bytes, callback: Callable | None = None):
+    def produce(self, topic: str, message: Optional[bytes] = None, callback: Optional[Callable] = None,
+                key: Optional[bytes] = None, value: Optional[bytes] = None):
+        # Support both (topic, message) and (topic, key=..., value=...) calling styles
+        actual_message = message if message is not None else value
         self.produce_calls.append({
             'topic': topic,
-            'message': message,
+            'message': actual_message,
+            'key': key,
             'callback': callback.__name__ if callback else None,
         })
         if callback:
-            dummy_message = DummyMessage(topic, message, headers=None)
+            dummy_message = DummyMessage(topic, actual_message, headers=None)
             callback(err=None, msg=dummy_message)
 
     def flush(self):
