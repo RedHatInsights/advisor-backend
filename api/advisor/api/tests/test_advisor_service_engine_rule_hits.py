@@ -250,11 +250,11 @@ class AdvisorServiceEngineRuleHitsTestCase(TestCase):
         # Should have two upload objects - one for each source
         client_upload = Upload.objects.get(source__name='insights-client', host_id=inventory_uuid)
         self.assertTrue(client_upload.current)
-        self.assertEqual(client_upload.currentreport_set.count(), 4)
+        self.assertEqual(client_upload.currentreport_set.count(), 1)  # sample data has 1 report
 
         aiops_upload = Upload.objects.get(source__name='aiops', host_id=inventory_uuid)
         self.assertTrue(aiops_upload.current)
-        self.assertEqual(aiops_upload.currentreport_set.count(), 2)
+        self.assertEqual(aiops_upload.currentreport_set.count(), 2)  # sample rule_hits has 2 hits
 
     @responses.activate
     def test_satellite_handle_engine_results(self):
