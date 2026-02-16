@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_api_docs.PlatformPathTestCase-20260216000108" tests="1" file="api/tests/test_api_docs.py" time="0.166" timestamp="2026-02-16T00:01:14" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_api_docs.PlatformPathTestCase" name="test_paths" time="0.166" timestamp="2026-02-16T00:01:14" file="api/advisor/api/tests/test_api_docs.py" line="492"/>
+</testsuite>

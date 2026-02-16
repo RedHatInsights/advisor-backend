@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="unittest.loader._FailedTest-20260212053857" tests="1" file="unittest/loader.py" time="0.001" timestamp="2026-02-12T05:38:57" failures="0" errors="1" skipped="0">
+	<testcase classname="unittest.loader._FailedTest" name="test_advisor_inventory_service" time="0.001" timestamp="2026-02-12T05:38:57" file="/usr/lib64/python3.12/unittest/loader.py" line="32">
+		<error type="ImportError" message="Failed to import test module: test_advisor_inventory_service
+Traceback (most recent call last):
+  File &quot;/usr/lib64/python3.12/unittest/loader.py&quot;, line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py&quot;, line 27, in &lt;module&gt;
+    from api.management.commands.advisor_inventory_service import (
+  File &quot;/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py&quot;, line 20, in &lt;module&gt;
+    from project_settings.kafka_settings import INVENTORY_EVENTS_TOPIC, INVENTORY_TOPIC
+ImportError: cannot import name 'INVENTORY_TOPIC' from 'project_settings.kafka_settings' (/home/pwayper/Code/insights/advisor-backend/api/advisor/project_settings/kafka_settings.py)
+"><![CDATA[ImportError: Failed to import test module: test_advisor_inventory_service
+Traceback (most recent call last):
+  File "/usr/lib64/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py", line 27, in <module>
+    from api.management.commands.advisor_inventory_service import (
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 20, in <module>
+    from project_settings.kafka_settings import INVENTORY_EVENTS_TOPIC, INVENTORY_TOPIC
+ImportError: cannot import name 'INVENTORY_TOPIC' from 'project_settings.kafka_settings' (/home/pwayper/Code/insights/advisor-backend/api/advisor/project_settings/kafka_settings.py)
+
+]]></error>
+	</testcase>
+</testsuite>

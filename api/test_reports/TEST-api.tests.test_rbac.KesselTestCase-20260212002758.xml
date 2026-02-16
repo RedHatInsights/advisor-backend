@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rbac.KesselTestCase-20260212002758" tests="3" file="api/tests/test_rbac.py" time="0.006" timestamp="2026-02-12T00:28:59" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rbac.KesselTestCase" name="test_kessel_allowed_if_rbac_not_enabled" time="0.002" timestamp="2026-02-12T00:28:59" file="advisor/api/tests/test_rbac.py" line="570"/>
+	<testcase classname="api.tests.test_rbac.KesselTestCase" name="test_kessel_host_check_ok" time="0.002" timestamp="2026-02-12T00:28:59" file="advisor/api/tests/test_rbac.py" line="598"/>
+	<testcase classname="api.tests.test_rbac.KesselTestCase" name="test_kessel_host_none_in_resourcescope_host" time="0.002" timestamp="2026-02-12T00:28:59" file="advisor/api/tests/test_rbac.py" line="583"/>
+</testsuite>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content.ImportContentNotifAction-20260213061019" tests="4" file="api/tests/test_import_content.py" time="2.288" timestamp="2026-02-13T06:10:32" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content.ImportContentNotifAction" name="test_disabled_rule_notifications" time="0.205" timestamp="2026-02-13T06:10:30" file="advisor/api/tests/test_import_content.py" line="1871"/>
+	<testcase classname="api.tests.test_import_content.ImportContentNotifAction" name="test_notif_action_speling" time="0.370" timestamp="2026-02-13T06:10:30" file="advisor/api/tests/test_import_content.py" line="1841"/>
+	<testcase classname="api.tests.test_import_content.ImportContentNotifAction" name="test_publish_date_change" time="1.477" timestamp="2026-02-13T06:10:32" file="advisor/api/tests/test_import_content.py" line="1780"/>
+	<testcase classname="api.tests.test_import_content.ImportContentNotifAction" name="test_publish_date_no_change" time="0.236" timestamp="2026-02-13T06:10:32" file="advisor/api/tests/test_import_content.py" line="1746"/>
+</testsuite>

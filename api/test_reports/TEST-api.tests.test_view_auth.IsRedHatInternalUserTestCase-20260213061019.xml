@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.IsRedHatInternalUserTestCase-20260213061019" tests="2" file="api/tests/test_view_auth.py" time="0.001" timestamp="2026-02-13T06:10:59" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.IsRedHatInternalUserTestCase" name="test_has_is_internal_permission" time="0.001" timestamp="2026-02-13T06:10:59" file="advisor/api/tests/test_view_auth.py" line="433"/>
+	<testcase classname="api.tests.test_view_auth.IsRedHatInternalUserTestCase" name="test_has_is_internal_permission_false" time="0.001" timestamp="2026-02-13T06:10:59" file="advisor/api/tests/test_view_auth.py" line="457"/>
+</testsuite>

@@ -70,7 +70,7 @@ class AdvisorServiceWebhooksTestCase(TestCase):
 
         # Use DummyProducer to capture Kafka messages
         dummy_producer = DummyProducer()
-        with patch.object(reports, 'p', dummy_producer):
+        with patch.object(reports, '_producer', dummy_producer):
             reports.trigger_report_hooks(host_obj, new_report_rules, cur_reports)
 
         # Check poll and flush were called
@@ -177,7 +177,7 @@ class AdvisorServiceWebhooksTestCase(TestCase):
 
         # Use DummyProducer to capture Kafka messages
         dummy_producer = DummyProducer()
-        with patch.object(reports, 'p', dummy_producer):
+        with patch.object(reports, '_producer', dummy_producer):
             reports.trigger_report_hooks(host_obj, new_rule_objs, cur_reports)
 
         # Check poll and flush were called

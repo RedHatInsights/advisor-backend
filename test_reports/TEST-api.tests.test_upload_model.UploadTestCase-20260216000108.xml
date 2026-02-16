@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_upload_model.UploadTestCase-20260216000108" tests="6" file="api/tests/test_upload_model.py" time="0.140" timestamp="2026-02-16T00:02:24" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_upload_model.UploadTestCase" name="test_current_upload_flag_correctness" time="0.045" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_upload_model.py" line="102">
+		<!--
+        We must ensure in the test data that only the most recent upload for
+        each upload source has its 'current' flag set.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_upload_model.UploadTestCase" name="test_deleting_an_upload_deletes_its_reports" time="0.021" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_upload_model.py" line="74"/>
+	<testcase classname="api.tests.test_upload_model.UploadTestCase" name="test_no_duplicate_uploads" time="0.007" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_upload_model.py" line="61"/>
+	<testcase classname="api.tests.test_upload_model.UploadTestCase" name="test_upload_has_same_account_as_host" time="0.028" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_upload_model.py" line="147">
+		<!--
+        Each upload should have the same account as its host.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_upload_model.UploadTestCase" name="test_upload_host_id_account_invariant" time="0.020" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_upload_model.py" line="132">
+		<!--
+        Each system should stay consistently within one account.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_upload_model.UploadTestCase" name="test_upload_properties" time="0.019" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_upload_model.py" line="39"/>
+</testsuite>

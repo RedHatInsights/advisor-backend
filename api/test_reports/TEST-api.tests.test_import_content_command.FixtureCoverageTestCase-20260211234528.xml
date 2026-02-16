@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content_command.FixtureCoverageTestCase-20260211234528" tests="1" file="api/tests/test_import_content_command.py" time="0.015" timestamp="2026-02-11T23:47:33" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content_command.FixtureCoverageTestCase" name="test_update_model_from_config_transformer_returns_none" time="0.015" timestamp="2026-02-11T23:47:33" file="advisor/api/tests/test_import_content_command.py" line="1013"/>
+</testsuite>

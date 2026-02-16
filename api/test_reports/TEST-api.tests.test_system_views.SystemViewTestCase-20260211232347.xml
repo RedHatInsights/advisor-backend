@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_system_views.SystemViewTestCase-20260211232347" tests="29" file="api/tests/test_system_views.py" time="4.742" timestamp="2026-02-11T23:23:56" failures="1" errors="0" skipped="0">
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_branch_id_filter" time="0.193" timestamp="2026-02-11T23:23:51" file="advisor/api/tests/test_system_views.py" line="773"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_nonexistent_system" time="0.051" timestamp="2026-02-11T23:23:51" file="advisor/api/tests/test_system_views.py" line="724"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system" time="0.097" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="675"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_from_outside_account" time="0.088" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="745"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_kessel_on" time="0.097" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="226"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_with_no_hits" time="0.090" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="711"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_with_no_upload" time="0.121" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="732"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_incident_filter" time="0.205" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="264"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system" time="0.130" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="59"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_bad_sort_value" time="0.008" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="593"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_hits_filter" time="0.871" timestamp="2026-02-11T23:23:53" file="advisor/api/tests/test_system_views.py" line="389"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_host_group_name_sort" time="0.190" timestamp="2026-02-11T23:23:53" file="advisor/api/tests/test_system_views.py" line="473"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_kessel_on" time="0.135" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="226"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_kessel_on_service_account" time="0.112" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="226"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_last_seen_sort" time="0.103" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="454"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_low_hits_sort" time="0.210" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="503"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_name_filter" time="0.099" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="200"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_overall_staleness_up_to_date" time="0.106" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="611"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_pathway_filter" time="0.125" timestamp="2026-02-11T23:23:54" file="advisor/api/tests/test_system_views.py" line="578"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_profile_filter" time="0.436" timestamp="2026-02-11T23:23:55" file="advisor/api/tests/test_system_views.py" line="307"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_rhel_version_filter" time="0.153" timestamp="2026-02-11T23:23:55" file="advisor/api/tests/test_system_views.py" line="553"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_rhel_version_sort" time="0.111" timestamp="2026-02-11T23:23:55" file="advisor/api/tests/test_system_views.py" line="536"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_type_filter" time="0.273" timestamp="2026-02-11T23:23:55" file="advisor/api/tests/test_system_views.py" line="222"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_update_method_filter" time="0.101" timestamp="2026-02-11T23:23:55" file="advisor/api/tests/test_system_views.py" line="601"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_reports_on_no_system" time="0.082" timestamp="2026-02-11T23:23:55" file="advisor/api/tests/test_system_views.py" line="823"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_reports_on_satellite_system_can_see" time="0.062" timestamp="2026-02-11T23:23:56" file="advisor/api/tests/test_system_views.py" line="807"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_reports_on_system" time="0.060" timestamp="2026-02-11T23:23:56" file="advisor/api/tests/test_system_views.py" line="753"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_system_disabled_recommendation_query_param" time="0.425" timestamp="2026-02-11T23:23:56" file="advisor/api/tests/test_system_views.py" line="856"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_different_os_names_and_versions" time="0.010" timestamp="2026-02-11T23:23:52" file="advisor/api/tests/test_system_views.py" line="155">
+		<!--
+        Test different failure modes in retrieving the os_name and version.
+        -->
+		<failure type="AssertionError" message="&lt;function InventoryHost.get_os_name at 0x7f0b5b116840&gt; != 'Unknown operating system'"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_system_views.py", line 164, in test_get_system_different_os_names_and_versions
+    self.assertEqual(host_01.get_os_name, 'Unknown operating system')
+AssertionError: <function InventoryHost.get_os_name at 0x7f0b5b116840> != 'Unknown operating system'
+]]></failure>
+	</testcase>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_parse_json_from_stdout.TaskJobUpdateTestCase-20260211234528" tests="1" file="tasks/tests/test_parse_json_from_stdout.py" time="0.054" timestamp="2026-02-11T23:50:00" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_parse_json_from_stdout.TaskJobUpdateTestCase" name="test_parse_playbook_different_line_endings" time="0.054" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_parse_json_from_stdout.py" line="31">
+		<!--
+        We seem to get a variety of different line endings, particularly
+        around the line endings between the final } and the PLAY RECAP.  Make
+        sure we can successfully deal with all the different versions.
+        -->
+	</testcase>
+</testsuite>

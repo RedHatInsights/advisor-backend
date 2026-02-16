@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_rbac.RBACTestCase-20260216000108" tests="3" file="tasks/tests/test_rbac.py" time="0.139" timestamp="2026-02-16T00:02:49" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_rbac.RBACTestCase" name="test_rbac_basic_allowed" time="0.047" timestamp="2026-02-16T00:02:49" file="api/advisor/tasks/tests/test_rbac.py" line="72"/>
+	<testcase classname="tasks.tests.test_rbac.RBACTestCase" name="test_rbac_basic_allowed_full_response" time="0.074" timestamp="2026-02-16T00:02:49" file="api/advisor/tasks/tests/test_rbac.py" line="89"/>
+	<testcase classname="tasks.tests.test_rbac.RBACTestCase" name="test_rbac_basic_denied" time="0.018" timestamp="2026-02-16T00:02:49" file="api/advisor/tasks/tests/test_rbac.py" line="131"/>
+</testsuite>

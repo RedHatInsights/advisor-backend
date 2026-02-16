@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content.ImportContentAutoAckTestCase-20260212002758" tests="1" file="api/tests/test_import_content.py" time="1.132" timestamp="2026-02-12T00:28:25" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content.ImportContentAutoAckTestCase" name="test_autoack_import" time="1.132" timestamp="2026-02-12T00:28:25" file="advisor/api/tests/test_import_content.py" line="1561"/>
+</testsuite>

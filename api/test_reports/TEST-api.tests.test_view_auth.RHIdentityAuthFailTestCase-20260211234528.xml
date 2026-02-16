@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.RHIdentityAuthFailTestCase-20260211234528" tests="2" file="api/tests/test_view_auth.py" time="0.014" timestamp="2026-02-11T23:49:27" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.RHIdentityAuthFailTestCase" name="test_kessel_enabled_requires_user_id" time="0.006" timestamp="2026-02-11T23:49:27" file="advisor/api/tests/test_view_auth.py" line="292">
+		<!--
+        When KESSEL_ENABLED is set, the user identity must have a 'user_id'
+        property (because that is how we identify the user to RBACv2).  Test
+        that we fail early on that.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_view_auth.RHIdentityAuthFailTestCase" name="test_user_subsection_must_be_object" time="0.008" timestamp="2026-02-11T23:49:27" file="advisor/api/tests/test_view_auth.py" line="269">
+		<!--
+        A view that requires the 'is_internal' flag needs to have a user
+        field that is an object.
+        -->
+	</testcase>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_stats_views.StatsTestCase-20260216001056" tests="8" file="sat_compat/tests/test_stats_views.py" time="0.235" timestamp="2026-02-16T00:12:16" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_rules_stats_view" time="0.052" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="179"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_rules_stats_view_min_severity" time="0.019" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="218"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_standard_stats_view" time="0.030" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="35"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_standard_stats_view_cert_auth" time="0.029" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="74"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_standard_stats_view_min_severity" time="0.028" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="118"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_standard_stats_view_with_branch_id" time="0.029" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="135"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_systems_stats_view" time="0.032" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="240"/>
+	<testcase classname="sat_compat.tests.test_stats_views.StatsTestCase" name="test_systems_stats_view_min_severity" time="0.016" timestamp="2026-02-16T00:12:16" file="api/advisor/sat_compat/tests/test_stats_views.py" line="266"/>
+</testsuite>

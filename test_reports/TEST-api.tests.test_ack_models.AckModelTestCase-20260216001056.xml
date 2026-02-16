@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_ack_models.AckModelTestCase-20260216001056" tests="3" file="api/tests/test_ack_models.py" time="0.033" timestamp="2026-02-16T00:10:57" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_ack_models.AckModelTestCase" name="test_ack_properties" time="0.005" timestamp="2026-02-16T00:10:56" file="api/advisor/api/tests/test_ack_models.py" line="33"/>
+	<testcase classname="api.tests.test_ack_models.AckModelTestCase" name="test_no_duplicate_acks" time="0.005" timestamp="2026-02-16T00:10:56" file="api/advisor/api/tests/test_ack_models.py" line="47"/>
+	<testcase classname="api.tests.test_ack_models.AckModelTestCase" name="test_rule_deletion_deletes_ack" time="0.023" timestamp="2026-02-16T00:10:57" file="api/advisor/api/tests/test_ack_models.py" line="54"/>
+</testsuite>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_preferences_view.PreferencesTestCase-20260213061019" tests="2" file="api/tests/test_preferences_view.py" time="0.018" timestamp="2026-02-13T06:10:43" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_preferences_view.PreferencesTestCase" name="test_preferences_ddf_view" time="0.004" timestamp="2026-02-13T06:10:43" file="advisor/api/tests/test_preferences_view.py" line="38"/>
+	<testcase classname="api.tests.test_preferences_view.PreferencesTestCase" name="test_preferences_update" time="0.014" timestamp="2026-02-13T06:10:43" file="advisor/api/tests/test_preferences_view.py" line="64"/>
+</testsuite>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase-20260216001056" tests="7" file="api/tests/test_workloads_field_redirection.py" time="0.462" timestamp="2026-02-16T00:12:08" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_ansible_field_redirection_new_schema" time="0.094" timestamp="2026-02-16T00:12:07" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="90">
+		<!--Test Ansible field filtering works through API.-->
+	</testcase>
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_mssql_field_redirection_new_schema" time="0.066" timestamp="2026-02-16T00:12:07" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="109">
+		<!--Test MSSQL field filtering works through API.-->
+	</testcase>
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_multiple_workloads_fields_new_schema" time="0.059" timestamp="2026-02-16T00:12:07" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="128">
+		<!--Test multiple workloads fields together through API.-->
+	</testcase>
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_non_workloads_fields_unaffected" time="0.066" timestamp="2026-02-16T00:12:07" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="151">
+		<!--Test that non-workloads fields work normally through API.-->
+	</testcase>
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_sap_sids_field_redirection_new_schema" time="0.059" timestamp="2026-02-16T00:12:07" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="71">
+		<!--Test SAP SIDs field filtering works through API.-->
+	</testcase>
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_sap_system_field_redirection_new_schema" time="0.062" timestamp="2026-02-16T00:12:08" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="47">
+		<!--Test SAP system field filtering works through API.-->
+	</testcase>
+	<testcase classname="api.tests.test_workloads_field_redirection.WorkloadsFieldRedirectionTestCase" name="test_workloads_false_filtering" time="0.058" timestamp="2026-02-16T00:12:08" file="api/advisor/api/tests/test_workloads_field_redirection.py" line="174">
+		<!--Test filtering systems without specific workloads.-->
+	</testcase>
+</testsuite>

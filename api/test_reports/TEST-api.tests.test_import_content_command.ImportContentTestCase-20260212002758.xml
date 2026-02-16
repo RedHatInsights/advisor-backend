@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content_command.ImportContentTestCase-20260212002758" tests="9" file="api/tests/test_import_content_command.py" time="3.581" timestamp="2026-02-12T00:28:42" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_autoack_import" time="0.871" timestamp="2026-02-12T00:28:39" file="advisor/api/tests/test_import_content_command.py" line="330"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_basic_import_rule_config" time="0.200" timestamp="2026-02-12T00:28:39" file="advisor/api/tests/test_import_content_command.py" line="260"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_basic_import_rule_content" time="0.236" timestamp="2026-02-12T00:28:40" file="advisor/api/tests/test_import_content_command.py" line="275"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_dump_load" time="0.350" timestamp="2026-02-12T00:28:40" file="advisor/api/tests/test_import_content_command.py" line="511"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_dump_load_compressed" time="0.363" timestamp="2026-02-12T00:28:40" file="advisor/api/tests/test_import_content_command.py" line="560"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_dump_load_compressed_from_url" time="0.533" timestamp="2026-02-12T00:28:41" file="advisor/api/tests/test_import_content_command.py" line="677"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_dump_load_from_url" time="0.350" timestamp="2026-02-12T00:28:41" file="advisor/api/tests/test_import_content_command.py" line="609"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_load_from_url_failures" time="0.070" timestamp="2026-02-12T00:28:41" file="advisor/api/tests/test_import_content_command.py" line="782"/>
+	<testcase classname="api.tests.test_import_content_command.ImportContentTestCase" name="test_content_update" time="0.608" timestamp="2026-02-12T00:28:42" file="advisor/api/tests/test_import_content_command.py" line="426">
+		<!--
+        Test updates to content.
+        -->
+	</testcase>
+</testsuite>
