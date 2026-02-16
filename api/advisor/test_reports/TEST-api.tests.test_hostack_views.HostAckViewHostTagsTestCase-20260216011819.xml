@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_hostack_views.HostAckViewHostTagsTestCase-20260216011819" tests="1" file="api/tests/test_hostack_views.py" time="0.034" timestamp="2026-02-16T01:18:30" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_hostack_views.HostAckViewHostTagsTestCase" name="test_hostack_list" time="0.034" timestamp="2026-02-16T01:18:30" file="api/tests/test_hostack_views.py" line="430"/>
+</testsuite>

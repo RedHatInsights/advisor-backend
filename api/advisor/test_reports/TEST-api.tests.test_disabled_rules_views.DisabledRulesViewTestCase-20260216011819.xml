@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_disabled_rules_views.DisabledRulesViewTestCase-20260216011819" tests="2" file="api/tests/test_disabled_rules_views.py" time="0.016" timestamp="2026-02-16T01:18:24" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_disabled_rules_views.DisabledRulesViewTestCase" name="test_disabled_rules_detail" time="0.008" timestamp="2026-02-16T01:18:24" file="api/tests/test_disabled_rules_views.py" line="56"/>
+	<testcase classname="api.tests.test_disabled_rules_views.DisabledRulesViewTestCase" name="test_disabled_rules_list" time="0.008" timestamp="2026-02-16T01:18:24" file="api/tests/test_disabled_rules_views.py" line="37"/>
+</testsuite>

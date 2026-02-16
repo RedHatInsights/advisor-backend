@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer-20260216011819" tests="6" file="api/tests/test_advisor_inventory_service.py" time="0.042" timestamp="2026-02-16T01:18:20" failures="0" errors="4" skipped="0">
+	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_deleted_message_fail_missing_key" time="0.001" timestamp="2026-02-16T01:18:20" file="api/tests/test_advisor_inventory_service.py" line="132"/>
+	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_message_dispatch" time="0.000" timestamp="2026-02-16T01:18:20" file="api/tests/test_advisor_inventory_service.py" line="132"/>
+	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_created_message_fail_missing_key" time="0.012" timestamp="2026-02-16T01:18:20" file="api/tests/test_advisor_inventory_service.py" line="132">
+		<error type="AttributeError" message="module 'prometheus' has no attribute 'INVENTORY_HOST_CREATED'"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/feature_flags.py", line 134, in wrapper
+    fn(*args, **kwargs)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py", line 277, in test_created_message_fail_missing_key
+    handle_created_event(modified_msg)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 231, in handle_created_event
+    prometheus.INVENTORY_HOST_CREATED.inc()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'prometheus' has no attribute 'INVENTORY_HOST_CREATED'
+]]></error>
+	</testcase>
+	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_created_message_success" time="0.007" timestamp="2026-02-16T01:18:20" file="api/tests/test_advisor_inventory_service.py" line="132">
+		<error type="AttributeError" message="module 'prometheus' has no attribute 'INVENTORY_HOST_CREATED'"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/feature_flags.py", line 134, in wrapper
+    fn(*args, **kwargs)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py", line 188, in test_created_message_success
+    handle_inventory_event('topic', create_new_host_msg)
+  File "<decorator-gen-2>", line 2, in handle_inventory_event
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/prometheus_client/context_managers.py", line 80, in wrapped
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 74, in handle_inventory_event
+    handle_created_event(message)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 231, in handle_created_event
+    prometheus.INVENTORY_HOST_CREATED.inc()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'prometheus' has no attribute 'INVENTORY_HOST_CREATED'
+]]></error>
+	</testcase>
+	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_deleted_message_success" time="0.014" timestamp="2026-02-16T01:18:20" file="api/tests/test_advisor_inventory_service.py" line="132">
+		<error type="AttributeError" message="module 'prometheus' has no attribute 'INVENTORY_HOST_DELETED'"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/feature_flags.py", line 134, in wrapper
+    fn(*args, **kwargs)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py", line 385, in test_deleted_message_success
+    handle_inventory_event('topic', delete_host_msg)
+  File "<decorator-gen-2>", line 2, in handle_inventory_event
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/prometheus_client/context_managers.py", line 80, in wrapped
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 72, in handle_inventory_event
+    handle_deleted_event(message)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 321, in handle_deleted_event
+    prometheus.INVENTORY_HOST_DELETED.inc()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'prometheus' has no attribute 'INVENTORY_HOST_DELETED'
+]]></error>
+	</testcase>
+	<testcase classname="api.tests.test_advisor_inventory_service.TestAdvisorInventoryServer" name="test_updated_message_success" time="0.007" timestamp="2026-02-16T01:18:20" file="api/tests/test_advisor_inventory_service.py" line="132">
+		<error type="AttributeError" message="module 'prometheus' has no attribute 'INVENTORY_HOST_UPDATED'"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/feature_flags.py", line 134, in wrapper
+    fn(*args, **kwargs)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_inventory_service.py", line 354, in test_updated_message_success
+    handle_inventory_event('topic', update_host_msg)
+  File "<decorator-gen-2>", line 2, in handle_inventory_event
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/prometheus_client/context_managers.py", line 80, in wrapped
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 74, in handle_inventory_event
+    handle_created_event(message)
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/management/commands/advisor_inventory_service.py", line 234, in handle_created_event
+    prometheus.INVENTORY_HOST_UPDATED.inc()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'prometheus' has no attribute 'INVENTORY_HOST_UPDATED'
+]]></error>
+	</testcase>
+</testsuite>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="sat_compat.tests.test_maintenance_views.MaintenanceTestCase-20260216011819" tests="15" file="sat_compat/tests/test_maintenance_views.py" time="0.778" timestamp="2026-02-16T01:19:12" failures="0" errors="0" skipped="0">
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_get_playbook" time="0.067" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="705"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_get_playbook_bad_remediations" time="0.026" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="795"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_get_playbook_no_remediations_url" time="0.025" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="825"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_get_playbook_remediations_connection_fail" time="0.057" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="810"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_create_destroy_with_rules" time="0.117" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="344"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_create_errors" time="0.015" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="510"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_create_simple" time="0.043" timestamp="2026-02-16T01:19:11" file="sat_compat/tests/test_maintenance_views.py" line="157"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_create_simple_cert_auth" time="0.066" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="237"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_list" time="0.021" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="51"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_list_cert_auth" time="0.021" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="86"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_model" time="0.002" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="46"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_plan_get_csv" time="0.022" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="116"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_update_edit_actions" time="0.089" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="629"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_maintenance_update_simple" time="0.043" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="567"/>
+	<testcase classname="sat_compat.tests.test_maintenance_views.MaintenanceTestCase" name="test_set_playbook_for_action" time="0.162" timestamp="2026-02-16T01:19:12" file="sat_compat/tests/test_maintenance_views.py" line="841"/>
+</testsuite>
