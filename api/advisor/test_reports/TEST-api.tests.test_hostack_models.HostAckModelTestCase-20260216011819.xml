@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_hostack_models.HostAckModelTestCase-20260216011819" tests="3" file="api/tests/test_hostack_models.py" time="0.025" timestamp="2026-02-16T01:18:30" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_hostack_models.HostAckModelTestCase" name="test_hostack_properties" time="0.004" timestamp="2026-02-16T01:18:30" file="api/tests/test_hostack_models.py" line="33"/>
+	<testcase classname="api.tests.test_hostack_models.HostAckModelTestCase" name="test_no_duplicate_hostacks" time="0.004" timestamp="2026-02-16T01:18:30" file="api/tests/test_hostack_models.py" line="47"/>
+	<testcase classname="api.tests.test_hostack_models.HostAckModelTestCase" name="test_rule_deletion_deletes_hostack" time="0.017" timestamp="2026-02-16T01:18:30" file="api/tests/test_hostack_models.py" line="57"/>
+</testsuite>

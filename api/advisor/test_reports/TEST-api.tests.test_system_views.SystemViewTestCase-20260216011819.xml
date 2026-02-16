@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_system_views.SystemViewTestCase-20260216011819" tests="29" file="api/tests/test_system_views.py" time="1.795" timestamp="2026-02-16T01:19:05" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_branch_id_filter" time="0.063" timestamp="2026-02-16T01:19:03" file="api/tests/test_system_views.py" line="782"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_nonexistent_system" time="0.014" timestamp="2026-02-16T01:19:03" file="api/tests/test_system_views.py" line="733"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system" time="0.032" timestamp="2026-02-16T01:19:03" file="api/tests/test_system_views.py" line="684"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_different_os_names_and_versions" time="0.046" timestamp="2026-02-16T01:19:03" file="api/tests/test_system_views.py" line="155">
+		<!--
+        Test different failure modes in retrieving the os_name and version.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_from_outside_account" time="0.030" timestamp="2026-02-16T01:19:03" file="api/tests/test_system_views.py" line="754"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_kessel_on" time="0.036" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="226"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_with_no_hits" time="0.031" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="720"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_get_system_with_no_upload" time="0.034" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="741"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_incident_filter" time="0.078" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="273"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system" time="0.035" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="59"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_bad_sort_value" time="0.002" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="602"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_hits_filter" time="0.317" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="398"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_host_group_name_sort" time="0.088" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="482"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_kessel_on" time="0.050" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="226"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_kessel_on_service_account" time="0.037" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="226"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_last_seen_sort" time="0.035" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="463"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_low_hits_sort" time="0.070" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="512"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_name_filter" time="0.039" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="209"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_overall_staleness_up_to_date" time="0.042" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="620"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_pathway_filter" time="0.047" timestamp="2026-02-16T01:19:04" file="api/tests/test_system_views.py" line="587"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_profile_filter" time="0.161" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="316"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_rhel_version_filter" time="0.056" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="562"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_rhel_version_sort" time="0.039" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="545"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_type_filter" time="0.114" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="231"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_list_system_update_method_filter" time="0.041" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="610"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_reports_on_no_system" time="0.035" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="832"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_reports_on_satellite_system_can_see" time="0.027" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="816"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_reports_on_system" time="0.024" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="762"/>
+	<testcase classname="api.tests.test_system_views.SystemViewTestCase" name="test_system_disabled_recommendation_query_param" time="0.171" timestamp="2026-02-16T01:19:05" file="api/tests/test_system_views.py" line="865"/>
+</testsuite>

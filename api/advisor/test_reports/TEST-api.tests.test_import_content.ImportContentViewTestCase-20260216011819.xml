@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content.ImportContentViewTestCase-20260216011819" tests="4" file="api/tests/test_import_content.py" time="0.476" timestamp="2026-02-16T01:18:38" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content.ImportContentViewTestCase" name="test_import_content_get" time="0.002" timestamp="2026-02-16T01:18:37" file="api/tests/test_import_content.py" line="1156"/>
+	<testcase classname="api.tests.test_import_content.ImportContentViewTestCase" name="test_import_content_push_application_json" time="0.242" timestamp="2026-02-16T01:18:38" file="api/tests/test_import_content.py" line="1161"/>
+	<testcase classname="api.tests.test_import_content.ImportContentViewTestCase" name="test_import_content_push_failures" time="0.007" timestamp="2026-02-16T01:18:38" file="api/tests/test_import_content.py" line="1221"/>
+	<testcase classname="api.tests.test_import_content.ImportContentViewTestCase" name="test_import_content_push_non_json" time="0.225" timestamp="2026-02-16T01:18:38" file="api/tests/test_import_content.py" line="1190"/>
+</testsuite>
