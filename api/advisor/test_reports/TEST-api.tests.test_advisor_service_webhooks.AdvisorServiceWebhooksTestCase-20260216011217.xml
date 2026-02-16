@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_advisor_service_webhooks.AdvisorServiceWebhooksTestCase-20260216011217" tests="2" file="api/tests/test_advisor_service_webhooks.py" time="0.033" timestamp="2026-02-16T01:12:18" failures="1" errors="0" skipped="0">
+	<testcase classname="api.tests.test_advisor_service_webhooks.AdvisorServiceWebhooksTestCase" name="test_generate_webhook_msgs_resolved_report" time="0.020" timestamp="2026-02-16T01:12:18" file="api/tests/test_advisor_service_webhooks.py" line="128">
+		<!--Test that webhook messages are correctly generated for resolved reports.-->
+	</testcase>
+	<testcase classname="api.tests.test_advisor_service_webhooks.AdvisorServiceWebhooksTestCase" name="test_generate_webhook_msgs_new_report" time="0.013" timestamp="2026-02-16T01:12:18" file="api/tests/test_advisor_service_webhooks.py" line="51">
+		<!--Test that webhook messages are correctly generated for new reports.-->
+		<failure type="AssertionError" message="2 != 1"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_advisor_service_webhooks.py", line 79, in test_generate_webhook_msgs_new_report
+    self.assertEqual(reports._producer.poll_calls, 1)
+AssertionError: 2 != 1
+]]></failure>
+	</testcase>
+</testsuite>
