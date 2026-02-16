@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.TestInsightsRBACPermissionKessel-20260317043948" tests="6" file="api/tests/test_view_auth.py" time="0.014" timestamp="2026-03-17T04:40:33" failures="0" errors="1" skipped="0">
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_identity_object_property_fails" time="0.001" timestamp="2026-03-17T04:40:33" file="advisor/api/tests/test_view_auth.py" line="717"/>
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_permission_rbac_no_url" time="0.001" timestamp="2026-03-17T04:40:33" file="advisor/api/tests/test_view_auth.py" line="756"/>
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_permission_rbac_not_enabled" time="0.000" timestamp="2026-03-17T04:40:33" file="advisor/api/tests/test_view_auth.py" line="748"/>
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_request_has_user_auth" time="0.000" timestamp="2026-03-17T04:40:33" file="advisor/api/tests/test_view_auth.py" line="691"/>
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_view_has_no_scope" time="0.001" timestamp="2026-03-17T04:40:33" file="advisor/api/tests/test_view_auth.py" line="699"/>
+	<testcase classname="api.tests.test_view_auth.TestInsightsRBACPermissionKessel" name="test_kessel_resourcescope_host_object_permissions" time="0.010" timestamp="2026-03-17T04:40:33" file="advisor/api/tests/test_view_auth.py" line="226">
+		<error type="IndexError" message="list index out of range"><![CDATA[Traceback (most recent call last):
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/django/test/utils.py", line 456, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/kessel.py", line 228, in wrapper
+    fn(*args, **kwargs)
+  File "/home/pwayper/.local/share/virtualenvs/advisor-backend-A3tAKjzl/lib/python3.12/site-packages/responses/__init__.py", line 232, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pwayper/Code/insights/advisor-backend/api/advisor/api/tests/test_view_auth.py", line 790, in test_kessel_resourcescope_host_object_permissions
+    logs.output[0],
+    ~~~~~~~~~~~^^^
+IndexError: list index out of range
+]]></error>
+	</testcase>
+</testsuite>
