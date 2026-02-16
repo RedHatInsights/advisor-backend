@@ -1,7 +1,0 @@
-test|Active_rulefix:
-  description: Fix for Active_rule on rhel/host
-  path: playbooks/fixture_data/test/Active_rule/rhel_host/fix_fixit.yml
-  play: "- name: Fix for Active_rule on rhel/host\n  become: true\n\n"
-  rule_id: test|Active_rule
-  type: fix
-  version: null
