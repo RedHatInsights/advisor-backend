@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_pathway_views.PathwayViewHostTagsTestCase-20260216000108" tests="3" file="api/tests/test_pathway_views.py" time="0.509" timestamp="2026-02-16T00:01:47" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_pathway_views.PathwayViewHostTagsTestCase" name="test_pathway_list" time="0.133" timestamp="2026-02-16T00:01:46" file="api/advisor/api/tests/test_pathway_views.py" line="738"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewHostTagsTestCase" name="test_pathway_retrieve" time="0.101" timestamp="2026-02-16T00:01:46" file="api/advisor/api/tests/test_pathway_views.py" line="763"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewHostTagsTestCase" name="test_pathway_systems" time="0.275" timestamp="2026-02-16T00:01:47" file="api/advisor/api/tests/test_pathway_views.py" line="780"/>
+</testsuite>

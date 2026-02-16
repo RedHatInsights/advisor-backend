@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.BadUsesOfAuthHeaderTestCase-20260212002758" tests="4" file="api/tests/test_view_auth.py" time="0.003" timestamp="2026-02-12T00:29:39" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.BadUsesOfAuthHeaderTestCase" name="test_get_raw_value" time="0.001" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="536"/>
+	<testcase classname="api.tests.test_view_auth.BadUsesOfAuthHeaderTestCase" name="test_get_unencode_value" time="0.002" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="526"/>
+	<testcase classname="api.tests.test_view_auth.BadUsesOfAuthHeaderTestCase" name="test_no_account_org_id" time="0.001" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="544"/>
+	<testcase classname="api.tests.test_view_auth.BadUsesOfAuthHeaderTestCase" name="test_system_and_user_auth" time="0.001" timestamp="2026-02-12T00:29:39" file="advisor/api/tests/test_view_auth.py" line="548"/>
+</testsuite>

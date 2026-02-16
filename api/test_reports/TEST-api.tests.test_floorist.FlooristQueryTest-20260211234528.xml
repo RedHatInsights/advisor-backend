@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_floorist.FlooristQueryTest-20260211234528" tests="1" file="api/tests/test_floorist.py" time="0.008" timestamp="2026-02-11T23:46:25" failures="0" errors="0" skipped="1">
+	<testcase classname="api.tests.test_floorist.FlooristQueryTest" name="test_floorist_queries_run" time="0.008" timestamp="2026-02-11T23:46:25" file="advisor/api/tests/test_floorist.py" line="31">
+		<!--
+        Simple test that runs the floorist queries to ensure each query is valid SQL.
+        -->
+		<skipped type="skip" message="Cannot find clowdapp.yml, ignoring Floorist tests"/>
+	</testcase>
+</testsuite>

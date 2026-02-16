@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_export_views.ExportViewTestCase-20260213061019" tests="8" file="api/tests/test_export_views.py" time="1.301" timestamp="2026-02-13T06:10:26" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_host_and_rule_export" time="0.037" timestamp="2026-02-13T06:10:25" file="advisor/api/tests/test_export_views.py" line="83">
+		<!--
+        Tests of host_and_rule export; no Inventory testing yet.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_host_and_rule_export_cert_auth" time="0.012" timestamp="2026-02-13T06:10:25" file="advisor/api/tests/test_export_views.py" line="489"/>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_host_and_rule_export_filters" time="0.442" timestamp="2026-02-13T06:10:25" file="advisor/api/tests/test_export_views.py" line="160"/>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_host_and_rule_export_filters_json" time="0.371" timestamp="2026-02-13T06:10:26" file="advisor/api/tests/test_export_views.py" line="508"/>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_reports_export" time="0.047" timestamp="2026-02-13T06:10:26" file="advisor/api/tests/test_export_views.py" line="815">
+		<!--
+        Tests of Reports export - JSON only
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_rules_export" time="0.086" timestamp="2026-02-13T06:10:26" file="advisor/api/tests/test_export_views.py" line="871">
+		<!--
+        Tests of Rules export - JSON only
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_systems_export" time="0.126" timestamp="2026-02-13T06:10:26" file="advisor/api/tests/test_export_views.py" line="913">
+		<!--
+        Tests of Systems export
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_export_views.ExportViewTestCase" name="test_systems_export_filter" time="0.181" timestamp="2026-02-13T06:10:26" file="advisor/api/tests/test_export_views.py" line="1016">
+		<!--
+        Tests of Systems export with filter param
+        -->
+	</testcase>
+</testsuite>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.BaseRedHatUserTestCase-20260211234528" tests="2" file="api/tests/test_view_auth.py" time="0.003" timestamp="2026-02-11T23:49:27" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.BaseRedHatUserTestCase" name="test_has_permission_basic_fails" time="0.002" timestamp="2026-02-11T23:49:27" file="advisor/api/tests/test_view_auth.py" line="488"/>
+	<testcase classname="api.tests.test_view_auth.BaseRedHatUserTestCase" name="test_not_implemented" time="0.001" timestamp="2026-02-11T23:49:27" file="advisor/api/tests/test_view_auth.py" line="483"/>
+</testsuite>

@@ -17,6 +17,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.conf import settings
+import utils
 from prometheus_client import start_http_server, Counter, Enum, Gauge, Histogram, Info
 
 # Prometheus configuration
@@ -83,18 +84,6 @@ INVENTORY_EVENT_ERROR = Counter(
     'insights_advisor_service_inventory_event_error',
     'Counter for how many inventory events errored'
 )
-INVENTORY_HOST_CREATED = Counter(
-    'insights_advisor_service_inventory_host_created',
-    'Count how many inventory hosts were created'
-)
-INVENTORY_HOST_UPDATED = Counter(
-    'insights_advisor_service_inventory_host_updated',
-    'Count how many inventory hosts were updated'
-)
-INVENTORY_HOST_DELETED = Counter(
-    'insights_advisor_service_inventory_host_deleted',
-    'Count how many inventory hosts were deleted'
-)
 PAYLOAD_TRACKER_DELIVERY_ERRORS = Counter(
     'insights_advisor_service_payload_tracker_delivery_errors',
     'Counter for how many payload tracker messsages failed delivery'
@@ -106,4 +95,5 @@ ADVISOR_SERVICE_VERSION = Info(
 
 
 def start_prometheus():
+    utils.clean_threading_cruft()
     start_http_server(settings.PROMETHEUS_PORT)

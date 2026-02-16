@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_production_task_fixtures.ProductionFixturesTestCase-20260216000108" tests="3" file="tasks/tests/test_production_task_fixtures.py" time="0.385" timestamp="2026-02-16T00:02:49" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_production_task_fixtures.ProductionFixturesTestCase" name="test_playbook_file_matches_fixture_content" time="0.007" timestamp="2026-02-16T00:02:49" file="api/advisor/tasks/tests/test_production_task_fixtures.py" line="120">
+		<!--
+        The playbook file content must match that in the fixture.
+        -->
+	</testcase>
+	<testcase classname="tasks.tests.test_production_task_fixtures.ProductionFixturesTestCase" name="test_tasks_have_playbook_file" time="0.003" timestamp="2026-02-16T00:02:49" file="api/advisor/tasks/tests/test_production_task_fixtures.py" line="45">
+		<!--
+        In all environments, each active task should have a playbook file.
+        -->
+	</testcase>
+	<testcase classname="tasks.tests.test_production_task_fixtures.ProductionFixturesTestCase" name="test_tasks_have_signature" time="0.375" timestamp="2026-02-16T00:02:49" file="api/advisor/tasks/tests/test_production_task_fixtures.py" line="59">
+		<!--
+        In all environments, each active task's playbook should have a
+        signature.  Verification of this signature is left as an exercise
+        for elsewhere.
+        -->
+	</testcase>
+</testsuite>

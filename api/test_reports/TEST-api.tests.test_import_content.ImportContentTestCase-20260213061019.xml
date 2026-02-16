@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content.ImportContentTestCase-20260213061019" tests="13" file="api/tests/test_import_content.py" time="1.301" timestamp="2026-02-13T06:10:35" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_cve_rule_import" time="0.196" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="1061"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_config_blank" time="0.000" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="598">
+		<!--
+        If there's no 'resolution risk' config, nothing happens and no stats
+        are returned.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_config_from_string_updates" time="0.036" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="617"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_config_with_data" time="0.020" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="606"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_new_content_bad_entries" time="0.022" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="676"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_new_content_from_string" time="0.148" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="697"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_new_playbook_content" time="0.166" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="826"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_playbook_missing_keys" time="0.110" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="811"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_import_publish_date_issues" time="0.141" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="876"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_nodeid_issues" time="0.109" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="907"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_null_impact_issues" time="0.099" timestamp="2026-02-13T06:10:34" file="advisor/api/tests/test_import_content.py" line="1043"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_resolution_issues" time="0.109" timestamp="2026-02-13T06:10:35" file="advisor/api/tests/test_import_content.py" line="951"/>
+	<testcase classname="api.tests.test_import_content.ImportContentTestCase" name="test_resolution_risk_issues" time="0.145" timestamp="2026-02-13T06:10:35" file="advisor/api/tests/test_import_content.py" line="991"/>
+</testsuite>

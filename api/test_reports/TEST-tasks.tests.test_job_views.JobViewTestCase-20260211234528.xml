@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_job_views.JobViewTestCase-20260211234528" tests="7" file="tasks/tests/test_job_views.py" time="0.167" timestamp="2026-02-11T23:50:00" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_detail" time="0.023" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="123"/>
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_detail_check_rhc_client_id" time="0.024" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="144"/>
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_list" time="0.035" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="58"/>
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_list_bad_param" time="0.008" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="110"/>
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_live_stdout" time="0.030" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="212"/>
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_log" time="0.020" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="163"/>
+	<testcase classname="tasks.tests.test_job_views.JobViewTestCase" name="test_job_stdout" time="0.025" timestamp="2026-02-11T23:50:00" file="advisor/tasks/tests/test_job_views.py" line="186"/>
+</testsuite>

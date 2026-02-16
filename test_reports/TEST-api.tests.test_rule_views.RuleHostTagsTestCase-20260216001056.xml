@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rule_views.RuleHostTagsTestCase-20260216001056" tests="5" file="api/tests/test_rule_views.py" time="1.478" timestamp="2026-02-16T00:11:45" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_rule_list" time="0.173" timestamp="2026-02-16T00:11:44" file="api/advisor/api/tests/test_rule_views.py" line="2134"/>
+	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_sorting_by_group_name" time="0.425" timestamp="2026-02-16T00:11:44" file="api/advisor/api/tests/test_rule_views.py" line="2392"/>
+	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_systems_detail_has_impacted_date" time="0.104" timestamp="2026-02-16T00:11:44" file="api/advisor/api/tests/test_rule_views.py" line="2369"/>
+	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_systems_details_for_a_rule" time="0.688" timestamp="2026-02-16T00:11:45" file="api/advisor/api/tests/test_rule_views.py" line="2271"/>
+	<testcase classname="api.tests.test_rule_views.RuleHostTagsTestCase" name="test_systems_for_a_rule" time="0.087" timestamp="2026-02-16T00:11:45" file="api/advisor/api/tests/test_rule_views.py" line="2197"/>
+</testsuite>

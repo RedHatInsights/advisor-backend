@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase-20260212002758" tests="8" file="tasks/tests/test_playbook_run_update.py" time="0.438" timestamp="2026-02-12T00:30:12" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_bad_status" time="0.020" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="307"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_complete_json_response" time="0.075" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="156"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_complete_json_response_eoln" time="0.068" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="213"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_deleted_system" time="0.072" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="272"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_failure" time="0.058" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="347"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_mangled_json_response" time="0.060" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="316"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_no_data" time="0.053" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="375"/>
+	<testcase classname="tasks.tests.test_playbook_run_update.TaskJobUpdateTestCase" name="test_job_update_non_org_admin" time="0.033" timestamp="2026-02-12T00:30:12" file="advisor/tasks/tests/test_playbook_run_update.py" line="296"/>
+</testsuite>

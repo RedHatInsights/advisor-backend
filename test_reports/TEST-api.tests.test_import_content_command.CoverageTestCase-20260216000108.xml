@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content_command.CoverageTestCase-20260216000108" tests="10" file="api/tests/test_import_content_command.py" time="0.081" timestamp="2026-02-16T00:01:38" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_command_load_failures" time="0.007" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="981"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_command_no_repo_path" time="0.007" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="972"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_generate_playbook_failures" time="0.009" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="936">
+		<system-err><![CDATA[Directory /tmp/tmpbxic0lmf does not seem to have the playbooks directory
+]]></system-err>
+	</testcase>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_load_config_no_file" time="0.000" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="853"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_load_database_maps_failures" time="0.044" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="856"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_read_playbook_failures" time="0.007" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="908">
+		<system-err><![CDATA[Playbook /home/pwayper/Code/insights/advisor-backend/api/test_content/playbook.yaml has no name - trying to find first task?
+Playbook /home/pwayper/Code/insights/advisor-backend/api/test_content/playbook.yaml has no name - trying to find first task?
+Playbook /home/pwayper/Code/insights/advisor-backend/api/test_content/playbook.yaml has no named first task
+Playbook /home/pwayper/Code/insights/advisor-backend/api/test_content/playbook.yaml has no name - trying to find first task?
+Playbook /home/pwayper/Code/insights/advisor-backend/api/test_content/playbook.yaml has no named first task
+]]></system-err>
+	</testcase>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_rule_tags_not_found" time="0.001" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="904"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_ruleset_not_found" time="0.005" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="897"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_update_model_from_config_empty_config" time="0.000" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="850"/>
+	<testcase classname="api.tests.test_import_content_command.CoverageTestCase" name="test_update_model_from_config_no_config" time="0.000" timestamp="2026-02-16T00:01:38" file="api/advisor/api/tests/test_import_content_command.py" line="846"/>
+</testsuite>

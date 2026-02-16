@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase-20260212002758" tests="6" file="api/tests/test_weekly_report_auto_subscribe_views.py" time="0.199" timestamp="2026-02-12T00:29:42" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase" name="test_auto_subscribe_env_var_disabled" time="0.006" timestamp="2026-02-12T00:29:41" file="advisor/api/tests/test_weekly_report_auto_subscribe_views.py" line="134"/>
+	<testcase classname="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase" name="test_autosub_crud" time="0.044" timestamp="2026-02-12T00:29:41" file="advisor/api/tests/test_weekly_report_auto_subscribe_views.py" line="160"/>
+	<testcase classname="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase" name="test_autosub_exclusion_account" time="0.007" timestamp="2026-02-12T00:29:41" file="advisor/api/tests/test_weekly_report_auto_subscribe_views.py" line="147"/>
+	<testcase classname="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase" name="test_missing_headers" time="0.009" timestamp="2026-02-12T00:29:41" file="advisor/api/tests/test_weekly_report_auto_subscribe_views.py" line="116"/>
+	<testcase classname="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase" name="test_missing_post_request_parameter" time="0.010" timestamp="2026-02-12T00:29:42" file="advisor/api/tests/test_weekly_report_auto_subscribe_views.py" line="107"/>
+	<testcase classname="api.tests.test_weekly_report_auto_subscribe_views.WeeklyReportAutoSubscribeTestCase" name="test_rbac_enabled_and_user_denied" time="0.123" timestamp="2026-02-12T00:29:42" file="advisor/api/tests/test_weekly_report_auto_subscribe_views.py" line="78"/>
+</testsuite>

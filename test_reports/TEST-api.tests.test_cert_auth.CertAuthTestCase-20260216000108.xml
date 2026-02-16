@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_cert_auth.CertAuthTestCase-20260216000108" tests="9" file="api/tests/test_cert_auth.py" time="0.495" timestamp="2026-02-16T00:01:17" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_auth_failures" time="0.016" timestamp="2026-02-16T00:01:16" file="api/advisor/api/tests/test_cert_auth.py" line="62"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_get_non_owned_system" time="0.066" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="132"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_get_non_owned_system_reports" time="0.024" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="139"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_list_system_kessel_on_cert_auth" time="0.129" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="226"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_list_system_satellite" time="0.063" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="103"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_list_system_self_owned" time="0.063" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="120"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_rule_list" time="0.079" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="148"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_systems_stats" time="0.032" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="164"/>
+	<testcase classname="api.tests.test_cert_auth.CertAuthTestCase" name="test_topic_list" time="0.023" timestamp="2026-02-16T00:01:17" file="api/advisor/api/tests/test_cert_auth.py" line="186"/>
+</testsuite>

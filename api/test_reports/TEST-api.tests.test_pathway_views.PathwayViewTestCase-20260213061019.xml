@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_pathway_views.PathwayViewTestCase-20260213061019" tests="9" file="api/tests/test_pathway_views.py" time="3.113" timestamp="2026-02-13T06:10:43" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_filters" time="1.778" timestamp="2026-02-13T06:10:41" file="advisor/api/tests/test_pathway_views.py" line="167"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_list" time="0.176" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="48"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_report_filters" time="0.043" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="650"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_retrieve" time="0.052" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="35"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_rule_category" time="0.110" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="556"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_rule_systems" time="0.023" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="606"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_rules" time="0.063" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="516"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_sorting" time="0.649" timestamp="2026-02-13T06:10:42" file="advisor/api/tests/test_pathway_views.py" line="90"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_systems" time="0.220" timestamp="2026-02-13T06:10:43" file="advisor/api/tests/test_pathway_views.py" line="467"/>
+</testsuite>
