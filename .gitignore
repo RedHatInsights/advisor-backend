@@ -1,0 +1,64 @@
+# Test coverage reports
+.coverage
+api/.coverage
+htmlcov/
+
+# Test reports (XML output)
+test_reports/
+api/advisor/test_reports/
+junit-service.xml
+
+# Prometheus database files
+*.db
+counter_*.db
+histogram_*.db
+
+# API schema files (generated)
+insights_advisor_openapi.json
+insights_advisor_openapi_*.json
+insights_sat_compat_openapi_schema.yaml
+Advisor*.yaml
+
+# Content files (generated/temporary)
+playbook_content.yaml
+rule_content.yaml
+
+# Service account credentials
+tasks_pd_runs_service_account.json
+
+# Patch files (temporary)
+*.patch
+
+# Build artifacts
+tekton_catalog_uses
+
+# Type stubs (generated)
+type_stubs/
+api/advisor/type_stubs.pyi
+
+# Lock files (backup)
+Pipfile.lock.old
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
