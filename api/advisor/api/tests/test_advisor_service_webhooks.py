@@ -75,9 +75,9 @@ class AdvisorServiceWebhooksTestCase(TestCase):
         # Call trigger_report_hooks - reports._producer is already DummyProducer in tests
         reports.trigger_report_hooks(host_obj, new_report_rules, cur_reports)
 
-        # Check poll and flush were called
-        self.assertEqual(reports._producer.poll_calls, 1)
-        self.assertEqual(reports._producer.flush_calls, 1)
+        # Check poll and flush were called - both webhook and remediation events should be sent
+        self.assertEqual(reports._producer.poll_calls, 2)
+        self.assertEqual(reports._producer.flush_calls, 2)
 
         # Count the different event types
         new = 0
