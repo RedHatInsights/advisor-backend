@@ -16,14 +16,12 @@
 
 import json
 import os
-from unittest.mock import patch
 
 from django.db.models import Exists, OuterRef
 from django.test import TestCase
 
 import reports
 from api.models import CurrentReport, InventoryHost, Rule
-from kafka_utils import DummyProducer
 
 
 class AdvisorServiceWebhooksTestCase(TestCase):
@@ -43,6 +41,12 @@ class AdvisorServiceWebhooksTestCase(TestCase):
         test_dir = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(test_dir, 'sample_report.json')) as f:
             cls.sample_report_data = json.load(f)
+
+    def setUp(self):
+        """Clear DummyProducer state before each test."""
+        super().setUp()
+        if reports._producer:
+            reports._producer.reset_calls()
 
     def test_generate_webhook_msgs_new_report(self):
         """Test that webhook messages are correctly generated for new reports."""
@@ -68,21 +72,19 @@ class AdvisorServiceWebhooksTestCase(TestCase):
         cur_reports = [report_models.first()]
         host_obj = InventoryHost.objects.get(id=inventory_uuid)
 
-        # Use DummyProducer to capture Kafka messages
-        dummy_producer = DummyProducer()
-        with patch.object(reports, '_producer', dummy_producer):
-            reports.trigger_report_hooks(host_obj, new_report_rules, cur_reports)
+        # Call trigger_report_hooks - reports._producer is already DummyProducer in tests
+        reports.trigger_report_hooks(host_obj, new_report_rules, cur_reports)
 
         # Check poll and flush were called
-        self.assertEqual(dummy_producer.poll_calls, 1)
-        self.assertEqual(dummy_producer.flush_calls, 1)
+        self.assertEqual(reports._producer.poll_calls, 1)
+        self.assertEqual(reports._producer.flush_calls, 1)
 
         # Count the different event types
         new = 0
         resolved = 0
         remediations = 0
 
-        for call in dummy_producer.produce_calls:
+        for call in reports._producer.produce_calls:
             msg_obj = json.loads(call['message'].decode('utf-8'))
 
             if 'event_type' in msg_obj:
@@ -175,21 +177,19 @@ class AdvisorServiceWebhooksTestCase(TestCase):
         ]
         host_obj = InventoryHost.objects.get(id=inventory_uuid)
 
-        # Use DummyProducer to capture Kafka messages
-        dummy_producer = DummyProducer()
-        with patch.object(reports, '_producer', dummy_producer):
-            reports.trigger_report_hooks(host_obj, new_rule_objs, cur_reports)
+        # Call trigger_report_hooks - reports._producer is already DummyProducer in tests
+        reports.trigger_report_hooks(host_obj, new_rule_objs, cur_reports)
 
         # Check poll and flush were called
-        self.assertEqual(dummy_producer.poll_calls, 1)
-        self.assertEqual(dummy_producer.flush_calls, 1)
+        self.assertEqual(reports._producer.poll_calls, 1)
+        self.assertEqual(reports._producer.flush_calls, 1)
 
         # Count the different event types
         new = 0
         resolved = 0
         remediations = 0
 
-        for call in dummy_producer.produce_calls:
+        for call in reports._producer.produce_calls:
             msg_obj = json.loads(call['message'].decode('utf-8'))
 
             if 'event_type' in msg_obj:
