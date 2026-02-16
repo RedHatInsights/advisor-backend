@@ -22,6 +22,7 @@ from django.conf import settings
 import traceback
 import datetime
 import thread_storage
+from typing import Optional
 import prometheus
 
 # Import kafka stuff
@@ -52,59 +53,71 @@ def payload_delivery_report(err, msg):
                         msg.topic(), msg.partition()))
 
 
-def bad_payload(source, payload_message, optional_status_msg=None):
-    if _producer is not None and kafka_settings.PAYLOAD_TRACKER_TOPIC:
-        try:
-            json_msg = json.loads(payload_message.decode('unicode_escape').strip('"'))
-            if json_msg.get('request_id'):
-                if optional_status_msg:
-                    status_msg = optional_status_msg
-                else:
-                    the_error = traceback.format_exc()
-                    status_msg = f"Malformed JSON error: Error: {the_error}"
-                current_time = datetime.datetime.now().isoformat()
-                payload_msg = json.dumps({
-                    'status': 'error',
-                    'service': settings.APP_NAME,
-                    'source': source,
-                    'account': json_msg.get('account'),
-                    'org_id': json_msg.get('org_id'),
-                    'inventory_id': json_msg.get('id'),
-                    'request_id': json_msg.get('request_id'),
-                    'status_msg': status_msg,
-                    'date': str(current_time)
-                })
-                logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
-                _producer.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
-                                  callback=payload_delivery_report)
-                _producer.flush()
-        except Exception:
-            logger.exception("Hit exception sending bad payload tracker status.")
+def bad_payload(
+    source: str, payload_data: dict[str, str],
+    optional_status_msg: Optional[str] = None
+):
+    """
+    Send a message about a bad payload to the payload tracker.
+    """
+    if _producer is None or not kafka_settings.PAYLOAD_TRACKER_TOPIC:
+        return
+    try:
+        if payload_data.get('request_id'):
+            if optional_status_msg:
+                status_msg = optional_status_msg
+            else:
+                the_error = traceback.format_exc()
+                status_msg = f"Malformed JSON error: Error: {the_error}"
+            current_time = datetime.datetime.now().isoformat()
+            payload_msg = json.dumps({
+                'status': 'error',
+                'service': settings.APP_NAME,
+                'source': source,
+                'account': payload_data.get('account'),
+                'org_id': payload_data.get('org_id'),
+                'inventory_id': payload_data.get('id'),
+                'request_id': payload_data.get('request_id'),
+                'status_msg': status_msg,
+                'date': str(current_time)
+            })
+            logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
+            _producer.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
+                                callback=payload_delivery_report)
+            _producer.flush()
+    except Exception:
+        logger.exception("Hit exception sending bad payload tracker status.")
 
 
 def payload_status(payload_status, payload_status_msg, payload_info=None):
-    if _producer is not None and kafka_settings.PAYLOAD_TRACKER_TOPIC:
-        payload_msg = {
-            'service': settings.APP_NAME,
-            'status': payload_status,
-            'status_msg': payload_status_msg
-        }
+    """
+    Update payload tracker with the status of this payload.
+    """
+    if _producer is None or not kafka_settings.PAYLOAD_TRACKER_TOPIC:
+        return
+    payload_msg = {
+        'service': settings.APP_NAME,
+        'status': payload_status,
+        'status_msg': payload_status_msg
+    }
 
-        if payload_info:
-            payload_msg.update(payload_info)
-        else:
-            check_thread_keys = ['request_id', 'inventory_id', 'system_id', 'source', 'account', 'org_id']
-            for thread_key in check_thread_keys:
-                if thread_storage.get_value(thread_key):
-                    payload_msg[thread_key] = thread_storage.get_value(thread_key)
+    if payload_info:
+        payload_msg.update(payload_info)
+    else:
+        check_thread_keys = [
+            'request_id', 'inventory_id', 'system_id', 'source', 'account', 'org_id'
+        ]
+        for thread_key in check_thread_keys:
+            if thread_storage.get_value(thread_key):
+                payload_msg[thread_key] = thread_storage.get_value(thread_key)
 
-        current_time = datetime.datetime.now().isoformat()
-        payload_msg['date'] = str(current_time)
-        payload_msg = json.dumps(payload_msg)
-        logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
-        try:
-            _producer.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
-                              callback=payload_delivery_report)
-            _producer.flush()
-        except Exception:
-            logger.exception("Hit exception sending payload tracker status.")
+    current_time = datetime.datetime.now().isoformat()
+    payload_msg['date'] = str(current_time)
+    payload_msg = json.dumps(payload_msg)
+    logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
+    try:
+        _producer.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
+                            callback=payload_delivery_report)
+        _producer.flush()
+    except Exception:
+        logger.exception("Hit exception sending payload tracker status.")
