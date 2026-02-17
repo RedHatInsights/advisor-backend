@@ -203,7 +203,7 @@ Defined in `project_settings/kafka_settings.py`:
 ### Commit Standards
 
 - Use descriptive commit messages
-- Include `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` trailer
+- ALWAYS include `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` trailer
 - Run tests before committing
 - Use heredoc for multi-line commit messages:
 
