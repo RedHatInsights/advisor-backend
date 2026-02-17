@@ -71,6 +71,17 @@ def start_operation_tracking(operation_name: str, **context) -> float:
     return start_time
 
 
+def track_operation_finish(operation_name: str, start_time: float) -> None:
+    """
+    Set the finished and elapsed time for this operation.  Used by both
+    failure and success tracking.
+    """
+    finished_time = time.time()
+    elapsed_time = finished_time - start_time
+    thread_storage.set_value(f'{operation_name}_finished', finished_time)
+    thread_storage.set_value(f'{operation_name}_elapsed', elapsed_time)
+
+
 def track_operation_failure(operation_name: str, start_time: float, error_msg: str) -> None:
     """
     Record operation failure with timing and error information in thread-local storage.
@@ -80,13 +91,9 @@ def track_operation_failure(operation_name: str, start_time: float, error_msg: s
         start_time: The time when operation started (from start_operation_tracking)
         error_msg: Error message describing the failure
     """
-    finished_time = time.time()
-    elapsed_time = finished_time - start_time
-
+    track_operation_finish(operation_name, start_time)
     thread_storage.set_value(f'{operation_name}_error', 1)
     thread_storage.set_value(f'{operation_name}_error_msg', error_msg)
-    thread_storage.set_value(f'{operation_name}_finished', finished_time)
-    thread_storage.set_value(f'{operation_name}_elapsed', elapsed_time)
 
 
 def track_operation_success(operation_name: str, start_time: float) -> None:
@@ -97,11 +104,7 @@ def track_operation_success(operation_name: str, start_time: float) -> None:
         operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
         start_time: The time when operation started (from start_operation_tracking)
     """
-    finished_time = time.time()
-    elapsed_time = finished_time - start_time
-
-    thread_storage.set_value(f'{operation_name}_finished', finished_time)
-    thread_storage.set_value(f'{operation_name}_elapsed', elapsed_time)
+    track_operation_finish(operation_name, start_time)
 
 
 #############################################################################
