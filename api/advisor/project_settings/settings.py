@@ -455,7 +455,7 @@ UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "t
 # Inventory Event replication settings
 INVENTORY_EVENT_REPLICATION = string_to_bool(os.getenv("INVENTORY_EVENT_REPLICATION", "false"))
 
-# HBI settings for the logical replication
+# Old settings for Logical replication system - will be removed in future.
 HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
 HBI_SUBSCRIPTION = os.getenv("HBI_SUBSCRIPTION", "advisor_hosts_sub_v1_0_2")
 HBI_DROP_SUBSCRIPTION = os.getenv("HBI_DROP_SUBSCRIPTION", "")
