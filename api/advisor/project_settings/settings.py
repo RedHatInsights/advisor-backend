@@ -465,6 +465,7 @@ HBI_TABLES_NUM_PARTITIONS = int(os.getenv("HBI_TABLES_NUM_PARTITIONS", 1))
 
 # Kafka settings
 
+
 def topic(requestedName):
     kafka_topic = KafkaTopics.get(requestedName)
     return kafka_topic.name if kafka_topic else requestedName
