@@ -16,23 +16,143 @@
 
 import prometheus
 import signal
+import time
+import traceback
 
-from project_settings import kafka_settings
+from bounded_executor import BoundedExecutor
+from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.db.models import Exists, OuterRef
+from django.utils import timezone
+from project_settings import kafka_settings
 
+import build_info
+import payload_tracker
+import reports as report_hooks
+import thread_storage
+import utils
 from advisor_logging import logger
+from api.models import (
+    Ack, CurrentReport, Host, InventoryHost,
+    Rule, SystemType, Upload, UploadSource
+)
 from feature_flags import (
     feature_flag_is_enabled, FLAG_INVENTORY_EVENT_REPLICATION
 )
-from api.models import InventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
-
-from kafka_utils import JsonValue, KafkaDispatcher  # , send_kafka_message
+from kafka_utils import JsonValue, KafkaDispatcher
 
 
 #############################################################################
+# Payload tracking helper functions
+
+
+def start_operation_tracking(operation_name: str, **context) -> float:
+    """
+    Start tracking an operation by recording start time and context information
+    in thread-local storage for payload tracking and metrics.
+
+    Args:
+        operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
+        **context: Context fields like request_id, inventory_id, source, account, org_id
+
+    Returns:
+        start_time: The time when operation started (for use in success/failure tracking)
+    """
+    start_time = time.time()
+    thread_storage.set_value(f'{operation_name}_started', start_time)
+    thread_storage.set_value(f'{operation_name}_error', 0)
+
+    # Set context fields for payload tracking
+    for key, value in context.items():
+        if value is not None:
+            thread_storage.set_value(key, value)
+
+    return start_time
+
+
+def track_operation_finish(operation_name: str, start_time: float) -> None:
+    """
+    Set the finished and elapsed time for this operation.  Used by both
+    failure and success tracking.
+    """
+    finished_time = time.time()
+    elapsed_time = finished_time - start_time
+    thread_storage.set_value(f'{operation_name}_finished', finished_time)
+    thread_storage.set_value(f'{operation_name}_elapsed', elapsed_time)
+
+
+def track_operation_failure(operation_name: str, start_time: float, error_msg: str) -> None:
+    """
+    Record operation failure with timing and error information in thread-local storage.
+
+    Args:
+        operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
+        start_time: The time when operation started (from start_operation_tracking)
+        error_msg: Error message describing the failure
+    """
+    track_operation_finish(operation_name, start_time)
+    thread_storage.set_value(f'{operation_name}_error', 1)
+    thread_storage.set_value(f'{operation_name}_error_msg', error_msg)
+
+
+def track_operation_success(operation_name: str, start_time: float) -> None:
+    """
+    Record successful operation completion with timing information in thread-local storage.
+
+    Args:
+        operation_name: Name of the operation (e.g., 'engine_results', 'rule_hits', 'db')
+        start_time: The time when operation started (from start_operation_tracking)
+    """
+    track_operation_finish(operation_name, start_time)
+
+
+#############################################################################
+# System type validation helper
+
+
+def get_system_type_or_fail(
+    operation_name: str,
+    operation_start_time: float,
+    role: str,
+    product_code: str
+) -> SystemType | None:
+    """
+    Look up SystemType by role and product_code.
+
+    If not found, logs error, tracks failure, and returns None.
+
+    Args:
+        operation_name: Name of the operation for tracking (e.g., 'engine_results')
+        operation_start_time: Start time from start_operation_tracking
+        role: System role (e.g., 'rhel', 'ocp')
+        product_code: Product code (e.g., 'rhel', 'ocp')
+
+    Returns:
+        SystemType object if found, None otherwise
+    """
+    try:
+        return SystemType.objects.get(role=role, product_code=product_code)
+    except SystemType.DoesNotExist:
+        track_operation_failure(
+            operation_name, operation_start_time, 'missing system_type'
+        )
+        logger.error(
+            "Unable to get system type %s / %s from DB - load fixtures!",
+            product_code, role
+        )
+        payload_tracker.payload_status('invalid', 'Invalid system type.')
+        return None
+
+
+#############################################################################
+# Inventory event handler
+
+
+@prometheus.INSIGHTS_ADVISOR_SERVICE_INVENTORY_EVENTS_ELAPSED.time()
 def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
     """
-    Handle inventory events.
+    Handle inventory events from platform.inventory.events topic.
 
     The inventory event messages are documented at:
     https://inscope.corp.redhat.com/docs/default/component/host-based-inventory/#created-event
@@ -303,28 +423,557 @@ def handle_deleted_event(message: dict[str, JsonValue]):
     prometheus.INVENTORY_HOST_DELETED.inc()
 
 
+#############################################################################
+# Engine results and rule hits handlers
+
+
+@prometheus.INSIGHTS_ADVISOR_SERVICE_HANDLE_ENGINE_RESULTS.time()
+def handle_engine_results(topic: str, engine_results: dict[str, JsonValue]) -> None:
+    """
+    Handle engine results received from the shared engine instance.
+    This comes in on platform.engine.results topic.
+    """
+    logger.debug("Handling engine results %s", engine_results)
+
+    # Required engine results keys
+    # Account number has been removed as it is no longer required, only optional
+    key_paths = {
+        "engine_reports": ["results", "reports"],
+        "system_data": ["results", "system"],
+        "platform_data": ["input", "platform_metadata"],
+        "request_id": ["input", "platform_metadata", "request_id"],
+        "inventory_uuid": ["input", "host", "id"],
+        "org_id": ["input", "platform_metadata", "org_id"]
+    }
+
+    def send_bad_payload_msg(data: dict[str, str], null_keys: list[str]):
+        payload_info = {
+            'source': 'insights-client',
+            'request_id': data.get('request_id'),
+            'account': utils.traverse_keys(engine_results, ["input", "host", "account"]),
+            'org_id': data.get('org_id'),
+            'inventory_id': data.get('inventory_uuid')
+        }
+        missing_paths = ",".join(["/".join(key_paths[key]) for key in null_keys])
+        payload_tracker.bad_payload('insights-client', payload_info, missing_paths)
+        logger.error(
+            "Key paths not found/null in engine results at paths: %s",
+            missing_paths
+        )
+        return None
+
+    data = {key: utils.traverse_keys(engine_results, key_path)
+                 for key, key_path in key_paths.items()}
+    null_keys = [key for key, val in data.items() if val is None]
+    if len(null_keys):
+        return send_bad_payload_msg(data, null_keys)
+
+    # get host and platform data
+    try:
+        engine_reports = data.get('engine_reports')
+        system_data = data.get('system_data')
+        platform_data = data.get('platform_data')
+        request_id = data.get('request_id')
+        inventory_uuid = data.get('inventory_uuid')
+        account = utils.traverse_keys(engine_results, ["input", "host", "account"])
+        org_id = data.get('org_id')
+    except Exception:
+        return send_bad_payload_msg(data, null_keys)
+
+    # Start operation tracking with full context
+    # system_id is optional for debugging/lookup, not required
+    system_id = system_data.get('system_id')
+    engine_results_started = start_operation_tracking(
+        'engine_results',
+        request_id=request_id,
+        inventory_id=inventory_uuid,
+        source='insights-client',
+        account=account,
+        org_id=org_id,
+        system_id=system_id
+    )
+    payload_tracker.payload_status('received', 'Processing engine results')
+    logger.info("Processing engine results for Inventory ID %s on account %s and org_id %s",
+                inventory_uuid, account, org_id)
+
+    # system type and produce code information
+    system_type = system_data.get('type')
+    system_product = system_data.get('product')
+    db_system_type = get_system_type_or_fail(
+        'engine_results', engine_results_started, system_type, system_product
+    )
+
+    if not db_system_type:
+        return False
+
+    # add reports to the database
+    satellite_managed = platform_data.get('satellite_managed', False)
+    satellite_id = system_data.get('remote_leaf', None)
+    if satellite_id == -1:
+        satellite_id = None
+    branch_id = system_data.get('remote_branch', None)
+    if branch_id == -1:
+        branch_id = None
+
+    if create_db_reports(
+        engine_reports, inventory_uuid, account, org_id, db_system_type, 'insights-client',
+        satellite_managed, satellite_id, branch_id,
+    ):
+        track_operation_success('engine_results', engine_results_started)
+        return True
+    else:
+        track_operation_failure('engine_results', engine_results_started, 'Failure processing engine results.')
+        payload_tracker.payload_status('error', 'Failure processing engine results.')
+        logger.error('Failure processing engine results.')
+        return False
+
+
+@prometheus.INSIGHTS_ADVISOR_SERVICE_RULE_HITS_ELAPSED.time()
+def handle_rule_hits(topic: str, rule_hits_json: dict[str, JsonValue]) -> None:
+    """
+    Handle third-party rule hits from platform.insights.rule-hits topic.
+    """
+    required_keys = ['org_id', 'source', 'host_product', 'host_role', 'inventory_id', 'hits']
+    missing_keys = [key for key in required_keys if key not in rule_hits_json]
+    if missing_keys:
+        # Start tracking to record the error even though we exit early
+        rule_hits_started = start_operation_tracking('rule_hits')
+        track_operation_failure('rule_hits', rule_hits_started, 'missing_keys')
+        prometheus.THIRD_PARTY_RULE_HIT_MISSING_KEYS.inc()
+        payload_info = {'request_id': 'third-party'}
+        for key in required_keys:
+            if key in rule_hits_json:
+                payload_info[key] = rule_hits_json[key]
+        payload_tracker.payload_status('invalid',
+                       f"Third party rule hits did not contain valid keys {required_keys}",
+                       payload_info)
+        logger.error(f"Third party rule hits did not contain valid keys {required_keys}")
+        return False
+
+    # Start operation tracking with full context
+    rule_hits_started = start_operation_tracking(
+        'rule_hits',
+        request_id='third-party',
+        inventory_id=rule_hits_json['inventory_id'],
+        source=rule_hits_json['source'],
+        account=rule_hits_json.get('account'),
+        org_id=rule_hits_json['org_id']
+    )
+    payload_tracker.payload_status('processing', 'Beginning rule hit analysis.')
+
+    rule_hits_json['host_role'] = rule_hits_json['host_role'].lower()
+    rule_hits_json['host_product'] = rule_hits_json['host_product'].lower()
+    system_type = get_system_type_or_fail(
+        'rule_hits',
+        rule_hits_started,
+        rule_hits_json['host_role'],
+        rule_hits_json['host_product']
+    )
+
+    if not system_type:
+        return False
+
+    logger.debug(
+        "Valid system type found for system type:%s, system product:%s.",
+        rule_hits_json['host_product'],
+        rule_hits_json['host_role']
+    )
+
+    logger.debug("Generating reports for Inventory ID:%s, Account:%s, Org ID: %s.",
+                rule_hits_json['inventory_id'], rule_hits_json.get('account'), rule_hits_json['org_id'])
+    payload_tracker.payload_status('processing', 'Creating reports.')
+    if create_db_reports(rule_hits_json['hits'], rule_hits_json['inventory_id'],
+                      rule_hits_json.get('account'), rule_hits_json['org_id'],
+                      system_type, rule_hits_json['source']):
+        track_operation_success('rule_hits', rule_hits_started)
+    else:
+        track_operation_failure('rule_hits', rule_hits_started, "Error processing third party rule hits.")
+        extra_info = {}
+        for key in required_keys:
+            if key in rule_hits_json:
+                extra_info[key] = rule_hits_json[key]
+        logger.error("Error processing third party rule hits.", extra=extra_info)
+    return True
+
+
+#############################################################################
+@prometheus.INSIGHTS_ADVISOR_SERVICE_DB_ELAPSED.time()
+def create_db_reports(
+    reports, inventory_uuid, account, org_id, system_type, source,
+    satellite_managed=None, satellite_id=None, branch_id=None,
+):
+    """
+    Create all the reports for a given inventory host from engine results or rule hits.
+
+    This function:
+    - Creates/updates Host records
+    - Creates/updates Upload records
+    - Creates/updates CurrentReport records
+    - Handles autoack logic for new accounts
+    - Filters reports by RHEL version
+    - Triggers webhooks and remediations
+    """
+    # Satisfy the DB's requirement that this field be a non-null boolean
+    if not satellite_managed:
+        satellite_managed = False
+    else:
+        satellite_managed = True
+
+    new_report_objs = []
+    existing_report_objs = []
+    webhook_report_rule_objs = []
+
+    # Start tracking database operations with context
+    db_started = start_operation_tracking(
+        'db',
+        inventory_id=inventory_uuid,
+        account=account,
+        org_id=org_id,
+        source=source
+    )
+
+    logger.debug(f"Retrieving upload source type for {source}")
+    upload_source = None
+    upload_source_created = None
+
+    def log_db_failure(message, get_exception=False):
+        if get_exception:
+            the_error = traceback.format_exc()
+            message += f': {the_error}'
+        track_operation_failure('db', db_started, message)
+        prometheus.INSIGHTS_ADVISOR_DB_ERRORS.inc()
+        payload_tracker.payload_status('error', message)
+        logger.error(message)
+
+    # Create/Update Host information
+    try:
+        # search for an existing host
+        host_obj = Host.objects.filter(inventory_id=inventory_uuid).first()
+
+        def update_host(host_obj, **kwargs):
+            """
+            Update the host with a set of key=value pairs.  If the field value
+            is different from the key value, the host_obj's field is updated.
+            A list of updated fields is returned.
+            """
+            updated_fields = list()
+            for key, value in kwargs.items():
+                if value and getattr(host_obj, key) != value:
+                    setattr(host_obj, key, value)
+                    updated_fields.append(key)
+            return updated_fields
+
+        # if no host was found, create a new one
+        if not host_obj:
+            # Good point to check if this is a new account and if so, add
+            # autoacked rules for them.  We assume a new account if no
+            # existing (current) uploads from that account.  Since the latest
+            # upload is always the current one, the only situation in which
+            # an account can have only non-current uploads is if they send a
+            # delete for every single host they have; here, and in the
+            # sat-compat API, we only delete current uploads, not historic.
+            # However, since we only create the acks if they don't already
+            # exist, we don't need to worry about that rare case.
+            if not Upload.objects.filter(org_id=org_id, current=True).exists():
+                logger.debug(
+                    "No uploads for account %s org_id %s - assuming new account, creating autoacks",
+                    account, org_id
+                )
+                new_acks = []
+                autoack_rules = Rule.objects.filter(
+                    tags__name=settings.AUTOACK['TAG'], ack__isnull=True
+                )
+                for autoack_rule in autoack_rules:
+                    new_acks.append(Ack(
+                        rule=autoack_rule, account=account, org_id=org_id,
+                        justification=settings.AUTOACK['JUSTIFICATION'],
+                        created_by=settings.AUTOACK['CREATED_BY']
+                    ))
+                if new_acks:
+                    Ack.objects.bulk_create(new_acks)
+                    logger.debug("Created %d new acks", len(new_acks))
+
+            host_obj = Host(inventory_id=inventory_uuid, account=account, org_id=org_id)
+            update_host(
+                host_obj,
+                satellite_id=satellite_id, branch_id=branch_id
+            )
+            host_obj.save()
+
+        # if a host object was found and we are updating information
+        elif host_obj:
+            updated_fields = update_host(
+                host_obj,
+                satellite_id=satellite_id, branch_id=branch_id
+            )
+
+            if updated_fields:
+                host_obj.save(update_fields=updated_fields)
+
+    except Exception:
+        log_db_failure('Could not create host', get_exception=True)
+        return False
+
+    try:
+        with transaction.atomic():
+            # lock on system uuid to avoid race conditions
+            Host.objects.select_for_update().get(inventory_id=inventory_uuid)
+
+            # Get the current reports before we archive them
+            # so that we can filter for webhooks
+            db_reports = CurrentReport.objects.filter(
+                host=inventory_uuid, org_id=org_id
+            ).order_by('rule__rule_id')
+            db_report_values = list(db_reports.values(
+                'id', 'rule_id', 'rule__active', 'rule__total_risk',
+                'rule__description', 'rule__publish_date', 'rule__rule_id',
+                'rule__reboot_required', 'impacted_date'
+            ).annotate(
+                has_incident=Exists(Rule.objects.filter(
+                    id=OuterRef('rule'), tags__name='incident'))
+            ))
+            logger.debug("Got DB reports %s", db_report_values)
+
+            upload_source, upload_source_created = UploadSource.objects.get_or_create(name=source)
+
+            if not upload_source:
+                raise Exception('upload source is missing')
+
+            # Update existing or create new upload
+            upload, created = Upload.objects.update_or_create(
+                host_id=inventory_uuid,
+                org_id=org_id,
+                source=upload_source,
+                defaults={
+                    'account': account,
+                    'checked_on': timezone.now(),
+                    'is_satellite': satellite_managed,
+                    'system_type': system_type
+                }
+            )
+            message = "Created new" if created else "Updated existing"
+            logger.debug(
+                f"{message} upload for system UUID (inventory ID) "
+                f"{inventory_uuid} with ID {upload.id} ready for (up to) "
+                f"{len(reports)} reports"
+            )
+
+            # Filter out reports/rules for non-rhel systems (if turned on)
+            report_rule_ids = [x['rule_id'] for x in reports]
+            logger.debug("Getting report rule IDs %s", report_rule_ids)
+            if settings.FILTER_OUT_NON_RHEL:
+                if any(r_id in settings.FILTER_OUT_NON_RHEL_RULE_ID for r_id in report_rule_ids):
+                    logger.debug("Filtering out non rhel rule id %s",
+                                 settings.FILTER_OUT_NON_RHEL_RULE_ID)
+                    report_rule_ids = settings.FILTER_OUT_NON_RHEL_RULE_ID
+
+            # Filter out reports/rules for RHEL6 systems to only include ones to upgrade
+            if settings.FILTER_OUT_RHEL6:
+                reported_rhel6_rules = list(set(report_rule_ids).intersection(set(settings.FILTER_OUT_RHEL6_RULE_IDS)))
+                if reported_rhel6_rules:
+                    logger.debug("Filtering out rhel6 rule id %s", reported_rhel6_rules)
+                    report_rule_ids = reported_rhel6_rules
+
+            logger.debug("Final report rule IDs %s", report_rule_ids)
+            report_rules = Rule.objects.filter(rule_id__in=report_rule_ids).values(
+                'id', 'rule_id', 'active', 'total_risk', 'description',
+                'publish_date', 'reboot_required'
+            ).annotate(
+                has_incident=Exists(Rule.objects.filter(id=OuterRef('id'), tags__name='incident'))
+            ).order_by('rule_id')
+            logger.debug("Report rules from database %s", report_rules)
+            report_rules_map = dict((i['rule_id'], i) for i in report_rules)
+            logger.debug("Report rules map %s", report_rules_map)
+
+            now = timezone.now()
+            db_report_rules = [dbr['rule_id'] for dbr in db_report_values]
+            for report in reports:
+                # Get rule object for report
+                if report['rule_id'] in report_rules_map:
+                    rule = report_rules_map[report['rule_id']]
+                    logger.debug(f"Using rule: {rule}")
+
+                    # Get the impacted_date for this report rule from the DB
+                    # If it exists and isn't None, use its impacted date for the new report, otherwise use now()
+                    impacted_date = now
+                    db_report_impacted_date = [dbr['impacted_date'] for dbr in db_report_values
+                                               if dbr['rule_id'] == rule['id']]
+                    if db_report_impacted_date and db_report_impacted_date[0]:
+                        impacted_date = db_report_impacted_date[0]
+
+                    created = True
+                    report_obj = CurrentReport(
+                        rule_id=rule['id'], upload=upload, details=report["details"],
+                        host_id=inventory_uuid, account=account, org_id=org_id,
+                        impacted_date=impacted_date)
+
+                    if rule['id'] in db_report_rules:
+                        created = False
+                        existing_report_objs.append(report_obj)
+                    else:
+                        new_report_objs.append(report_obj)
+
+                    logger.debug("%s current report object rule_id: %s, "
+                                 "inventory_id: %s, account: %s, org_id: %s",
+                                 "Creating" if created else "Updating", rule['rule_id'], inventory_uuid, account, org_id)
+                    if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+                        webhook_report_rule_objs.append(rule)
+                else:
+                    logger.debug(
+                        f"Rule {report['rule_id']} not found in DB - content refresh needed!")
+                    prometheus.INSIGHTS_ADVISOR_MISSING_CONTENT.inc()
+            logger.debug("Final generated reports %s", new_report_objs + existing_report_objs)
+            num_report_objs = len(new_report_objs) + len(existing_report_objs)
+
+            # Bulk insert new reports
+            CurrentReport.objects.bulk_create(new_report_objs)
+            # Update existing reports
+            for existing_report in existing_report_objs:
+                CurrentReport.objects.filter(
+                    rule_id=existing_report.rule_id,
+                    host_id=existing_report.host_id,
+                    account=existing_report.account,
+                    org_id=existing_report.org_id
+                ).update(
+                    upload=existing_report.upload,
+                    details=existing_report.details,
+                    impacted_date=existing_report.impacted_date
+                )
+            # And (bulk) delete any db_reports that weren't in the report
+            delete_db_reports = [dbr['rule__rule_id'] for dbr in db_report_values
+                                 if dbr['rule__rule_id'] not in report_rule_ids]
+            if delete_db_reports:
+                logger.debug("Deleting current report object(s) rule_id(s): %s, "
+                             "inventory_id: %s, account: %s, org_id: %s",
+                             delete_db_reports, inventory_uuid, account, org_id)
+                db_reports.filter(rule__rule_id__in=delete_db_reports).delete()
+
+            # Trigger the webhook report comparisons
+            # figure out which reports are NEW
+            # figure out which reports are resolved
+            if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+                # Fetch some of these fields from the InventoryHost object
+                # Catch errors and do not fail entire upload on this
+                try:
+                    report_hooks.trigger_report_hooks(
+                        host_obj.inventory, webhook_report_rule_objs, db_report_values
+                    )
+                except:
+                    logger.exception("Error sending Report Hooks",
+                                     extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id})
+                    the_error = traceback.format_exc()
+                    payload_tracker.payload_status('error', the_error)
+
+            # update prometheus stats
+            prometheus.INSIGHTS_ADVISOR_SUCCESSFUL_REQUESTS.inc()
+
+            # Track successful completion
+            track_operation_success('db', db_started)
+            db_elapsed = thread_storage.get_value('db_elapsed')
+            payload_msg = f'Successfully logged {num_report_objs} reports.'
+            payload_tracker.payload_status('success', payload_msg)
+            logger.info(
+                f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
+                f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
+                extra={'db_duration': db_elapsed})
+    except Exception:
+        log_db_failure("Failed to process upload", get_exception=True)
+        return False
+    return True
+
+
+#############################################################################
+# Helper functions for thread pool integration
+
+
+def make_async_handler(handler_func, executor):
+    """
+    Wraps a handler to submit it to the thread pool executor.
+    Handler executes asynchronously while wrapper returns immediately.
+    """
+    def wrapped_handler(topic, message):
+        def task_with_cleanup(topic, message):
+            # Clear thread-local storage before each task to prevent data leakage
+            # between tasks when threads are reused by the pool
+            thread_storage.thread_storage_object.__dict__.clear()
+            return handler_func(topic, message)
+
+        future = executor.submit(task_with_cleanup, topic, message)
+        future.add_done_callback(on_thread_done)
+        logger.debug("Submitted %s to executor", handler_func.__name__)
+    return wrapped_handler
+
+
+def on_thread_done(future):
+    """Callback for completed futures to catch exceptions"""
+    try:
+        future.result()
+    except Exception:
+        logger.exception("Future %s hit exception", future)
+
+
 # Main command
 
 
 class Command(BaseCommand):
-    help = "Manage InventoryHost table replication from Inventory Event messages"
+    help = "Advisor service for processing engine results, rule hits, and inventory events"
 
     def handle(self, *args, **options):
         """
-        Run the handler loop continuously until interrupted by SIGTERM.
+        Run the Advisor service continuously until interrupted by SIGTERM.
         """
-        logger.info('Advisor Inventory replication service starting up')
+        # Initialize logging
+        logger.info('Advisor Service starting up')
 
+        # Log build information for Prometheus
+        prometheus.ADVISOR_SERVICE_VERSION.info(build_info.get_build_info())
+
+        # Initialize thread pool executor
+        executor = BoundedExecutor(0, settings.THREAD_POOL_SIZE)
+        logger.info('Started thread pool with %d workers', settings.THREAD_POOL_SIZE)
+
+        # Start Prometheus server if enabled
+        if not settings.DISABLE_PROMETHEUS:
+            logger.debug('Starting Prometheus server')
+            future = executor.submit(prometheus.start_prometheus)
+            future.add_done_callback(on_thread_done)
+
+        # Setup initial prometheus metrics
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('starting')
+        prometheus.INSIGHTS_ADVISOR_UP.set(1)
+
+        # Create Kafka dispatcher
         receiver = KafkaDispatcher()
-        receiver.register_handler(kafka_settings.INVENTORY_TOPIC, handle_inventory_event)
 
-        def terminate(signum: int, _):
+        # Register async handlers (wrapped to use thread pool)
+        receiver.register_handler(
+            kafka_settings.ENGINE_RESULTS_TOPIC,
+            make_async_handler(handle_engine_results, executor)
+        )
+        receiver.register_handler(
+            kafka_settings.RULE_HITS_TOPIC,
+            make_async_handler(handle_rule_hits, executor)
+        )
+        receiver.register_handler(
+            kafka_settings.INVENTORY_TOPIC,
+            make_async_handler(handle_inventory_event, executor)
+        )
+
+        # Setup signal handlers
+        def terminate(signum, _):
             logger.info("Signal %d received, triggering shutdown", signum)
             receiver.quit = True
 
-        _ = signal.signal(signal.SIGTERM, terminate)
-        _ = signal.signal(signal.SIGINT, terminate)
+        signal.signal(signal.SIGTERM, terminate)
+        signal.signal(signal.SIGINT, terminate)
 
-        # Loops until receiver.quit is set
+        # Run receiver loop
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('running')
         receiver.receive()
-        logger.info('Advisor Inventory replication service shutting down')
+
+        # Cleanup
+        prometheus.INSIGHTS_ADVISOR_UP.set(0)
+        prometheus.INSIGHTS_ADVISOR_STATUS.state('stopped')
+        executor.shutdown()
+
+        logger.info('Advisor Service shutting down')

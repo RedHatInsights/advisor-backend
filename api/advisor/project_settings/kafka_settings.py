@@ -56,10 +56,10 @@ else:
     ENGINE_RESULTS_TOPIC = os.environ.get('ENGINE_RESULTS_TOPIC', 'platform.engine.results')
     INVENTORY_EVENTS_TOPIC = os.environ.get('INVENTORY_EVENTS_TOPIC', 'platform.inventory.events')
     RULE_HITS_TOPIC = os.environ.get('RULE_HITS_TOPIC', 'platform.insights.rule-hits')
-    PAYLOAD_TRACKER_TOPIC = os.environ.get('PAYLOAD_TRACKER_TOPIC')
+    PAYLOAD_TRACKER_TOPIC = os.environ.get('PAYLOAD_TRACKER_TOPIC', 'platform.payload-status')
     REMEDIATIONS_HOOK_TOPIC = os.environ.get('REMEDIATIONS_HOOK_TOPIC',
                                              'platform.remediation-updates.advisor')
-    WEBHOOKS_TOPIC = os.environ.get('WEBHOOKS_TOPIC')
+    WEBHOOKS_TOPIC = os.environ.get('WEBHOOKS_TOPIC', 'hooks.outbox')
     TASKS_UPDATES_TOPIC = os.environ.get('TASKS_UPDATES_TOPIC', 'platform.playbook-dispatcher.runs')
     TASKS_SOURCES_TOPIC = os.environ.get('TASKS_SOURCES_TOPIC', 'platform.sources.event-stream')
     TASKS_UPLOAD_TOPIC = os.environ.get('TASKS_UPLOAD_TOPIC', 'platform.upload.announce')

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tasks.tests.test_splunk_log.SplunkTestCase-20260216001056" tests="1" file="tasks/tests/test_splunk_log.py" time="0.003" timestamp="2026-02-16T00:12:25" failures="0" errors="0" skipped="0">
+	<testcase classname="tasks.tests.test_splunk_log.SplunkTestCase" name="test_splunk_body_format" time="0.003" timestamp="2026-02-16T00:12:25" file="api/advisor/tasks/tests/test_splunk_log.py" line="27"/>
+</testsuite>

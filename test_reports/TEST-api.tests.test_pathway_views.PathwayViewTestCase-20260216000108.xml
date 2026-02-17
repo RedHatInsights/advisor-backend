@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_pathway_views.PathwayViewTestCase-20260216000108" tests="9" file="api/tests/test_pathway_views.py" time="5.767" timestamp="2026-02-16T00:01:53" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_filters" time="3.230" timestamp="2026-02-16T00:01:50" file="api/advisor/api/tests/test_pathway_views.py" line="167"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_list" time="0.325" timestamp="2026-02-16T00:01:51" file="api/advisor/api/tests/test_pathway_views.py" line="48"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_report_filters" time="0.090" timestamp="2026-02-16T00:01:51" file="api/advisor/api/tests/test_pathway_views.py" line="650"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_retrieve" time="0.100" timestamp="2026-02-16T00:01:51" file="api/advisor/api/tests/test_pathway_views.py" line="35"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_rule_category" time="0.205" timestamp="2026-02-16T00:01:51" file="api/advisor/api/tests/test_pathway_views.py" line="556"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_rule_systems" time="0.049" timestamp="2026-02-16T00:01:51" file="api/advisor/api/tests/test_pathway_views.py" line="606"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_rules" time="0.127" timestamp="2026-02-16T00:01:51" file="api/advisor/api/tests/test_pathway_views.py" line="516"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_sorting" time="1.121" timestamp="2026-02-16T00:01:52" file="api/advisor/api/tests/test_pathway_views.py" line="90"/>
+	<testcase classname="api.tests.test_pathway_views.PathwayViewTestCase" name="test_pathway_systems" time="0.519" timestamp="2026-02-16T00:01:53" file="api/advisor/api/tests/test_pathway_views.py" line="467"/>
+</testsuite>

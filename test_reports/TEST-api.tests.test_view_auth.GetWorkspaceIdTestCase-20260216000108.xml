@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_view_auth.GetWorkspaceIdTestCase-20260216000108" tests="2" file="api/tests/test_view_auth.py" time="0.026" timestamp="2026-02-16T00:02:24" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_view_auth.GetWorkspaceIdTestCase" name="test_get_workspace_id_failures" time="0.022" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_view_auth.py" line="554"/>
+	<testcase classname="api.tests.test_view_auth.GetWorkspaceIdTestCase" name="test_workspace_id_cached" time="0.004" timestamp="2026-02-16T00:02:24" file="api/advisor/api/tests/test_view_auth.py" line="661"/>
+</testsuite>

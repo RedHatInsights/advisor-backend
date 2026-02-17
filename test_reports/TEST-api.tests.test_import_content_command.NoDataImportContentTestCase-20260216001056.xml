@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content_command.NoDataImportContentTestCase-20260216001056" tests="9" file="api/tests/test_import_content_command.py" time="1.816" timestamp="2026-02-16T00:11:27" failures="0" errors="0" skipped="1">
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_basic_import_rule_config" time="0.122" timestamp="2026-02-16T00:11:26" file="api/advisor/api/tests/test_import_content_command.py" line="260"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_basic_import_rule_content" time="0.149" timestamp="2026-02-16T00:11:26" file="api/advisor/api/tests/test_import_content_command.py" line="275"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_content_dump_load" time="0.210" timestamp="2026-02-16T00:11:26" file="api/advisor/api/tests/test_import_content_command.py" line="511"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_content_dump_load_compressed" time="0.222" timestamp="2026-02-16T00:11:26" file="api/advisor/api/tests/test_import_content_command.py" line="560"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_content_dump_load_compressed_from_url" time="0.386" timestamp="2026-02-16T00:11:27" file="api/advisor/api/tests/test_import_content_command.py" line="677"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_content_dump_load_from_url" time="0.231" timestamp="2026-02-16T00:11:27" file="api/advisor/api/tests/test_import_content_command.py" line="609"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_content_load_from_url_failures" time="0.056" timestamp="2026-02-16T00:11:27" file="api/advisor/api/tests/test_import_content_command.py" line="782"/>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_content_update" time="0.433" timestamp="2026-02-16T00:11:27" file="api/advisor/api/tests/test_import_content_command.py" line="426">
+		<!--
+        Test updates to content.
+        -->
+	</testcase>
+	<testcase classname="api.tests.test_import_content_command.NoDataImportContentTestCase" name="test_autoack_import" time="0.006" timestamp="2026-02-16T00:11:26" file="api/advisor/api/tests/test_import_content_command.py" line="330">
+		<skipped type="skip" message="No hosts available to create auto-acks for"/>
+	</testcase>
+</testsuite>

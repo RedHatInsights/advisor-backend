@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_import_content.ImportContentPathways-20260216001056" tests="3" file="api/tests/test_import_content.py" time="0.941" timestamp="2026-02-16T00:11:18" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_import_content.ImportContentPathways" name="test_default_pathways" time="0.003" timestamp="2026-02-16T00:11:17" file="api/advisor/api/tests/test_import_content.py" line="1631"/>
+	<testcase classname="api.tests.test_import_content.ImportContentPathways" name="test_importing_modified_pathway" time="0.364" timestamp="2026-02-16T00:11:18" file="api/advisor/api/tests/test_import_content.py" line="1699"/>
+	<testcase classname="api.tests.test_import_content.ImportContentPathways" name="test_importing_pathways" time="0.575" timestamp="2026-02-16T00:11:18" file="api/advisor/api/tests/test_import_content.py" line="1648"/>
+</testsuite>

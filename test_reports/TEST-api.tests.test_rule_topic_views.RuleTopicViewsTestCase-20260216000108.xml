@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rule_topic_views.RuleTopicViewsTestCase-20260216000108" tests="8" file="api/tests/test_rule_topic_views.py" time="0.661" timestamp="2026-02-16T00:02:02" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_enable_disable_topic" time="0.277" timestamp="2026-02-16T00:02:01" file="api/advisor/api/tests/test_rule_topic_views.py" line="107"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_rules_with_tag" time="0.080" timestamp="2026-02-16T00:02:01" file="api/advisor/api/tests/test_rule_topic_views.py" line="361"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_create_destroy" time="0.110" timestamp="2026-02-16T00:02:02" file="api/advisor/api/tests/test_rule_topic_views.py" line="208"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_detail" time="0.028" timestamp="2026-02-16T00:02:02" file="api/advisor/api/tests/test_rule_topic_views.py" line="89"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_list" time="0.030" timestamp="2026-02-16T00:02:02" file="api/advisor/api/tests/test_rule_topic_views.py" line="48"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_list_system_profile_filter" time="0.026" timestamp="2026-02-16T00:02:02" file="api/advisor/api/tests/test_rule_topic_views.py" line="71"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_systems" time="0.047" timestamp="2026-02-16T00:02:02" file="api/advisor/api/tests/test_rule_topic_views.py" line="170"/>
+	<testcase classname="api.tests.test_rule_topic_views.RuleTopicViewsTestCase" name="test_topic_update" time="0.063" timestamp="2026-02-16T00:02:02" file="api/advisor/api/tests/test_rule_topic_views.py" line="306"/>
+</testsuite>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.tests.test_rule_models.RuleTestCase-20260216000108" tests="12" file="api/tests/test_rule_models.py" time="0.511" timestamp="2026-02-16T00:01:59" failures="0" errors="0" skipped="0">
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_active_rule_properties" time="0.059" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="42"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_active_rules_have_active_Tag" time="0.095" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="142"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_deleted_rule_properties" time="0.028" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="93"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_deleting_ruleset_deletes_all_rules" time="0.041" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="248"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_inactive_rule_properties" time="0.021" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="83"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_other_rule_properties" time="0.024" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="103"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_paranoia" time="0.029" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="205"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_rule_for_account_annotations" time="0.058" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="151"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_rule_relations" time="0.031" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="107"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_rules_have_correct_total_risk" time="0.045" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="129"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_rules_have_resolutions" time="0.052" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="119"/>
+	<testcase classname="api.tests.test_rule_models.RuleTestCase" name="test_timestamps" time="0.028" timestamp="2026-02-16T00:01:59" file="api/advisor/api/tests/test_rule_models.py" line="167"/>
+</testsuite>

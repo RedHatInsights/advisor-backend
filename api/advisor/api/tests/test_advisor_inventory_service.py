@@ -25,7 +25,8 @@ from feature_flags import set_unleash_flag, FLAG_INVENTORY_EVENT_REPLICATION
 from kafka_utils import JsonValue
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    handle_inventory_event, handle_created_event, handle_deleted_event
+    handle_inventory_event, handle_created_event, handle_deleted_event,
+    get_system_type_or_fail
 )
 from api.models import CurrentReport, Host, HostAck, InventoryHost, Upload
 from api.tests import constants
@@ -178,6 +179,19 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertEqual(len(logs.output), 2)
         # Test the actual calls to create and delete in their own test methods.
 
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, False)
+    def test_message_dispatch_no_unleash_flag(self):
+        """
+        Test that the handle_inventory_event function dispatches messages
+        correctly.
+        """
+        with self.assertLogs(logger='advisor-log') as logs:
+            handle_inventory_event('topic', create_new_host_msg)
+            self.assertEqual(
+                f"INFO:advisor-log:Received Inventory {create_new_host_msg['type']} event for {new_host_id} - feature flag not enabled, ignoring",
+                logs.output[0]
+            )
+
     @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_created_message_success(self):
         """
@@ -186,10 +200,7 @@ class TestAdvisorInventoryServer(TestCase):
         # Start by processing the create message using handle_inventory_event
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             handle_inventory_event('topic', create_new_host_msg)
-            # We aim to remove this debug log soon but in the meantime
-            log_lines: list[str] = list(filter(
-                lambda line: 'Using Cyndi replication view' not in line, logs.output
-            ))
+            log_lines: list[str] = logs.output
             self.assertEqual(
                 "INFO:advisor-log:Handling 'created' event",
                 log_lines[0]
@@ -464,3 +475,22 @@ class TestAdvisorInventoryServer(TestCase):
                     f"Field {missing_field} is required"
                 )
                 self.assertEqual(len(log_lines), 2)
+
+
+class TestGetSystemTypeOrFail(TestCase):
+    fixtures = ['system_types', ]
+
+    def test_get_system_type_or_fail(self):
+        # Test with valid system type
+        system_type = get_system_type_or_fail('foo', 1.0, product_code='rhel', role='host')
+        self.assertIsNotNone(system_type)
+        self.assertEqual(system_type.product_code, 'rhel')
+        self.assertEqual(system_type.role, 'host')
+
+        # Test with invalid system type
+        system_type = get_system_type_or_fail('foo', 1.0, 'linux', 'system')
+        self.assertIsNone(system_type)
+        # Check the rest of the things that happen in the failure mode?
+        # track_operation_failure
+        # logger.error
+        # payload_tracker.payload_status
