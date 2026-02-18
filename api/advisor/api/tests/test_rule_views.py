@@ -1485,8 +1485,8 @@ class RuleTestCase(TestCase):
         # only those that exist and have hits.
         response = self.client.get(
             reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
-            data={'rhel_version': '7.1,7.2,7.3,7.4,7.5,7.6,7.7,7.8,7.9,7.10,8.10,9.8,10.0,10.2'},
-            **auth_header_for_testing()
+            data={'rhel_version': '7.0,7.1,7.2,7.3,7.4,7.5,7.6,7.7,7.8,7.9,7.10,8.0,8.10,9.0,9.10,10.0,10.10,11.0'},
+            **self.default_header
         )
         self.assertEqual(response.status_code, 200, response.content.decode())
         self.assertEqual(response.accepted_media_type, constants.json_mime)
@@ -1502,6 +1502,46 @@ class RuleTestCase(TestCase):
         self.assertEqual(hosts[3]['display_name'], constants.host_04_name)
         # Note that we're only seeing hits for the active rule, so system 5,
         # which is on RHEL 7.1, is not seen here.
+        self.assertEqual(len(hosts), 4)
+
+        # Test invalid rhel_version format - should return a 400
+        response = self.client.get(
+            reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
+            data={'rhel_version': '7.5,foo.bar'},
+            **self.default_header
+        )
+        error = response.content.decode()
+        self.assertEqual(response.status_code, 400, error)
+        self.assertIn("The value did not match the pattern", error)
+
+        # Test rhel_version format that is valid but doesn't match any of our systems - should return an empty list, not an error
+        response = self.client.get(
+            reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
+            data={'rhel_version': '200.0,0.002'},
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        page = response.json()
+        hosts = page['data']
+        self.assertIsInstance(hosts, list)
+        self.assertEqual(len(hosts), 0)
+
+    def test_systems_detail_for_a_rule_system_type_filter(self):
+        # Test for 'conventional' systems, should exclude edge and bootc.
+        response = self.client.get(
+            reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
+            data={'system_type': 'conventional'},
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        page = response.json()
+        self.assertIn('data', page)
+        hosts = page['data']
+        self.assertIsInstance(hosts, list)
+        self.assertEqual(hosts[0]['system_uuid'], constants.host_06_uuid)
+        self.assertEqual(hosts[1]['system_uuid'], constants.host_01_uuid)
+        self.assertEqual(hosts[2]['system_uuid'], constants.host_03_uuid)
+        self.assertEqual(hosts[3]['system_uuid'], constants.host_04_uuid)
         self.assertEqual(len(hosts), 4)
 
     def test_systems_for_a_rule_acked(self):
