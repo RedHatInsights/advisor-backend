@@ -26,15 +26,15 @@ import prometheus
 from confluent_kafka import Producer
 
 # Import kafka stuff
-import project_settings.kafka_settings as kafka_settings
+from project_settings.settings import PAYLOAD_TRACKER_TOPIC, KAFKA_SETTINGS
 
 logger = logging.getLogger(settings.APP_NAME)
 
 # Setup producer to communicate with payload tracker
 p = None
-if kafka_settings.PAYLOAD_TRACKER_TOPIC:
-    logger.debug(f"Creating producer for payload tracker topic {kafka_settings.PAYLOAD_TRACKER_TOPIC}.")
-    p = Producer(kafka_settings.KAFKA_SETTINGS)
+if PAYLOAD_TRACKER_TOPIC:
+    logger.debug(f"Creating producer for payload tracker topic {PAYLOAD_TRACKER_TOPIC}.")
+    p = Producer(KAFKA_SETTINGS)
 
 
 def payload_delivery_report(err, msg):
@@ -49,7 +49,7 @@ def payload_delivery_report(err, msg):
 
 
 def bad_payload(source, payload_message, optional_status_msg=None):
-    if p is not None and kafka_settings.PAYLOAD_TRACKER_TOPIC:
+    if p is not None and PAYLOAD_TRACKER_TOPIC:
         try:
             json_msg = json.loads(payload_message.decode('unicode_escape').strip('"'))
             if json_msg.get('request_id'):
@@ -71,7 +71,7 @@ def bad_payload(source, payload_message, optional_status_msg=None):
                     'date': str(current_time)
                 })
                 logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
-                p.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
+                p.produce(PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
                             callback=payload_delivery_report)
                 p.flush()
         except Exception:
@@ -79,7 +79,7 @@ def bad_payload(source, payload_message, optional_status_msg=None):
 
 
 def payload_status(payload_status, payload_status_msg, payload_info=None):
-    if p is not None and kafka_settings.PAYLOAD_TRACKER_TOPIC:
+    if p is not None and PAYLOAD_TRACKER_TOPIC:
         payload_msg = {
             'service': settings.APP_NAME,
             'status': payload_status,
@@ -99,7 +99,7 @@ def payload_status(payload_status, payload_status_msg, payload_info=None):
         payload_msg = json.dumps(payload_msg)
         logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
         try:
-            p.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
+            p.produce(PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
                         callback=payload_delivery_report)
             p.flush()
         except Exception:

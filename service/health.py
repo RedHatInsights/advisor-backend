@@ -33,8 +33,10 @@ django.setup()
 import api.models as db  # noqa
 
 # Import Kafka stuff
-import project_settings.kafka_settings as kafka_settings
-kafka_settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
+from project_settings.settings import (
+    KAFKA_SETTINGS, ENGINE_RESULTS_TOPIC
+)
+KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
 
 # Setup logging
 advisor_logging.initialize_logging()
@@ -90,10 +92,10 @@ def check_kafka_connection():
             logger.debug('Kafka connection attempt %s', (count + 1))
             # Setup Consumer
             # Not sure if we can dynamically toggle SSL so we have to get dirty with instantiation
-            c = Consumer(kafka_settings.KAFKA_SETTINGS)
+            c = Consumer(KAFKA_SETTINGS)
 
-            topics = c.list_topics(kafka_settings.ENGINE_RESULTS_TOPIC, timeout=KAFKA_SOCKET_TIMEOUT_MS)
-            logger.debug('Topic info found for %s: %s', kafka_settings.ENGINE_RESULTS_TOPIC, topics)
+            topics = c.list_topics(ENGINE_RESULTS_TOPIC, timeout=KAFKA_SOCKET_TIMEOUT_MS)
+            logger.debug('Topic info found for %s: %s', ENGINE_RESULTS_TOPIC, topics)
             return
         except:
             error_msg = traceback.format_exc()
