@@ -1008,19 +1008,6 @@ class Pathway(ExportModelOperationsMixin('pathway'), models.Model):
     def pathway_rules(self):
         return self.rule_set.filter(active=True).order_by('id')
 
-    @property
-    def pathway_rule_count(self):
-        return self.pathway_rules.count()
-
-    @property
-    def pathway_categories(self):
-        return RuleCategory.objects.filter(
-            id__in=self.pathway_rules.values('category_id')).order_by('id')
-
-    @property
-    def pathway_category_count(self):
-        return self.pathway_categories.count()
-
     """
     These fields are specific to a Pathway and the
     account in question. They all take into account
@@ -1038,18 +1025,12 @@ class Pathway(ExportModelOperationsMixin('pathway'), models.Model):
         # show impacted systems counts etc.
         return Rule.objects.for_account(request).filter(pathway=self).order_by('id')
 
-    def rules_count(self, request):
-        return self.rules(request).count()
-
     def categories(self, request):
         # If filtering on category, only return pathway categories that are in the filter
         category_ids = self.rules(request).filter(
             filter_on_param('category_id', category_query_param, request)
         ).order_by().values('category_id').distinct()
         return RuleCategory.objects.filter(id__in=category_ids).order_by('id')
-
-    def categories_count(self, request):
-        return self.categories(request).count()
 
     def impacted_systems(self, request):
         if self.impacted_systems_count:
@@ -1059,9 +1040,6 @@ class Pathway(ExportModelOperationsMixin('pathway'), models.Model):
             return filtered_systems_queryset
         else:
             return InventoryHost.objects.none()
-
-    def has_incident(self):
-        return self.rule_set.filter(active=True, tags__name='incident').exists()
 
     def __str__(self):
         return self.name
