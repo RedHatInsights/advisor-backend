@@ -464,6 +464,7 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         etserializer.is_valid(raise_exception=True)
 
         user = request.auth['user']['username']
+        user_id = request.auth['user'].get('user_id', '')
         is_org_admin = request.auth['user'].get('is_org_admin', False)
         org_id = request.auth['org_id']
         validated_data = etserializer.validated_data
@@ -521,7 +522,8 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
             now = timezone.now()
             # Create the executed task (need this for the token)
             extask = ExecutedTask(
-                name=name, task=task, initiated_by=user, is_org_admin=is_org_admin,
+                name=name, task=task, initiated_by=user, user_id=user_id,
+                is_org_admin=is_org_admin,
                 start_time=now, org_id=org_id, status=ExecutedTaskStatusChoices.RUNNING
             )
             extask.save()

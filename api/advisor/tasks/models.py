@@ -68,6 +68,12 @@ class ExecutedTask(models.Model):
     task = models.ForeignKey('Task', on_delete=models.CASCADE)
     org_id = models.CharField(max_length=50)
     initiated_by = models.CharField(help_text='username', max_length=80)
+    user_id = models.CharField(
+        help_text='user_id',
+        max_length=50,
+        null=True,
+        blank=True,
+        default=None,)
     is_org_admin = models.BooleanField(default=False)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(null=True)

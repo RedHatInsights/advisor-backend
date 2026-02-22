@@ -239,6 +239,7 @@ def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] 
     if not auth_header:
         auth_header = auth_header_for_testing(
             username=job.executed_task.initiated_by,
+            user_id=job.executed_task.user_id or None,
             org_id=job.executed_task.org_id,
             supply_http_header=True,
         )
