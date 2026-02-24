@@ -273,7 +273,7 @@ class constants(object):
     csv_mime = 'text/csv'
     rhel_release = 'Red Hat Enterprise Linux Server'
     read_timeout_errmsg = "ERROR:advisor-log:Error: Timed out reached for middleware: 'Read timed out'"
-    default_from_email = 'Red Hat Hybrid Cloud Console <noreply@redhat.com>'
+    default_from_email = '"Red Hat Hybrid Cloud Console" noreply@redhat.com'
 
     # Auto sub exclusion constants
     first_exclusion = {
