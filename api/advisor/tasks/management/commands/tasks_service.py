@@ -231,15 +231,6 @@ def fetch_playbook_dispatcher_stdout(job, auth_header: Optional[dict[str, str]] 
     You get back the stdout text.
     """
     # Only works if Playbook Dispatcher is actually available and we can use the PSK
-    if settings.PLAYBOOK_DISPATCHER_URL:
-        logger.info("In fetch_playbook_dispatcher_stdout, PLAYBOOK_DISPATCHER_URL is %s",
-                    settings.PLAYBOOK_DISPATCHER_URL)
-    else:
-        logger.info("In fetch_playbook_dispatcher_stdout, PLAYBOOK_DISPATCHER_URL is not set")
-    if settings.PDAPI_PSK:
-        logger.info("In fetch_playbook_dispatcher_stdout, PDAPI_PSK is %s", settings.PDAPI_PSK)
-    else:
-        logger.info("In fetch_playbook_dispatcher_stdout, PDAPI_PSK is not set")
     if not (settings.PLAYBOOK_DISPATCHER_URL and settings.PDAPI_PSK):
         logger.error('Need both PLAYBOOK_DISPATCHER_URL and PDAPI_PSK set')
         return None
