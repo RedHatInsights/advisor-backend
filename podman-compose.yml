@@ -50,6 +50,7 @@ services:
       for topic in platform.engine.results \
                    platform.insights.rule-hits \
                    platform.inventory.events \
+                   platform.inventory.host-apps \
                    platform.insights.rule-deactivation \
                    platform.sources.event-stream \
                    platform.playbook-dispatcher.runs \
