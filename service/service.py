@@ -25,6 +25,7 @@ import signal
 import traceback
 import logging
 from bounded_executor import BoundedExecutor
+from collections import defaultdict
 
 # Import app libraries
 from confluent_kafka import Consumer, KafkaError
@@ -32,6 +33,7 @@ import settings
 import advisor_logging
 import thread_storage
 import payload_tracker
+import inventory_view
 import prometheus
 import reports as report_hooks
 import utils
@@ -398,6 +400,7 @@ def create_db_reports(
 
             now = timezone.now()
             db_report_rules = [dbr['rule_id'] for dbr in db_report_values]
+            inventory_view_counts = defaultdict(int)
             for report in reports:
                 # Get rule object for report
                 if report['rule_id'] in report_rules_map:
@@ -423,6 +426,8 @@ def create_db_reports(
                         existing_report_objs.append(report_obj)
                     else:
                         new_report_objs.append(report_obj)
+
+                    inventory_view.update_inventory_view_counts(inventory_view_counts, rule)
 
                     logger.debug("%s current report object rule_id: %s, "
                                  "inventory_id: %s, account: %s, org_id: %s",
@@ -496,6 +501,24 @@ def create_db_reports(
             thread_storage.set_value('db_elapsed', db_finished - db_started)
             payload_msg = f'Successfully logged {num_report_objs} reports.'
             payload_tracker.payload_status('success', payload_msg)
+            # Send system data back to inventory views
+            try:
+                inventory_view.send_inventory_view_event({
+                    'request_id': thread_storage.get_value('request_id') or '',
+                    'org_id': org_id,
+                    'host_id': str(inventory_uuid),
+                    'recommendations': num_report_objs,
+                    'incidents': inventory_view_counts.get('incidents', 0),
+                    'critical': inventory_view_counts.get('critical', 0),
+                    'important': inventory_view_counts.get('important', 0),
+                    'moderate': inventory_view_counts.get('moderate', 0),
+                    'low': inventory_view_counts.get('low', 0),
+                })
+            except Exception:
+                logger.exception(
+                    "Error sending inventory view event",
+                    extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id},
+                )
             logger.info(
                 f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
                 f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
