@@ -30,6 +30,11 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      kafka:
+        image: apache/kafka:4.2.0
+        ports:
+          - 29092:29092
+          - 9092:9092
 
     steps:
       - name: Checkout code
@@ -56,6 +61,27 @@ jobs:
             sleep 5
           done
           echo "PostgreSQL is up!"
+
+      - name: Create Kafka topics
+        run: |
+          podman run -it --rm --network host apache/kafka:4.2.0 \
+          /bin/sh -c "
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+          echo -e 'Creating kafka topics'
+          for topic in platform.engine.results \
+                   platform.insights.rule-hits \
+                   platform.inventory.events \
+                   platform.inventory.host-apps \
+                   platform.insights.rule-deactivation \
+                   platform.sources.event-stream \
+                   platform.playbook-dispatcher.runs \
+                   platform.upload.announce
+          do
+            /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --if-not-exists --topic $$topic --replication-factor 1 --partitions 3
+          done
+          echo -e 'Successfully created the following topics:'
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+          "
 
       - name: Ugly hack while Foreman upgrades to Postgres 14 or later
         run: |
