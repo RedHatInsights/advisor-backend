@@ -502,25 +502,19 @@ def create_db_reports(
             payload_msg = f'Successfully logged {num_report_objs} reports.'
             payload_tracker.payload_status('success', payload_msg)
             # Send system data back to inventory views
-            try:
-                inventory_view.send_inventory_view_event({
-                    'request_id': thread_storage.get_value('request_id') or '',
-                    'org_id': org_id,
-                    'host_id': str(inventory_uuid),
-                    'data': {
-                        'recommendations': num_report_objs,
-                        'incidents': inventory_view_counts['incidents'],
-                        'critical': inventory_view_counts['critical'],
-                        'important': inventory_view_counts['important'],
-                        'moderate': inventory_view_counts['moderate'],
-                        'low': inventory_view_counts['low'],
-                    }
-                })
-            except Exception:
-                logger.exception(
-                    "Error sending inventory view event",
-                    extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id},
-                )
+            inventory_view.send_inventory_view_event({
+                'request_id': thread_storage.get_value('request_id') or '',
+                'org_id': org_id,
+                'host_id': str(inventory_uuid),
+                'data': {
+                    'recommendations': num_report_objs,
+                    'incidents': inventory_view_counts['incidents'],
+                    'critical': inventory_view_counts['critical'],
+                    'important': inventory_view_counts['important'],
+                    'moderate': inventory_view_counts['moderate'],
+                    'low': inventory_view_counts['low'],
+                }
+            })
             logger.info(
                 f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
                 f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
