@@ -95,7 +95,7 @@ def send_inventory_view_event(event_data):
         logger.exception("Hit exception sending inventory view event.")
 
 
-_rule_risks = {1: 'low', 2: 'moderate', 3: 'important', 4: 'critical'}
+_rule_risks = [None, 'low', 'moderate', 'important', 'critical']
 
 
 def update_inventory_view_counts(counts, rule):
@@ -108,6 +108,6 @@ def update_inventory_view_counts(counts, rule):
     if rule.get('has_incident'):
         counts['incidents'] += 1
 
-    severity = _rule_risks.get(rule.get('total_risk'))
+    severity = _rule_risks[rule.get('total_risk')]
     if severity:
         counts[severity] += 1
