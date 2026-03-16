@@ -507,12 +507,14 @@ def create_db_reports(
                     'request_id': thread_storage.get_value('request_id') or '',
                     'org_id': org_id,
                     'host_id': str(inventory_uuid),
-                    'recommendations': num_report_objs,
-                    'incidents': inventory_view_counts.get('incidents', 0),
-                    'critical': inventory_view_counts.get('critical', 0),
-                    'important': inventory_view_counts.get('important', 0),
-                    'moderate': inventory_view_counts.get('moderate', 0),
-                    'low': inventory_view_counts.get('low', 0),
+                    'data': {
+                        'recommendations': num_report_objs,
+                        'incidents': inventory_view_counts['incidents'],
+                        'critical': inventory_view_counts['critical'],
+                        'important': inventory_view_counts['important'],
+                        'moderate': inventory_view_counts['moderate'],
+                        'low': inventory_view_counts['low'],
+                    }
                 })
             except Exception:
                 logger.exception(

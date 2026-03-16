@@ -71,19 +71,12 @@ def send_inventory_view_event(event_data):
             ("request_id", bytes(event_data["request_id"], "utf-8")),
         ]
         payload = {
-            "org-id": event_data["org_id"],
+            "org_id": event_data["org_id"],
             "timestamp": datetime.datetime.utcnow().isoformat(),
             "hosts": [
                 {
                     "id": event_data["host_id"],
-                    "data": {
-                            "recommendations": event_data["recommendations"],
-                            "incidents": event_data["incidents"],
-                            "critical": event_data["critical"],
-                            "important": event_data["important"],
-                            "moderate": event_data["moderate"],
-                            "low": event_data["low"],
-                    }
+                    "data": event_data["data"],
                 }
             ],
         }
