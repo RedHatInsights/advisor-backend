@@ -210,7 +210,7 @@ def set_rbac_failure(request: Request, message: str) -> bool:
     Set the RBAC failure message on the request object.  This then gets
     recorded in the log message.
     """
-    setattr(request, 'rbac_failure_message', message)
+    setattr(request, 'rbac_message', message)
     logger.warning("RBAC failure during permissions check: %s", message)
     return False
 
@@ -220,7 +220,7 @@ def set_rbac_success(request: Request, message: str) -> None:
     Also allow the same mechanism to report starting or completing a
     permissions check.
     """
-    setattr(request, 'rbac_failure_message', message)
+    setattr(request, 'rbac_message', message)
     logger.debug(message)
 
 

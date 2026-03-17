@@ -321,7 +321,7 @@ class BadUseOfCertAuthPermission(TestCase):
         request = request_object_for_testing()
         result = cap.has_permission(request, 'view')
         self.assertFalse(result)
-        self.assertEqual(request.rbac_failure_message, 'not authenticated')
+        self.assertEqual(request.rbac_message, 'not authenticated')
 
         # Failures in identity property of request.auth
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
@@ -334,7 +334,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            request.rbac_failure_message,
+            request.rbac_message,
             "'identity.system' is not an object in Cert authentication check"
         )
         # system dict has no 'cn'
@@ -345,7 +345,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            request.rbac_failure_message,
+            request.rbac_message,
             "'identity.system' has no 'cn' property in Cert authentication check"
         )
         # system dict 'cn' value not a string
@@ -356,7 +356,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            request.rbac_failure_message,
+            request.rbac_message,
             "'identity.system.cn' is not a string in Cert authentication check"
         )
         # system dict 'cn' value not a UUID
@@ -367,7 +367,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertFalse(result)
         self.assertEqual(
-            request.rbac_failure_message,
+            request.rbac_message,
             "'identity.system.cn' is not a UUID in Cert authentication check"
         )
 
@@ -379,7 +379,7 @@ class BadUseOfCertAuthPermission(TestCase):
         result = cap.has_permission(request, view)
         self.assertTrue(result)
         self.assertEqual(
-            request.rbac_failure_message, 'CertAuthPermission OK'
+            request.rbac_message, 'CertAuthPermission OK'
         )
         # Check attributes now set on request
         self.assertTrue(hasattr(request, 'auth_system_type'))
@@ -490,10 +490,10 @@ class BaseRedHatUserTestCase(TestCase):
         brhup = BaseRedHatUserPermission()
         del request.auth['user']
         self.assertFalse(brhup.has_permission(request, 'view'))
-        self.assertEqual(request.rbac_failure_message, 'Red Hat user - user field not in identity data')
+        self.assertEqual(request.rbac_message, 'Red Hat user - user field not in identity data')
         request.auth = None
         self.assertFalse(brhup.has_permission(request, 'view'))
-        self.assertEqual(request.rbac_failure_message, 'Red Hat user has no identity data')
+        self.assertEqual(request.rbac_message, 'Red Hat user has no identity data')
 
 
 class OrgPermissionTestCase(TestCase):
@@ -785,7 +785,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
             # has_object_permission to handle specific host queries
             self.assertTrue(irbp.has_permission(request, view))
             # At this point, with a successful request, we should see a
-            # successful message in rbac_failure_message and logs
+            # successful message in rbac_message and logs
             self.assertEqual(
                 logs.output[0],
                 'DEBUG:advisor-log:Started InsightsRBACPermission.has_permission'
@@ -799,7 +799,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
                 'DEBUG:advisor-log:KESSEL: ResourceScope is HOST - defer to has_object_permission'
             )
             self.assertEqual(
-                request.rbac_failure_message,
+                request.rbac_message,
                 'KESSEL: ResourceScope is HOST - defer to has_object_permission'
             )
 
@@ -817,9 +817,9 @@ class TestInsightsRBACPermissionKessel(TestCase):
         self.assertFalse(hasattr(irbp, 'id'))
         self.assertFalse(irbp.has_object_permission(request, view, irbp))
 
-        self.assertTrue(hasattr(request, 'rbac_failure_message'))
+        self.assertTrue(hasattr(request, 'rbac_message'))
         self.assertEqual(
-            request.rbac_failure_message,
+            request.rbac_message,
             "Permission scope is 'Host' but object has no 'id' attribute"
         )
         # Finally we actually get to do a has_kessel_permission check
@@ -963,11 +963,11 @@ class TestBaseAssociatePermission(TestCase):
         request.user = 'username'
         request.auth = None
         self.assertFalse(self.BAPClass.has_permission(request, 'view'))
-        self.assertEqual(request.rbac_failure_message, 'No identity data in associate permission')
+        self.assertEqual(request.rbac_message, 'No identity data in associate permission')
         # Request() doesn't let us delete the auth or user properties...
         request = HttpRequest()
         self.assertFalse(self.BAPClass.has_permission(request, 'view'))
-        self.assertEqual(request.rbac_failure_message, 'Not yet authenticated in associate permission')
+        self.assertEqual(request.rbac_message, 'Not yet authenticated in associate permission')
 
     def test_has_permission_allowed_views(self):
         local_bap = BaseAssociatePermission()
