@@ -221,7 +221,7 @@ def set_rbac_success(request: Request, message: str) -> None:
     permissions check.
     """
     setattr(request, 'rbac_failure_message', message)
-    logger.info(message)
+    logger.debug(message)
 
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
@@ -229,7 +229,7 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
     Make a request to the RBAC service.  With RBAC v1 we check permissions,
     with RBAC v2 we check workspaces.
     """
-    logger.info(f"RBAC request to {rbac_url}")
+    logger.debug(f"RBAC request to {rbac_url}")
     identity = request.auth
     # This has already been checked in callers to this code so we assume
     # we can get the org_id and username keys.
@@ -349,7 +349,7 @@ def find_host_groups(role_list: list[dict[str, str | dict[str, str]]], request):
     # If we found any host groups at the end of that, store them
     if host_groups:
         setattr(request, host_group_attr, host_groups)
-        logger.info(f"User has host groups {host_groups}")
+        logger.debug(f"User has host groups {host_groups}")
 
 
 def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tuple[bool, float]:
@@ -427,14 +427,14 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
             # Always OK on exact match
             if rbac_permission == request_permission:
                 # Log and return exact match
-                logger.info(f"RBAC permission '{rbac_permission}' exactly matched sought permission")
+                logger.debug(f"RBAC permission '{rbac_permission}' exactly matched sought permission")
                 setattr(request._request, 'rbac_matched_permission', rbac_permission)
                 setattr(request._request, 'rbac_match_type', 'exact')
                 return (True, elapsed)
 
             if request_permission in rbac_permission:
                 # Log and return inexact match
-                logger.info(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
+                logger.debug(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
                 setattr(request._request, 'rbac_matched_permission', rbac_permission)
                 setattr(request._request, 'rbac_match_type', 'contains')
                 return (True, elapsed)
@@ -530,7 +530,7 @@ def has_kessel_permission(
 
     Host group information is also found and stored in the request object.
     """
-    logger.info("Got to has_kessel_permission")
+    logger.debug("Got to has_kessel_permission")
     if not settings.RBAC_ENABLED:
         return (True, 0.0)
 
@@ -544,9 +544,9 @@ def has_kessel_permission(
     identity = request.auth
 
     elapsed = 0.0
-    logger.info("KESSEL debug: scope = %s", scope)
-    logger.info("KESSEL debug: identity = %s", repr(identity))
-    logger.info("KESSEL debug: permission = %s", repr(permission))
+    logger.debug("KESSEL debug: scope = %s", scope)
+    logger.debug("KESSEL debug: identity = %s", repr(identity))
+    logger.debug("KESSEL debug: permission = %s", repr(permission))
     try:
         logger.debug("Checking %s has %s in %s...", identity, permission, scope)
         if scope == ResourceScope.ORG:
@@ -555,7 +555,7 @@ def has_kessel_permission(
             if not workspace_id:
                 # Log created by exception catch below
                 raise ValueError("No workspace found for org")
-            logger.info(
+            logger.debug(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
             )
@@ -567,7 +567,7 @@ def has_kessel_permission(
                 identity_to_subject(identity)
             )
         elif scope == ResourceScope.WORKSPACE:
-            logger.info("KESSEL: checking which workspaces this user has access to")
+            logger.debug("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.host_groups_for(
                 identity_to_subject(identity)
@@ -578,7 +578,7 @@ def has_kessel_permission(
             if host_id is None:
                 raise ValueError("Host scope requested but host_id not provided")
 
-            logger.info("KESSEL: checking access to host %s", host_id)
+            logger.debug("KESSEL: checking access to host %s", host_id)
             result, elapsed = kessel.client.check(
                 kessel.Host(str(host_id)).to_ref(),
                 permission.as_kessel_permission(),
