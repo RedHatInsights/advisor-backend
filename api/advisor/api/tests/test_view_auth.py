@@ -778,7 +778,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
         view = FakeView()
         setattr(view, 'resource_name', 'recommendation-results')
         setattr(view, 'resource_scope', ResourceScope.HOST)
-        with self.assertLogs(logger='advisor-log') as logs:
+        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             irbp = InsightsRBACPermission()
 
             # HOST resources get allowed at view level, relying on
@@ -788,11 +788,15 @@ class TestInsightsRBACPermissionKessel(TestCase):
             # successful message in rbac_failure_message and logs
             self.assertEqual(
                 logs.output[0],
-                'INFO:advisor-log:InsightsRBACPermission has_permission() check starting'
+                'DEBUG:advisor-log:Started InsightsRBACPermission.has_permission'
             )
             self.assertEqual(
                 logs.output[1],
-                'INFO:advisor-log:KESSEL: ResourceScope is HOST - defer to has_object_permission'
+                'DEBUG:advisor-log:InsightsRBACPermission has_permission() check starting'
+            )
+            self.assertEqual(
+                logs.output[2],
+                'DEBUG:advisor-log:KESSEL: ResourceScope is HOST - defer to has_object_permission'
             )
             self.assertEqual(
                 request.rbac_failure_message,
