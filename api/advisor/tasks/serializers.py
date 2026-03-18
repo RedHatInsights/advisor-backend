@@ -292,8 +292,8 @@ class HostSerializer(serializers.ModelSerializer):
         model = models.Host
         fields = (
             'id', 'display_name', 'tags', 'groups', 'os_version', 'updated',
-            'connection_type', 'stale_timestamp', 'stale_warning_timestamp',
-            'culled_timestamp', 'connected', 'last_check_in', 'system_profile'
+            'connection_type', 'stale_timestamp', 'connected',
+            'last_check_in', 'system_profile'
         )
 
 
@@ -472,6 +472,5 @@ class TaskHostSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'display_name', 'tags', 'groups', 'os_version', 'updated',
             'connection_type', 'requirements', 'stale_timestamp',
-            'stale_warning_timestamp', 'culled_timestamp', 'connected',
-            'last_check_in', 'system_profile'
+            'connected', 'last_check_in', 'system_profile'
         )
