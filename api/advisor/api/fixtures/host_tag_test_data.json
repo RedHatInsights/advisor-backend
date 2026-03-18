@@ -21,8 +21,6 @@
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
-      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
-      "culled_timestamp": "2020-01-08T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 7, "minor": 10}
       },
@@ -57,8 +55,6 @@
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
-      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
-      "culled_timestamp": "2020-01-08T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 7, "minor": 2}
       },
@@ -92,8 +88,6 @@
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
-      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
-      "culled_timestamp": "2020-01-08T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 8, "minor": 3}
       },
@@ -132,8 +126,6 @@
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
-      "stale_warning_timestamp": "2020-01-02T06:00:00Z",
-      "culled_timestamp": "2020-01-08T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 6, "minor": 4}
       },

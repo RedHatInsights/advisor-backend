@@ -10,8 +10,6 @@
       "created": "2022-01-11T06:00:00Z",
       "updated": "2022-01-11T06:15:38Z",
       "stale_timestamp": "2022-01-12T06:00:00Z",
-      "stale_warning_timestamp": "2022-01-13T06:00:00Z",
-      "culled_timestamp": "2022-01-14T06:00:00Z",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
           "bios_release_date": "13/06/2017", "cores_per_socket": 8,
