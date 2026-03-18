@@ -169,8 +169,6 @@ def handle_created_event(message: dict[str, JsonValue]):
         # Sadly the staleness fields are still mandatory even though we
         # should not use them.
         stale_timestamp = host['stale_timestamp']
-        stale_warning_timestamp = host['stale_warning_timestamp']
-        culled_timestamp = host['culled_timestamp']
         system_profile_field = host['system_profile']
         per_reporter_staleness = host['per_reporter_staleness']
     except KeyError as key_name:
@@ -204,8 +202,6 @@ def handle_created_event(message: dict[str, JsonValue]):
             'updated': updated,
             'insights_id': insights_id,
             'stale_timestamp': stale_timestamp,
-            'stale_warning_timestamp': stale_warning_timestamp,
-            'culled_timestamp': culled_timestamp,
             'per_reporter_staleness': per_reporter_staleness,
             'system_profile': system_profile,
         }

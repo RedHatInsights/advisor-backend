@@ -62,8 +62,6 @@ create_new_host_msg: dict[str, JsonValue] = {
         "updated": "2025-11-28T03:53:20Z",
         "tags": [],
         "stale_timestamp": stale_time,
-        "stale_warning_timestamp": stale_warn_time,
-        "culled_timestamp": cull_time,
         "system_profile": {
             "ansible": "", "bootc_status": "", "host_type": "", "mssql": "",
             "operating_system": "", "owner_id": "", "rhc_client_id": "",
@@ -97,8 +95,6 @@ update_host_msg: dict[str, JsonValue] = {
         "updated": "2025-12-01T03:09:27Z",
         "tags": [],
         "stale_timestamp": stale_time,
-        "stale_warning_timestamp": stale_warn_time,
-        "culled_timestamp": cull_time,
         "system_profile": {  # taken from the fixture, only certain values copied
             "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
             "bios_release_date": "13/06/2017", "cores_per_socket": 8,
