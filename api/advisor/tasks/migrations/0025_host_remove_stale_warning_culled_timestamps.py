@@ -19,7 +19,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('api', '0001_squashed_0045_remove_dailyhitgroup'),
+        ('tasks', '0024_taskparameter_default_blank'),
     ]
     operations = [
         # Because the table is (currently) not managed by Django, we don't
@@ -27,11 +27,11 @@ class Migration(migrations.Migration):
         # if we did, it'd simply be a default to the stale_timestamp plus
         # seven or fourteen days.
         migrations.RemoveField(
-            model_name='InventoryHost',
+            model_name='Host',
             name='stale_warning_timestamp',
         ),
         migrations.RemoveField(
-            model_name='InventoryHost',
+            model_name='Host',
             name='culled_timestamp',
         ),
     ]
