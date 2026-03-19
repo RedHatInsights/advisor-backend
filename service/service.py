@@ -466,8 +466,11 @@ def create_db_reports(
                 # Fetch some of these fields from the InventoryHost object
                 # Catch errors and do not fail entire upload on this
                 try:
+                    inventory_host = db.InventoryHost.objects.get(
+                        inventory_id=host_obj.inventory_id, org_id=org_id
+                    )
                     report_hooks.trigger_report_hooks(
-                        host_obj.inventory, webhook_report_rule_objs, db_report_values
+                        inventory_host, webhook_report_rule_objs, db_report_values
                     )
                 except:
                     logger.exception("Error sending Report Hooks",
