@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="api.tests.test_system_views.SystemHostTagsViewTestCase-20260318052514" tests="5" file="api/tests/test_system_views.py" time="0.406" timestamp="2026-03-18T05:25:50" failures="0" errors="0" skipped="0">
-	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_get_system" time="0.098" timestamp="2026-03-18T05:25:50" file="advisor/api/tests/test_system_views.py" line="1083"/>
-	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_reports_on_system" time="0.054" timestamp="2026-03-18T05:25:50" file="advisor/api/tests/test_system_views.py" line="1125"/>
-	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_system_list" time="0.180" timestamp="2026-03-18T05:25:50" file="advisor/api/tests/test_system_views.py" line="970"/>
-	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_system_tags_query_param_format" time="0.037" timestamp="2026-03-18T05:25:50" file="advisor/api/tests/test_system_views.py" line="1057"/>
-	<testcase classname="api.tests.test_system_views.SystemHostTagsViewTestCase" name="test_system_tags_query_param_format_inventory" time="0.036" timestamp="2026-03-18T05:25:50" file="advisor/api/tests/test_system_views.py" line="1070"/>
-</testsuite>
