@@ -139,7 +139,8 @@ users can see.  For testing this is normally disabled as well.
 - `UNLEASH_CACHE_DIR` - Default: `/tmp/unleashcache`
 - `UNLEASH_REFRESH_INTERVAL` - Default: `5`
 - `UNLEASH_FAKE_INITIALIZE` - Default: `true`
-- `UNLEASH_BOOTSTRAP_FILE` -
+- `UNLEASH_BOOTSTRAP_FILE` - A JSON file with feature flags set, in the
+  same format as the Unleash API returns.  Defaults to no file.
 
 ## Monitoring/Observability
 
@@ -499,9 +500,9 @@ pipenv run testapi
 The following items would improve the README documentation:
 
 ## Environment Setup
-- [ ] Add installation instructions for prerequisites (podman, podman-compose, specific versions)
-- [ ] Document location and contents of podman-compose.yml file
-- [ ] Create a complete first-time setup checklist (start to finish)
+- [X] Add installation instructions for prerequisites (podman, podman-compose, specific versions)
+- [X] Document location and contents of podman-compose.yml file
+- [X] Create a complete first-time setup checklist (start to finish)
 
 ## Architecture & Dependencies
 - [ ] Explain what Clowder is and how it's used
