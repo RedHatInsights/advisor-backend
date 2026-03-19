@@ -187,8 +187,8 @@ class PathwayViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         impacting = value_of_param(impacting_query_param, self.request)
         query = Pathway.objects.for_account(self.request, impacting).filter(
-                    filter_on_text_pathway(self.request)
-                )
+            filter_on_text_pathway(self.request)
+        )
         return query
 
     @extend_schema(
