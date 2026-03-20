@@ -5,6 +5,30 @@ hosts both the Advisor API and the Advisor Service. This is the top-level README
 for both services. To see more detailed information about the API or the
 Service look at their respective READMEs in "api" or "service" directories.
 
+# Background
+
+Advisor grew out of the original Insights project, which provided a system
+for hosts to upload a 'snapshot' of their state as it related to Red Hat
+components, and for reports of Insights rules to be recorded and shown for
+that system.
+
+Advisor is essentially two systems.  One, the 'service', receives messages
+via Kafka about the results of processing the Insights rules on a system and
+records these results in the database.  The other, the 'API', displays these
+results to the user.
+
+# The Insights platform
+
+Advisor Backend is designed to run in containers, with the other parts of the
+Red Hat Lightspeed (Insights) system, in an OpenShift cluster.  This is
+managed inside Red Hat using [https://github.com/RedHatInsights/clowder](Clowder).
+
+It's possible to run just the basic components Advisor needs using Podman, which
+is how we suggest you do this in development.
+
+The projects under [https://github.com/RedHatInsights/] are related to the
+Insights project.
+
 # Installation
 
 ## Pre-requisites
@@ -505,8 +529,8 @@ The following items would improve the README documentation:
 - [X] Create a complete first-time setup checklist (start to finish)
 
 ## Architecture & Dependencies
-- [ ] Explain what Clowder is and how it's used
-- [ ] Clarify the relationship between API and Service (when to run each, how they interact)
+- [X] Explain what Clowder is and how it's used
+- [X] Clarify the relationship between API and Service (when to run each, how they interact)
 - [ ] Document external dependencies:
   - What is the Inventory database and where is it?
   - What is Cyndi exactly? (service? process? library?)
