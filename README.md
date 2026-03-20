@@ -107,7 +107,15 @@ to Advisor - this also selects the data that Advisor sees about that host.
 This data is put into a background table that Advisor cannot change directly;
 Advisor instead uses the `inventory.hosts` view to access the data.
 
+In the near future, we intend to move to our own data replication system based
+on reading the host creation and update events from Inventory directly.  This
+means that Advisor would be able to directly write to the InventoryHost model
+and its underlying table.  This gives several advantage - faster updates,
+fewer containers running, and more flexibility in how Advisor works.
+
 ## Content load and import
+
+There are four main types of data stored in Advisor.
 
 ### Fixed data
 
@@ -133,8 +141,14 @@ the rule and playbook content, either in its direct form of the actual
 `insights-content` and `insights-playbooks` Git repositories, or as the
 dumped YAML form of those repositories (see below).
 
+Red Hat's content is its own intellectual property and the insights-content
+and insights-playbooks repositories are not available externally.  For an
+example of what these can look like, the `api/test_content/` directory has
+the `content` and `playbooks` directories which match these repository
+structures and the data contained within the `basic_test_data` fixture.
+
 The import process is designed to quickly load this data into the data, using
-bulk insert and update operations.
+bulk insert and update operations where possible.
 
 During the container build process, the `import_content` command is invoked
 (in the `Dockerfile`) using the `--dump` and `--compress` options.  This reads
@@ -360,7 +374,7 @@ These are the actual topics read and written to when we use Kafka
 
 ## Cyndi Considerations
 
-If advisor is running a real openshift environment, the cyndi table/view are
+If advisor is running a real OpenShift environment, the cyndi table/view are
 expected to be created outside of advisor. If you are running advisor
 locally, you may need to mock this out. This can be accomplished with the
 following command:
@@ -531,11 +545,12 @@ The following items would improve the README documentation:
 ## Architecture & Dependencies
 - [X] Explain what Clowder is and how it's used
 - [X] Clarify the relationship between API and Service (when to run each, how they interact)
-- [ ] Document external dependencies:
+- [X] Document external dependencies:
   - What is the Inventory database and where is it?
   - What is Cyndi exactly? (service? process? library?)
   - Location of insights-content and insights-playbooks repositories
-- [ ] Add production authentication/authorization flow explanation
+- [X] Add production authentication/authorization flow explanation
+  - This is mainly done in the API readme.
 
 ## Development Workflow
 - [ ] Document typical development workflow (running API only, Service only, or both)
