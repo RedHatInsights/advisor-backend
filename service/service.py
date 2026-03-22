@@ -469,6 +469,15 @@ def create_db_reports(
                     report_hooks.trigger_report_hooks(
                         inventory_host, webhook_report_rule_objs, db_report_values
                     )
+                except db.InventoryHost.DoesNotExist:
+                    logger.warning(
+                        "InventoryHost not found for host", extra={
+                            'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id
+                        }
+                    )
+                    # Otherwise, we don't need to report an error to payload
+                    # tracker here, as we have actually done everything else
+                    # that we needed to do for this upload.
                 except:
                     logger.exception("Error sending Report Hooks",
                                      extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id})
