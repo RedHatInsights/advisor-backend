@@ -27,7 +27,9 @@ import payload_tracker
 from confluent_kafka import Producer
 
 # Import Kafka stuff
-import project_settings.kafka_settings as kafka_settings
+from project_settings.settings import (
+    REMEDIATIONS_HOOK_TOPIC, WEBHOOKS_TOPIC, KAFKA_SETTINGS
+)
 
 # Setup Django
 import django
@@ -45,10 +47,10 @@ ADVISOR_URL_PREFIX = os.environ.get(
 logger = logging.getLogger(settings.APP_NAME)
 
 p = None
-if kafka_settings.REMEDIATIONS_HOOK_TOPIC or kafka_settings.WEBHOOKS_TOPIC:
-    topics = ', '.join([t for t in [kafka_settings.REMEDIATIONS_HOOK_TOPIC, kafka_settings.WEBHOOKS_TOPIC] if t])
+if REMEDIATIONS_HOOK_TOPIC or WEBHOOKS_TOPIC:
+    topics = ', '.join([t for t in [REMEDIATIONS_HOOK_TOPIC, WEBHOOKS_TOPIC] if t])
     logger.debug(f"Creating producer for topics: {topics}")
-    p = Producer(kafka_settings.KAFKA_SETTINGS)
+    p = Producer(KAFKA_SETTINGS)
 
 
 def report_delivery_callback(err, msg):
@@ -62,20 +64,20 @@ def report_delivery_callback(err, msg):
 
 
 def send_webhook_event(event_msg):
-    if kafka_settings.WEBHOOKS_TOPIC:
+    if WEBHOOKS_TOPIC:
         p.poll(0)
         logger.debug("Producing webhook event msg: %s", event_msg)
         send_msg = json.dumps(event_msg).encode('utf-8')
-        p.produce(kafka_settings.WEBHOOKS_TOPIC, send_msg, callback=report_delivery_callback)
+        p.produce(WEBHOOKS_TOPIC, send_msg, callback=report_delivery_callback)
         p.flush()
 
 
 def send_remediations_event(event_key, event_value):
-    if kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+    if REMEDIATIONS_HOOK_TOPIC:
         p.poll(0)
         logger.debug("Producing remediations event msg key %s and value %s", event_key, event_value)
         send_value = json.dumps(event_value).encode('utf-8')
-        p.produce(kafka_settings.REMEDIATIONS_HOOK_TOPIC, key=event_key, value=send_value,
+        p.produce(REMEDIATIONS_HOOK_TOPIC, key=event_key, value=send_value,
                   callback=report_delivery_callback)
         p.flush()
 

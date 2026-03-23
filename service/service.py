@@ -46,8 +46,11 @@ django.setup()
 import api.models as db  # noqa
 
 # Import Kafka settings
-import project_settings.kafka_settings as kafka_settings
-kafka_settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
+from project_settings.settings import (
+    KAFKA_SETTINGS, REMEDIATIONS_HOOK_TOPIC, WEBHOOKS_TOPIC,
+    ENGINE_RESULTS_TOPIC, INVENTORY_EVENTS_TOPIC, RULE_HITS_TOPIC,
+)
+KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
 
 # Handle sigterms so process shuts down cleanly only after flushing messages to kafka
 _sigterm_received = False
@@ -73,7 +76,7 @@ def terminate(signum, frame):
 signal.signal(signal.SIGTERM, terminate)
 
 # Setup Consumer
-c = Consumer(kafka_settings.KAFKA_SETTINGS)
+c = Consumer(KAFKA_SETTINGS)
 
 
 # Debug function for kafka handlers
@@ -424,7 +427,7 @@ def create_db_reports(
                     logger.debug("%s current report object rule_id: %s, "
                                  "inventory_id: %s, account: %s, org_id: %s",
                                  "Creating" if created else "Updating", rule['rule_id'], inventory_uuid, account, org_id)
-                    if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+                    if WEBHOOKS_TOPIC or REMEDIATIONS_HOOK_TOPIC:
                         webhook_report_rule_objs.append(rule)
                 else:
                     logger.debug(
@@ -459,7 +462,7 @@ def create_db_reports(
             # Trigger the webhook report comparisons
             # figure out which reports are NEW
             # figure out which reports are resolved
-            if kafka_settings.WEBHOOKS_TOPIC or kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+            if WEBHOOKS_TOPIC or REMEDIATIONS_HOOK_TOPIC:
                 # Fetch some of these fields from the InventoryHost object
                 # Catch errors and do not fail entire upload on this
                 try:
@@ -744,9 +747,9 @@ def start():
     prometheus.INSIGHTS_ADVISOR_STATUS.state('starting')
 
     # Subscribe to our topics
-    topic_subscriptions = [kafka_settings.ENGINE_RESULTS_TOPIC,
-                           kafka_settings.INVENTORY_EVENTS_TOPIC,
-                           kafka_settings.RULE_HITS_TOPIC]
+    topic_subscriptions = [ENGINE_RESULTS_TOPIC,
+                           INVENTORY_EVENTS_TOPIC,
+                           RULE_HITS_TOPIC]
     logger.debug("Subscribing to Kafka topics %s" %
         (topic_subscriptions))
     c.subscribe(topic_subscriptions, on_assign=print_assignment)
@@ -776,7 +779,7 @@ def start():
         )
 
         # Pull engine results from shared engine topic
-        if msg.topic() == kafka_settings.ENGINE_RESULTS_TOPIC:
+        if msg.topic() == ENGINE_RESULTS_TOPIC:
             json_msg = None
             prometheus.INSIGHTS_ADVISOR_TOTAL_REQUESTS.inc()
 
@@ -791,7 +794,7 @@ def start():
                 submit_to_executor(executor, handle_engine_results, json_msg)
 
         # Request third party rule hit
-        if msg.topic() == kafka_settings.RULE_HITS_TOPIC:
+        if msg.topic() == RULE_HITS_TOPIC:
             json_msg = None
             prometheus.THIRD_PARTY_RULE_HIT_REQUEST_RECEIVED.inc()
             logger.debug("Received third party rule hits request.")
@@ -814,7 +817,7 @@ def start():
 
         # Listen to inventory events
         # DELETE any associated records for a system
-        if msg.topic() == kafka_settings.INVENTORY_EVENTS_TOPIC:
+        if msg.topic() == INVENTORY_EVENTS_TOPIC:
             json_msg = None
             prometheus.INVENTORY_EVENTS_TOPIC_RECEIVED.inc()
             logger.debug("Received inventory event request")

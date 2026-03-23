@@ -17,7 +17,7 @@
 import responses
 from django.test import TestCase
 
-from project_settings import kafka_settings as kafka_settings
+from django.conf import settings
 from tasks.management.commands.tasks_service import handle_script_job_updates
 from tasks.models import Job, JobStatusChoices, ExecutedTaskStatusChoices
 from tasks.tests import constants
@@ -72,7 +72,7 @@ class TaskJobUpdateScriptUploadTestCase(TestCase):
             json=message
         )
 
-        handle_script_job_updates(kafka_settings.WEBHOOKS_TOPIC, ingress_kafka_message())
+        handle_script_job_updates(settings.WEBHOOKS_TOPIC, ingress_kafka_message())
 
         self.assertEqual(len(responses.calls), 1)
         job = Job.objects.get(run_id=message['correlation_id'])
@@ -103,7 +103,7 @@ class TaskJobUpdateScriptUploadTestCase(TestCase):
             json=message
         )
 
-        handle_script_job_updates(kafka_settings.WEBHOOKS_TOPIC, ingress_kafka_message())
+        handle_script_job_updates(settings.WEBHOOKS_TOPIC, ingress_kafka_message())
 
         self.assertEqual(len(responses.calls), 1)
         job = Job.objects.get(run_id=message['correlation_id'])
@@ -123,7 +123,7 @@ class TaskJobUpdateScriptUploadTestCase(TestCase):
             json=message
         )
 
-        handle_script_job_updates(kafka_settings.WEBHOOKS_TOPIC, ingress_kafka_message())
+        handle_script_job_updates(settings.WEBHOOKS_TOPIC, ingress_kafka_message())
 
         self.assertEqual(len(responses.calls), 1)
         job = Job.objects.get(run_id=message['correlation_id'])
@@ -148,7 +148,7 @@ class TaskJobUpdateScriptUploadTestCase(TestCase):
             json=message
         )
 
-        handle_script_job_updates(kafka_settings.WEBHOOKS_TOPIC, ingress_kafka_message())
+        handle_script_job_updates(settings.WEBHOOKS_TOPIC, ingress_kafka_message())
 
         self.assertEqual(len(responses.calls), 1)
         job = Job.objects.get(run_id=message['correlation_id'])
@@ -176,7 +176,7 @@ class TaskJobUpdateScriptUploadTestCase(TestCase):
             json=message
         )
 
-        handle_script_job_updates(kafka_settings.WEBHOOKS_TOPIC, ingress_kafka_message())
+        handle_script_job_updates(settings.WEBHOOKS_TOPIC, ingress_kafka_message())
 
         self.assertEqual(len(responses.calls), 1)
         job = Job.objects.get(run_id=message['correlation_id'])
