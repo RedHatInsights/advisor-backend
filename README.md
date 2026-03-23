@@ -308,6 +308,12 @@ users can see.  For testing this is normally disabled as well.
 - `MAIL_HOST` - Default: `mail.corp.redhat.com`
 - `DEFAULT_FROM_EMAIL` - Default: `Red Hat Hybrid Cloud Console <noreply@redhat.com>`
 
+## Inventory Event Replication settings
+
+- `INVENTORY_EVENT_REPLICATION` - If set to `True`, will process Inventory
+  Events for replication (and not check the `advisor.inventory_event_replication`
+  feature flag).  Default: `False`.
+
 ## Host-Based Inventory (HBI) Settings
 
 This relates to the Logical Replication idea.  These are no longer in use and should be removed.
@@ -555,6 +561,8 @@ The following items would improve the README documentation:
 ## Development Workflow
 - [ ] Document typical development workflow (running API only, Service only, or both)
 - [ ] Add complete port reference (database, services, etc.)
+  - Not sure this is necessary; ports are usually encoded in environment
+    variables (described above).
 - [ ] Explain send_fake_engine_results.py and other manual test scripts
 
 ## Repository Structure
