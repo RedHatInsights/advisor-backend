@@ -452,6 +452,9 @@ UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
 UNLEASH_REFRESH_INTERVAL = os.getenv("UNLEASH_REFRESH_INTERVAL", 5)
 UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
 
+# Inventory Event replication settings
+INVENTORY_EVENT_REPLICATION = string_to_bool(os.getenv("INVENTORY_EVENT_REPLICATION", "false"))
+
 # HBI settings for the logical replication
 HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
 HBI_SUBSCRIPTION = os.getenv("HBI_SUBSCRIPTION", "advisor_hosts_sub_v1_0_2")

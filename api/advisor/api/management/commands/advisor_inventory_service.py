@@ -42,7 +42,10 @@ def handle_inventory_event(topic: str, message: dict[str, JsonValue]) -> None:
         logger.error("Message received on topic %s with no 'type' field", topic)
         return
 
-    if not feature_flag_is_enabled(FLAG_INVENTORY_EVENT_REPLICATION):
+    if settings.INVENTORY_EVENT_REPLICATION:
+        # If the environment variable is set, always process the event.
+        pass
+    elif not feature_flag_is_enabled(FLAG_INVENTORY_EVENT_REPLICATION):
         sys_uuid: str = message.get('host', {}).get('id', 'unknown UUID')
         logger.info(
             "Received Inventory %s event for %s - feature flag not enabled, ignoring",
