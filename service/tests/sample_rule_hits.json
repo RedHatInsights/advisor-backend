@@ -4,7 +4,7 @@
  "host_role": "Cluster",
  "inventory_id": "2db7adeb-e3e8-4d40-bf68-bd00064e252b",
  "account": "123456",
- "org_id": "1234567",
+ "org_id": "9876543",
  "hits": [
    {
      "rule_id": "aiops_rule_1",
