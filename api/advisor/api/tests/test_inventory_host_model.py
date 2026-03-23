@@ -41,8 +41,6 @@ class InventoryHostTestCase(TestCase):
         self.assertEqual(host.updated, datetime.datetime(2018, 12, 4, 5, 15, 38, tzinfo=pytz.UTC))
         self.assertEqual(host.created, datetime.datetime(2020, 1, 1, 6, 0, tzinfo=pytz.UTC))
         self.assertEqual(host.stale_timestamp, datetime.datetime(2020, 1, 1, 6, 0, tzinfo=pytz.UTC))
-        self.assertEqual(host.stale_warning_timestamp, datetime.datetime(2020, 1, 2, 6, 0, tzinfo=pytz.UTC))
-        self.assertEqual(host.culled_timestamp, datetime.datetime(2020, 1, 8, 6, 0, tzinfo=pytz.UTC))
         self.assertEqual(host.system_profile, {
             'arch': 'x86_64', 'bios_vendor': 'Dell Inc.', 'bios_version':
             '2.8.0', 'bios_release_date': '13/06/2017', 'cores_per_socket':

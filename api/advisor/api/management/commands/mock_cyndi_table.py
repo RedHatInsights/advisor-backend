@@ -31,8 +31,6 @@ CREATE TABLE IF NOT EXISTS inventory.hosts_table (
     updated timestamp with time zone NOT NULL,
     created timestamp with time zone NOT NULL,
     stale_timestamp timestamp with time zone NOT NULL,
-    stale_warning_timestamp timestamp with time zone NOT NULL,
-    culled_timestamp timestamp with time zone NOT NULL,
     system_profile jsonb NOT NULL,
     per_reporter_staleness jsonb default '{}'::jsonb,
     insights_id uuid
@@ -40,11 +38,11 @@ CREATE TABLE IF NOT EXISTS inventory.hosts_table (
 
 CREATE OR REPLACE VIEW inventory.hosts (
     id, account, org_id, display_name, tags, groups, updated, created, stale_timestamp,
-    stale_warning_timestamp, culled_timestamp, system_profile, per_reporter_staleness, insights_id
+    system_profile, per_reporter_staleness, insights_id
 ) AS
 SELECT
     id, account, org_id, display_name, tags, groups, updated, created, stale_timestamp,
-    stale_warning_timestamp, culled_timestamp, system_profile, per_reporter_staleness, insights_id
+    system_profile, per_reporter_staleness, insights_id
 FROM inventory.hosts_table;
 """
 

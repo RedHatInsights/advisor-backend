@@ -655,8 +655,6 @@ class InventoryHost(models.Model):
     updated = models.DateTimeField()
     created = models.DateTimeField()
     stale_timestamp = models.DateTimeField()
-    stale_warning_timestamp = models.DateTimeField()
-    culled_timestamp = models.DateTimeField()
     insights_id = models.UUIDField()  # the ID that the Insights client assigns itself.
     system_profile = models.JSONField()
     per_reporter_staleness = models.JSONField(null=True)

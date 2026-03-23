@@ -504,9 +504,7 @@ class SystemViewTestCase(TestCase):
         self.assertIn('connection_type', data)
         self.assertEqual(data['connection_type'], 'direct')
         self.assertIn('last_check_in', data)
-        self.assertIn('culled_timestamp', data)
         self.assertIn('stale_timestamp', data)
-        self.assertIn('stale_warning_timestamp', data)
         self.assertNotIn('requirements', data)  # requirements are not added for the detail endpoint
         self.assertIn('connected', data)
         self.assertEqual(data['connected'], False)  # without PD, systems are not connected

@@ -416,8 +416,8 @@ def update_stale_dates(valid_days: float = 3.0):
             stale_warning_timestamp = full_valid
             culled_timestamp = full_valid
 
-        # We now DO NOT update the old (stale,stale_warning,culled)_timestamp
-        # fields, because we now ONLY rely on the per-reporter staleness.
+        # We now DO NOT update the old stale_timestamp field,
+        # because we now ONLY rely on the per-reporter staleness.
         # The deliberately out-of-date values in the overall fields are left
         # as tripwires.
         inventory_host.per_reporter_staleness = {

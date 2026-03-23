@@ -621,8 +621,6 @@ class SystemViewTestCase(TestCase):
         # Update all hosts to have up-to-date host staleness
         updated = InventoryHost.objects.update(
             stale_timestamp=timezone.now(),
-            stale_warning_timestamp=timezone.now(),
-            culled_timestamp=timezone.now(),
             updated=timezone.now(),
         )
         self.assertGreater(updated, 0)
