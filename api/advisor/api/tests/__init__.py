@@ -420,6 +420,7 @@ def update_stale_dates(valid_days: float = 3.0):
         # because we now ONLY rely on the per-reporter staleness.
         # The deliberately out-of-date values in the overall fields are left
         # as tripwires.
+        inventory_host.last_check_in = check_in
         inventory_host.per_reporter_staleness = {
             "puptoo": {
                 "stale_timestamp": str(stale_timestamp),

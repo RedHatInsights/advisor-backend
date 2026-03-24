@@ -465,7 +465,7 @@ class TaskHostSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(child=serializers.DictField())
     requirements = serializers.ListField(child=serializers.CharField())
     connected = serializers.BooleanField()
-    last_check_in = serializers.DateTimeField()
+    last_check_in = serializers.DateTimeField(source='last_check_in_prs')
 
     class Meta:
         model = models.Host

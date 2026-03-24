@@ -169,6 +169,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         groups = host['groups']
         created = host['created']
         updated = host['updated']
+        last_check_in = host['last_check_in']
         insights_id = host['insights_id']
         satellite_id = host.get('satellite_id')  # optional
         # No branch_id ?
@@ -207,6 +208,7 @@ def handle_created_event(message: dict[str, JsonValue]):
             'groups': groups,
             'created': created,
             'updated': updated,
+            'last_check_in': last_check_in,
             'insights_id': insights_id,
             'stale_timestamp': stale_timestamp,
             'reporter': reporter,

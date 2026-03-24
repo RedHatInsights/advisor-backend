@@ -20,6 +20,7 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
+      "last_check_in": "2022-01-12T06:00:00Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 7, "minor": 10}
@@ -54,6 +55,7 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
+      "last_check_in": "2022-01-12T06:00:00Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 7, "minor": 2}
@@ -87,6 +89,7 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
+      "last_check_in": "2022-01-12T06:00:00Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 8, "minor": 3}
@@ -125,6 +128,7 @@
       "groups": [{"name": "group_4", "id": "44444444-4444-4444-4444-444444444444"}],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-12-17T02:00:51Z",
+      "last_check_in": "2022-01-12T06:00:00Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
       "system_profile": {
         "operating_system": {"type": "RHEL", "major": 6, "minor": 4}

@@ -402,6 +402,7 @@ class Migration(migrations.Migration):
                         # ('tags', django.contrib.postgres.fields.jsonb.JSONField()),
                         ('updated', models.DateTimeField()),
                         ('created', models.DateTimeField()),
+                        ('last_check_in', models.DateTimeField()),
                         ('stale_timestamp', models.DateTimeField()),
                         ('stale_warning_timestamp', models.DateTimeField()),
                         ('culled_timestamp', models.DateTimeField()),

@@ -126,6 +126,7 @@ class Host(models.Model):
     groups = models.JSONField()
     updated = models.DateTimeField()
     created = models.DateTimeField()
+    last_check_in = models.DateTimeField()
     stale_timestamp = models.DateTimeField()
     insights_id = models.UUIDField()  # the ID that the Insights client assigns itself.
     system_profile = models.JSONField()

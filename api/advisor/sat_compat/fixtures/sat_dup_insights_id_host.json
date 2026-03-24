@@ -9,6 +9,7 @@
       "groups": [],
       "created": "2022-01-11T06:00:00Z",
       "updated": "2022-01-11T06:15:38Z",
+      "last_check_in": "2022-01-12T06:00:00Z",
       "stale_timestamp": "2022-01-12T06:00:00Z",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
