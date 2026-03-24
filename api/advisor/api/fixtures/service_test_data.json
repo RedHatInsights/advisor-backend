@@ -9,6 +9,7 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-04T05:15:38Z",
+      "last_check_in": "2020-02-28T23:59:59Z",
       "stale_timestamp": "2020-02-28T23:59:59Z",
       "system_profile": {
           "arch": "x86_64", "bios.vendor": "Dell Inc.",
@@ -34,6 +35,7 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-04T05:15:38Z",
+      "last_check_in": "2020-02-28T23:59:59Z",
       "stale_timestamp": "2020-03-31T23:59:59Z",
       "system_profile": {
           "arch": "x86_64", "bios.vendor": "Dell Inc.",
@@ -59,6 +61,7 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-04T05:15:38Z",
+      "last_check_in": "2020-02-28T23:59:59Z",
       "stale_timestamp": "2020-08-28T23:59:59Z",
       "system_profile": {
           "arch": "x86_64", "bios.vendor": "Dell Inc.",
