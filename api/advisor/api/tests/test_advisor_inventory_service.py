@@ -68,6 +68,7 @@ create_new_host_msg: dict[str, JsonValue] = {
             "sap": "", "sap_system": "", "sap_sids": "",
             "system_update_method": ""
         },
+        "reporter": "puptoo",
         "per_reporter_staleness": {"puptoo": {
             "stale_timestamp": stale_time,
             "stale_warning_timestamp": stale_warn_time,
@@ -113,6 +114,7 @@ update_host_msg: dict[str, JsonValue] = {
                 }
             }
         },
+        "reporter": "puptoo",
         "per_reporter_staleness": {"puptoo": {
             "stale_timestamp": stale_time,
             "stale_warning_timestamp": stale_warn_time,

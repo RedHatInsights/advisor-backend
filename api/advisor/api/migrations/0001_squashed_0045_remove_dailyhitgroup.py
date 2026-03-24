@@ -409,6 +409,8 @@ class Migration(migrations.Migration):
                         ('insights_id', models.UUIDField()),
                         ('tags', models.JSONField()),
                         ('system_profile', models.JSONField()),
+                        ('reporter', models.CharField(max_length=200)),
+                        ('per_reporter_staleness', models.JSONField()),
                     ],
                     options={
                         'db_table': '"inventory"."hosts"',

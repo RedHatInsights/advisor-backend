@@ -176,6 +176,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         # should not use them.
         stale_timestamp = host['stale_timestamp']
         system_profile_field = host['system_profile']
+        reporter = host['reporter']
         per_reporter_staleness = host['per_reporter_staleness']
     except KeyError as key_name:
         # Might be missing metadata or request_id...
@@ -208,6 +209,7 @@ def handle_created_event(message: dict[str, JsonValue]):
             'updated': updated,
             'insights_id': insights_id,
             'stale_timestamp': stale_timestamp,
+            'reporter': reporter,
             'per_reporter_staleness': per_reporter_staleness,
             'system_profile': system_profile,
         }
