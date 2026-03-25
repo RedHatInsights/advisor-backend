@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS inventory.hosts_table (
     created timestamp with time zone NOT NULL,
     last_check_in timestamp with time zone NOT NULL,
     stale_timestamp timestamp with time zone NOT NULL,
-    system_profile jsonb NOT NULL,
+    system_profile jsonb NOT NULL default '{}'::jsonb,
     reporter character varying(200) NOT NULL,
     per_reporter_staleness jsonb default '{}'::jsonb,
     insights_id uuid

@@ -121,7 +121,7 @@ class Migration(migrations.Migration):
                         ('culled_timestamp', models.DateTimeField()),
                         ('system_profile', models.JSONField(default=dict)),
                         ('reporter', models.CharField(max_length=200)),
-                        ('per_reporter_staleness', models.JSONField()),
+                        ('per_reporter_staleness', models.JSONField(default=dict)),
                         ('insights_id', models.UUIDField()),
                     ],
                     options={

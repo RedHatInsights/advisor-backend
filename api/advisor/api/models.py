@@ -659,7 +659,7 @@ class InventoryHost(models.Model):
     insights_id = models.UUIDField()  # the ID that the Insights client assigns itself.
     system_profile = models.JSONField(default=dict)
     reporter = models.CharField(max_length=200, default="puptoo")
-    per_reporter_staleness = models.JSONField(null=True)
+    per_reporter_staleness = models.JSONField(default=dict)
 
     objects = InventoryHostManager()
 
