@@ -12,7 +12,9 @@
       }],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-04T05:15:38Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
           "bios_release_date": "13/06/2017", "cores_per_socket": 8,
@@ -49,7 +51,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-09-22T02:00:51Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "innotek Gmbh",
           "bios_version": "Virtualbox", "bios_release_date": "01/01/2011",
@@ -88,7 +92,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-10T23:32:13Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -125,7 +131,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-10T23:32:15Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -161,7 +169,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-04-05T14:30:00Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -191,7 +201,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2020-02-18T02:56:27Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -227,7 +239,9 @@
       "groups": [],
       "created": "2020-06-25T06:00:00Z",
       "updated": "2020-06-25T07:56:27Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -262,7 +276,9 @@
       "groups": [],
       "created": "2023-07-06T06:00:00Z",
       "updated": "2023-07-06T07:56:27Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 4,
@@ -300,7 +316,9 @@
       "groups": [],
       "created": "2020-06-25T06:00:00Z",
       "updated": "2020-06-25T07:56:27Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -337,7 +355,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-05-22T02:00:51Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -367,7 +387,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-05-22T02:00:51Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,
@@ -409,7 +431,9 @@
       "groups": [],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2019-05-22T02:00:51Z",
+      "last_check_in": "2018-12-10T23:32:13Z",
       "stale_timestamp": "2020-01-01T06:00:00Z",
+      "reporter": "puptoo",
       "system_profile": {
           "arch": "x86_64", "bios_vendor": "Dell Inc.",
           "bios_version": "2.8.0", "cores_per_socket": 8,

@@ -169,6 +169,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         groups = host['groups']
         created = host['created']
         updated = host['updated']
+        last_check_in = host['last_check_in']
         insights_id = host['insights_id']
         satellite_id = host.get('satellite_id')  # optional
         # No branch_id ?
@@ -176,6 +177,7 @@ def handle_created_event(message: dict[str, JsonValue]):
         # should not use them.
         stale_timestamp = host['stale_timestamp']
         system_profile_field = host['system_profile']
+        reporter = host['reporter']
         per_reporter_staleness = host['per_reporter_staleness']
     except KeyError as key_name:
         # Might be missing metadata or request_id...
@@ -206,8 +208,10 @@ def handle_created_event(message: dict[str, JsonValue]):
             'groups': groups,
             'created': created,
             'updated': updated,
+            'last_check_in': last_check_in,
             'insights_id': insights_id,
             'stale_timestamp': stale_timestamp,
+            'reporter': reporter,
             'per_reporter_staleness': per_reporter_staleness,
             'system_profile': system_profile,
         }

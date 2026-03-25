@@ -7,10 +7,12 @@
         "created": "2020-02-21T23:59:59Z",
         "display_name": "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test",
         "stale_timestamp": "2020-02-28T23:59:59Z",
+        "reporter": "puptoo",
         "system_profile": {},
         "tags": [],
         "groups": [],
         "updated": "2020-02-21T23:59:59Z",
+        "last_check_in": "2020-02-28T23:59:59Z",
         "per_reporter_staleness": {"puptoo": {"stale_timestamp": "3020-01-01T06:00:00Z"}},
         "insights_id": "d60db782-8462-410e-b0fc-f4ee97d985cb"
     }
@@ -23,10 +25,12 @@
         "created": "2020-02-21T23:59:59Z",
         "display_name": "unknown",
         "stale_timestamp": "2020-02-28T23:59:59Z",
+        "reporter": "puptoo",
         "system_profile": {},
         "tags": [],
         "groups": [],
         "updated": "2020-02-21T23:59:59Z",
+        "last_check_in": "2020-02-28T23:59:59Z",
         "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
         "insights_id": "8da8bea4-964a-99f4-6e28bd13aaec5423"
     }

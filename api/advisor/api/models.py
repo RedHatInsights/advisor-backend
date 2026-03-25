@@ -654,10 +654,12 @@ class InventoryHost(models.Model):
     groups = models.JSONField()
     updated = models.DateTimeField()
     created = models.DateTimeField()
+    last_check_in = models.DateTimeField()
     stale_timestamp = models.DateTimeField()
     insights_id = models.UUIDField()  # the ID that the Insights client assigns itself.
-    system_profile = models.JSONField()
-    per_reporter_staleness = models.JSONField(null=True)
+    system_profile = models.JSONField(default=dict)
+    reporter = models.CharField(max_length=200, default="puptoo")
+    per_reporter_staleness = models.JSONField(default=dict)
 
     objects = InventoryHostManager()
 

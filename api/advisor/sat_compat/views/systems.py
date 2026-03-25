@@ -84,7 +84,7 @@ sort_map = {
     'system_id': 'id',
     'display_name': 'display_name',
     'hostname': 'display_name',
-    'last_check_in': 'updated',
+    'last_check_in': 'last_check_in',
     'report_count': 'report_count',
     'created_at': 'created',
 }
@@ -352,7 +352,6 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
                 display_name=F('inventory__display_name'),
                 isCheckingIn=isCheckingIn_case('inventory'),
                 system_type_id=F('upload__system_type_id'),  # see filter above
-                last_check_in=F('inventory__updated'),
             )
         ))
         # Map the rule onto each report, and get the Dot field outputs
@@ -476,7 +475,6 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
         return InventoryHost.objects.for_account(
             self.request, filter_branch_id=False, require_host=False
         ).annotate(
-            last_check_in=F('updated'),
             isCheckingIn=isCheckingIn_case(),
             unregistered_at=Case(
                 When(

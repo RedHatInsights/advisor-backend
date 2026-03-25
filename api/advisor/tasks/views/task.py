@@ -210,7 +210,7 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
                 default=Value('none'),
                 output_field=CharField()
             ),
-            last_check_in=F('per_reporter_staleness__puptoo__last_check_in'),
+            last_check_in_prs=F('per_reporter_staleness__puptoo__last_check_in'),
             requirements=build_task_system_requirements(task)
         ).order_by(*sort_fields)
         return self._paginated_response(

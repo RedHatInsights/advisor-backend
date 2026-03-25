@@ -60,6 +60,7 @@ create_new_host_msg: dict[str, JsonValue] = {
         "satellite_id": new_host_satid,
         "created": "2025-11-28T03:53:20Z",
         "updated": "2025-11-28T03:53:20Z",
+        "last_check_in": "2025-11-28T03:53:20Z",
         "tags": [],
         "stale_timestamp": stale_time,
         "system_profile": {
@@ -68,6 +69,7 @@ create_new_host_msg: dict[str, JsonValue] = {
             "sap": "", "sap_system": "", "sap_sids": "",
             "system_update_method": ""
         },
+        "reporter": "puptoo",
         "per_reporter_staleness": {"puptoo": {
             "stale_timestamp": stale_time,
             "stale_warning_timestamp": stale_warn_time,
@@ -93,6 +95,7 @@ update_host_msg: dict[str, JsonValue] = {
         "satellite_id": '',
         "created": "2025-12-01T03:09:27Z",
         "updated": "2025-12-01T03:09:27Z",
+        "last_check_in": "2025-12-01T03:09:27Z",
         "tags": [],
         "stale_timestamp": stale_time,
         "system_profile": {  # taken from the fixture, only certain values copied
@@ -113,6 +116,7 @@ update_host_msg: dict[str, JsonValue] = {
                 }
             }
         },
+        "reporter": "puptoo",
         "per_reporter_staleness": {"puptoo": {
             "stale_timestamp": stale_time,
             "stale_warning_timestamp": stale_warn_time,
