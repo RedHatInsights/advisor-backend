@@ -517,6 +517,36 @@ def get_workspace_id(
     return workspace_id, elapsed
 
 
+def _kessel_org_workspace_ids_for_permission_check(
+    request: Request, subject: kessel.SubjectRef
+) -> tuple[list[str], float]:
+    """
+    Workspace IDs to try for ORG-scoped Kessel checks.
+
+    Always includes the org default workspace (RBAC v2). Also includes every
+    workspace the subject has inventory_host_view on, matching the graph
+    where advisor_recommendation_results_read intersects inventory_host_view
+    (see schema rbac/platform).
+    """
+    elapsed = 0.0
+    seen: set[str] = set()
+    ordered: list[str] = []
+    default_id, t = get_workspace_id(request)
+    elapsed += t
+    if default_id:
+        seen.add(default_id)
+        ordered.append(default_id)
+    inv_workspaces, t2 = kessel.client.host_groups_for(subject)
+    elapsed += t2
+    if isinstance(inv_workspaces, list):
+        for wid in inv_workspaces:
+            w = str(wid)
+            if w not in seen:
+                seen.add(w)
+                ordered.append(w)
+    return ordered, elapsed
+
+
 def has_kessel_permission(
     scope: "ResourceScope", permission: RBACPermission, request: Request,
     host_id: str | None = None
@@ -550,22 +580,55 @@ def has_kessel_permission(
     try:
         logger.debug("Checking %s has %s in %s...", identity, permission, scope)
         if scope == ResourceScope.ORG:
-            # We actually translate this into the default workspace of that org.
-            workspace_id, elapsed = get_workspace_id(request)
-            if not workspace_id:
-                # Log created by exception catch below
-                raise ValueError("No workspace found for org")
-            logger.debug(
-                "KESSEL: checking access for org %s workspace %s",
-                identity['org_id'], workspace_id
-            )
-            # Kessel check requires a 'user_id' in the identity's user data.
-            # This is checked in InsightsRBACPermission, the caller.
-            result, elapsed = kessel.client.check(
-                kessel.Workspace(workspace_id).to_ref(),
-                permission.as_kessel_permission(),
-                identity_to_subject(identity)
-            )
+            subject = identity_to_subject(identity)
+            relation = permission.as_kessel_permission()
+            # recommendation-results read is workspace- and host-scoped in Kessel
+            # (binding & inventory_host_view).
+            if (
+                permission.app == 'advisor'
+                and permission.resource == 'recommendation-results'
+                and permission.method == 'read'
+            ):
+                workspace_ids, extra_elapsed = _kessel_org_workspace_ids_for_permission_check(
+                    request, subject
+                )
+                elapsed += extra_elapsed
+                if not workspace_ids:
+                    raise ValueError("No workspace found for org")
+                logger.debug(
+                    "KESSEL: checking %s for org %s on workspaces %s",
+                    relation, identity['org_id'], workspace_ids,
+                )
+                result = False
+                for wid in workspace_ids:
+                    ok, check_elapsed = kessel.client.check(
+                        kessel.Workspace(wid).to_ref(),
+                        relation,
+                        subject,
+                    )
+                    elapsed += check_elapsed
+                    if ok:
+                        result = True
+                        break
+            else:
+                # We actually translate this into the default workspace of that org.
+                workspace_id, w_elapsed = get_workspace_id(request)
+                elapsed += w_elapsed
+                if not workspace_id:
+                    # Log created by exception catch below
+                    raise ValueError("No workspace found for org")
+                logger.debug(
+                    "KESSEL: checking access for org %s workspace %s",
+                    identity['org_id'], workspace_id
+                )
+                # Kessel check requires a 'user_id' in the identity's user data.
+                # This is checked in InsightsRBACPermission, the caller.
+                result, check_elapsed = kessel.client.check(
+                    kessel.Workspace(workspace_id).to_ref(),
+                    relation,
+                    subject,
+                )
+                elapsed += check_elapsed
         elif scope == ResourceScope.WORKSPACE:
             logger.debug("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.

@@ -15,6 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import responses
+from kessel.inventory.v1beta2 import check_request_pb2
 
 from django.http import HttpRequest
 from django.test import TestCase, override_settings
@@ -22,6 +23,7 @@ from django.urls import reverse
 
 from rest_framework.exceptions import AuthenticationFailed
 
+from api import kessel as kessel_mod
 from api.kessel import add_kessel_response
 from api.models import InventoryHost
 from api.permissions import (
@@ -759,6 +761,44 @@ class TestInsightsRBACPermissionKessel(TestCase):
         perm = RBACPermission('advisor:*:*')
         with self.assertRaises(ValueError):
             _ = has_kessel_permission(ResourceScope.ORG, perm, request)
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    @add_kessel_response(
+        permission_checks=[
+            (
+                check_request_pb2.CheckRequest(
+                    object=constants.kessel_std_org_obj,
+                    relation="advisor_recommendation_results_view",
+                    subject=constants.kessel_std_user_obj,
+                ),
+                kessel_mod.DENIED,
+            ),
+            (
+                check_request_pb2.CheckRequest(
+                    object=kessel_mod.Workspace(constants.host_group_1_id).to_ref().as_pb2(),
+                    relation="advisor_recommendation_results_view",
+                    subject=constants.kessel_std_user_obj,
+                ),
+                kessel_mod.ALLOWED,
+            ),
+        ],
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1,
+    )
+    @responses.activate
+    def test_kessel_org_recommendation_results_read_tries_inventory_workspaces(self):
+        """
+        ORG-scoped recommendation-results:read must not use only the default
+        workspace; users may have Kessel access on other workspaces where they
+        have inventory_host_view.
+        """
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+        )
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        perm = RBACPermission('advisor:recommendation-results:read')
+        result, _elapsed = has_kessel_permission(ResourceScope.ORG, perm, request)
+        self.assertTrue(result)
 
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @add_kessel_response(
