@@ -233,7 +233,19 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
     identity = request.auth
     # This has already been checked in callers to this code so we assume
     # we can get the org_id and username keys.
-    if settings.RBAC_PSK:
+    if settings.RBAC_SERVICE_ACCOUNT_CLIENT_ID:
+        # Use the service account identity header to authenticate with RBAC.
+        # RBAC's middleware extracts service_account.client_id and
+        # service_account.username from the x-rh-identity header.
+        rbac_header = auth_header_for_testing(
+            org_id=identity['org_id'],
+            supply_http_header=True,
+            service_account={
+                'client_id': settings.RBAC_SERVICE_ACCOUNT_CLIENT_ID,
+                'username': settings.RBAC_SERVICE_ACCOUNT_USERNAME,
+            },
+        )
+    elif settings.RBAC_PSK:
         rbac_header = {
             "x-rh-rbac-client-id": settings.RBAC_CLIENT_ID,
             "x-rh-rbac-psk": settings.RBAC_PSK,

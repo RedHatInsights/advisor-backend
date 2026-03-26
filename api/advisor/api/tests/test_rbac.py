@@ -14,15 +14,18 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import base64
+import json
+
 import responses
 from requests.exceptions import Timeout
-
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from api.permissions import (
     auth_header_for_testing, request_object_for_testing,
-    has_rbac_permission, make_rbac_url
+    has_rbac_permission, make_rbac_request, make_rbac_url,
+    http_auth_header_key,
 )
 from api import permissions  # for rbac_perm_cache
 from api.kessel import add_kessel_response
@@ -560,6 +563,167 @@ class RBACTestCase(TestCase):
             self.assertTrue(accepted)
             self.assertEqual(elapsed, 0.0)  # Cache sets elapsed to 0.0
             permissions.rbac_perm_cache = None  # deactivate again just in case
+
+
+class MakeRbacRequestTestCase(TestCase):
+    """
+    Tests for the make_rbac_request function's header construction logic,
+    specifically the service account identity header support.
+    """
+
+    TEST_CLIENT_ID = 'test-service-account-client-id'
+    TEST_USERNAME = 'service-account-test-service-account-client-id'
+    TEST_ORG_ID = '9876543'
+
+    def _make_request(self, **kwargs):
+        """Create an authenticated request object for testing."""
+        return request_object_for_testing(
+            auth_by=permissions.RHIdentityAuthentication, **kwargs
+        )
+
+    def _decode_identity_header(self, header_value):
+        """Decode a base64-encoded x-rh-identity header value."""
+        return json.loads(base64.b64decode(header_value))
+
+    @responses.activate
+    @override_settings(
+        RBAC_SERVICE_ACCOUNT_CLIENT_ID='test-client-id',
+        RBAC_SERVICE_ACCOUNT_USERNAME='service-account-test-client-id',
+        RBAC_PSK='', RBAC_URL=TEST_RBAC_URL,
+    )
+    def test_service_account_header_used_when_client_id_set(self):
+        """
+        When RBAC_SERVICE_ACCOUNT_CLIENT_ID is set, make_rbac_request should
+        construct a service account identity header.
+        """
+        responses.add(responses.GET, TEST_RBAC_V1_ACCESS, json=rbac_data(), status=200)
+        rq = self._make_request()
+        make_rbac_request(TEST_RBAC_V1_ACCESS, rq)
+
+        # Check the header sent to RBAC
+        sent_headers = responses.calls[0].request.headers
+        self.assertIn(http_auth_header_key, sent_headers)
+
+        identity = self._decode_identity_header(sent_headers[http_auth_header_key])
+        self.assertEqual(identity['identity']['type'], 'ServiceAccount')
+        self.assertEqual(
+            identity['identity']['service_account']['client_id'],
+            'test-client-id'
+        )
+        self.assertEqual(
+            identity['identity']['service_account']['username'],
+            'service-account-test-client-id'
+        )
+
+    @responses.activate
+    @override_settings(
+        RBAC_SERVICE_ACCOUNT_CLIENT_ID='test-client-id',
+        RBAC_SERVICE_ACCOUNT_USERNAME='service-account-test-client-id',
+        RBAC_PSK='', RBAC_URL=TEST_RBAC_URL,
+    )
+    def test_service_account_header_includes_org_id_from_request(self):
+        """
+        The service account identity header should use the org_id from the
+        incoming request's identity, not a hardcoded value.
+        """
+        responses.add(responses.GET, TEST_RBAC_V1_ACCESS, json=rbac_data(), status=200)
+        test_org = '1234567'
+        rq = self._make_request(org_id=test_org)
+        make_rbac_request(TEST_RBAC_V1_ACCESS, rq)
+
+        sent_headers = responses.calls[0].request.headers
+        identity = self._decode_identity_header(sent_headers[http_auth_header_key])
+        self.assertEqual(identity['identity']['org_id'], test_org)
+
+    @responses.activate
+    @override_settings(
+        RBAC_SERVICE_ACCOUNT_CLIENT_ID='test-client-id',
+        RBAC_SERVICE_ACCOUNT_USERNAME='service-account-test-client-id',
+        RBAC_PSK='some-psk', RBAC_URL=TEST_RBAC_URL,
+    )
+    def test_service_account_takes_precedence_over_psk(self):
+        """
+        When both RBAC_SERVICE_ACCOUNT_CLIENT_ID and RBAC_PSK are set,
+        the service account header should be used (not PSK).
+        """
+        responses.add(responses.GET, TEST_RBAC_V1_ACCESS, json=rbac_data(), status=200)
+        rq = self._make_request()
+        make_rbac_request(TEST_RBAC_V1_ACCESS, rq)
+
+        sent_headers = responses.calls[0].request.headers
+        # Should have x-rh-identity, not PSK headers
+        self.assertIn(http_auth_header_key, sent_headers)
+        self.assertNotIn('x-rh-rbac-psk', sent_headers)
+        self.assertNotIn('x-rh-rbac-client-id', sent_headers)
+
+        identity = self._decode_identity_header(sent_headers[http_auth_header_key])
+        self.assertEqual(identity['identity']['type'], 'ServiceAccount')
+
+    @responses.activate
+    @override_settings(
+        RBAC_SERVICE_ACCOUNT_CLIENT_ID='',
+        RBAC_SERVICE_ACCOUNT_USERNAME='',
+        RBAC_PSK='test-psk', RBAC_CLIENT_ID='advisor',
+        RBAC_URL=TEST_RBAC_URL,
+    )
+    def test_psk_fallback_when_service_account_not_set(self):
+        """
+        When RBAC_SERVICE_ACCOUNT_CLIENT_ID is empty but RBAC_PSK is set,
+        the PSK headers should be used.
+        """
+        responses.add(responses.GET, TEST_RBAC_V1_ACCESS, json=rbac_data(), status=200)
+        rq = self._make_request()
+        make_rbac_request(TEST_RBAC_V1_ACCESS, rq)
+
+        sent_headers = responses.calls[0].request.headers
+        self.assertIn('x-rh-rbac-psk', sent_headers)
+        self.assertEqual(sent_headers['x-rh-rbac-psk'], 'test-psk')
+        self.assertIn('x-rh-rbac-client-id', sent_headers)
+        self.assertEqual(sent_headers['x-rh-rbac-client-id'], 'advisor')
+
+    @responses.activate
+    @override_settings(
+        RBAC_SERVICE_ACCOUNT_CLIENT_ID='',
+        RBAC_SERVICE_ACCOUNT_USERNAME='',
+        RBAC_PSK='', RBAC_URL=TEST_RBAC_URL,
+    )
+    def test_identity_header_fallback_when_neither_set(self):
+        """
+        When neither RBAC_SERVICE_ACCOUNT_CLIENT_ID nor RBAC_PSK is set,
+        the request's own x-rh-identity header should be forwarded.
+        """
+        responses.add(responses.GET, TEST_RBAC_V1_ACCESS, json=rbac_data(), status=200)
+        rq = self._make_request()
+        make_rbac_request(TEST_RBAC_V1_ACCESS, rq)
+
+        sent_headers = responses.calls[0].request.headers
+        # Should forward the x-rh-identity header from the request
+        self.assertIn(http_auth_header_key, sent_headers)
+        self.assertNotIn('x-rh-rbac-psk', sent_headers)
+
+        # The forwarded header should be a User identity (from request)
+        identity = self._decode_identity_header(sent_headers[http_auth_header_key])
+        self.assertEqual(identity['identity']['type'], 'User')
+
+    @responses.activate
+    @override_settings(
+        RBAC_SERVICE_ACCOUNT_CLIENT_ID='test-client-id',
+        RBAC_SERVICE_ACCOUNT_USERNAME='service-account-test-client-id',
+        RBAC_PSK='', RBAC_URL=TEST_RBAC_URL,
+    )
+    def test_service_account_header_does_not_contain_user_section(self):
+        """
+        The service account identity header should not contain a 'user'
+        section - it should only have 'service_account'.
+        """
+        responses.add(responses.GET, TEST_RBAC_V1_ACCESS, json=rbac_data(), status=200)
+        rq = self._make_request()
+        make_rbac_request(TEST_RBAC_V1_ACCESS, rq)
+
+        sent_headers = responses.calls[0].request.headers
+        identity = self._decode_identity_header(sent_headers[http_auth_header_key])
+        self.assertNotIn('user', identity['identity'])
+        self.assertIn('service_account', identity['identity'])
 
 
 class KesselTestCase(TestCase):
