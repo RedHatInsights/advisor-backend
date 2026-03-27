@@ -1,10 +1,23 @@
 # The Advisor API in Django
 
-This is an implementation of the new Insights API in Django 5.2, which
+This is an implementation of the Insights API in Django 5.2, which
 requires Python 3.12 or above.
 
 See the main [Read Me](../README.md) document for more information about
 Advisor's purpose and structure.
+
+# Advisor API overview
+
+The Advisor API actually covers three APIs:
+
+- The main Advisor API, handling URLs starting with `/api/insights/v1/`, is
+  in `api/advisor/api/`.
+- The Satellite Compatibility API, handling URLs starting with `/r/insights/`,
+  is in `api/advisor/sat_compat/`.  The [Readme](advisor/sat_compat/README.md)
+  there gives more information about what that is for.
+- The Tasks API, handling URLs starting with `/api/tasks/v1/`, is in
+  `api/advisor/tasks/`.  The [Readme](advisor/tasks/README.md) there gives
+  more information about the Tasks app.
 
 ## Install instructions
 
@@ -106,14 +119,39 @@ $ api/advisor/manage.py migrate
 If you are using podman-compose, run `podman-compose build` to rebuild the
 advisor-api container image and then restart the advisor-api container.
 
-# Host staleness
+# Mechanisms within the API
+
+## Host staleness and reporters
+
+Hosts report into the Hybrid Cloud Console in a variety of ways.  Originally
+the only way was via the `insights-client` program uploading a snapshot of
+the system every night.  Then other ways of tracking a system's status were
+added - using `subscription-manager` reporting, and via Satellites reporting
+their host inventory.
+
+In order for the Inventory to not get cluttered with systems that had uploaded
+once and were then forgotten, systems over three weeks old are hidden from view.
+Then after another week they are removed from the database; this allows a
+bit of grace time for a sysadmin to get the host reporting again after they
+realise it's disappeared from their view.
 
 Inventory controls host staleness and culling using two sets of fields:
 
   * the `stale_timestamp`, `stale_warning_timestamp` and `culled_timestamp`
-    fields
+    fields, set by any reporter.
   * the `per_reporter_staleness` field, which relies on the `puptoo` object
-    having a `stale_timestamp` field
+    having a `stale_timestamp` field.
+
+Advisor only cares about one reporter - puptoo (which is the service that
+receives uploads from the `insights-client`).  The `updated` and `last_check_in`
+fields are updated by any reporter; it is therefore possible for a system
+that hasn't been turned on in a week to have its Satellite report it as still
+up to date in Inventory.  So Advisor only uses the `stale_warning_timestamp`
+field from the `per_reporter_staleness.puptoo` object.
+
+The system's `last_seen` date is drawn from Advisor's own `Upload` model,
+which stores the `checked_on` date from when this system last actually
+performed an upload that went into Advisor.
 
 The InventoryHost model controls this using a filter applied in the
 `for_account` manager method.  This makes sure that hosts that are currently
@@ -135,8 +173,6 @@ This will update all the host timestamps according to the following rules:
     set three days in the past, their `stale_warning_timestamp` set three
     days in the past, and their `culled_timestamp` set one day in the past.
   * All other timestamps are set to sixty days in the future.
-
-# Mechanisms within the API
 
 ## Authentication and permissions
 
@@ -550,6 +586,94 @@ $ api/advisor/manage.py test advisor
 $ cd api/advisor
 $ ./manage.py test
 ```
+
+These can also be run via
+```sh
+$ pipenv run testapi
+```
+
+### Code coverage and test writing
+
+In general, we try to cover as much of the code as we can in our tests.
+
+- We write tests that check that things operate correctly, but we also write
+  tests for things that fail to check that they fail in the expected way.
+- We write tests for the important details, not for every single detail.
+  For example, we may test all the values of one host in a list of hosts,
+  but then we only test the values that are important to the query in the
+  other hosts.
+- We try to follow a 'test-driven development' model, of writing the test
+  code to trigger a bug or explore a new feature and then writing the code
+  that causes the test to pass.
+- We should write tests both of the operations of specific functions, to
+  make sure all their corner cases are checked, and the overall operation of
+  the systems using those functions.
+- Sometimes it makes sense to cover tests of specific code by testing it in
+  a specific file, not related
+
+Likewise, the tools we use in testing are:
+
+- The Django unit test module and TestCase class provide all tests.
+  - Fixtures are loaded from the `api/advisor/*/fixtures/` directory via
+    the standard TestCase `fixtures` property.
+  - Requests to the API uses the `self.client` 'requests' client and the
+    Django `reverse()` function to map a URL name to a path.
+  - Tests involving systems should use the `update_stale_dates()` function
+    imported from `api.tests` to update the staleness timestamps on all
+    systems prior to any tests.
+  - Exceptions
+- External systems and API calls are not 'mocked' out.
+  - Requests to other APIs are provided by the `responses` module.
+  - Settings are overridden through the `override_settings` decorator.
+  - Kafka message producers and consumers can be handled via the `DummyMessage`,
+    `DummyConsumer` and `DummyProducer` classes in `api/advisor/kafka_utils.py`.
+
+Most of the tests in the `api/advisor/*/tests/` directories use a 'constants'
+class defined in `api/advisor/api/tests/__init__.py` and imported via
+`from api.tests import constants`.  This defines a wide variety of constant
+values for host details, rule details, accounts and organisations, pathways,
+rule categories, content types, and Kessel data.  In general, we should avoid
+direct string comparisons in tests - e.g.:
+
+```py
+    self.assertEqual(systems[0]['system_uuid'], '00112233-4455-6677-8899-012345678903')
+    self.assertEqual(systems[0]['display_name'], 'system03.example.com')
+```
+
+Instead these should use constants.
+
+```py
+    self.assertEqual(systems[0]['system_uuid'], constants.host_03_uuid)
+    self.assertEqual(systems[0]['display_name'], constants.host_03_name)
+```
+
+System last seen dates are probably the main exception to this at the moment -
+they should probably be made unique to each system and added to the constants
+in the future.
+
+Tests of specific features of the API code are broken out into `_views.py` test
+files, and (minimal) tests of the models are in the `_models.py` files. Commands
+and services are also tested. Other notable test suites in the Advisor API are:
+
+- `test_advisor_logging.py` - Testing that logs generated actually contain
+  all the fields we expect.
+- `test_api_docs.py` - Test the OpenAPI schema generation.
+- `test_cert_auth.py` - Tests authentication via system certificate.
+- `test_floorist.py` - Tests that the Floorist queries defined in our
+  `clowdapp.yml` (internal) are valid SQL.
+- `test_host_groups.py` - Tests when the user is limited to only viewing
+  hosts in certain groups.
+- `test_kafka_utils.py` - Tests that our Kafka handlers work.
+- `test_middleware.py` - Not tests of Django's middleware - tests that the
+  Hybrid Cloud Console middleware interface for getting use details work.
+- `test_parameter_parsing.py` - Tests our utility functions for handling
+  query parameters.
+- `test_rbac.py` - Tests views when RBAC is enabled.
+- `test_view_auth.py` - Tests all the ways view authentication and permission
+  checks work and can fail.
+- `test_workloads_field_redirection.py` - Tests that queries that use the old
+  'sap_system', 'sap_sids', 'ansible' and 'mssql' fields in the system profile
+  translate correctly into use of the new 'workload' structure.
 
 ## Auto-Generating API Client
 
