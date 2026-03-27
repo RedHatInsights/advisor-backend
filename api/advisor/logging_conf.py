@@ -64,7 +64,12 @@ LOGGING = {
         },
     },
     'loggers': {
-        'django': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False
+        },
+        'django.server': {
             'handlers': ['console'],
             'level': LOG_LEVEL,
             'propagate': False
@@ -74,7 +79,12 @@ LOGGING = {
             'level': LOG_LEVEL,
             'propagate': False,
         },
-        'gunicorn': {
+        'gunicorn.access': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'gunicorn.error': {
             'handlers': ['console'],
             'level': LOG_LEVEL,
             'propagate': False,
@@ -82,6 +92,11 @@ LOGGING = {
         'api.management': {
             'handlers': ['console'],
             'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'UnleashClient': {
+            'handlers': ['console'],
+            'level': 'WARNING',
             'propagate': False,
         }
     },
