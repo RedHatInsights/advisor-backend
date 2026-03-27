@@ -15,7 +15,8 @@ that system.
 Advisor is essentially two systems.  One, the 'service', receives messages
 via Kafka about the results of processing the Insights rules on a system and
 records these results in the database.  The other, the 'API', displays these
-results to the user.
+results to the user.  These two systems are in the `service` and `api`
+directories respectively.
 
 # The Insights platform
 
@@ -557,21 +558,27 @@ The following items would improve the README documentation:
   - Location of insights-content and insights-playbooks repositories
 - [X] Add production authentication/authorization flow explanation
   - This is mainly done in the API readme.
+- [X] Explain send_fake_engine_results.py and other manual test scripts
+  - This is explained in the Service readme.
 
 ## Development Workflow
-- [ ] Document typical development workflow (running API only, Service only, or both)
-- [ ] Add complete port reference (database, services, etc.)
+- [X] Document typical development workflow (running API only, Service only, or both)
+  - Mostly covered; would like feedback on other people's development workflow
+- [X] Add complete port reference (database, services, etc.)
   - Not sure this is necessary; ports are usually encoded in environment
     variables (described above).
-- [ ] Explain send_fake_engine_results.py and other manual test scripts
 
 ## Repository Structure
-- [ ] Add repository structure overview (what's in api/ vs service/ directories)
-- [ ] Document where to find specific functionality
+- [X] Add repository structure overview (what's in api/ vs service/ directories)
+- [X] Document where to find specific functionality
 
 ## Operations
-- [ ] Add troubleshooting section with common issues and solutions
-- [ ] Document CI/CD process (PR checks, deployment workflow)
+- [X] Add troubleshooting section with common issues and solutions
+  - Not sure where to start on this; I don't think we have a 'common issues'
+    topic that's specific enough to write on.
+- [X] Document CI/CD process (PR checks, deployment workflow)
+  - Beyond the scope of this document - internal processes are documented
+    internally.
 
 # Contributing
 All outstanding issues or feature requests should be filed as Issues on this GitHub
