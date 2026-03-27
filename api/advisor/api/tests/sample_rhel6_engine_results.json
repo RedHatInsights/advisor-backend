@@ -21,7 +21,7 @@
       "service": "advisor",
       "size": 279317,
       "timestamp": "2022-04-18T14:01:01.338500595Z",
-      "url": "https://s3.us-east-1.amazonaws.com/insights-ingress-prod/15a69bd8db3045db801b6a587cb56499?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAUKARNPA6LGLHRM7Q%2F20220418%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20220418T140101Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&X-Amz-Signature=6a169482a96b5e85188ee10af860e9928d89ef6bbca06c47c1ae2249bac5392a",
+      "url": "https://localhost:6100/s3/RHEL6-OUTATIME",
       "validation": null,
       "test": null,
       "is_ros": null
