@@ -528,7 +528,7 @@ else:
     PAYLOAD_TRACKER_TOPIC = os.environ.get('PAYLOAD_TRACKER_TOPIC')
     REMEDIATIONS_HOOK_TOPIC = os.environ.get('REMEDIATIONS_HOOK_TOPIC',
                                              'platform.remediation-updates.advisor')
-    WEBHOOKS_TOPIC = os.environ.get('WEBHOOKS_TOPIC')
+    WEBHOOKS_TOPIC = os.environ.get('WEBHOOKS_TOPIC', 'platform.notifications.ingress')
     TASKS_UPDATES_TOPIC = os.environ.get('TASKS_UPDATES_TOPIC', 'platform.playbook-dispatcher.runs')
     TASKS_SOURCES_TOPIC = os.environ.get('TASKS_SOURCES_TOPIC', 'platform.sources.event-stream')
     TASKS_UPLOAD_TOPIC = os.environ.get('TASKS_UPLOAD_TOPIC', 'platform.upload.announce')
