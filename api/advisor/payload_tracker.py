@@ -18,28 +18,27 @@
 
 import json
 import logging
-from django.conf import settings
 import traceback
 import datetime
 import thread_storage
 from typing import Optional
 import prometheus
 
-# Import kafka stuff
-import project_settings.kafka_settings as kafka_settings
+# Import settings for Kafka topics
+from django.conf import settings
 
 logger = logging.getLogger(settings.APP_NAME)
 
 # Setup producer to communicate with payload tracker - use DummyProducer in tests
 _producer = None
-if kafka_settings.PAYLOAD_TRACKER_TOPIC:
-    logger.debug(f"Creating producer for payload tracker topic {kafka_settings.PAYLOAD_TRACKER_TOPIC}.")
+if settings.PAYLOAD_TRACKER_TOPIC:
+    logger.debug(f"Creating producer for payload tracker topic {settings.PAYLOAD_TRACKER_TOPIC}.")
     if settings.TESTING:
         from kafka_utils import DummyProducer
-        _producer = DummyProducer(kafka_settings.KAFKA_SETTINGS)
+        _producer = DummyProducer(settings.KAFKA_SETTINGS)
     else:
         from confluent_kafka import Producer
-        _producer = Producer(kafka_settings.KAFKA_SETTINGS)
+        _producer = Producer(settings.KAFKA_SETTINGS)
 
 
 def payload_delivery_report(err, msg):
@@ -60,7 +59,7 @@ def bad_payload(
     """
     Send a message about a bad payload to the payload tracker.
     """
-    if _producer is None or not kafka_settings.PAYLOAD_TRACKER_TOPIC:
+    if _producer is None or not settings.PAYLOAD_TRACKER_TOPIC:
         return
     try:
         if payload_data.get('request_id'):
@@ -82,7 +81,7 @@ def bad_payload(
                 'date': str(current_time)
             })
             logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
-            _producer.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
+            _producer.produce(settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
                                 callback=payload_delivery_report)
             _producer.flush()
     except Exception:
@@ -93,7 +92,7 @@ def payload_status(payload_status, payload_status_msg, payload_info=None):
     """
     Update payload tracker with the status of this payload.
     """
-    if _producer is None or not kafka_settings.PAYLOAD_TRACKER_TOPIC:
+    if _producer is None or not settings.PAYLOAD_TRACKER_TOPIC:
         return
     payload_msg = {
         'service': settings.APP_NAME,
@@ -116,7 +115,7 @@ def payload_status(payload_status, payload_status_msg, payload_info=None):
     payload_msg = json.dumps(payload_msg)
     logger.debug(f"Sending payload status message {payload_msg.encode('utf-8')}")
     try:
-        _producer.produce(kafka_settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
+        _producer.produce(settings.PAYLOAD_TRACKER_TOPIC, payload_msg.encode('utf-8'),
                             callback=payload_delivery_report)
         _producer.flush()
     except Exception:

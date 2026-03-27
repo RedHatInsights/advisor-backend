@@ -21,12 +21,11 @@ import json
 import datetime
 import traceback
 import logging
-from django.conf import settings
 import prometheus
 import payload_tracker
 
-# Import Kafka stuff
-import project_settings.kafka_settings as kafka_settings
+# Import settings for Kafka topics
+from django.conf import settings
 
 # Import Django models
 import api.models as db
@@ -42,15 +41,19 @@ logger = logging.getLogger(settings.APP_NAME)
 
 # Initialize producer - use DummyProducer in tests to avoid Kafka connection
 _producer = None
-if kafka_settings.REMEDIATIONS_HOOK_TOPIC or kafka_settings.WEBHOOKS_TOPIC:
-    topics = ', '.join([t for t in [kafka_settings.REMEDIATIONS_HOOK_TOPIC, kafka_settings.WEBHOOKS_TOPIC] if t])
+if settings.REMEDIATIONS_HOOK_TOPIC or settings.WEBHOOKS_TOPIC:
+    topics = ', '.join([
+        topic
+        for topic in [settings.REMEDIATIONS_HOOK_TOPIC, settings.WEBHOOKS_TOPIC]
+        if topic
+    ])
     logger.debug(f"Creating producer for topics: {topics}")
     if settings.TESTING:
         from kafka_utils import DummyProducer
-        _producer = DummyProducer(kafka_settings.KAFKA_SETTINGS)
+        _producer = DummyProducer(settings.KAFKA_SETTINGS)
     else:
         from confluent_kafka import Producer
-        _producer = Producer(kafka_settings.KAFKA_SETTINGS)
+        _producer = Producer(settings.KAFKA_SETTINGS)
 
 
 def report_delivery_callback(err, msg):
@@ -64,20 +67,20 @@ def report_delivery_callback(err, msg):
 
 
 def send_webhook_event(event_msg):
-    if kafka_settings.WEBHOOKS_TOPIC:
+    if settings.WEBHOOKS_TOPIC:
         _producer.poll(0)
         logger.debug("Producing webhook event msg: %s", event_msg)
         send_msg = json.dumps(event_msg).encode('utf-8')
-        _producer.produce(kafka_settings.WEBHOOKS_TOPIC, send_msg, callback=report_delivery_callback)
+        _producer.produce(settings.WEBHOOKS_TOPIC, send_msg, callback=report_delivery_callback)
         _producer.flush()
 
 
 def send_remediations_event(event_key, event_value):
-    if kafka_settings.REMEDIATIONS_HOOK_TOPIC:
+    if settings.REMEDIATIONS_HOOK_TOPIC:
         _producer.poll(0)
         logger.debug("Producing remediations event msg key %s and value %s", event_key, event_value)
         send_value = json.dumps(event_value).encode('utf-8')
-        _producer.produce(kafka_settings.REMEDIATIONS_HOOK_TOPIC, key=event_key, value=send_value,
+        _producer.produce(settings.REMEDIATIONS_HOOK_TOPIC, key=event_key, value=send_value,
                           callback=report_delivery_callback)
         _producer.flush()
 
@@ -149,9 +152,12 @@ def trigger_report_hooks(inv_host_obj, report_list, db_reports):
     account = inv_host_obj.account
     org_id = inv_host_obj.org_id
     extra = {'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id}  # extra info for payload tracker
-    acks_hostacks_query = db.Ack.objects.filter(account=account).values('rule_id').union(  # filter on org_id after full adoption
-                            db.HostAck.objects.filter(account=account, host=inventory_uuid)  # filter on org_id after full adoption
-                            .order_by().values('rule_id'))
+    acks_hostacks_query = (
+        db.Ack.objects.filter(org_id=org_id).values('rule_id').union(
+            db.HostAck.objects.filter(org_id=org_id, host=inventory_uuid)
+            .order_by().values('rule_id')
+        )
+    )
     acks_hostacks_ids = [x['rule_id'] for x in acks_hostacks_query]
     report_ids = [x['id'] for x in report_list]
     db_rule_ids = [x['rule_id'] for x in db_reports]
@@ -177,8 +183,7 @@ def trigger_report_hooks(inv_host_obj, report_list, db_reports):
         try:
             send_webhook_event(webhook_msg)
         except:
-            logger.exception("Error sending New Report Webhook",
-                             extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id})
+            logger.exception("Error sending New Report Webhook", extra=extra)
             the_error = traceback.format_exc()
             payload_tracker.payload_status('error', the_error, extra)
 
@@ -194,8 +199,7 @@ def trigger_report_hooks(inv_host_obj, report_list, db_reports):
         try:
             send_webhook_event(webhook_msg)
         except:
-            logger.exception("Error sending Resolved Webhook",
-                         extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id})
+            logger.exception("Error sending Resolved Webhook", extra=extra)
             the_error = traceback.format_exc()
             payload_tracker.payload_status('error', the_error, extra)
 
