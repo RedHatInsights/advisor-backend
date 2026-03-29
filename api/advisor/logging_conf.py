@@ -63,42 +63,15 @@ LOGGING = {
             'format': json.dumps({"extra": {"component": 'insights-advisor-api'}}),
         },
     },
+    'root': {
+        # Common log handler for django.*, gunicorn.*, advisor-log, api.management (and any others?)
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
+    },
     'loggers': {
-        'django.request': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False
-        },
-        'django.server': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False
-        },
-        'advisor-log': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'gunicorn.access': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'gunicorn.error': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'api.management': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
         'UnleashClient': {
-            'handlers': ['console'],
             'level': 'WARNING',
-            'propagate': False,
-        }
+        },
     },
     'filters': {
         'hide_metrics': {
@@ -145,8 +118,8 @@ def load_cloudwatch_logging():
             'create_log_group': CW_CREATE_LOG_GROUP,
             'filters': ['hide_metrics']
         }
-        for logger in LOGGING['loggers']:
-            LOGGING['loggers'][logger]['handlers'].append('cloudwatch')
+        if 'cloudwatch' not in LOGGING['root']['handlers']:
+            LOGGING['root']['handlers'].append('cloudwatch')
 
 
 if USE_CLOUDWATCH_LOGGING == 'true':
