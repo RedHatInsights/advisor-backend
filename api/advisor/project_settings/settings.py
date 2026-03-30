@@ -276,7 +276,7 @@ if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
         },
     }
     PROMETHEUS_PATH = os.getenv('PROMETHEUS_PATH', LoadedConfig.metricsPath.lstrip('/'))
-    PROMETHEUS_PORT = os.getenv('PROMETHEUS_PORT', LoadedConfig.metricsPort)
+    PROMETHEUS_PORT = int(os.getenv('PROMETHEUS_PORT', LoadedConfig.metricsPort))
 else:
     DATABASES = {
         'default': {
@@ -299,7 +299,7 @@ else:
         },
     }
     PROMETHEUS_PATH = os.getenv('PROMETHEUS_PATH', 'metrics')
-    PROMETHEUS_PORT = os.getenv('PROMETHEUS_PORT', 8000)
+    PROMETHEUS_PORT = int(os.getenv('PROMETHEUS_PORT', 8000))
 
 # if the prometheus port is not 8000 then export
 if PROMETHEUS_PORT != 8000:

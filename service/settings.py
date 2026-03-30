@@ -80,7 +80,7 @@ if CLOWDER_ENABLED:
     CW_LOG_STREAM_AUTO = os.environ.get('HOSTNAME', os.uname())
 
     PROMETHEUS_PATH = os.environ.get('PROMETHEUS_PATH', cfg.metricsPath)  # this is not actually used with the prometheus client libs
-    PROMETHEUS_PORT = os.environ.get('PROMETHEUS_PORT', cfg.metricsPort)
+    PROMETHEUS_PORT = int(os.environ.get('PROMETHEUS_PORT', cfg.metricsPort))
 
 else:
 
@@ -105,7 +105,7 @@ else:
     CW_LOG_STREAM_AUTO = os.environ.get('HOSTNAME', 'insights-advisor-service-dev')
 
     PROMETHEUS_PATH = os.environ.get('PROMETHEUS_PATH', '/')  # this is not actually used with the prometheus client libs
-    PROMETHEUS_PORT = os.environ.get('PROMETHEUS_PORT', 8000)
+    PROMETHEUS_PORT = int(os.environ.get('PROMETHEUS_PORT', 8000))
 
 
 CW_CREATE_LOG_GROUP = os.environ.get('CW_CREATE_LOG_GROUP', "").lower() == "true"
