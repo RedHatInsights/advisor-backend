@@ -40,11 +40,11 @@ if [ "${ENABLE_INIT_CONTAINER_MIGRATIONS,,}" == "true" ]; then
     pipenv run python api/advisor/manage.py migrate --noinput
 fi
 # Note: don't load data which is loaded by content import - e.g. resolution_risks
-pipenv run python api/advisor/manage.py loaddata -v 3 rulesets rule_categories system_types upload_sources
+pipenv run python api/advisor/manage.py loaddata --verbosity=3 rulesets rule_categories system_types upload_sources
 
 if [ "${ADVISOR_ENV}" != 'dev' ]; then
     echo "Loading production fixtures for tasks and pathways ..."
-    pipenv run python api/advisor/manage.py loaddata -v 3 production_tasks pathways_prod
+    pipenv run python api/advisor/manage.py loaddata --verbosity=3 production_tasks pathways_prod
 fi
 
 # Idempotent due to use of `CREATE IF NOT EXISTS` and `CREATE OR REPLACE`.
