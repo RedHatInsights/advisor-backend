@@ -221,7 +221,7 @@ def set_rbac_success(request: Request, message: str) -> None:
     permissions check.
     """
     setattr(request, 'rbac_message', message)
-    logger.debug(message)
+    logger.info(message)
 
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
@@ -427,14 +427,14 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
             # Always OK on exact match
             if rbac_permission == request_permission:
                 # Log and return exact match
-                logger.debug(f"RBAC permission '{rbac_permission}' exactly matched sought permission")
+                logger.info(f"RBAC permission '{rbac_permission}' exactly matched sought permission")
                 setattr(request._request, 'rbac_matched_permission', rbac_permission)
                 setattr(request._request, 'rbac_match_type', 'exact')
                 return (True, elapsed)
 
             if request_permission in rbac_permission:
                 # Log and return inexact match
-                logger.debug(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
+                logger.info(f"RBAC permission {rbac_permission} pattern matched sought permission {request_permission}")
                 setattr(request._request, 'rbac_matched_permission', rbac_permission)
                 setattr(request._request, 'rbac_match_type', 'contains')
                 return (True, elapsed)
@@ -548,14 +548,15 @@ def has_kessel_permission(
     logger.debug("KESSEL debug: identity = %s", repr(identity))
     logger.debug("KESSEL debug: permission = %s", repr(permission))
     try:
-        logger.debug("Checking %s has %s in %s...", identity, permission, scope)
+        logger.info("KESSEL: Checking identity %s has permission %s in scope %s...",
+                    repr(identity), repr(permission), scope)
         if scope == ResourceScope.ORG:
             # We actually translate this into the default workspace of that org.
             workspace_id, elapsed = get_workspace_id(request)
             if not workspace_id:
                 # Log created by exception catch below
                 raise ValueError("No workspace found for org")
-            logger.debug(
+            logger.info(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
             )
@@ -567,7 +568,7 @@ def has_kessel_permission(
                 identity_to_subject(identity)
             )
         elif scope == ResourceScope.WORKSPACE:
-            logger.debug("KESSEL: checking which workspaces this user has access to")
+            logger.info("KESSEL: checking which workspaces this user has access to")
             # Lookup all the workspaces in which the permission is granted.
             result, elapsed = kessel.client.host_groups_for(
                 identity_to_subject(identity)
@@ -578,7 +579,7 @@ def has_kessel_permission(
             if host_id is None:
                 raise ValueError("Host scope requested but host_id not provided")
 
-            logger.debug("KESSEL: checking access to host %s", host_id)
+            logger.info("KESSEL: checking access to host %s", host_id)
             result, elapsed = kessel.client.check(
                 kessel.Host(str(host_id)).to_ref(),
                 permission.as_kessel_permission(),
@@ -922,7 +923,6 @@ class InsightsRBACPermission(BasePermission):
     app = 'advisor'
 
     def has_permission(self, request: Request, view) -> bool:
-        logger.debug("Started InsightsRBACPermission.has_permission")
         # Returns true or false
 
         # Allow views to specify a specific resource name via its

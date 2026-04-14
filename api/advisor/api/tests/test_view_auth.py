@@ -788,15 +788,11 @@ class TestInsightsRBACPermissionKessel(TestCase):
             # successful message in rbac_message and logs
             self.assertEqual(
                 logs.output[0],
-                'DEBUG:advisor-log:Started InsightsRBACPermission.has_permission'
+                'INFO:advisor-log:InsightsRBACPermission has_permission() check starting'
             )
             self.assertEqual(
                 logs.output[1],
-                'DEBUG:advisor-log:InsightsRBACPermission has_permission() check starting'
-            )
-            self.assertEqual(
-                logs.output[2],
-                'DEBUG:advisor-log:KESSEL: ResourceScope is HOST - defer to has_object_permission'
+                'INFO:advisor-log:KESSEL: ResourceScope is HOST - defer to has_object_permission'
             )
             self.assertEqual(
                 request.rbac_message,
@@ -823,10 +819,14 @@ class TestInsightsRBACPermissionKessel(TestCase):
             "Permission scope is 'Host' but object has no 'id' attribute"
         )
         # Finally we actually get to do a has_kessel_permission check
-        with add_kessel_response(
-            permission_checks=constants.kessel_allow_host_01_read
-        ):
-            self.assertTrue(irbp.has_object_permission(request, view, host))
+        with self.assertLogs(logger='advisor-log') as logs:
+            with add_kessel_response(
+                permission_checks=constants.kessel_allow_host_01_read
+            ):
+                self.assertTrue(irbp.has_object_permission(request, view, host))
+                self.assertTrue(logs.output[0].startswith('INFO:advisor-log:KESSEL: Checking identity'))
+                self.assertTrue(logs.output[1].startswith('INFO:advisor-log:KESSEL: checking access to host'))
+                self.assertTrue(logs.output[3].startswith('INFO:advisor-log:KESSEL: returned True'))
 
 
 class TestTurnpikeAuthentication(TestCase):
