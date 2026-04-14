@@ -518,33 +518,17 @@ def get_workspace_id(
 
 
 def _kessel_org_workspace_ids_for_permission_check(
-    request: Request, subject: kessel.SubjectRef
+    subject: kessel.SubjectRef,
 ) -> tuple[list[str], float]:
     """
     Workspace IDs to try for ORG-scoped Kessel checks.
-
-    Always includes the org default workspace (RBAC v2). Also includes every
-    workspace the subject has inventory_host_view on, matching the graph
-    where advisor_recommendation_results_read intersects inventory_host_view
-    (see schema rbac/platform).
     """
-    elapsed = 0.0
-    seen: set[str] = set()
-    ordered: list[str] = []
-    default_id, t = get_workspace_id(request)
-    elapsed += t
-    if default_id:
-        seen.add(default_id)
-        ordered.append(default_id)
-    inv_workspaces, t2 = kessel.client.host_groups_for(subject)
-    elapsed += t2
+    inv_workspaces, elapsed = kessel.client.host_groups_for(subject)
     if isinstance(inv_workspaces, list):
-        for wid in inv_workspaces:
-            w = str(wid)
-            if w not in seen:
-                seen.add(w)
-                ordered.append(w)
-    return ordered, elapsed
+        workspace_ids = [str(wid) for wid in inv_workspaces]
+    else:
+        workspace_ids = []
+    return workspace_ids, elapsed
 
 
 def has_kessel_permission(
@@ -590,7 +574,7 @@ def has_kessel_permission(
                 and permission.method == 'read'
             ):
                 workspace_ids, extra_elapsed = _kessel_org_workspace_ids_for_permission_check(
-                    request, subject
+                    subject
                 )
                 elapsed += extra_elapsed
                 if not workspace_ids:
