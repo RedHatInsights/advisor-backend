@@ -363,6 +363,9 @@ class constants(object):
     ), (
         kessel_cpr_read_recom_read_assigned, kessel.ALLOWED
     )]
+    kessel_allow_read_assigned = [(
+        kessel_cpr_read_recom_read_assigned, kessel.ALLOWED
+    )]
     kessel_allow_recom_read_svc_ro = [(
         kessel_cpr_read_recom_svc_read, kessel.ALLOWED
     )]
