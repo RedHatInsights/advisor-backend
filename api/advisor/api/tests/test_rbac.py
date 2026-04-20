@@ -610,3 +610,19 @@ class KesselTestCase(TestCase):
             )
             self.assertTrue(kessel_response)
             self.assertGreater(time, 0.0)
+
+    @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    def test_kessel_with_assigned_check(self):
+        with add_kessel_response(
+            permission_checks=constants.kessel_allow_read_assigned
+        ):
+            rq = request_object_for_testing(
+                auth_by=permissions.RHIdentityAuthentication
+            )
+            kessel_response, time = permissions.has_kessel_permission(
+                permissions.ResourceScope.ORG,
+                permissions.RBACPermission('advisor:recommendation-results:read'),
+                rq
+            )
+            self.assertTrue(kessel_response)
+            self.assertGreater(time, 0.0)

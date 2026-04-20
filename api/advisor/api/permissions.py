@@ -47,6 +47,8 @@ user_details_key = {
     'ServiceAccount': 'service_account'
 }
 
+use_assigned_permissions_for_resource = ['recommendation-results']
+
 
 def make_rbac_url(path, version: int = 1, rbac_base: str | None = None) -> str:
     """
@@ -559,11 +561,17 @@ def has_kessel_permission(
                 "KESSEL: checking access for org %s workspace %s",
                 identity['org_id'], workspace_id
             )
+            kessel_permission = permission.as_kessel_permission()
+            # We're using the default workspace permission for some host-centric resources (Do I have permissions to view recommendations?)
+            # Check `_assigned` permission when the `resource` is  `recommendation-results`
+            if permission.resource in use_assigned_permissions_for_resource:
+                kessel_permission += '_assigned'
+
             # Kessel check requires a 'user_id' in the identity's user data.
             # This is checked in InsightsRBACPermission, the caller.
             result, elapsed = kessel.client.check(
                 kessel.Workspace(workspace_id).to_ref(),
-                permission.as_kessel_permission(),
+                kessel_permission,
                 identity_to_subject(identity)
             )
         elif scope == ResourceScope.WORKSPACE:
