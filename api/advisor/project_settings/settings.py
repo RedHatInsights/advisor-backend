@@ -483,6 +483,7 @@ if CLOWDER_ENABLED:
     TASKS_UPDATES_TOPIC = topic('platform.playbook-dispatcher.runs')
     TASKS_SOURCES_TOPIC = topic('platform.sources.event-stream')
     TASKS_UPLOAD_TOPIC = topic('platform.upload.announce')
+    INVENTORY_VIEW_TOPIC = topic('platform.inventory.host-apps')
 
     kafka_broker = LoadedConfig.kafka.brokers[0]
     BOOTSTRAP_SERVERS = ",".join(KafkaServers)
@@ -512,6 +513,7 @@ else:
     TASKS_UPDATES_TOPIC = os.environ.get('TASKS_UPDATES_TOPIC', 'platform.playbook-dispatcher.runs')
     TASKS_SOURCES_TOPIC = os.environ.get('TASKS_SOURCES_TOPIC', 'platform.sources.event-stream')
     TASKS_UPLOAD_TOPIC = os.environ.get('TASKS_UPLOAD_TOPIC', 'platform.upload.announce')
+    INVENTORY_VIEW_TOPIC = os.environ.get('INVENTORY_VIEW_TOPIC', 'platform.inventory.host-apps')
     BOOTSTRAP_SERVERS = os.environ.get('BOOTSTRAP_SERVERS')
     ENABLE_KAFKA_SSL = os.environ.get('ENABLE_KAFKA_SSL', '').lower() == "true"
     KAFKA_SSL_CERT = os.environ.get('KAFKA_SSL_CERT', '/opt/certs/kafka-cacert')

@@ -30,6 +30,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      kafka:
+        image: docker.io/confluentinc/cp-kafka
+        ports:
+          - 29092:29092
+          - 9092:9092
+        env:
+          KAFKA_ADVERTISED_LISTENERS: DOCKER://kafka:29092,LOCALHOST://localhost:9092
+          KAFKA_ALLOW_AUTO_CREATE_TOPICS: true
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+          KAFKA_BROKER_ID: 1
+          KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+          KAFKA_LISTENERS: DOCKER://0.0.0.0:29092,LOCALHOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29094
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: DOCKER:PLAINTEXT,LOCALHOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_PROCESS_ROLES: broker,controller
+          KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29094
+          KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          CLUSTER_ID: 1234567890
 
     steps:
       - name: Checkout code
@@ -56,6 +74,27 @@ jobs:
             sleep 5
           done
           echo "PostgreSQL is up!"
+
+      - name: Create Kafka topics
+        run: |
+          podman run -it --rm --network host apache/kafka:4.2.0 \
+          /bin/sh -c '
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+          echo -e "Creating kafka topics"
+          for topic in platform.engine.results \
+                   platform.insights.rule-hits \
+                   platform.inventory.events \
+                   platform.inventory.host-apps \
+                   platform.insights.rule-deactivation \
+                   platform.sources.event-stream \
+                   platform.playbook-dispatcher.runs \
+                   platform.upload.announce
+          do
+            /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --if-not-exists --topic $topic --replication-factor 1 --partitions 3
+          done
+          echo -e "Successfully created the following topics:"
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+          '
 
       - name: Ugly hack while Foreman upgrades to Postgres 14 or later
         run: |
