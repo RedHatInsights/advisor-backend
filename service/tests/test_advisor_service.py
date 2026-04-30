@@ -291,6 +291,62 @@ def test_handle_engine_results(db, service, sample_engine_results, mock_request_
 
 
 @pytest.mark.django_db(transaction=True)
+def test_inventory_view_counts_skip_org_and_host_disabled_rules(
+    db, service, sample_engine_results, mock_request_post_return_200, mocker
+):
+    inventory_uuid = sample_engine_results['input']['host']['id']
+    account = sample_engine_results['input']['host']['account']
+    org_id = sample_engine_results['input']['platform_metadata']['org_id']
+    reported_rule_ids = [report['rule_id'] for report in sample_engine_results['results']['reports']]
+
+    counted_rule = None
+    for rule in models.Rule.objects.filter(rule_id__in=reported_rule_ids, total_risk__isnull=False):
+        if (
+            not models.Ack.objects.filter(org_id=org_id, rule=rule).exists() and
+            not models.HostAck.objects.filter(org_id=org_id, host_id=inventory_uuid, rule=rule).exists()
+        ):
+            counted_rule = rule
+            break
+
+    assert counted_rule is not None
+    severity = service.inventory_view._rule_risks[counted_rule.total_risk]
+    assert severity is not None
+    has_incident = counted_rule.tags.filter(name='incident').exists()
+
+    send_event = mocker.patch.object(service.inventory_view, "send_inventory_view_event")
+
+    service.handle_engine_results(sample_engine_results)
+    baseline_counts = send_event.call_args[0][0]['data']
+
+    models.Ack.objects.create(
+        rule=counted_rule, account=account, org_id=org_id,
+        justification="test", created_by="test"
+    )
+    send_event.reset_mock()
+    service.handle_engine_results(sample_engine_results)
+    org_disabled_counts = send_event.call_args[0][0]['data']
+
+    assert org_disabled_counts['recommendations'] == baseline_counts['recommendations']
+    assert org_disabled_counts[severity] == baseline_counts[severity] - 1
+    expected_org_incidents = baseline_counts['incidents'] - (1 if has_incident else 0)
+    assert org_disabled_counts['incidents'] == expected_org_incidents
+
+    models.Ack.objects.filter(org_id=org_id, rule=counted_rule).delete()
+    models.HostAck.objects.create(
+        rule=counted_rule, host_id=inventory_uuid, account=account, org_id=org_id,
+        justification="test", created_by="test"
+    )
+    send_event.reset_mock()
+    service.handle_engine_results(sample_engine_results)
+    host_disabled_counts = send_event.call_args[0][0]['data']
+
+    assert host_disabled_counts['recommendations'] == baseline_counts['recommendations']
+    assert host_disabled_counts[severity] == baseline_counts[severity] - 1
+    expected_host_incidents = baseline_counts['incidents'] - (1 if has_incident else 0)
+    assert host_disabled_counts['incidents'] == expected_host_incidents
+
+
+@pytest.mark.django_db(transaction=True)
 def test_handle_engine_results_two_sources(db, service, sample_engine_results, sample_rule_hits, mock_request_post_return_200):
     # We should be able to handle an upload on the same system from different
     # sources.  The engine results always has the source 'insights-client',

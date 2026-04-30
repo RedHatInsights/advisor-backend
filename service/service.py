@@ -397,6 +397,19 @@ def create_db_reports(
             logger.debug("Report rules from database %s", report_rules)
             report_rules_map = dict((i['rule_id'], i) for i in report_rules)
             logger.debug("Report rules map %s", report_rules_map)
+            report_rule_db_ids = [rule['id'] for rule in report_rules]
+            org_disabled_rule_ids = set(
+                db.Ack.objects.filter(
+                    org_id=org_id, rule_id__in=report_rule_db_ids
+                ).values_list('rule_id', flat=True)
+            )
+            host_disabled_rule_ids = set(
+                db.HostAck.objects.filter(
+                    org_id=org_id, host_id=inventory_uuid, rule_id__in=report_rule_db_ids
+                ).values_list('rule_id', flat=True)
+            )
+            disabled_rule_ids = org_disabled_rule_ids.union(host_disabled_rule_ids)
+            logger.debug("Disabled rule IDs for org %s and host %s: %s", org_id, inventory_uuid, disabled_rule_ids)
 
             now = timezone.now()
             db_report_rules = [dbr['rule_id'] for dbr in db_report_values]
@@ -427,7 +440,8 @@ def create_db_reports(
                     else:
                         new_report_objs.append(report_obj)
 
-                    inventory_view.update_inventory_view_counts(inventory_view_counts, rule)
+                    if rule['id'] not in disabled_rule_ids:
+                        inventory_view.update_inventory_view_counts(inventory_view_counts, rule)
 
                     logger.debug("%s current report object rule_id: %s, "
                                  "inventory_id: %s, account: %s, org_id: %s",
