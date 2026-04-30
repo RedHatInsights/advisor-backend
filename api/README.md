@@ -3,7 +3,7 @@
 This is an implementation of the Insights API in Django 5.2, which
 requires Python 3.12 or above.
 
-See the main [Read Me](../README.md) document for more information about
+See the main [README](../README.md) document for more information about
 Advisor's purpose and structure.
 
 # Advisor API overview
@@ -13,10 +13,10 @@ The Advisor API actually covers three APIs:
 - The main Advisor API, handling URLs starting with `/api/insights/v1/`, is
   in `api/advisor/api/`.
 - The Satellite Compatibility API, handling URLs starting with `/r/insights/`,
-  is in `api/advisor/sat_compat/`.  The [Readme](advisor/sat_compat/README.md)
+  is in `api/advisor/sat_compat/`.  The [README](advisor/sat_compat/README.md)
   there gives more information about what that is for.
 - The Tasks API, handling URLs starting with `/api/tasks/v1/`, is in
-  `api/advisor/tasks/`.  The [Readme](advisor/tasks/README.md) there gives
+  `api/advisor/tasks/`.  The [README](advisor/tasks/README.md) there gives
   more information about the Tasks app.
 
 ## Install instructions
@@ -30,14 +30,9 @@ The Advisor API actually covers three APIs:
     ```
     cd insights-advisor
     pip install pipenv
-    (optional) pipenv run pip install --upgrade pip
     pipenv install --dev
     pipenv shell
     ````
-
-    The `pipenv run pip install --upgrade pip` command is only necessary if you
-    encounter an error running `pipenv install` related to pip and
-    `no such option: --require-hashes`.
 
 - Running Advisor
 
@@ -49,9 +44,9 @@ The Advisor API actually covers three APIs:
 
 You can run Advisor as a series of podman containers controlled by
 podman-compose.  You will need to have podman and podman-compose installed on
-you development machine.
+your development machine.
 
-- To build the advisor-api container run `podman-compose build`
+- To build the advisor-api container run `podman-compose build advisor-api`
 
 - Start the containers with `podman-compose up`
 
@@ -404,12 +399,12 @@ For other queries, this would be done within the view, with code like this
 (taken from within `/api/advisor/api/views/rules.py`, edited for clarity):
 
 ```py
-    acct_rules = self.get_queryset()
-    if request.query_params:
-        acct_rules = acct_rules.filter(
-            filter_on_param('category_id', category_query_param, request),
-            filter_on_impacting(request),
-            ...
+acct_rules = self.get_queryset()
+if request.query_params:
+    acct_rules = acct_rules.filter(
+        filter_on_param('category_id', category_query_param, request),
+        filter_on_impacting(request),
+        ...
 ```
 
 Here we also see the use of `filter_on_param(query_key, parameter, request)`
@@ -422,32 +417,32 @@ of filters applied within `get_systems_queryset()` and `get_reports_subquery()`.
 For example, within `get_systems_queryset()`:
 
 ```py
-    return systems.filter(
-        filter_on_display_name(request),
-        filter_on_hits(request),
-        filter_on_incident(request),
-        filter_on_rhel_version(request),
-        filter_on_system_role(request),
-        filter_on_has_disabled_recommendation(request)
-    )
+return systems.filter(
+    filter_on_display_name(request),
+    filter_on_hits(request),
+    filter_on_incident(request),
+    filter_on_rhel_version(request),
+    filter_on_system_role(request),
+    filter_on_has_disabled_recommendation(request)
+)
 ```
 
 and within `get_reports_subquery()`:
 
 ```py
-    return CurrentReport.objects.filter(
-        Q(
-            host_tags_q, system_type_q, system_profile_filter,
-            category_filter,
-            cert_auth_q(request, relation='inventory'),
-            branch_id_filter,
-            filter_on_update_method(request, relation='inventory'),
-            get_host_group_filter(request, relation='inventory'),
-            filter_on_system_role(request, relation='inventory'),
-            stale_systems_filter,
-        ) if exclude_ineligible_hosts else Q(),
-        **outer_table_join
-    ).filter(
+return CurrentReport.objects.filter(
+    Q(
+        host_tags_q, system_type_q, system_profile_filter,
+        category_filter,
+        cert_auth_q(request, relation='inventory'),
+        branch_id_filter,
+        filter_on_update_method(request, relation='inventory'),
+        get_host_group_filter(request, relation='inventory'),
+        filter_on_system_role(request, relation='inventory'),
+        stale_systems_filter,
+    ) if exclude_ineligible_hosts else Q(),
+    **outer_table_join
+).filter(
 ```
 
 These additions mean that wherever a system is queried - and there are quite
@@ -467,20 +462,20 @@ So for example in the `SystemViewSet()` class in `api/advisor/api/views/systems.
 we should add it to this schema extension:
 
 ```py
-    @extend_schema(
-        parameters=[
-            sort_query_param, display_name_query_param, host_tags_query_param,
-            hits_query_param, filter_system_profile_sap_system_query_param,
-            filter_system_profile_sap_sids_contains_query_param,
-            incident_query_param, rhel_version_query_param, pathway_query_param,
-            host_group_name_query_param, update_method_query_param,
-            filter_system_profile_mssql_query_param,
-            filter_system_profile_ansible_query_param,
-            has_disabled_recommendation_query_param,
-            system_type_query_param, system_role_query_param,  # <-- here
-        ],
-    )
-    def list(self, request, format=None):
+@extend_schema(
+    parameters=[
+        sort_query_param, display_name_query_param, host_tags_query_param,
+        hits_query_param, filter_system_profile_sap_system_query_param,
+        filter_system_profile_sap_sids_contains_query_param,
+        incident_query_param, rhel_version_query_param, pathway_query_param,
+        host_group_name_query_param, update_method_query_param,
+        filter_system_profile_mssql_query_param,
+        filter_system_profile_ansible_query_param,
+        has_disabled_recommendation_query_param,
+        system_type_query_param, system_role_query_param,  # <-- here
+    ],
+)
+def list(self, request, format=None):
 ```
 
 However, in keeping with the 'Don't Repeat Yourself' philosophy, the

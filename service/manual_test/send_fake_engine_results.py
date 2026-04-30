@@ -18,6 +18,7 @@ import json
 import os
 
 from confluent_kafka import Producer
+from insert_inventory_host import insert_host
 
 BOOTSTRAP_SERVERS = os.environ.get('BOOTSTRAP_SERVERS', 'localhost:9092')
 ENGINE_RESULTS_TOPIC = os.environ.get('ENGINE_RESULTS_TOPIC', 'platform.engine.results')
@@ -30,6 +31,9 @@ p = Producer({'bootstrap.servers': BOOTSTRAP_SERVERS})
 
 with open(os.path.join(THIS_DIR, ENGINE_RESULTS_FILE)) as f:
     engine_results_message = json.load(f)
+
+# Insert the host into inventory.hosts_table so the API can find it
+insert_host(engine_results_message['input']['host'])
 
 
 def delivery_report(err, msg):

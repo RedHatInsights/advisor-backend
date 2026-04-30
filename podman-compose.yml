@@ -62,10 +62,6 @@ services:
     depends_on:
       advisor-api:
         condition: service_started
-      nginx:
-        condition: service_started
-      zookeeper:
-        condition: service_started
       kafka:
         condition: service_started
       advisor-db:
@@ -76,11 +72,11 @@ services:
     environment:
       - BOOTSTRAP_SERVERS=kafka:29092
       - ADVISOR_DB_HOST=advisor-db
-    command: python service/service.py
+    command: pipenv run python service/service.py
   advisor-api:
     build:
       context: .
-      dockerfile: Containerfile
+      dockerfile: Containerfile.localdev
     ports:
       - "8000:8000"
     environment:
@@ -101,13 +97,11 @@ services:
       - USE_DJANGO_WEBSERVER=false
       - WEB_CONCURRENCY=2
     depends_on:
-      zookeeper:
-        condition: service_started
       kafka:
         condition: service_started
       advisor-db:
         condition: service_healthy
-    command: sh -c "./container_init.sh &&
+    command: sh -c "./container_init_localdev.sh &&
                     api/app.sh"
   unleash:
     image: quay.io/cloudservices/unleash-docker:5.6.9
@@ -130,7 +124,7 @@ services:
         condition: service_completed_successfully
 
   unleash-init-db:
-    image: quay.io/cloudservices/postgres:16
+    image: quay.io/cloudservices/postgresql-rds:13 
     command: psql -h advisor-db -U postgres -a -f .unleash/init-db.sql
     environment:
       PGPASSWORD: insights
@@ -139,3 +133,7 @@ services:
     depends_on:
       advisor-db:
         condition: service_healthy
+
+networks:
+  default:
+    name: advisor-net

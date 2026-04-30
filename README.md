@@ -27,7 +27,7 @@ managed inside Red Hat using [https://github.com/RedHatInsights/clowder](Clowder
 It's possible to run just the basic components Advisor needs using Podman, which
 is how we suggest you do this in development.
 
-The projects under [https://github.com/RedHatInsights/] are related to the
+The projects under [https://github.com/RedHatInsights/](https://github.com/RedHatInsights/) are related to the
 Insights project.
 
 # Installation
@@ -59,6 +59,11 @@ podman-compose up -d advisor-db
 pipenv shell
 python api/advisor/manage.py migrate
 python api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources basic_test_data
+```
+... or you can start the database, Kafka, Advisor service and API all together with podman-compose, like so:
+```
+export ADVISOR_DB_HOST=localhost
+podman-compose up -d advisor-db init-kafka kafka advisor-service advisor-api
 ```
 
 ## Feature Flags
@@ -413,6 +418,7 @@ Sending in fake engine results
 ```
 pipenv shell
 python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
 ```
 
 ## Running the Service manually
@@ -422,7 +428,7 @@ but only for the dependencies. This method is meant for
 more rapid development.
 ```
 export ADVISOR_DB_HOST=localhost
-podman-compose up -d zookeeper kafka advisor-db
+podman-compose up -d advisor-db init-kafka
 ```
 Start Service manually
 ```
@@ -431,6 +437,7 @@ BOOTSTRAP_SERVERS=localhost:9092 python service/service.py
 Sending in engine results for processing.
 ```
 python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
 ```
 
 ## Running the API with podman-compose
@@ -529,7 +536,7 @@ podman-compose up -d advisor-db
 ```
 To run Service Tests
 ```
-podman-compose up -d zookeeper kafka
+podman-compose up -d init-kafka
 pipenv run testservice
 ```
 
