@@ -21,12 +21,14 @@ import datetime
 from confluent_kafka import Producer
 
 BOOTSTRAP_SERVERS = os.environ.get('BOOTSTRAP_SERVERS', 'localhost:9092')
-INVENTORY_EVENTS_TOPIC = os.environ.get('INVENTORY_EVENTS_TOPIC', 'inventory')
+INVENTORY_EVENTS_TOPIC = os.environ.get('INVENTORY_EVENTS_TOPIC', 'platform.inventory.events')
 
 p = Producer({'bootstrap.servers': BOOTSTRAP_SERVERS})
 
 inventory_message = {
-    'id': '00112233-4455-6677-8899-012345678901',
+    'id': '57c4c38b-a8c6-4289-9897-223681fd804d',
+    'org_id': '9876543',
+    'request_id': '00000000-0000-0000-0000-000000000000',
     'type': 'delete',
     'timestamp': str(datetime.datetime.now())
 }

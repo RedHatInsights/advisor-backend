@@ -17,7 +17,7 @@ to process messages asynchronously from receiving them.
 ## Processing engine results.
 
 The service receives rule results via Kafka from the Insights Engine on the
-topic `platform.playbook-dispatcher.runs`, defined in the `ENGINE_RESULTS_TOPIC`
+topic `platform.engine.results`, defined in the `ENGINE_RESULTS_TOPIC`
 environment variable and Django setting.
 
 When this message is received it generates a call to `handle_engine_results()`.
@@ -31,7 +31,7 @@ This function:
   - If there are no current uploads for this org_id, this organisation must
     be new.  Create the auto-acks for this organisation.
 - Start an atomic transaction based on this Host record.
-- Find the `CurrentReport`s for this host.
+- Find the `CurrentReport`s for this host.  Note: a CurrentReport is a rule hit that is currently active for this host.
 - Find the latest `Upload` for this host, or create one.
 - If the system has a rule that matches one of the `FILTER_OUT_NON_RHEL_RULE_ID`
   setting list, then ignore all other rules in these reports and just report
@@ -151,8 +151,8 @@ The Service (`service/service.py`) is a **multi-threaded Kafka consumer** that p
 1. Initializes logging, Prometheus metrics, and a **BoundedExecutor** thread pool (default 30 threads)
 2. Subscribes to **three Kafka topics**:
    - `platform.engine.results` — rule engine analysis results
-   - Inventory events topic — host delete notifications from HBI
-   - Rule hits topic — third-party rule hit submissions
+   - `platform.inventory.events` — inventory events, esp host delete notifications
+   - `platform.insights.rule-hits` — third-party rule hit submissions
 3. Enters a polling loop (`c.poll(1.0)`) that dispatches messages to handler functions via the thread pool
 4. Handles `SIGTERM` gracefully — finishes current work, flushes Kafka, then shuts down
 
@@ -219,7 +219,7 @@ Handles `delete` events from HBI. When a host is deleted from inventory:
 ## Step 1: Start infrastructure and database
 
 ```bash
-podman-compose up -d advisor-db init-kafka
+podman-compose up -d advisor-db init-kafka kafka
 ```
 This starts PostgreSQL and Kafka and creates the required topics (including `platform.engine.results`, `platform.inventory.events`, `platform.insights.rule-hits`).
 
@@ -259,19 +259,19 @@ This sends the payload from `fake_engine_result_rhel.json` — a host with 6 rul
 ```bash
 pipenv run python service/manual_test/send_fake_delete.py
 ```
-This sends a delete event for inventory ID `00112233-4455-6677-8899-012345678901`. The service will log deleting uploads, reports, and host acks.
+This sends a delete event for inventory ID `57c4c38b-a8c6-4289-9897-223681fd804d`. The service will log deleting uploads, reports, and host acks.
 
 **Other fake payloads** available:
 - `send_fake_engine_results.py` — supports `ENGINE_RESULTS_FILE` env var to pick a different JSON file:
-  - `fake_engine_result_rhel.json` (default)
-  - `fake_engine_result_non_rhel.json`
-  - `fake_engine_result_rhel6.json`
-  - `fake_engine_result_system01.json`
+  - `fake_engine_result_rhel.json` - a RHEL 8 system with 6 rule hits but only 2 are reported, for active/non-acked rules
+  - `fake_engine_result_non_rhel.json` - a non-RHEL system with 2 rule hits but only 1 is reported, for OTHER LINUX SYSTEM
+  - `fake_engine_result_rhel6.json` - a RHEL 6 system with 3 rule hits but only 1 is reported, for RHEL 6 EOL
+  - `fake_engine_result_system01.json` - matches the system01 fixture in the test data, with 1 rule hit
 - `send_fake_inventory_engine_message.py` — requires a running shared engine instance
-- `send_fake_dispatcher_run.py` — playbook dispatcher run simulation
-- `send_fake_task_upload.py` — tasks upload simulation
+- `send_fake_dispatcher_run.py` — playbook dispatcher run simulation for tasks service
+- `send_fake_task_upload.py` — tasks upload simulation for tasks service
 
-To send more messages, edit the `range(1)` on line 44 of the send script to a higher number.
+To send more messages, edit the `range(1)` on line 48 of the send_fake_engine_results.py script to a higher number.
 
 ## What you'll see in the service logs
 
@@ -292,11 +292,15 @@ After sending fake engine results, you can query the database to confirm the hos
 
 ```bash
 export ADVISOR_DB_HOST=localhost
-pipenv run python api/advisor/manage.py shell
+pipenv shell
+python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
+python api/advisor/manage.py shell
 ```
+Note, the 57c4c38b-a8c6-4289-9897-223681fd804d inventory ID used in the ORM queries below is from the fake engine results payload,
+so that has to be imported into the database for results to appear in these queries.
 
 Then in the shell:
-
 ```python
 from api.models import Host, Upload, CurrentReport
 
@@ -342,7 +346,7 @@ print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 
 # See the host with display_name from InventoryHost (via the inventory FK)
 from django.db.models import F
-qs = Host.objects.filter(inventory_id='00112233-4455-6677-8899-012345678901').annotate(display_name=F('inventory__display_name')).values()
+qs = Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').annotate(display_name=F('inventory__display_name')).values()
 print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 ```
 
@@ -350,11 +354,15 @@ print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 
 ```bash
 export ADVISOR_DB_HOST=localhost
-pipenv run python api/advisor/manage.py dbshell
+pipenv shell
+python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
+python api/advisor/manage.py dbshell
 ```
+As with the ORM queries, the 57c4c38b-a8c6-4289-9897-223681fd804d inventory ID used in the SQL queries below
+has to be imported into the database for results to appear in these queries.
 
 Then in psql:
-
 ```sql
 -- See the host (table: api_host, PK column: system_uuid)
 SELECT * FROM api_host
@@ -467,7 +475,6 @@ Browse the API interactively at:
 ```
 http://localhost:8000/api/insights/v1/openapi/swagger/
 ```
-
 Use the Authorize button and paste the `$RH_IDENTITY` value into the `x-rh-identity` field.
 
 ## API Root

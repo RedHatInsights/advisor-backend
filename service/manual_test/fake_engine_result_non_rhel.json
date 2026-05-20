@@ -666,18 +666,18 @@
       {
         "component": "telemetry.rules.plugins.kernel.other_linux_system.report",
         "details": {
-          "error_key": "OTHER_LINUX_SYSTEM",
+          "error_key": "OTHER_LINUX_SYSTEM_V2",
           "kernel": "4.18.0-0.rc4.2.SOMETHINGBOGUS.x86_64",
           "other_linux": "Unknown kernel",
           "type": "rule"
         },
-        "key": "OTHER_LINUX_SYSTEM",
+        "key": "OTHER_LINUX_SYSTEM_V2",
         "links": {
           "kcs": [
             "https://access.redhat.com/solutions/238453"
           ]
         },
-        "rule_id": "other_linux_system|OTHER_LINUX_SYSTEM",
+        "rule_id": "other_linux_system|OTHER_LINUX_SYSTEM_V2",
         "system_id": "7d7ef554-7812-460a-b4b7-519544251e2c",
         "tags": [],
         "type": "rule"
