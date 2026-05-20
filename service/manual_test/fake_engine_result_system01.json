@@ -87,7 +87,7 @@
           }
         ],
         "release": "Red Hat Enterprise Linux Server 7.5 (Maipo)",
-        "rhel_version": "8.0",
+        "rhel_version": "7.5",
         "system_information": {
           "family": "Not Specified",
           "manufacturer": "Dell Inc.",

@@ -76,8 +76,7 @@ pipenv install --dev
 ```
 
 # Deploying
-This will start Zookeeper, Kafka, Postgresql and Nginx.
-Nginx is a stand-in and emulates s3.
+This will start Kafka and PostgreSQL.
 ```
 podman-compose up
 ```
@@ -90,11 +89,12 @@ manual_tests/send_fake_engine_results.
 
 # Running the Service
 
-Once you have deployed the environment and set up the database. You can run the
+Once you have deployed the environment and set up the database, you can run the
 service and begin engine results analysis.
-
 ```
 BOOTSTRAP_SERVERS=localhost:9092 pipenv run python service.py
+... or ...
+podman-compose up advisor-service
 ```
 
 ## Sending mock engine results
@@ -103,6 +103,7 @@ You can send in fake results for analysis using two methods.
 The first method is sending in fake engine results for direct consumption in this service.
 ```
 pipenv run python manual_test/send_fake_engine_results.py
+pipenv run python api/advisor/manage.py freshen_hosts
 ```
 
 The second method emulates an inventory message and will require a shared engine
@@ -110,7 +111,6 @@ instance running. This README does not intend to go through the steps to set up
 a shared engine instance. However, if you have one running you can use the
 following script which will send a message to the shared engine, then broadcast
 its results for consumption in this service.
-
 ```
 pipenv run python manual_test/send_fake_inventory_engine_message.py
 ```
@@ -120,13 +120,11 @@ pipenv run python manual_test/send_fake_inventory_engine_message.py
 To run tests, run the following commands:
 
 Start the DB:
-
 ```
 podman-compose up
 ```
 
 Then to run tests:
-
 ```
 pipenv run flake8 .
 pipenv run testservice
@@ -141,3 +139,337 @@ Coverage tests will then be located at `htmlcov/index.html` and must be greater 
 All outstanding issues or feature requests should be filed as Issues on this
 Github page. PRs should be submitted against the master branch for any new
 features or changes, and pass all testing above.
+
+# Detailed Service Architecture
+
+## Overview
+
+The Service (`service/service.py`) is a **multi-threaded Kafka consumer** that processes incoming system analysis results and inventory lifecycle events, persisting them to the database. It runs as a standalone process separate from the Django API.
+
+## Startup (`start()`, line 737)
+
+1. Initializes logging, Prometheus metrics, and a **BoundedExecutor** thread pool (default 30 threads)
+2. Subscribes to **three Kafka topics**:
+   - `platform.engine.results` — rule engine analysis results
+   - Inventory events topic — host delete notifications from HBI
+   - Rule hits topic — third-party rule hit submissions
+3. Enters a polling loop (`c.poll(1.0)`) that dispatches messages to handler functions via the thread pool
+4. Handles `SIGTERM` gracefully — finishes current work, flushes Kafka, then shuts down
+
+## Message Handlers
+
+### 1. `handle_engine_results()` — Primary workload
+
+Processes results from the Insights rules engine (insights-client uploads):
+
+- **Validates** the payload by checking required key paths (`results.reports`, `results.system`, `input.platform_metadata`, `input.host.id`, `input.platform_metadata.org_id`)
+- **Resolves the SystemType** (role + product_code) from the database
+- Extracts satellite metadata (managed status, satellite ID, branch ID)
+- Delegates to `create_db_reports()` for the actual database work
+
+### 2. `create_db_reports()` — Core database logic
+
+This is the most complex function, running inside a **database transaction with row-level locking**:
+
+1. **Host management**: Finds or creates a `Host` record for the inventory UUID. For brand-new accounts (no existing uploads), it auto-creates `Ack` records for rules tagged with `autoack`
+2. **Row locking**: Uses `select_for_update()` on the Host to prevent race conditions from concurrent uploads for the same system
+3. **Snapshots existing reports**: Fetches all current `CurrentReport` records for the host before modifications
+4. **Creates/updates Upload**: `update_or_create` on the `Upload` record for this host+org+source combination
+5. **Content filtering**: Optionally filters rule IDs for non-RHEL systems (e.g., only keeping "other_linux_system" rules) and RHEL6 systems (only upgrade rules)
+6. **Report reconciliation** — the key logic:
+   - Matches incoming rule IDs against rules in the database
+   - Preserves `impacted_date` for rules that already had reports (continuity tracking)
+   - Separates reports into **new** (bulk created) and **existing** (individually updated)
+   - **Deletes** any `CurrentReport` records whose rule IDs are no longer in the incoming results (rule is resolved)
+7. **Webhook/notification triggers** (`reports.py`): After the DB transaction, calls `trigger_report_hooks()` which:
+   - Compares new report list against previous DB reports
+   - Identifies **new recommendations** (rule hit appeared) and **resolved recommendations** (rule hit disappeared)
+   - Filters out acked/host-acked rules from notifications
+   - Produces messages to the **webhooks topic** and **remediations hook topic** via Kafka
+
+### 3. `handle_rule_hits()` — Third-party rule hits
+
+Similar to engine results but with a simpler payload format. Validates required keys (`org_id`, `source`, `host_product`, `host_role`, `inventory_id`, `hits`), resolves the system type, then delegates to the same `create_db_reports()` function.
+
+### 4. `handle_inventory_event()` — Host deletion
+
+Handles `delete` events from HBI. When a host is deleted from inventory:
+- Deletes the `Upload` records for that host (with DB retry logic, up to 3 attempts)
+- Deletes all `CurrentReport` records for that host
+- Deletes all `HostAck` records for that host
+- Each step retries independently on `OperationalError`/`InterfaceError`, closing stale DB connections between attempts
+
+## Supporting Infrastructure
+
+- **`payload_tracker.py`**: Produces status messages to a Kafka topic for payload lifecycle tracking (received → processing → success/error)
+- **`reports.py`**: Produces webhook and remediations events to Kafka when recommendations change
+- **`thread_storage.py`**: Thread-local storage for request context (request_id, inventory_id, org_id, timing metrics) used by logging and payload tracker
+- **`prometheus.py`**: Prometheus metrics — request counts, timing histograms, error counters, service status
+- **`settings.py`**: Configuration via environment variables with Clowder integration for OpenShift deployments
+
+## Error Handling
+
+- DB connection errors trigger `close_old_connections()` and retry
+- The entire report-creation flow is wrapped in `transaction.atomic()` — if anything fails, all DB changes roll back
+- Webhook/notification failures are caught and logged but **do not** fail the overall upload processing
+- Malformed JSON messages are logged and skipped
+
+# Local Testing with Kafka
+
+## Step 1: Start infrastructure and database
+
+```bash
+podman-compose up -d advisor-db init-kafka
+```
+This starts PostgreSQL and Kafka and creates the required topics (including `platform.engine.results`, `platform.inventory.events`, `platform.insights.rule-hits`).
+
+## Step 2: Set up the database and start the service
+
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv run migratedb
+pipenv run mockcyndi
+pipenv run loaddata
+pipenv run loadtestdata
+
+export BOOTSTRAP_SERVERS=localhost:9092
+export LOG_LEVEL=DEBUG
+pipenv run python service/service.py
+```
+... or ...
+```
+export ADVISOR_DB_HOST=localhost
+podman-compose up advisor-service
+```
+
+With `LOG_LEVEL=DEBUG` you'll see it log subscription to topics and every poll cycle.
+
+## Step 4: Send fake messages
+
+In a second terminal, use the pre-built scripts in `service/manual_test/`:
+
+**Send engine results** (simulates an insights-client upload):
+```bash
+pipenv run python service/manual_test/send_fake_engine_results.py
+pipenv run python api/advisor/manage.py freshen_hosts
+```
+This sends the payload from `fake_engine_result_rhel.json` — a host with 6 rule hits (org_id `9876543`, inventory ID `57c4c38b-...`). The service will log receiving it, resolving the system type, and creating/updating reports.
+
+**Send a host delete event**:
+```bash
+pipenv run python service/manual_test/send_fake_delete.py
+```
+This sends a delete event for inventory ID `00112233-4455-6677-8899-012345678901`. The service will log deleting uploads, reports, and host acks.
+
+**Other fake payloads** available:
+- `send_fake_engine_results.py` — supports `ENGINE_RESULTS_FILE` env var to pick a different JSON file:
+  - `fake_engine_result_rhel.json` (default)
+  - `fake_engine_result_non_rhel.json`
+  - `fake_engine_result_rhel6.json`
+  - `fake_engine_result_system01.json`
+- `send_fake_inventory_engine_message.py` — requires a running shared engine instance
+- `send_fake_dispatcher_run.py` — playbook dispatcher run simulation
+- `send_fake_task_upload.py` — tasks upload simulation
+
+To send more messages, edit the `range(1)` on line 44 of the send script to a higher number.
+
+## What you'll see in the service logs
+
+With `DEBUG` logging, the service will log:
+1. `"Received Platform Kafka message at ... from topic platform.engine.results"`
+2. `"Processing engine results for Inventory ID ... on account ... and org_id ..."`
+3. `"Created new upload for system UUID ..."` or `"Updated existing upload ..."`
+4. `"Creating current report object rule_id: ..."` for each rule hit
+5. `"Logged N reports for system UUID ..."` on success
+
+For errors (e.g. missing fixtures), you'll see `"Unable to get system type rhel / host from DB - load fixtures!"`.
+
+## Step 5: Verify data in the database
+
+After sending fake engine results, you can query the database to confirm the host, upload, and reports were created. The fake RHEL payload uses inventory_id `57c4c38b-a8c6-4289-9897-223681fd804d`, org_id `9876543`, and account `1234567`.
+
+### Django ORM
+
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv run python api/advisor/manage.py shell
+```
+
+Then in the shell:
+
+```python
+from api.models import Host, Upload, CurrentReport
+
+# See the host
+Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
+
+# See uploads for this host
+Upload.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
+
+# See current reports (rule hits) for this host
+CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
+
+# See reports with rule IDs (more readable)
+CurrentReport.objects.filter(
+    host_id='57c4c38b-a8c6-4289-9897-223681fd804d'
+).values('rule__rule_id', 'org_id', 'impacted_date', 'details')
+
+# Query by org_id instead
+Host.objects.filter(org_id='9876543').values()
+CurrentReport.objects.filter(org_id='9876543').values('host_id', 'rule__rule_id')
+```
+
+#### Pretty printing ORM output
+
+Use `pprint` for readable `.values()` output:
+```python
+from pprint import pprint
+pprint(list(Host.objects.filter(org_id='9876543').values()))
+```
+
+Print each object on its own line:
+```python
+for r in CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id'):
+    print(r)
+```
+
+Use `json` for JSON-style output (with `DjangoJSONEncoder` to handle datetime fields):
+```python
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+qs = CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id', 'impacted_date')
+print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
+
+# See the host with display_name from InventoryHost (via the inventory FK)
+from django.db.models import F
+qs = Host.objects.filter(inventory_id='00112233-4455-6677-8899-012345678901').annotate(display_name=F('inventory__display_name')).values()
+print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
+```
+
+### Raw SQL
+
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv run python api/advisor/manage.py dbshell
+```
+
+Then in psql:
+
+```sql
+-- See the host (table: api_host, PK column: system_uuid)
+SELECT * FROM api_host
+WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See uploads for this host
+SELECT * FROM api_upload
+WHERE host_id = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See current reports for this host
+SELECT * FROM api_currentreport
+WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See reports with rule IDs (joined)
+SELECT cr.system_uuid, r.rule_id, cr.org_id, cr.impacted_date
+FROM api_currentreport cr
+JOIN api_rule r ON cr.rule_id = r.id
+WHERE cr.system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- Query by org_id
+SELECT * FROM api_host WHERE org_id = '9876543';
+SELECT h.system_uuid, r.rule_id FROM api_currentreport cr
+JOIN api_rule r ON cr.rule_id = r.id
+WHERE cr.org_id = '9876543';
+```
+
+Note: The `Host` model's PK field is called `inventory_id` in Django but maps to the DB column `system_uuid` (via `db_column='system_uuid'`). Similarly, `CurrentReport.host` maps to `system_uuid` in the DB.
+
+## Alternative: Run automated tests (no Kafka needed)
+
+If you just want to verify the service logic without running real Kafka:
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv run testservice
+```
+This uses pytest with mock Kafka consumers/producers (`DummyMessage`, `DummyConsumer`, etc.) and doesn't require a running Kafka broker.
+
+# Viewing Data via the API
+
+## Starting the API
+
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv run runapi
+... or ...
+pipenv run python api/advisor/manage.py runserver
+```
+
+This starts the Django dev server on `http://localhost:8000`. RBAC and Kessel are disabled by default for local dev.
+
+## Authentication
+
+All API requests require an `x-rh-identity` header containing a base64-encoded JSON identity. Generate one matching the fake engine results data (org_id `9876543`, account `1234567`):
+
+```bash
+export RH_IDENTITY=$(echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"username": "testing", "is_internal": true}}}' | base64 -w 0)
+```
+
+## API Endpoints
+
+The base path is `http://localhost:8000/api/insights/v1/`.
+
+**List all systems for your org:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/ | python -m json.tool
+```
+
+**Get a specific system by inventory ID:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/ | python -m json.tool
+```
+
+**Get reports (rule hits) for a specific system:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/reports/ | python -m json.tool
+```
+
+**List all rules:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/ | python -m json.tool
+```
+
+**Get a specific rule and its systems:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/ | python -m json.tool
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/systems/ | python -m json.tool
+```
+
+**Other useful endpoints:**
+```bash
+# Acknowledgements
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/ack/ | python -m json.tool
+
+# Host acknowledgements
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/hostack/ | python -m json.tool
+
+# Stats overview
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/stats/ | python -m json.tool
+
+# Pathways
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/pathway/ | python -m json.tool
+
+# System types
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/systemtype/ | python -m json.tool
+```
+
+## Swagger UI
+
+Browse the API interactively at:
+```
+http://localhost:8000/api/insights/v1/openapi/swagger/
+```
+
+Use the Authorize button and paste the `$RH_IDENTITY` value into the `x-rh-identity` field.
+
+## API Root
+
+Visit `http://localhost:8000/api/insights/v1/` in a browser to see the full list of available endpoints (DRF's browsable API).

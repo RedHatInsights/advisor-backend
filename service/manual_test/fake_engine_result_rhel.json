@@ -20,7 +20,7 @@
       "stale_timestamp": "2020-02-12T12:30:21.831767+00:00",
       "stale_warning_timestamp": "2020-02-12T12:30:21.831767+00:00",
       "subscription_manager_id": "f0025e01-52ce-4681-ab88-f3ed0657fa95",
-      "system_profile": {},
+      "system_profile": {"operating_system": {"name": "RHEL", "major": 8, "minor": 0}},
       "tags": [{"namespace": "foo", "key": "bar", "value": "buzz"},
                  {"namespace": "sample", "key": "tag", "value": "1"},
                  {"namespace": "sample", "key": "tag", "value": "2"}],

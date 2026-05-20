@@ -1,0 +1,6 @@
+__pycache__/
+.idea/
+.coverage
+test_reports/
+junit-service.xml
+lint-results.txt
