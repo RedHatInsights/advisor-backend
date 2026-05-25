@@ -412,6 +412,7 @@ python api/advisor/manage.py freshen_hosts
 
 Start the service
 ```
+export ADVISOR_DB_HOST=localhost
 podman-compose up advisor-service
 ```
 Sending in fake engine results
@@ -428,7 +429,7 @@ but only for the dependencies. This method is meant for
 more rapid development.
 ```
 export ADVISOR_DB_HOST=localhost
-podman-compose up -d advisor-db init-kafka
+podman-compose up -d advisor-db init-kafka kafka
 ```
 Start Service manually
 ```
@@ -444,6 +445,7 @@ python api/advisor/manage.py freshen_hosts
 
 Start the API
 ```
+export ADVISOR_DB_HOST=localhost
 podman-compose up advisor-api
 ```
 Verify the API is running
