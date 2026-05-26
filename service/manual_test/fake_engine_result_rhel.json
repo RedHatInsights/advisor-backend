@@ -23,7 +23,9 @@
       "system_profile": {"operating_system": {"name": "RHEL", "major": 8, "minor": 0}},
       "tags": [{"namespace": "foo", "key": "bar", "value": "buzz"},
                  {"namespace": "sample", "key": "tag", "value": "1"},
-                 {"namespace": "sample", "key": "tag", "value": "2"}],
+                 {"namespace": "sample", "key": "tag", "value": "2"},
+                 {"namespace": "insights-client", "key": "custom/Last Reboot", "value": "2023-07-14 11:26:07"},
+                 {"namespace": "insights-client", "key": "Private IPv4", "value": "192.168.1.100"}],
       "updated": null
     },
     "platform_metadata": {

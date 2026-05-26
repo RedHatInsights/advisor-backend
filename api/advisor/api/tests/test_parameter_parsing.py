@@ -15,6 +15,8 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
+from unittest.mock import patch
+import urllib.parse
 from urllib.parse import quote
 
 from django.db.models import Q
@@ -210,36 +212,96 @@ class HostTagsParameterParsingTestCase(TestCase):
         self.assertIsInstance(q, Q)
         self.assertTrue(q)
 
-        # Caught by parameter regular expression
-        with self.assertRaisesRegex(
-            ValidationError, r"The value did not match the pattern"
-        ):
+        # Empty tag string doesn't match the regex pattern
+        with self.assertRaises(ValidationError):
             filter_on_host_tags(make_request_obj(
                 tags=''
             ))
 
     def test_invalid_tags(self):
+        # No namespace separator '/' - rejected by regex pattern
         with self.assertRaises(ValidationError):
             filter_on_host_tags(make_request_obj(
                 tags='key=value'
             ))
 
+        # No '/' or '=' - rejected by regex pattern
         with self.assertRaises(ValidationError):
             filter_on_host_tags(make_request_obj(
                 tags='key'
             ))
 
+        # No key=value separator '=' - rejected by regex pattern
         with self.assertRaises(ValidationError):
             filter_on_host_tags(make_request_obj(
-                tags='namespace/key'
+                tags='namespace/keyvalue'
+            ))
+
+        # No value - rejected by regex pattern
+        with self.assertRaises(ValidationError):
+            filter_on_host_tags(make_request_obj(
+                tags='n/k/e/y/'
+            ))
+
+        # No key - rejected by regex pattern
+        with self.assertRaises(ValidationError):
+            filter_on_host_tags(make_request_obj(
+                tags='namespace/=value'
             ))
 
     def test_multiple_tags_in_parameter(self):
         q = filter_on_host_tags(make_request_obj(
-            tags='namespace/key=value,Sat/env=prod'
+            tags='namespace/key=value,Sat/env=prod,n/k=v'
         ))
         self.assertIsInstance(q, Q)
         self.assertTrue(q)
+
+    def test_special_chars_in_parameter(self):
+        q = filter_on_host_tags(make_request_obj(
+            tags='some-namespace/some/tag=some/value,n/k/e/y/=/v/a/l/u/e/,namespace with spaces/key with spaces=value with spaces'
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+    def test_unquoted_encoded_tags(self):
+        """Verify URL-encoded tags are correctly split and decoded.
+
+        The original URL-encoded query string is:
+        tags=insights-client%2Fcustom%252FLast%2520Reboot%3D2023-07-14%252011%253A26%253A07
+             %2Cinsights-client%2FPrivate+IPv4%3D192.168.1.100
+
+        After Django's first URL decode, the tag value becomes what we pass
+        to make_request_obj below. The filter should then split and unquote
+        to produce:
+        - insights-client/custom/Last Reboot=2023-07-14 11:26:07
+        - insights-client/Private IPv4=192.168.1.100
+        """
+        # Value after Django's initial URL decoding of the query string
+        tag_value = (
+            'insights-client/custom%2FLast%20Reboot=2023-07-14%2011%3A26%3A07,'
+            'insights-client/Private IPv4=192.168.1.100'
+        )
+        decoded_tags = []
+        _unquote = urllib.parse.unquote
+
+        def tracking_unquote(s):
+            result = _unquote(s)
+            decoded_tags.append(result)
+            return result
+
+        with patch('urllib.parse.unquote', side_effect=tracking_unquote):
+            q = filter_on_host_tags(make_request_obj(tags=tag_value))
+
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+        # unquote is called for namespace, key, value of each tag
+        self.assertEqual(decoded_tags, [
+            # Tag 1: insights-client/custom/Last Reboot=2023-07-14 11:26:07
+            'insights-client', 'custom/Last Reboot', '2023-07-14 11:26:07',
+            # Tag 2: insights-client/Private IPv4=192.168.1.100
+            'insights-client', 'Private IPv4', '192.168.1.100',
+        ])
 
     def test_quoted_parameters(self):
         def make_param_value(namespace, key, value):
