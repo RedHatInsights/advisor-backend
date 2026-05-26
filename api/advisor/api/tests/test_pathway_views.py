@@ -813,3 +813,58 @@ class PathwayViewHostTagsTestCase(TestCase):
         systems_list = systems_page['data']
         self.assertEqual(len(systems_list), 1)  # One system
         self.assertEqual(systems_list[0]['display_name'], 'system02.example.biz')
+
+    def test_pathway_list_filters_with_no_results(self):
+        """
+        When tags filter out all hosts, pathway_agg_data is empty and
+        for_account() takes an early return path. Filtering on annotated
+        fields like has_incident and reboot_required must still work
+        without raising a FieldError.
+        """
+        # has_incident filter with tags that match no hosts
+        response = self.client.get(
+            reverse('pathway-list'),
+            data={'has_incident': 'true', 'tags': 'elephant/in=the_room'},
+            **self.header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data'], [])
+        self.assertEqual(response.json()['meta']['count'], 0)
+
+        response = self.client.get(
+            reverse('pathway-list'),
+            data={'has_incident': 'false', 'tags': 'elephant/in=the room'},
+            **self.header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data'], [])
+
+        # reboot_required filter with tags that match no hosts
+        response = self.client.get(
+            reverse('pathway-list'),
+            data={'reboot_required': 'true', 'tags': 'elephant/in=the/room'},
+            **self.header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data'], [])
+
+        response = self.client.get(
+            reverse('pathway-list'),
+            data={'reboot_required': 'false', 'tags': 'elephant/in=the=room'},
+            **self.header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data'], [])
+
+        # Both filters combined with no-match tags
+        response = self.client.get(
+            reverse('pathway-list'),
+            data={
+                'has_incident': 'true',
+                'reboot_required': 'true',
+                'tags': 'elephant/in=the.room',
+            },
+            **self.header
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data'], [])
