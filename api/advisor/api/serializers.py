@@ -457,6 +457,7 @@ class DisabledRulesSerializer(serializers.Serializer):
     """
     rule_id = serializers.CharField(max_length=255, source='rule__rule_id')
     scope = serializers.CharField(max_length=10)
+    is_auto_ack = serializers.BooleanField()
 
 
 def validate_hosts_in_org(hosts, org_id, field_name='systems'):
