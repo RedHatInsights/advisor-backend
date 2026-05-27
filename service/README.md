@@ -435,6 +435,14 @@ curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/s
 curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/ | python -m json.tool
 ```
 
+**Match system(s) with specific tags:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?tags=insights-client%2Fcustom%252FLast%2520Reboot%3D2023-07-14%252011%253A26%253A07%2Cinsights-client%2FPrivate+IPv4%3D192.168.1.100
+```
+Note: the tags query parameter is URL-encoded and will match systems tagged with either or both of these tags:
+- `insights-client/custom/Last Reboot=2023-07-14 11:26:07`
+- `insights-client/Private IPv4=192.168.1.100`
+
 **Get reports (rule hits) for a specific system:**
 ```bash
 curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/reports/ | python -m json.tool

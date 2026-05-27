@@ -20,6 +20,7 @@ from functools import reduce
 from itertools import chain, product
 import re
 from typing import Optional
+import urllib.parse
 from uuid import UUID
 
 from django.apps import apps
@@ -516,7 +517,7 @@ host_id_query_param = OpenApiParameter(
 
 host_tags_query_param = OpenApiParameter(
     name='tags', type=OpenApiTypes.REGEX, location=OpenApiParameter.QUERY,
-    pattern=r'^[^/=]+/[^/=]+=[^/=]+$',
+    pattern=r'^[^/]+/[^=]+=.+$',
     description="Tags have a namespace, key and value in the form namespace/key=value",
     required=False, many=True, style='form',
 )
@@ -707,13 +708,13 @@ def filter_on_host_tags(request, field_name='host_id'):
         return Q()
 
     def unescape(token):
-        return token.replace('%2F', '/').replace('%3D', '=')
+        return urllib.parse.unquote(token)
 
     tag_query = Q()
     for tag in host_tags:
 
-        namespace, key_and_value = tag.split('/')
-        key, value = key_and_value.split('=')
+        namespace, key_and_value = tag.split('/', 1)
+        key, value = key_and_value.split('=', 1)
 
         namespace = unescape(namespace)
         key = unescape(key)
