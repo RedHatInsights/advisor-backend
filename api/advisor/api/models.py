@@ -893,6 +893,8 @@ class PathwayManager(models.Manager):
             return self.get_queryset().none().annotate(
                 impacted_systems_count=Value(0),
                 recommendation_level=Value(0),
+                has_incident=Value(False, models.BooleanField()),
+                reboot_required=Value(False, models.BooleanField()),
             )
 
         # get the total systems in an account
