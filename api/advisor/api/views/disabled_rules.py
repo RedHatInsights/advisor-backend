@@ -57,16 +57,16 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             org_id=org_id, rule__active=True
         ).annotate(
             scope=Value('account'),
-            is_auto_ack=auto_ack_annotation,
+            is_auto_ack=auto_ack_annotation
         ).order_by('rule__rule_id').values(
-            'rule__rule_id', 'scope'
+            'rule__rule_id', 'scope', 'is_auto_ack'
         ).union(HostAck.objects.filter(
             org_id=org_id, rule__active=True
         ).annotate(
             scope=Value('system'),
-            is_auto_ack=auto_ack_annotation,
+            is_auto_ack=Value(False, output_field=BooleanField())
         ).distinct('rule__rule_id').order_by('rule__rule_id').values(
-            'rule__rule_id', 'scope'
+            'rule__rule_id', 'scope', 'is_auto_ack'
         )).order_by('rule__rule_id', 'scope')
 
     def retrieve(self, request, rule_id, format=None):

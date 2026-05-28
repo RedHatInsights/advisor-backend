@@ -47,10 +47,13 @@ class DisabledRulesViewTestCase(TestCase):
         disabled_rules = disabled_page['data']
         self.assertIn('rule_id', disabled_rules[0])
         self.assertIn('scope', disabled_rules[0])
+        self.assertIn('is_auto_ack', disabled_rules[0])
         self.assertEqual(disabled_rules[0]['rule_id'], constants.acked_rule)
         self.assertEqual(disabled_rules[0]['scope'], 'account')
+        self.assertFalse(disabled_rules[0]['is_auto_ack'])
         self.assertEqual(disabled_rules[1]['rule_id'], constants.second_rule)
         self.assertEqual(disabled_rules[1]['scope'], 'system')
+        self.assertFalse(disabled_rules[1]['is_auto_ack'])
         self.assertEqual(len(disabled_rules), 2)
 
     def test_disabled_rules_detail(self):
@@ -63,8 +66,10 @@ class DisabledRulesViewTestCase(TestCase):
         disabled_rule = response.json()
         self.assertIn('rule_id', disabled_rule)
         self.assertIn('scope', disabled_rule)
+        self.assertIn('is_auto_ack', disabled_rule)
         self.assertEqual(disabled_rule['rule_id'], constants.acked_rule)
         self.assertEqual(disabled_rule['scope'], 'account')
+        self.assertFalse(disabled_rule['is_auto_ack'])
 
         # A rule that's not active should give a 404
         response = self.client.get(
