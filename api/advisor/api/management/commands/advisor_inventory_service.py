@@ -321,6 +321,7 @@ class Command(BaseCommand):
         Run the handler loop continuously until interrupted by SIGTERM.
         """
         logger.info('Advisor Inventory replication service starting up')
+        settings.KAFKA_SETTINGS.update({'group.id': settings.GROUP_ID})
         receiver = KafkaDispatcher()
         receiver.register_handler(settings.INVENTORY_EVENTS_TOPIC, handle_inventory_event)
 
