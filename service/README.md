@@ -442,6 +442,11 @@ curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/s
 Note: the tags query parameter is URL-encoded and will match systems tagged with either or both of these tags:
 - `insights-client/custom/Last Reboot=2023-07-14 11:26:07`
 - `insights-client/Private IPv4=192.168.1.100`
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?tags=insights-client%2Fkey_12345678-1234-1234-1234-123456789012_%2524%25252F%2524%3D%2526abc%2526%25253Dkey_12345678-1234-1234-1234-123456789012
+```
+- `insights-client/key_12345678-1234-1234-1234-123456789012_$/$=&abc&=key_12345678-1234-1234-1234-123456789012`
+
 
 **Get reports (rule hits) for a specific system:**
 ```bash

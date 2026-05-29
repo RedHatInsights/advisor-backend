@@ -22,6 +22,7 @@ import re
 from typing import Optional
 import urllib.parse
 from uuid import UUID
+from advisor_logging import logger
 
 from django.apps import apps
 from django.db.models import Exists, F, Q, OuterRef, Subquery
@@ -708,17 +709,18 @@ def filter_on_host_tags(request, field_name='host_id'):
         return Q()
 
     def unescape(token):
-        return urllib.parse.unquote(token)
+        return urllib.parse.unquote(token).replace('%2F', '/').replace('%3D', '=')
 
     tag_query = Q()
     for tag in host_tags:
-
+        logger.debug(f"Processing tag: {tag}")
         namespace, key_and_value = tag.split('/', 1)
         key, value = key_and_value.split('=', 1)
 
         namespace = unescape(namespace)
         key = unescape(key)
         value = unescape(value)
+        logger.debug(f"Processed tag: namespace={namespace}, key={key}, value={value}")
 
         tag_query &= Q(tags__contains=[{"namespace": namespace, "key": key, "value": value}])
 
