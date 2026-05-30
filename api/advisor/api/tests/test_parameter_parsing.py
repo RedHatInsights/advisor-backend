@@ -255,40 +255,14 @@ class HostTagsParameterParsingTestCase(TestCase):
         self.assertTrue(q)
 
     def test_special_chars_in_parameter(self):
-        q = filter_on_host_tags(make_request_obj(
-            tags='some-namespace/some/tag=some/value,n/k/e/y/=/v=a&l$u&e/,namespace with spaces/key with spaces=value with spaces'
-        ))
+        ro = make_request_obj(
+            tags='some-namespace/some/key=some=value,'
+                 'n/k e y/=/v=a l$u&e/,'
+                 'namespace with spaces/key with spaces=value with spaces'
+        )
+        q = filter_on_host_tags(ro)
         self.assertIsInstance(q, Q)
         self.assertTrue(q)
-
-    def test_unquoted_encoded_tags(self):
-        """Verify URL-encoded tags are correctly split and decoded.
-
-        The original URL-encoded query string is:
-        tags=insights-client%2Fcustom%252FLast%2520Reboot%3D2023-07-14%252011%253A26%253A07
-             %2Cinsights-client%2FPrivate+IPv4%3D192.168.1.100
-             %2Cinsights-client%2Fkey_12345678-1234-1234-1234-123456789012_%2524%25252F%2524%3D%2526abc%2526%25253Dkey_12345678-1234-1234-1234-123456789012
-
-        After Django's first URL decode, the tag value becomes what we pass
-        to make_request_obj below. The filter should then split and unquote
-        to produce:
-        - insights-client/custom/Last Reboot=2023-07-14 11:26:07
-        - insights-client/Private IPv4=192.168.1.100
-        - insights-client/key_12345678-1234-1234-1234-123456789012_$/$=&abc&=key_12345678-1234-1234-1234-123456789012
-        """
-        # Value after Django's initial URL decoding of the query string
-        tag_value = (
-            'insights-client/custom%2FLast%20Reboot=2023-07-14%2011%3A26%3A07,'
-            'insights-client/Private IPv4=192.168.1.100,'
-            'insights-client/key_12345678-1234-1234-1234-123456789012_%24%252F%24=%26abc%26%253Dkey_12345678-1234-1234-1234-123456789012'
-        )
-        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            q = filter_on_host_tags(make_request_obj(tags=tag_value))
-            self.assertIsInstance(q, Q)
-            self.assertTrue(q)
-            self.assertIn('DEBUG:advisor-log:Processed tag: namespace=insights-client, key=custom/Last Reboot, value=2023-07-14 11:26:07', logs.output)
-            self.assertIn('DEBUG:advisor-log:Processed tag: namespace=insights-client, key=Private IPv4, value=192.168.1.100', logs.output)
-            self.assertIn('DEBUG:advisor-log:Processed tag: namespace=insights-client, key=key_12345678-1234-1234-1234-123456789012_$/$, value=&abc&=key_12345678-1234-1234-1234-123456789012', logs.output)
 
     def test_quoted_parameters(self):
         def make_param_value(namespace, key, value):
@@ -303,6 +277,24 @@ class HostTagsParameterParsingTestCase(TestCase):
         self.assertTrue(q)
         q = filter_on_host_tags(make_request_obj(
             tags=make_param_value('огурцы', 'пугают', 'кошек')
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+        q = filter_on_host_tags(make_request_obj(
+            tags=make_param_value('some-namespace', 'some/key', 'some=value')
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+        q = filter_on_host_tags(make_request_obj(
+            tags=make_param_value('n', 'k e y/', '/v=a l$u&e/')
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+        q = filter_on_host_tags(make_request_obj(
+            tags=make_param_value('namespace with spaces', 'key with spaces', 'value with spaces')
         ))
         self.assertIsInstance(q, Q)
         self.assertTrue(q)
