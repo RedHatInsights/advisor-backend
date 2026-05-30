@@ -25,7 +25,9 @@
                  {"namespace": "sample", "key": "tag", "value": "1"},
                  {"namespace": "sample", "key": "tag", "value": "2"},
                  {"namespace": "insights-client", "key": "custom/Last Reboot", "value": "2023-07-14 11:26:07"},
-                 {"namespace": "insights-client", "key": "Private IPv4", "value": "192.168.1.100"}],
+                 {"namespace": "insights-client", "key": "Private IPv4", "value": "192.168.1.100"},
+                 {"namespace": "insights-client", "key": "key_12345678-1234-1234-1234-123456789012_$/$", "value": "&abc&=key_12345678-1234-1234-1234-123456789012"}
+      ],
       "updated": null
     },
     "platform_metadata": {
