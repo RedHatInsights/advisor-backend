@@ -20,7 +20,6 @@ from functools import reduce
 from itertools import chain, product
 import re
 from typing import Optional
-import urllib.parse
 from uuid import UUID
 from advisor_logging import logger
 
@@ -709,7 +708,7 @@ def filter_on_host_tags(request, field_name='host_id'):
         return Q()
 
     def unescape(token):
-        return urllib.parse.unquote(token).replace('%2F', '/').replace('%3D', '=')
+        return token.replace('%2F', '/').replace('%3D', '=')
 
     tag_query = Q()
     for tag in host_tags:
