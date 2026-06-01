@@ -34,6 +34,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from advisor_logging import logger
 
 import api.kessel as kessel
+from api.rbac_oidc_token import get_rbac_oidc_access_token
 from feature_flags import feature_flag_is_enabled, FLAG_ADVISOR_KESSEL_ENABLED
 
 http_auth_header_key = 'x-rh-identity'
@@ -226,27 +227,58 @@ def set_rbac_success(request: Request, message: str) -> None:
     logger.debug(message)
 
 
+def _add_username_query_param(rbac_url: str, identity: dict) -> str:
+    """
+    Append the username from the identity as a query parameter on the RBAC
+    URL.  Used by both the OIDC and PSK authentication paths, which need to
+    identify the user to RBAC without passing the full x-rh-identity header.
+    """
+    user_data_key = user_details_key.get(identity.get('type'))
+    if (
+        user_data_key
+        and user_data_key in identity
+        and 'username' in identity[user_data_key]
+    ):
+        username = identity[user_data_key]['username']
+    else:
+        username = identity.get('user', {}).get('username', '')
+    urlparts = urlparse(rbac_url)
+    query_params = parse_qs(urlparts.query)
+    query_params['username'] = username
+    new_query = urlencode(query_params, doseq=True)
+    return urlunparse(urlparts._replace(query=new_query))
+
+
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
     """
     Make a request to the RBAC service.  With RBAC v1 we check permissions,
     with RBAC v2 we check workspaces.
+
+    Authentication methods are tried in this order:
+    1. OIDC service account (default) - acquires a JWT via client credentials
+       grant using the kessel SDK's OAuth2ClientCredentials and sends it as
+       a Bearer token in the Authorization header.
+    2. PSK - uses pre-shared key headers (legacy).
+    3. x-rh-identity header forwarding - passes through the caller's identity.
     """
     logger.debug(f"RBAC request to {rbac_url}")
     identity = request.auth
     # This has already been checked in callers to this code so we assume
     # we can get the org_id and username keys.
-    if settings.RBAC_PSK:
+    if settings.RBAC_OIDC_ENABLED and settings.KESSEL_AUTH_OIDC_ISSUER:
+        access_token = get_rbac_oidc_access_token()
+        rbac_header = {
+            "Authorization": f"Bearer {access_token}",
+            "x-rh-rbac-org-id": identity['org_id'],
+        }
+        rbac_url = _add_username_query_param(rbac_url, identity)
+    elif settings.RBAC_PSK:
         rbac_header = {
             "x-rh-rbac-client-id": settings.RBAC_CLIENT_ID,
             "x-rh-rbac-psk": settings.RBAC_PSK,
             "x-rh-rbac-org-id": identity['org_id'],
         }
-        # If there's a simpler way of doing this safely, let me know.
-        urlparts = urlparse(rbac_url)
-        query_params = parse_qs(urlparts.query)
-        query_params['username'] = identity['user']['username']
-        new_query = urlencode(query_params, doseq=True)
-        rbac_url = urlunparse(urlparts._replace(query=new_query))
+        rbac_url = _add_username_query_param(rbac_url, identity)
     else:
         # Supply the full x-rh-identity header if we have it, because
         # that gives is_org_admin and other flags used by RBAC.
