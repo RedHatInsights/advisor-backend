@@ -28,7 +28,7 @@ from advisor_logging import logger
 from feature_flags import (
     feature_flag_is_enabled, FLAG_INVENTORY_EVENT_REPLICATION
 )
-from api.models import InventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
+from api.models import AdvisorInventoryHost, Host  # pyright: ignore[reportImplicitRelativeImport]
 
 from kafka_utils import JsonValue, KafkaDispatcher  # , send_kafka_message
 
@@ -72,26 +72,6 @@ def log_missing_key(request_id: str, event_type: str, key_name: str):
         request_id, event_type, key_name
     )
     prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
-
-
-#############################################################################
-SYSTEM_PROFILE_KEYS = (
-    'ansible', 'bootc_status', 'host_type', 'mssql', 'operating_system',
-    'owner_id', 'rhc_client_id', 'sap', 'sap_system', 'sap_sids',
-    # need to phase out sap_system and sap_sids in favour of sap structure.
-    'system_update_method',
-)
-
-
-def extract_system_profile(source: dict[str, JsonValue]) -> dict[str, JsonValue]:
-    """
-    Grab just the keys we need from the given system profile.
-    """
-    return {
-        key: source[key]
-        for key in SYSTEM_PROFILE_KEYS
-        if key in source
-    }
 
 
 #############################################################################
@@ -189,23 +169,28 @@ def handle_created_event(message: dict[str, JsonValue]):
         # else the request_id variable exists from above
         return log_missing_key(request_id, event_type, key_name)
 
-    # These are the particular fields that Advisor and Tasks uses
-    system_profile: dict[str, JsonValue] = extract_system_profile(system_profile_field)
+    system_profile_raw: dict[str, JsonValue] = system_profile_field
+    os_info = system_profile_raw.get('operating_system', {})
+    bootc = system_profile_raw.get('bootc_status', {})
+    bootc_booted = bootc.get('booted', {}) if isinstance(bootc, dict) else {}
 
-    # Create or update the inventory host.
-    # If we're creating the host, we need to supply a system_profile.
-    # However, if updating we don't really want to supply a large quantity
-    # of system_profile data that may not be changing.  When the system
-    # profile data moves into its own model, this may be easier and more
-    # efficient.
-    inv_host, created = InventoryHost.objects.update_or_create(
+    workloads = system_profile_raw.get('workloads', {})
+    workloads = workloads if isinstance(workloads, dict) else {}
+    sap = workloads.get('sap', {})
+    sap = sap if isinstance(sap, dict) else {}
+
+    workspace_id = groups[0]['id'] if groups else None
+    workspace_name = groups[0]['name'] if groups else None
+
+    inv_host, created = AdvisorInventoryHost.objects.update_or_create(
         id=host_id,
         defaults={
             'display_name': display_name,
             'account': account,
             'org_id': org_id,
             'tags': tags,
-            'groups': groups,
+            'workspace_id': workspace_id,
+            'workspace_name': workspace_name,
             'created': created,
             'updated': updated,
             'last_check_in': last_check_in,
@@ -213,7 +198,19 @@ def handle_created_event(message: dict[str, JsonValue]):
             'stale_timestamp': stale_timestamp,
             'reporter': reporter,
             'per_reporter_staleness': per_reporter_staleness,
-            'system_profile': system_profile,
+            'os_name': os_info.get('name') if isinstance(os_info, dict) else None,
+            'os_major': os_info.get('major') if isinstance(os_info, dict) else None,
+            'os_minor': os_info.get('minor') if isinstance(os_info, dict) else None,
+            'host_type': system_profile_raw.get('host_type'),
+            'bootc_booted_image': bootc_booted.get('image') if isinstance(bootc_booted, dict) else None,
+            'bootc_booted_image_digest': bootc_booted.get('image_digest') if isinstance(bootc_booted, dict) else None,
+            'owner_id': system_profile_raw.get('owner_id') or None,
+            'rhc_client_id': system_profile_raw.get('rhc_client_id') or None,
+            'sap_system': sap.get('sap_system'),
+            'sap_sids': sap.get('sids', []),
+            'ansible': workloads.get('ansible'),
+            'mssql': workloads.get('mssql'),
+            'system_update_method': system_profile_raw.get('system_update_method'),
         }
     )
     if created:
@@ -302,11 +299,11 @@ def handle_deleted_event(message: dict[str, JsonValue]):
         inventory_id=inventory_id, org_id=org_id
     ).delete()
     logger.info("Deleted %d records based on Host: %s.", *deleted_records)
-    # Delete InventoryHost record
-    deleted_records = InventoryHost.objects.filter(
+    # Delete AdvisorInventoryHost record
+    deleted_records = AdvisorInventoryHost.objects.filter(
         id=inventory_id, org_id=org_id
     ).delete()
-    logger.info("Deleted %d records based on InventoryHost: %s.", *deleted_records)
+    logger.info("Deleted %d records based on AdvisorInventoryHost: %s.", *deleted_records)
     prometheus.INVENTORY_HOST_DELETED.inc()
 
 
