@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from django.db.models import Q, Value
+from django.conf import settings
+from django.db.models import BooleanField, Case, Q, Value, When
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
@@ -44,21 +45,28 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         org_id = request_to_org(self.request)
+        auto_ack_annotation = Case(
+            When(created_by=settings.AUTOACK['CREATED_BY'], then=Value(True)),
+            default=Value(False),
+            output_field=BooleanField(),
+        )
         # Internal ordering also makes sure that fields aren't implicitly
         # selected by default ordering, but then we want the whole queyset
         # to be explicitly sorted by rule_id.
         return Ack.objects.filter(
             org_id=org_id, rule__active=True
         ).annotate(
-            scope=Value('account')
+            scope=Value('account'),
+            is_auto_ack=auto_ack_annotation
         ).order_by('rule__rule_id').values(
-            'rule__rule_id', 'scope'
+            'rule__rule_id', 'scope', 'is_auto_ack'
         ).union(HostAck.objects.filter(
             org_id=org_id, rule__active=True
         ).annotate(
-            scope=Value('system')
+            scope=Value('system'),
+            is_auto_ack=Value(False, output_field=BooleanField())
         ).distinct('rule__rule_id').order_by('rule__rule_id').values(
-            'rule__rule_id', 'scope'
+            'rule__rule_id', 'scope', 'is_auto_ack'
         )).order_by('rule__rule_id', 'scope')
 
     def retrieve(self, request, rule_id, format=None):
@@ -73,13 +81,15 @@ class DisabledRulesViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         org_id = request_to_org(request)
         filter_q = Q(org_id=org_id, rule__active=True, rule__rule_id=rule_id)
         try:
-            Ack.objects.get(filter_q)
+            ack = Ack.objects.get(filter_q)
             scope = 'account'
+            is_auto_ack = (ack.created_by == settings.AUTOACK['CREATED_BY'])
         except Ack.DoesNotExist:
             hostack = HostAck.objects.filter(filter_q)
             if not hostack.exists():
                 return Response(status=status.HTTP_404_NOT_FOUND)
             scope = 'system'
+            is_auto_ack = False
         return Response(DisabledRulesSerializer({
-            'rule__rule_id': rule_id, 'scope': scope
+            'rule__rule_id': rule_id, 'scope': scope, 'is_auto_ack': is_auto_ack
         }).data)
