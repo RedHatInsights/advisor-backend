@@ -179,8 +179,8 @@ def handle_created_event(message: dict[str, JsonValue]):
     sap = workloads.get('sap', {})
     sap = sap if isinstance(sap, dict) else {}
 
-    workspace_id = groups[0]['id'] if groups else None
-    workspace_name = groups[0]['name'] if groups else None
+    workspace_id = groups[0].get('id') if groups else None
+    workspace_name = groups[0].get('name') if groups else None
 
     inv_host, created = AdvisorInventoryHost.objects.update_or_create(
         id=host_id,
