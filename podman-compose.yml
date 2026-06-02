@@ -1,6 +1,6 @@
 services:
   advisor-db:
-    image: quay.io/cloudservices/postgresql-rds:13
+    image: quay.io/cloudservices/postgresql-rds:16
     ports:
       - "5432:5432"
     environment:
@@ -124,7 +124,7 @@ services:
         condition: service_completed_successfully
 
   unleash-init-db:
-    image: quay.io/cloudservices/postgresql-rds:13 
+    image: quay.io/cloudservices/postgresql-rds:16
     command: psql -h advisor-db -U postgres -a -f .unleash/init-db.sql
     environment:
       PGPASSWORD: insights
