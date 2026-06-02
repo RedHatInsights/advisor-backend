@@ -354,6 +354,27 @@ def find_host_groups(role_list: list[dict[str, str | dict[str, str]]], request):
         logger.debug(f"User has host groups {host_groups}")
 
 
+def check_permission(
+    request: Request, permission: str, scope: ResourceScope = ResourceScope.ORG
+) -> tuple[bool, float]:
+    """
+    Route a permission check through Kessel (gRPC) when enabled, or v1/access
+    otherwise.  Use this for standalone permission checks outside of DRF views
+    that don't go through InsightsRBACPermission.has_permission.
+    """
+    if not settings.RBAC_ENABLED:
+        return (True, 0.0)
+    if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
+        if scope == ResourceScope.WORKSPACE:
+            raise ValueError("check_permission does not support WORKSPACE scope")
+        user_data = request_to_user_data(request)
+        if not user_data or 'user_id' not in user_data:
+            logger.warning("check_permission: missing user_id for Kessel check, denying")
+            return (False, 0.0)
+        return has_kessel_permission(scope, RBACPermission(permission), request)
+    return has_rbac_permission(request, permission)
+
+
 def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
