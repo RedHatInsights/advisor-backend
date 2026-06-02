@@ -283,7 +283,7 @@ class TestAdvisorInventoryServer(TestCase):
         modified_msg: dict[str, JsonValue]
         for missing_field in (
             'metadata', 'request_id', 'host', 'id', 'display_name', 'org_id',
-            'tags', 'created', 'updated', 'insights_id',
+            'tags', 'groups', 'created', 'updated', 'insights_id',
         ):
             with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
                 modified_msg = deepcopy(create_new_host_msg)
