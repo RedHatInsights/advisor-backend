@@ -27,7 +27,7 @@ from kafka_utils import JsonValue
 from api.management.commands.advisor_inventory_service import (
     handle_inventory_event, handle_created_event, handle_deleted_event
 )
-from api.models import CurrentReport, Host, HostAck, InventoryHost, Upload
+from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, InventoryHost, Upload
 from api.tests import constants
 
 #############################################################################
@@ -64,10 +64,32 @@ create_new_host_msg: dict[str, JsonValue] = {
         "tags": [],
         "stale_timestamp": stale_time,
         "system_profile": {
-            "ansible": "", "bootc_status": "", "host_type": "", "mssql": "",
-            "operating_system": "", "owner_id": "", "rhc_client_id": "",
-            "sap": "", "sap_system": "", "sap_sids": "",
-            "system_update_method": ""
+            "host_type": "edge",
+            "operating_system": {"name": "RHEL", "major": 9, "minor": 4},
+            "bootc_status": {
+                "booted": {
+                    "image": "quay.io/example/rhel:9.4",
+                    "image_digest": "sha256:abc123"
+                }
+            },
+            "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+            "rhc_client_id": "66ef39b8-e8f0-59d6-ca68-cee5983500c2",
+            "system_update_method": "dnf",
+            "workloads": {
+                "sap": {
+                    "sap_system": True,
+                    "sids": ["E01", "E02"],
+                    "instance_number": "00",
+                    "version": "2.00.122"
+                },
+                "ansible": {
+                    "controller_version": "4.6.0",
+                    "hub_version": "4.9.0"
+                },
+                "mssql": {
+                    "version": "16.0.1000"
+                }
+            }
         },
         "reporter": "puptoo",
         "per_reporter_staleness": {"puptoo": {
@@ -75,7 +97,7 @@ create_new_host_msg: dict[str, JsonValue] = {
             "stale_warning_timestamp": stale_warn_time,
             "culled_timestamp": cull_time
         }},
-        "groups": [],
+        "groups": [{"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "name": "test-workspace"}],
     }
 }
 update_host_msg: dict[str, JsonValue] = {
@@ -98,21 +120,16 @@ update_host_msg: dict[str, JsonValue] = {
         "last_check_in": "2025-12-01T03:09:27Z",
         "tags": [],
         "stale_timestamp": stale_time,
-        "system_profile": {  # taken from the fixture, only certain values copied
-            "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
-            "bios_release_date": "13/06/2017", "cores_per_socket": 8,
-            "number_of_sockets": 2, "infrastructure_type": "physical",
-            "system_memory_bytes": 134927265792, "satellite_managed": True,
-            "insights_egg_version": "3.0.182-1", "sap_system": True,
-            "insights_client_version": "3.0.14", "sap_sids": ["E01", "E02"],
-            "os_release": "Red Hat Enterprise Linux Server",
-            "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+        "system_profile": {
             "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
+            "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
             "system_update_method": "dnf",
             "workloads": {
                 "sap": {
-                    "sap_system": True, "version": "2.00.122.04.1478575636",
-                    "sids": ["E01", "E02"], "instance_number": "00"
+                    "sap_system": True,
+                    "sids": ["E01", "E02"],
+                    "instance_number": "00",
+                    "version": "2.00.122.04.1478575636"
                 }
             }
         },
@@ -154,6 +171,25 @@ class TestAdvisorInventoryServer(TestCase):
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data'
     ]
+
+    def setUp(self):
+        for inv_host in InventoryHost.objects.all():
+            AdvisorInventoryHost.objects.update_or_create(
+                id=inv_host.id,
+                defaults={
+                    'account': inv_host.account,
+                    'org_id': inv_host.org_id,
+                    'display_name': inv_host.display_name,
+                    'tags': inv_host.tags,
+                    'updated': inv_host.updated,
+                    'created': inv_host.created,
+                    'last_check_in': inv_host.last_check_in,
+                    'stale_timestamp': inv_host.stale_timestamp,
+                    'insights_id': inv_host.insights_id,
+                    'reporter': inv_host.reporter,
+                    'per_reporter_staleness': inv_host.per_reporter_staleness,
+                }
+            )
 
     @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_message_dispatch(self):
@@ -207,16 +243,30 @@ class TestAdvisorInventoryServer(TestCase):
                 log_lines[2]
             )
             self.assertEqual(len(log_lines), 3)
-            # Check existence of InventoryHost record
             self.assertEqual(
-                InventoryHost.objects.filter(id=new_host_id).count(),
+                AdvisorInventoryHost.objects.filter(id=new_host_id).count(),
                 1
             )
-            new_ihost = InventoryHost.objects.get(id=new_host_id)
-            # Probably don't need to check the entire data set.
+            new_ihost = AdvisorInventoryHost.objects.get(id=new_host_id)
             self.assertEqual(str(new_ihost.id), new_host_id)
             self.assertEqual(new_ihost.account, constants.standard_acct)
             self.assertEqual(new_ihost.org_id, constants.standard_org)
+            self.assertEqual(new_ihost.display_name, new_host_name)
+            self.assertEqual(str(new_ihost.workspace_id), "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            self.assertEqual(new_ihost.workspace_name, "test-workspace")
+            self.assertEqual(new_ihost.os_name, "RHEL")
+            self.assertEqual(new_ihost.os_major, 9)
+            self.assertEqual(new_ihost.os_minor, 4)
+            self.assertEqual(new_ihost.host_type, "edge")
+            self.assertEqual(new_ihost.bootc_booted_image, "quay.io/example/rhel:9.4")
+            self.assertEqual(new_ihost.bootc_booted_image_digest, "sha256:abc123")
+            self.assertEqual(str(new_ihost.owner_id), "55df28a7-d7ef-48c5-bc57-8967025399b1")
+            self.assertEqual(str(new_ihost.rhc_client_id), "66ef39b8-e8f0-59d6-ca68-cee5983500c2")
+            self.assertTrue(new_ihost.sap_system)
+            self.assertEqual(new_ihost.sap_sids, ["E01", "E02"])
+            self.assertEqual(new_ihost.ansible, {"controller_version": "4.6.0", "hub_version": "4.9.0"})
+            self.assertEqual(new_ihost.mssql, {"version": "16.0.1000"})
+            self.assertEqual(new_ihost.system_update_method, "dnf")
             # Check existence of Host record
             self.assertEqual(
                 Host.objects.filter(inventory_id=new_host_id).count(),
@@ -295,9 +345,9 @@ class TestAdvisorInventoryServer(TestCase):
                 log_lines[2]
             )
             self.assertEqual(len(log_lines), 3)
-            # Check existence of InventoryHost record
+            # Check existence of AdvisorInventoryHost record
             self.assertEqual(
-                InventoryHost.objects.filter(id=new_host_id).count(),
+                AdvisorInventoryHost.objects.filter(id=new_host_id).count(),
                 1
             )
             self.assertEqual(
@@ -330,9 +380,9 @@ class TestAdvisorInventoryServer(TestCase):
                 log_lines[2]
             )
             self.assertEqual(len(log_lines), 3)
-            # Check existence of InventoryHost record
+            # Check existence of AdvisorInventoryHost record
             self.assertEqual(
-                InventoryHost.objects.filter(id=new_host_id).count(),
+                AdvisorInventoryHost.objects.filter(id=new_host_id).count(),
                 1
             )
             self.assertEqual(
@@ -375,6 +425,11 @@ class TestAdvisorInventoryServer(TestCase):
             )
             self.assertEqual(len(log_lines), 3)
 
+            inv_host = AdvisorInventoryHost.objects.get(id=constants.host_01_uuid)
+            self.assertEqual(inv_host.os_name, "RHEL")
+            self.assertEqual(inv_host.os_major, 7)
+            self.assertEqual(inv_host.os_minor, 5)
+
     @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_deleted_message_success(self):
         """
@@ -405,15 +460,15 @@ class TestAdvisorInventoryServer(TestCase):
                 log_lines[2]
             )
             self.assertEqual(
-                "INFO:advisor-log:Deleted %d records based on InventoryHost: %s." % (
-                    1, "{'api.InventoryHost': 1}"
+                "INFO:advisor-log:Deleted %d records based on AdvisorInventoryHost: %s." % (
+                    1, "{'api.AdvisorInventoryHost': 1}"
                 ),
                 log_lines[3]
             )
             self.assertEqual(len(log_lines), 4)
         # Now test that we actually deleted all those things:
         self.assertEqual(
-            InventoryHost.objects.filter(id=constants.host_01_uuid).count(),
+            AdvisorInventoryHost.objects.filter(id=constants.host_01_uuid).count(),
             0
         )
         self.assertEqual(
@@ -464,3 +519,30 @@ class TestAdvisorInventoryServer(TestCase):
                     f"Field {missing_field} is required"
                 )
                 self.assertEqual(len(log_lines), 2)
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_created_nullable_fields(self):
+        """
+        Test that the handler works when optional system_profile fields are missing.
+        """
+        modified_msg = deepcopy(create_new_host_msg)
+        modified_msg['host']['system_profile'] = {}
+        modified_msg['host']['groups'] = []
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_created_event(modified_msg)
+        inv_host = AdvisorInventoryHost.objects.get(id=new_host_id)
+        self.assertIsNone(inv_host.workspace_id)
+        self.assertIsNone(inv_host.workspace_name)
+        self.assertIsNone(inv_host.os_name)
+        self.assertIsNone(inv_host.os_major)
+        self.assertIsNone(inv_host.os_minor)
+        self.assertIsNone(inv_host.host_type)
+        self.assertIsNone(inv_host.bootc_booted_image)
+        self.assertIsNone(inv_host.bootc_booted_image_digest)
+        self.assertIsNone(inv_host.owner_id)
+        self.assertIsNone(inv_host.rhc_client_id)
+        self.assertIsNone(inv_host.sap_system)
+        self.assertEqual(inv_host.sap_sids, [])
+        self.assertIsNone(inv_host.ansible)
+        self.assertIsNone(inv_host.mssql)
+        self.assertIsNone(inv_host.system_update_method)
