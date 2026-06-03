@@ -77,15 +77,6 @@ You can also run Advisor from the host.  Here's how ...
         registry.access.redhat.com/rhscl/postgresql-12-rhel7
     ```
 
-- Start gunicorn to serve the API
-
-    ```
-    $ ./app.sh
-    [2018-06-21 14:30:23 -0400] [31722] [INFO] Starting gunicorn 19.8.1
-    [2018-06-21 14:30:23 -0400] [31722] [INFO] Listening at: http://0.0.0.0:8000 (31722)
-    ...
-    ```
-
 - Populating the database
 
     You will need to populate the database in order to test the API.  To
@@ -93,13 +84,30 @@ You can also run Advisor from the host.  Here's how ...
 
     ```
     $ api/advisor/manage.py migrate
-    $ api/advisor/manage.py loaddata rulesets rule_categories system_types \
-                            basic_test_data
+    $ api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources
+    $ api/advisor/manage.py mock_cyndi_table
+    $ api/advisor/manage.py loaddata basic_test_data
     $ api/advisor/manage.py freshen_hosts
-    ````
+    ```
 
-    Then point a browser at `http://localhost:8000/api/insights/v1` and you
-    should be able to browse the api.
+- Start the API:
+    - Via the Django webserver:
+    ```
+    $ LOG_LEVEL=DEBUG api/advisor/manage.py runserver --insecure 0.0.0.0:8000
+    ```
+    - or via gunicorn:
+    ```
+    $ ./app.sh
+    [2018-06-21 14:30:23 -0400] [31722] [INFO] Starting gunicorn 19.8.1
+    [2018-06-21 14:30:23 -0400] [31722] [INFO] Listening at: http://0.0.0.0:8000 (31722)
+    ...
+    ```
+
+Then point a browser at `http://localhost:8000/api/insights/v1` and you
+should be able to browse the api.
+
+The benefit of running the API manually via the Django webserver is it automatically reloads
+the code when you make changes to the source files, making it easier to debug and test your changes.
 
 # Updating
 
@@ -712,3 +720,180 @@ the API request, the client will simply return `None`
 ## Debugging
 
 To view the SQL produced by the ORM, set the environment variable `LOG_LEVEL=DEBUG`
+
+## Authentication
+
+All API requests require an `x-rh-identity` header containing a base64-encoded JSON identity. Generate one matching the fake engine results data (org_id `9876543`, account `1234567`):
+
+```bash
+export RH_IDENTITY=$(echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"username": "testing", "is_internal": true}}}' | base64 -w 0)
+```
+
+## API Endpoints
+
+The base path is `http://localhost:8000/api/insights/v1/`.
+
+**List all systems for your org:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/ | python -m json.tool
+```
+
+**Get a specific system by inventory ID:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/ | python -m json.tool
+```
+
+**Get reports (rule hits) for a specific system:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/reports/ | python -m json.tool
+```
+
+**List all rules:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/ | python -m json.tool
+```
+
+**Get a specific rule and its systems:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/ | python -m json.tool
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/systems/ | python -m json.tool
+```
+
+**Get systems via tags:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?tags=insights-client%2FPrivate+IPv4%3D192.168.1.100
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?tags=insights-client/custom%2FLast%20Reboot=2023-07-14%2011%3A26%3A07,insights-client%2FPrivate+IPv4%3D192.168.1.100
+```
+
+**Other useful endpoints:**
+```bash
+# Acknowledgements
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/ack/ | python -m json.tool
+
+# Host acknowledgements
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/hostack/ | python -m json.tool
+
+# Stats overview
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/stats/ | python -m json.tool
+
+# Pathways
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/pathway/ | python -m json.tool
+
+# System types
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/systemtype/ | python -m json.tool
+```
+
+## Swagger UI
+
+Browse the API interactively at:
+```
+http://localhost:8000/api/insights/v1/openapi/swagger/
+```
+Use the Authorize button and paste the `$RH_IDENTITY` value into the `x-rh-identity` field.
+
+## API Root
+
+Visit `http://localhost:8000/api/insights/v1/` in a browser to see the full list of available endpoints (DRF's browsable API).
+
+### Django ORM
+
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv shell
+python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
+python api/advisor/manage.py shell
+```
+Note, the 57c4c38b-a8c6-4289-9897-223681fd804d inventory ID used in the ORM queries below is from the fake engine results payload,
+so that has to be imported into the database for results to appear in these queries.
+
+Then in the shell:
+```python
+from api.models import Host, Upload, CurrentReport
+
+# See the host
+Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
+
+# See uploads for this host
+Upload.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
+
+# See current reports (rule hits) for this host
+CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
+
+# See reports with rule IDs (more readable)
+CurrentReport.objects.filter(
+    host_id='57c4c38b-a8c6-4289-9897-223681fd804d'
+).values('rule__rule_id', 'org_id', 'impacted_date', 'details')
+
+# Query by org_id instead
+Host.objects.filter(org_id='9876543').values()
+CurrentReport.objects.filter(org_id='9876543').values('host_id', 'rule__rule_id')
+```
+
+#### Pretty printing ORM output
+
+Use `pprint` for readable `.values()` output:
+```python
+from pprint import pprint
+pprint(list(Host.objects.filter(org_id='9876543').values()))
+```
+
+Print each object on its own line:
+```python
+for r in CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id'):
+    print(r)
+```
+
+Use `json` for JSON-style output (with `DjangoJSONEncoder` to handle datetime fields):
+```python
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+qs = CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id', 'impacted_date')
+print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
+
+# See the host with display_name from InventoryHost (via the inventory FK)
+from django.db.models import F
+qs = Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').annotate(display_name=F('inventory__display_name')).values()
+print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
+```
+
+### Raw SQL
+
+```bash
+export ADVISOR_DB_HOST=localhost
+pipenv shell
+python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
+python api/advisor/manage.py dbshell
+```
+As with the ORM queries, the 57c4c38b-a8c6-4289-9897-223681fd804d inventory ID used in the SQL queries below
+has to be imported into the database for results to appear in these queries.
+
+Then in psql:
+```sql
+-- See the host (table: api_host, PK column: system_uuid)
+SELECT * FROM api_host
+WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See uploads for this host
+SELECT * FROM api_upload
+WHERE host_id = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See current reports for this host
+SELECT * FROM api_currentreport
+WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See reports with rule IDs (joined)
+SELECT cr.system_uuid, r.rule_id, cr.org_id, cr.impacted_date
+FROM api_currentreport cr
+JOIN api_rule r ON cr.rule_id = r.id
+WHERE cr.system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- Query by org_id
+SELECT * FROM api_host WHERE org_id = '9876543';
+SELECT h.system_uuid, r.rule_id FROM api_currentreport cr
+JOIN api_rule r ON cr.rule_id = r.id
+WHERE cr.org_id = '9876543';
+```
+
+Note: The `Host` model's PK field is called `inventory_id` in Django but maps to the DB column `system_uuid` (via `db_column='system_uuid'`). Similarly, `CurrentReport.host` maps to `system_uuid` in the DB.

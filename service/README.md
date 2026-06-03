@@ -92,7 +92,8 @@ manual_tests/send_fake_engine_results.
 Once you have deployed the environment and set up the database, you can run the
 service and begin engine results analysis.
 ```
-BOOTSTRAP_SERVERS=localhost:9092 pipenv run python service.py
+podman-compose up advisor-api
+BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8001 LOG_LEVEL=DEBUG python service/service.py
 ... or ...
 podman-compose up advisor-service
 ```
@@ -102,8 +103,9 @@ podman-compose up advisor-service
 You can send in fake results for analysis using two methods.
 The first method is sending in fake engine results for direct consumption in this service.
 ```
-pipenv run python manual_test/send_fake_engine_results.py
-pipenv run python api/advisor/manage.py freshen_hosts
+pipenv shell
+python manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
 ```
 
 The second method emulates an inventory message and will require a shared engine
@@ -112,7 +114,7 @@ a shared engine instance. However, if you have one running you can use the
 following script which will send a message to the shared engine, then broadcast
 its results for consumption in this service.
 ```
-pipenv run python manual_test/send_fake_inventory_engine_message.py
+python manual_test/send_fake_inventory_engine_message.py
 ```
 
 # Testing
@@ -123,7 +125,6 @@ Start the DB:
 ```
 podman-compose up
 ```
-
 Then to run tests:
 ```
 pipenv run flake8 .
@@ -226,19 +227,10 @@ This starts PostgreSQL and Kafka and creates the required topics (including `pla
 ## Step 2: Set up the database and start the service
 
 ```bash
-export ADVISOR_DB_HOST=localhost
-pipenv run migratedb
-pipenv run mockcyndi
-pipenv run loaddata
-pipenv run loadtestdata
-
-export BOOTSTRAP_SERVERS=localhost:9092
-export LOG_LEVEL=DEBUG
-pipenv run python service/service.py
-```
+podman-compose up advisor-api
+pipenv shell
+BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8001 LOG_LEVEL=DEBUG python service/service.py
 ... or ...
-```
-export ADVISOR_DB_HOST=localhost
 podman-compose up advisor-service
 ```
 
@@ -250,14 +242,15 @@ In a second terminal, use the pre-built scripts in `service/manual_test/`:
 
 **Send engine results** (simulates an insights-client upload):
 ```bash
-pipenv run python service/manual_test/send_fake_engine_results.py
-pipenv run python api/advisor/manage.py freshen_hosts
+pipenv shell
+python service/manual_test/send_fake_engine_results.py
+python api/advisor/manage.py freshen_hosts
 ```
 This sends the payload from `fake_engine_result_rhel.json` — a host with 6 rule hits (org_id `9876543`, inventory ID `57c4c38b-...`). The service will log receiving it, resolving the system type, and creating/updating reports.
 
 **Send a host delete event**:
 ```bash
-pipenv run python service/manual_test/send_fake_delete.py
+python service/manual_test/send_fake_delete.py
 ```
 This sends a delete event for inventory ID `57c4c38b-a8c6-4289-9897-223681fd804d`. The service will log deleting uploads, reports, and host acks.
 
@@ -288,109 +281,6 @@ For errors (e.g. missing fixtures), you'll see `"Unable to get system type rhel 
 
 After sending fake engine results, you can query the database to confirm the host, upload, and reports were created. The fake RHEL payload uses inventory_id `57c4c38b-a8c6-4289-9897-223681fd804d`, org_id `9876543`, and account `1234567`.
 
-### Django ORM
-
-```bash
-export ADVISOR_DB_HOST=localhost
-pipenv shell
-python service/manual_test/send_fake_engine_results.py
-python api/advisor/manage.py freshen_hosts
-python api/advisor/manage.py shell
-```
-Note, the 57c4c38b-a8c6-4289-9897-223681fd804d inventory ID used in the ORM queries below is from the fake engine results payload,
-so that has to be imported into the database for results to appear in these queries.
-
-Then in the shell:
-```python
-from api.models import Host, Upload, CurrentReport
-
-# See the host
-Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
-
-# See uploads for this host
-Upload.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
-
-# See current reports (rule hits) for this host
-CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
-
-# See reports with rule IDs (more readable)
-CurrentReport.objects.filter(
-    host_id='57c4c38b-a8c6-4289-9897-223681fd804d'
-).values('rule__rule_id', 'org_id', 'impacted_date', 'details')
-
-# Query by org_id instead
-Host.objects.filter(org_id='9876543').values()
-CurrentReport.objects.filter(org_id='9876543').values('host_id', 'rule__rule_id')
-```
-
-#### Pretty printing ORM output
-
-Use `pprint` for readable `.values()` output:
-```python
-from pprint import pprint
-pprint(list(Host.objects.filter(org_id='9876543').values()))
-```
-
-Print each object on its own line:
-```python
-for r in CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id'):
-    print(r)
-```
-
-Use `json` for JSON-style output (with `DjangoJSONEncoder` to handle datetime fields):
-```python
-import json
-from django.core.serializers.json import DjangoJSONEncoder
-qs = CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id', 'impacted_date')
-print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
-
-# See the host with display_name from InventoryHost (via the inventory FK)
-from django.db.models import F
-qs = Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').annotate(display_name=F('inventory__display_name')).values()
-print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
-```
-
-### Raw SQL
-
-```bash
-export ADVISOR_DB_HOST=localhost
-pipenv shell
-python service/manual_test/send_fake_engine_results.py
-python api/advisor/manage.py freshen_hosts
-python api/advisor/manage.py dbshell
-```
-As with the ORM queries, the 57c4c38b-a8c6-4289-9897-223681fd804d inventory ID used in the SQL queries below
-has to be imported into the database for results to appear in these queries.
-
-Then in psql:
-```sql
--- See the host (table: api_host, PK column: system_uuid)
-SELECT * FROM api_host
-WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
-
--- See uploads for this host
-SELECT * FROM api_upload
-WHERE host_id = '57c4c38b-a8c6-4289-9897-223681fd804d';
-
--- See current reports for this host
-SELECT * FROM api_currentreport
-WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
-
--- See reports with rule IDs (joined)
-SELECT cr.system_uuid, r.rule_id, cr.org_id, cr.impacted_date
-FROM api_currentreport cr
-JOIN api_rule r ON cr.rule_id = r.id
-WHERE cr.system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
-
--- Query by org_id
-SELECT * FROM api_host WHERE org_id = '9876543';
-SELECT h.system_uuid, r.rule_id FROM api_currentreport cr
-JOIN api_rule r ON cr.rule_id = r.id
-WHERE cr.org_id = '9876543';
-```
-
-Note: The `Host` model's PK field is called `inventory_id` in Django but maps to the DB column `system_uuid` (via `db_column='system_uuid'`). Similarly, `CurrentReport.host` maps to `system_uuid` in the DB.
-
 ## Alternative: Run automated tests (no Kafka needed)
 
 If you just want to verify the service logic without running real Kafka:
@@ -399,84 +289,3 @@ export ADVISOR_DB_HOST=localhost
 pipenv run testservice
 ```
 This uses pytest with mock Kafka consumers/producers (`DummyMessage`, `DummyConsumer`, etc.) and doesn't require a running Kafka broker.
-
-# Viewing Data via the API
-
-## Starting the API
-
-```bash
-export ADVISOR_DB_HOST=localhost
-pipenv run runapi
-... or ...
-pipenv run python api/advisor/manage.py runserver
-```
-
-This starts the Django dev server on `http://localhost:8000`. RBAC and Kessel are disabled by default for local dev.
-
-## Authentication
-
-All API requests require an `x-rh-identity` header containing a base64-encoded JSON identity. Generate one matching the fake engine results data (org_id `9876543`, account `1234567`):
-
-```bash
-export RH_IDENTITY=$(echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"username": "testing", "is_internal": true}}}' | base64 -w 0)
-```
-
-## API Endpoints
-
-The base path is `http://localhost:8000/api/insights/v1/`.
-
-**List all systems for your org:**
-```bash
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/ | python -m json.tool
-```
-
-**Get a specific system by inventory ID:**
-```bash
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/ | python -m json.tool
-```
-
-**Get reports (rule hits) for a specific system:**
-```bash
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/57c4c38b-a8c6-4289-9897-223681fd804d/reports/ | python -m json.tool
-```
-
-**List all rules:**
-```bash
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/ | python -m json.tool
-```
-
-**Get a specific rule and its systems:**
-```bash
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/ | python -m json.tool
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/systems/ | python -m json.tool
-```
-
-**Other useful endpoints:**
-```bash
-# Acknowledgements
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/ack/ | python -m json.tool
-
-# Host acknowledgements
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/hostack/ | python -m json.tool
-
-# Stats overview
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/stats/ | python -m json.tool
-
-# Pathways
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/pathway/ | python -m json.tool
-
-# System types
-curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/systemtype/ | python -m json.tool
-```
-
-## Swagger UI
-
-Browse the API interactively at:
-```
-http://localhost:8000/api/insights/v1/openapi/swagger/
-```
-Use the Authorize button and paste the `$RH_IDENTITY` value into the `x-rh-identity` field.
-
-## API Root
-
-Visit `http://localhost:8000/api/insights/v1/` in a browser to see the full list of available endpoints (DRF's browsable API).
