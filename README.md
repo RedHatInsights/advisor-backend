@@ -429,11 +429,11 @@ but only for the dependencies. This method is meant for
 more rapid development.
 ```
 export ADVISOR_DB_HOST=localhost
-podman-compose up -d advisor-db init-kafka kafka
+podman-compose up -d advisor-db init-kafka kafka advisor-api
 ```
 Start Service manually
 ```
-BOOTSTRAP_SERVERS=localhost:9092 python service/service.py
+BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8001 python service/service.py
 ```
 Sending in engine results for processing.
 ```
@@ -461,12 +461,12 @@ as well as your curl command.
 Start API dependencies. We still use podman-compose here
 but only for the dependencies. This method is meant for
 more rapid development.
-```
+```bash
 export ADVISOR_DB_HOST=localhost
 podman-compose up -d advisor-db
 ```
 Setup the DB (if this is the first time running).
-```
+```bash
 pipenv shell
 python api/advisor/manage.py migrate
 python api/advisor/manage.py mock_cyndi_table
@@ -474,22 +474,22 @@ python api/advisor/manage.py loaddata rulesets rule_categories system_types \
        upload_sources basic_test_data basic_task_test_data
 ```
 Start the API manually
-```
-pipenv shell
-python api/advisor/manage.py runserver
+```bash
+LOG_LEVEL=DEBUG python api/advisor/manage.py runserver --insecure 0.0.0.0:8000
 ```
 NOTE: If you are running with a PROMETHEUS_PORT defined other than 8000 then
-you will need to run Django differently
-```
-pipenv shell
-python api/advisor/manage.py runserver --noreload
+you will need to run Django differently.
+
+The runserver `--insecure` flag is for serving static files even if DEBUG is False.
+It should only be used for local development.
+```bash
+python api/advisor/manage.py runserver --noreload --insecure 0.0.0.0:8000
 ```
 NOTE: If you want to enable the Auto-Subscribe endpoint, define the
 `ENABLE_AUTOSUB` environment variable to `true` before running the server.
 
 ```bash
-pipenv shell
-ENABLE_AUTOSUB=true python api/advisor/manage.py runserver
+ENABLE_AUTOSUB=true python api/advisor/manage.py runserver --insecure 0.0.0.0:8000
 ```
 
 # Testing Tasks API
@@ -534,14 +534,12 @@ pipenv run linter
 Before running the tests, make sure the database is running first:
 ```
 export ADVISOR_DB_HOST=localhost
-podman-compose up -d advisor-db
+podman-compose up -d advisor-db init-kafka kafka
 ```
 To run Service Tests
 ```
-podman-compose up -d init-kafka
 pipenv run testservice
 ```
-
 To run API Tests
 ```
 pipenv run testapi
