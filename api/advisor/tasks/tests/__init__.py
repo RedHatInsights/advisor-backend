@@ -43,7 +43,7 @@ class constants(object):
     bash_task_id = 3
     bash_task_slug = 'bash-script'
 
-    parameters_task_id = 4
+    parameters_task_id = 104
     parameters_task_slug = 'convert2rhel_check'
     parameters_task_title = 'Use Convert2RHEL to check a system for conversion'
     parameters_task_filter_message = 'Only eligible CentOS 7 systems are shown'

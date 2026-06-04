@@ -31,7 +31,7 @@ pipenv run python api/advisor/manage.py loaddata --verbosity=3 production_tasks 
 # Create fake inventory data for the dev environment, and load basic test data for the API, eg rules and hosts
 echo "Creating mocked inventory table and loading test data ..."
 pipenv run python api/advisor/manage.py mock_cyndi_table
-pipenv run python api/advisor/manage.py loaddata --verbosity=3 basic_test_data
+pipenv run python api/advisor/manage.py loaddata --verbosity=3 basic_test_data basic_task_test_data
 pipenv run python api/advisor/manage.py freshen_hosts
 
 # Import content from the dumped content directory if it exists
