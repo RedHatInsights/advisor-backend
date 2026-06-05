@@ -461,35 +461,38 @@ as well as your curl command.
 Start API dependencies. We still use podman-compose here
 but only for the dependencies. This method is meant for
 more rapid development.
+
+Note: all the following commands assume you have activated the pipenv shell and run `export ADVISOR_DB_HOST=localhost`
+
+Start the DB:
 ```bash
-export ADVISOR_DB_HOST=localhost
 podman-compose up -d advisor-db
 ```
-Setup the DB (if this is the first time running).
+Populate the DB (if this is the first time running).
 ```bash
-pipenv shell
+./container_init_localdev.sh
+```
+... or manually run the following commands (which are mostly in the container_init_localdev.sh script):
+```bash
 python api/advisor/manage.py migrate
 python api/advisor/manage.py mock_cyndi_table
 python api/advisor/manage.py loaddata rulesets rule_categories system_types \
        upload_sources basic_test_data basic_task_test_data
 ```
-Start the API manually
-```bash
-LOG_LEVEL=DEBUG python api/advisor/manage.py runserver --insecure 0.0.0.0:8000
-```
-NOTE: If you are running with a PROMETHEUS_PORT defined other than 8000 then
-you will need to run Django differently.
 
+Start the API manually:
+```bash
+LOG_LEVEL=DEBUG api/advisor/manage.py runserver --insecure 0.0.0.0:8000
+```
 The runserver `--insecure` flag is for serving static files even if DEBUG is False.
 It should only be used for local development.
 ```bash
-python api/advisor/manage.py runserver --noreload --insecure 0.0.0.0:8000
+LOG_LEVEL=DEBUG api/advisor/manage.py runserver --noreload --insecure 0.0.0.0:8000
 ```
 NOTE: If you want to enable the Auto-Subscribe endpoint, define the
 `ENABLE_AUTOSUB` environment variable to `true` before running the server.
-
 ```bash
-ENABLE_AUTOSUB=true python api/advisor/manage.py runserver --insecure 0.0.0.0:8000
+ENABLE_AUTOSUB=true LOG_LEVEL=DEBUG api/advisor/manage.py runserver --insecure 0.0.0.0:8000
 ```
 
 # Testing Tasks API

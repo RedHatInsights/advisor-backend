@@ -487,7 +487,7 @@
         "active": false, "type": "S", "filters": []
   }
 },{
-    "model": "tasks.Task", "pk": 4, "fields": {
+    "model": "tasks.Task", "pk": 104, "fields": {
         "slug": "convert2rhel_check", "title": "Use Convert2RHEL to check a system for conversion",
         "description": "Produce a report to check what needs to be done to convert a set of systems to RHEL",
         "publish_date": "2023-05-29T23:47:21Z",
@@ -498,7 +498,7 @@
     }
 }, {
     "model": "tasks.TaskParameter", "pk": 1, "fields": {
-        "task_id": 4, "key": "extra_repositories", "default": "false",
+        "task_id": 104, "key": "extra_repositories", "default": "false",
         "description": "Should extra repositories be enabled?",
         "required": false, "values": ["true", "false"],
         "title": "Enable Extra Repositories",
@@ -507,7 +507,7 @@
     }
 }, {
     "model": "tasks.TaskParameter", "pk": 2, "fields": {
-        "task_id": 4, "key": "repository_names", "default": null,
+        "task_id": 104, "key": "repository_names", "default": null,
         "description": "Names of extra repositories to include",
         "required": false, "values": ["els", "epel", "extra", ""],
         "title": "Extra Repository Names",
@@ -516,7 +516,7 @@
     }
 }, {
     "model": "tasks.TaskParameter", "pk": 3, "fields": {
-        "task_id": 4, "key": "has_internet_access", "default": "true",
+        "task_id": 104, "key": "has_internet_access", "default": "true",
         "description": "Should convert2rhel check the internet for updates?",
         "required": true, "values": ["true", "false"],
         "title": "Check for Updates Online",
@@ -525,7 +525,7 @@
     }
 }, {
     "model": "tasks.TaskParameter", "pk": 4, "fields": {
-        "task_id": 4, "key": "organisation_id", "default": null,
+        "task_id": 104, "key": "organisation_id", "default": null,
         "description": "Organisation ID for subscription checks",
         "required": true, "values": ["1248", "1369", "1720"],
         "title": "Organisation ID",
@@ -563,7 +563,7 @@
 }, {
     "model": "tasks.ExecutedTask", "pk": 5, "fields": {
         "name": "Use Convert2RHEL to check a system for conversion",
-        "task_id": 4, "org_id": "9876543", "initiated_by": "testing",
+        "task_id": 104, "org_id": "9876543", "initiated_by": "testing",
         "start_time": "2023-05-30T00:25:09Z", "status": 4,
         "token": "00112233-4455-6677-8899-aabbccddee05"
     }

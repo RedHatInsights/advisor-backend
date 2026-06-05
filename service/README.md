@@ -91,8 +91,10 @@ manual_tests/send_fake_engine_results.
 
 Once you have deployed the environment and set up the database, you can run the
 service and begin engine results analysis.
+
+NOTE: all the following commands assume you have activated the pipenv shell and run `export ADVISOR_DB_HOST=localhost`
 ```
-podman-compose up advisor-api
+podman-compose up -d advisor-api
 BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8001 LOG_LEVEL=DEBUG python service/service.py
 ... or ...
 podman-compose up advisor-service
@@ -103,8 +105,7 @@ podman-compose up advisor-service
 You can send in fake results for analysis using two methods.
 The first method is sending in fake engine results for direct consumption in this service.
 ```
-pipenv shell
-python manual_test/send_fake_engine_results.py
+python service/manual_test/send_fake_engine_results.py
 python api/advisor/manage.py freshen_hosts
 ```
 
@@ -114,7 +115,7 @@ a shared engine instance. However, if you have one running you can use the
 following script which will send a message to the shared engine, then broadcast
 its results for consumption in this service.
 ```
-python manual_test/send_fake_inventory_engine_message.py
+python service/manual_test/send_fake_inventory_engine_message.py
 ```
 
 # Testing

@@ -26,8 +26,7 @@ The Advisor API actually covers three APIs:
     `git clone https://github.com/RedHatInsights/insights-advisor`
 
 - Setup virtualenv dev environment
-
-    ```
+    ```bash
     cd insights-advisor
     pip install pipenv
     pipenv install --dev
@@ -63,7 +62,7 @@ down`.  `podman-compose up` will re-initialize the data.
 
 You can also run Advisor from the host.  Here's how ...
 
-- Install the Django database
+- Install/run the Django database
 
     The application uses a PostgreSQL database by default.  You can install
     PostgreSQL using the `postgresql-*` packages and use `psql` to configure
@@ -76,13 +75,22 @@ You can also run Advisor from the host.  Here's how ...
         -e POSTGRESQL_PASSWORD=InsightsData -e POSTGRESQL_DATABASE=insightsapi \
         registry.access.redhat.com/rhscl/postgresql-12-rhel7
     ```
+    ... or you can start a postgresql container using podman-compose:
+    ```bash
+    $ podman-compose up -d advisor-db
+    ```
 
 - Populating the database
 
-    You will need to populate the database in order to test the API.  To
-    create and populate the tables run:
+    You will need to populate the database to test the API.
+    Note: all the following commands assume you have activated the pipenv shell and run `export ADVISOR_DB_HOST=localhost`
 
+- To create and populate the tables run:
+    ```bash
+    $ ./container_init_localdev.sh
     ```
+    Or you can run the commands manually like so:
+    ```bash
     $ api/advisor/manage.py migrate
     $ api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources
     $ api/advisor/manage.py mock_cyndi_table
@@ -92,11 +100,11 @@ You can also run Advisor from the host.  Here's how ...
 
 - Start the API:
     - Via the Django webserver:
-    ```
+    ```bash
     $ LOG_LEVEL=DEBUG api/advisor/manage.py runserver --insecure 0.0.0.0:8000
     ```
     - or via gunicorn:
-    ```
+    ```bash
     $ ./app.sh
     [2018-06-21 14:30:23 -0400] [31722] [INFO] Starting gunicorn 19.8.1
     [2018-06-21 14:30:23 -0400] [31722] [INFO] Listening at: http://0.0.0.0:8000 (31722)
