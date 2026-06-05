@@ -362,8 +362,6 @@ def check_permission(
     otherwise.  Use this for standalone permission checks outside of DRF views
     that don't go through InsightsRBACPermission.has_permission.
     """
-    if not settings.RBAC_ENABLED:
-        return (True, 0.0)
     if settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED):
         if scope == ResourceScope.WORKSPACE:
             raise ValueError("check_permission does not support WORKSPACE scope")
@@ -372,6 +370,8 @@ def check_permission(
             logger.warning("check_permission: missing user_id for Kessel check, denying")
             return (False, 0.0)
         return has_kessel_permission(scope, RBACPermission(permission), request)
+    if not settings.RBAC_ENABLED:
+        return (True, 0.0)
     return has_rbac_permission(request, permission)
 
 
