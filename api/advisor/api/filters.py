@@ -517,7 +517,7 @@ host_id_query_param = OpenApiParameter(
 
 host_tags_query_param = OpenApiParameter(
     name='tags', type=OpenApiTypes.REGEX, location=OpenApiParameter.QUERY,
-    pattern=r'^[^/]+/[^=]+=.+$',
+    pattern=r'^[^/]+/[^=]+=.*$',
     description="Tags have a namespace, key and value in the form namespace/key=value",
     required=False, many=True, style='form',
 )
@@ -718,7 +718,7 @@ def filter_on_host_tags(request, field_name='host_id'):
 
         namespace = unescape(namespace)
         key = unescape(key)
-        value = unescape(value)
+        value = unescape(value) if value else None
         logger.debug(f"Processed tag: namespace={namespace}, key={key}, value={value}")
 
         tag_query &= Q(tags__contains=[{"namespace": namespace, "key": key, "value": value}])
