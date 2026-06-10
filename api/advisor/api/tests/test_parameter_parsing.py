@@ -235,12 +235,6 @@ class HostTagsParameterParsingTestCase(TestCase):
                 tags='namespace/keyvalue'
             ))
 
-        # No value - rejected by regex pattern
-        with self.assertRaises(ValidationError):
-            filter_on_host_tags(make_request_obj(
-                tags='n/k/e/y/'
-            ))
-
         # No key - rejected by regex pattern
         with self.assertRaises(ValidationError):
             filter_on_host_tags(make_request_obj(
@@ -250,6 +244,21 @@ class HostTagsParameterParsingTestCase(TestCase):
     def test_multiple_tags_in_parameter(self):
         q = filter_on_host_tags(make_request_obj(
             tags='namespace/key=value,Sat/env=prod,n/k=v'
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+    def test_null_value_tag_parameter(self):
+        # Tags with empty values are valid (namespace/key=)
+        q = filter_on_host_tags(make_request_obj(
+            tags='namespace/key='
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+        # Multiple tags with some having empty values
+        q = filter_on_host_tags(make_request_obj(
+            tags='namespace/key=,other/tag=value'
         ))
         self.assertIsInstance(q, Q)
         self.assertTrue(q)
