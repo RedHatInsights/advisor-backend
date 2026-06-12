@@ -229,17 +229,26 @@ class HostTagsParameterParsingTestCase(TestCase):
                 tags='key'
             ))
 
-        # No key=value separator '=' - rejected by regex pattern
-        with self.assertRaises(ValidationError):
-            filter_on_host_tags(make_request_obj(
-                tags='namespace/keyvalue'
-            ))
-
         # No key - rejected by regex pattern
         with self.assertRaises(ValidationError):
             filter_on_host_tags(make_request_obj(
                 tags='namespace/=value'
             ))
+
+    def test_key_only_tag_parameter(self):
+        # Tags with no equals sign are valid (namespace/key)
+        q = filter_on_host_tags(make_request_obj(
+            tags='namespace/key'
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
+
+        # Key-only tag mixed with key=value tags
+        q = filter_on_host_tags(make_request_obj(
+            tags='namespace/key,other/tag=value'
+        ))
+        self.assertIsInstance(q, Q)
+        self.assertTrue(q)
 
     def test_multiple_tags_in_parameter(self):
         q = filter_on_host_tags(make_request_obj(

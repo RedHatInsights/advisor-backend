@@ -170,7 +170,7 @@ system to the stage environment by following these steps.
 ```shell
 # rhc disconnect
 # subscription-manager config --server.hostname=subscription.rhsm.stage.redhat.com
-# subscription-manager register --activationkey=<stage-activation-key> --org=<stage-org>
+# subscription-manager register --activationkey=<stage-activation-key> --org=<stage-org> --proxy=http://squid.corp.redhat.com:3128
 ```
 ... rhc disconnect stops the rhcd service, unregisters the host from Insights and from Subscription Manager.
 
@@ -201,11 +201,10 @@ Environment="HTTPS_PROXY=http://squid.corp.redhat.com:3128"
 6. Edit `/etc/insights-client/insights-client.conf` to set these lines:
 ```
 auto_config=False
-base_url=cert.console.stage.redhat.com:443/r/insights
 cert_verify=False
+authmethod=CERT
+base_url=cert.console.stage.redhat.com:443/r/insights
 proxy=http://squid.corp.redhat.com:3128
-username=<stage-username>
-password=<stage-password>
 ```
 
 7. Run rhc connect:
@@ -246,16 +245,16 @@ For example, tasks can be activated / deactivated and filters / filter messages 
 The tasks in stage can also be accessed from the command line with curl, like so:
 ```shell
 $ curl -sX GET 'https://console.stage.redhat.com/api/tasks/v1/task/<SLUG>' \
--u $USERPASS -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 | \
+-H "Authorization: Bearer $X_RH_IDENTITY" -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 | \
 jq .
 ```
-Note: `$USERPASS` is an environment variable containing a stage username and password in the form `username:password`.
-Substitute with other authentication methods you are familiar with, eg `-n` for a `.netrc` file, or a basic auth header.
+The `$X_RH_IDENTITY` value can be obtained from the browser dev tools, in the Authorization Bearer header
+of requests to https://console.stage.redhat.com/api/tasks/v1/task and assigning it to an X_RH_IDENTITY environment variable.
 
 For example, to view the slug and title of all tasks in stage, you can use curl and jq, like so:
 ```shell
 $ curl -sX GET 'https://console.stage.redhat.com/api/tasks/v1/task' \
--u $USERPASS -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 | \
+-H "Authorization: Bearer $X_RH_IDENTITY" -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 | \
 jq -r '.data[] | "\(.slug): \(.title)"'
 ...
 insights-client: Run the insights-client
@@ -289,14 +288,14 @@ Running tasks in Stage via the command line
 To run the ping task against a particular host, `POST` to the `executed_task` endpoint with the host's UUID:
 ```shell
 curl -sX POST 'https://console.stage.redhat.com/api/tasks/v1/executed_task' \
--u $USERPASS -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 \
+-H "Authorization: Bearer $X_RH_IDENTITY" -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 \
 --data-raw '{"task": "ping", "hosts": ["<host_UUID_from_inventory>"]}'
 ```
 To run a task with parameters, you only need to specify the parameter keys and values for parameters that are
 different from their default values, eg:
 ```shell
 curl -sX POST 'https://console.stage.redhat.com/api/tasks/v1/executed_task' \
--u $USERPASS -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 \
+-H "Authorization: Bearer $X_RH_IDENTITY" -H 'Content-Type: application/json' --proxy http://squid.corp.redhat.com:3128 \
 --data-raw '{"task": "insights-client", "hosts": ["<host_UUID_from_inventory>"], "parameters": [{"key": "status", "value": "True"}]}'
 ```
 ... where the `True` value for the `status` parameter is different from its default value.
