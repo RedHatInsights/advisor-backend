@@ -719,6 +719,41 @@ class InventoryHost(models.Model):
         db_table = '"inventory"."hosts"'
 
 
+class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), models.Model):
+    pk = models.CompositePrimaryKey("org_id", "inventory_id")
+    inventory_id = models.UUIDField()
+    account = models.CharField(max_length=10, blank=True, null=True)
+    org_id = models.CharField(max_length=50)
+    display_name = models.CharField(max_length=200)
+    tags = models.JSONField()
+    workspace_id = models.UUIDField(null=True)
+    workspace_name = models.CharField(max_length=200, null=True, blank=True)
+    updated = models.DateTimeField()
+    created = models.DateTimeField()
+    last_check_in = models.DateTimeField()
+    stale_timestamp = models.DateTimeField()
+    insights_id = models.UUIDField()
+    reporter = models.CharField(max_length=200, default='puptoo')
+    per_reporter_staleness = models.JSONField(default=dict)
+
+    os_name = models.CharField(max_length=50, null=True, blank=True)
+    os_major = models.IntegerField(null=True)
+    os_minor = models.IntegerField(null=True)
+    host_type = models.CharField(max_length=50, null=True, blank=True)
+    bootc_booted_image = models.CharField(max_length=512, null=True, blank=True)
+    bootc_booted_image_digest = models.CharField(max_length=256, null=True, blank=True)
+    owner_id = models.UUIDField(null=True)
+    rhc_client_id = models.UUIDField(null=True)
+    workloads = models.JSONField(default=dict)
+    system_update_method = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        db_table = 'advisor_inventory_host'
+
+    def __str__(self):
+        return f"{self.display_name} ({self.inventory_id})"
+
+
 class Host(ExportModelOperationsMixin('host'), TimestampedModel):
     """
     The information about a host that Inventory doesn't store...

@@ -94,6 +94,11 @@ LOGGING = {
             'level': LOG_LEVEL,
             'propagate': False,
         },
+        'api.scripts': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
         'UnleashClient': {
             'handlers': ['console'],
             'level': 'WARNING',
