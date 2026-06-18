@@ -39,6 +39,23 @@ class DummyHandler:
         self.handled = {}
 
 
+class DummyBatchHandler:
+    """
+    Record the batch of messages sent to the handler by the dispatcher.
+    """
+    def __init__(self, name: str):
+        self.handled: dict[str, list[list[JsonValue]]] = {}
+        self.__name__: str = name
+
+    def __call__(self, topic: str, messages: list[JsonValue]):
+        if topic not in self.handled:
+            self.handled[topic] = []
+        self.handled[topic].append(messages)
+
+    def reset(self):
+        self.handled = {}
+
+
 class TestKafkaUtils(TestCase):
     """
     Test the Kafka Utils functionality, particularly around the KafkaDispatcher.
@@ -137,3 +154,119 @@ class TestKafkaUtils(TestCase):
             self.assertEqual(
                 logs.output[0], "INFO:advisor-log:Kafka message delivered to test_topic [0]"
             )
+
+    def test_dummy_consumer_consume(self):
+        """Test that DummyConsumer.consume() returns batches of messages."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic1', {'key': 'value1'})
+        consumer.add_message('topic1', {'key': 'value2'})
+        consumer.add_message('topic1', {'key': 'value3'})
+
+        # Consume batch of 2 — should return first 2
+        batch = consumer.consume(num_messages=2, timeout=1)
+        self.assertEqual(len(batch), 2)
+        self.assertEqual(batch[0].topic(), 'topic1')
+        self.assertEqual(batch[1].topic(), 'topic1')
+
+        # Consume next batch of 2 — only 1 left
+        batch = consumer.consume(num_messages=2, timeout=1)
+        self.assertEqual(len(batch), 1)
+
+        # Consume again — empty, triggers close
+        batch = consumer.consume(num_messages=2, timeout=1)
+        self.assertEqual(len(batch), 0)
+        self.assertTrue(consumer.closed)
+
+    def test_batch_message_handling(self):
+        """Test that _handle_batch_messages processes a batch and calls the handler once per topic."""
+        consumer = DummyConsumer()
+        consumer.add_message('batch-topic', {'key': 'value1'})
+        consumer.add_message('batch-topic', {'key': 'value2'})
+        consumer.add_message('batch-topic', {'key': 'value3'})
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('batch-topic', batch_handler, batch=True)
+
+        messages = consumer.consume(num_messages=3, timeout=1)
+        dispatcher._handle_batch_messages(messages)
+
+        self.assertIn('batch-topic', batch_handler.handled)
+        self.assertEqual(len(batch_handler.handled['batch-topic']), 1)
+        bodies = batch_handler.handled['batch-topic'][0]
+        self.assertEqual(len(bodies), 3)
+        self.assertEqual(bodies[0], {'key': 'value1'})
+        self.assertEqual(bodies[1], {'key': 'value2'})
+        self.assertEqual(bodies[2], {'key': 'value3'})
+
+    def test_batch_message_skips_errors_and_unmatched(self):
+        """Test that _handle_batch_messages skips errors, malformed JSON, and unmatched topics."""
+        consumer = DummyConsumer()
+        # A good message
+        consumer.add_message('batch-topic', {'key': 'good'})
+        # A message for an unregistered topic
+        consumer.add_message('unknown-topic', {'key': 'lost'})
+        # An error message
+        error_msg = DummyMessage(topic='batch-topic', value=b'{"key": "err"}')
+        error_msg.set_error("Test error")
+        consumer.add_message_obj(error_msg)
+        # A malformed JSON message
+        malformed = DummyMessage(topic='batch-topic', value=b'not{json')
+        consumer.add_message_obj(malformed)
+        # Another good message
+        consumer.add_message('batch-topic', {'key': 'also-good'})
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('batch-topic', batch_handler, batch=True)
+
+        messages = consumer.consume(num_messages=10, timeout=1)
+        with self.assertLogs(logger='advisor-log'):
+            dispatcher._handle_batch_messages(messages)
+
+        # Only the 2 good messages should reach the handler
+        bodies = batch_handler.handled['batch-topic'][0]
+        self.assertEqual(len(bodies), 2)
+        self.assertEqual(bodies[0], {'key': 'good'})
+        self.assertEqual(bodies[1], {'key': 'also-good'})
+
+    def test_receive_with_batch_size(self):
+        """Test that receive(batch_size=N) uses consume() and _handle_batch_messages."""
+        consumer = DummyConsumer()
+        consumer.add_message('batch-topic', {'msg': 1})
+        consumer.add_message('batch-topic', {'msg': 2})
+        consumer.add_message('batch-topic', {'msg': 3})
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('batch-topic', batch_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        dispatcher.receive(batch_size=2)
+
+        # Handler should have been called with batches
+        self.assertIn('batch-topic', batch_handler.handled)
+        all_bodies = []
+        for call in batch_handler.handled['batch-topic']:
+            all_bodies.extend(call)
+        self.assertEqual(len(all_bodies), 3)
+
+    def test_non_batch_handler_with_batch_receive(self):
+        """Test that a non-batch handler is called once per message even with batch_size."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+        consumer.add_message('topic', {'msg': 2})
+        consumer.add_message('topic', {'msg': 3})
+
+        handler = DummyHandler('single_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', handler)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        dispatcher.receive(batch_size=10)
+
+        self.assertIn('topic', handler.handled)
+        self.assertEqual(len(handler.handled['topic']), 3)
+        self.assertEqual(handler.handled['topic'][0], {'msg': 1})
+        self.assertEqual(handler.handled['topic'][1], {'msg': 2})
+        self.assertEqual(handler.handled['topic'][2], {'msg': 3})
