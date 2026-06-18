@@ -463,7 +463,7 @@ HBI_SUBSCRIPTION = os.getenv("HBI_SUBSCRIPTION", "advisor_hosts_sub_v1_0_2")
 HBI_DROP_SUBSCRIPTION = os.getenv("HBI_DROP_SUBSCRIPTION", "")
 HBI_DROP_TABLES = os.getenv("HBI_DROP_TABLES", "false").lower() == "true"
 HBI_SSL_MODE = os.getenv("HBI_SSL_MODE", "")
-HBI_TABLES_NUM_PARTITIONS = int(os.getenv("HBI_TABLES_NUM_PARTITIONS", 1))
+HBI_TABLES_NUM_PARTITIONS = int(os.getenv("ADVISOR_INVENTORY_HOST_NUM_PARTITIONS", 1))
 
 # Kafka settings
 

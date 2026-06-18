@@ -16,7 +16,7 @@ from django.db import connection, connections
 
 logger = logging.getLogger(__name__)
 
-TABLE_NUM_PARTITIONS = int(os.getenv('ADVISOR_INVENTORY_HOST_NUM_PARTITIONS', '16'))
+TABLE_NUM_PARTITIONS = int(os.getenv('ADVISOR_INVENTORY_HOST_NUM_PARTITIONS', '1'))
 
 MigrationMode = Literal['automated', 'managed']
 

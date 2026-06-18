@@ -7,7 +7,7 @@ from api.scripts.partitioned_table_index_helper import (
     drop_partitioned_table_index,
 )
 
-PARTITION_COUNT = int(os.getenv('PARTITION_COUNT', '16'))
+PARTITION_COUNT = int(os.getenv('ADVISOR_INVENTORY_HOST_NUM_PARTITIONS', '1'))
 PARENT_TABLE = 'advisor_inventory_host'
 
 CREATE_PARENT_SQL = f"""
