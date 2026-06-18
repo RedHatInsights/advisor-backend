@@ -19,10 +19,8 @@ Start the Advisor DB and create the tables and populate it with fixture data:
 ```bash
 export ADVISOR_DB_HOST=localhost
 podman-compose up -d advisor-db
+./container_init_localdev.sh
 pipenv shell
-python api/advisor/manage.py migrate
-python api/advisor/manage.py mock_cyndi_table
-python api/advisor/manage.py loaddata basic_task_test_data
 ```
 Update the stale timestamps of the hosts in the DB to be in the future.  The
 hosts won't be considered stale then and will show up in queries:
@@ -169,36 +167,48 @@ system to the stage environment by following these steps.
 2. Unregister the system from production subscription-manager and configure it to use stage:
 ```shell
 # rhc disconnect
-# subscription-manager config --server.hostname=subscription.rhsm.stage.redhat.com
-# subscription-manager register --activationkey=<stage-activation-key> --org=<stage-org> --proxy=http://squid.corp.redhat.com:3128
 ```
-... rhc disconnect stops the rhcd service, unregisters the host from Insights and from Subscription Manager.
-
+Edit /etc/rhsm/rhsm.conf for the stage environment:
+```aiignore
+hostname = subscription.rhsm.stage.redhat.com
+proxy_hostname = squid.corp.redhat.com
+proxy_port = 3128
+baseurl = https://stagecdn.redhat.com
+```
+3. Register the system with subscription-manager using either your username/password or an activation key:
+```shell
+# subscription-manager register
+... or ...
+# subscription-manager register --activationkey=<stage-activation-key> --org=<stage-org>
+```
 Activation keys for stage can be found here: https://console.stage.redhat.com/insights/connector/activation-keys
 
-3. Edit `/etc/rhc/config.toml` to set these lines:
+4. Edit `/etc/rhc/config.toml` to set these lines:
 ```
 broker = ["wss://connect.cloud.stage.redhat.com:443"]
 data-host = "cert.cloud.stage.redhat.com"
-log-level = "debug"  # optional
+cert-file = "/etc/pki/consumer/cert.pem"
+key-file = "/etc/pki/consumer/key.pem"
+log-level = "trace"
+mqtt-reconnect-delay = "10s"
 ```
 Note, make sure its `cloud.stage` and not `console.stage` otherwise hosts may
 not get an RHC client ID and not show up in Tasks Web UI.
 
-4. (Optional) If using [rhc-0.2.5-1](https://issues.redhat.com/browse/RHINENG-15630) on RHEL8 or 9, also run this command:
+5. (Optional) If using [rhc-0.2.5-1](https://issues.redhat.com/browse/RHINENG-15630) on RHEL8 or 9, also run this command:
 ```shell
 echo 'env = ["HTTPS_PROXY=", "http_proxy=", "HTTP_PROXY=", "https_proxy="]' > /etc/rhc/workers/rhc-worker-playbook.worker.toml
 ```
 ... to workaround a bug in that version of rhc.  If the rhcd service is already running, then reboot the machine.
 
-5. Edit `/usr/lib/systemd/system/rhcd.service` to set these lines:
+6. Edit `/usr/lib/systemd/system/rhcd.service` to set these lines:
 ```
 [Service]
 Environment="HTTP_PROXY=http://squid.corp.redhat.com:3128"
 Environment="HTTPS_PROXY=http://squid.corp.redhat.com:3128"
 ```
 
-6. Edit `/etc/insights-client/insights-client.conf` to set these lines:
+7. Edit `/etc/insights-client/insights-client.conf` to set these lines:
 ```
 auto_config=False
 cert_verify=False
@@ -207,15 +217,16 @@ base_url=cert.console.stage.redhat.com:443/r/insights
 proxy=http://squid.corp.redhat.com:3128
 ```
 
-7. Run rhc connect:
+8. Run rhc connect:
 ```shell
 # rhc connect
 ```
-... which registers the host with Subscription Manager (requires your stage username/password
-if you didn't register using activation keys above) and with Insights and starts the rhcd service.
+... which registers the host with Subscription Manager (if not already done so) and Insights and starts the rhcd service.
 
 Note, if you are configuring a CentOS system for (pre-)conversion follow the instructions [here](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html-single/converting_from_an_rpm-based_linux_distribution_to_rhel/index#proc_preparing-for-a-rhel-conversion-using-insights_converting-using-insights)
 and use the configuration above if you wish to register it to the Insights Stage environment.
+
+If there are any problems with the connection, esp rhc, see the 'Troubleshooting failed tasks' section below.
 
 Viewing playbook output
 ------------------------

@@ -17,6 +17,7 @@
 from django.conf import settings
 from django.urls import path, include
 from rest_framework.routers import APIRootView, DefaultRouter
+from rest_framework.permissions import AllowAny
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularJSONAPIView, SpectacularSwaggerView
 )
@@ -85,6 +86,8 @@ def spectacular_view(*args, **kwargs):
     permissions.rbac_perm_cache = dict()
     rtn = SpectacularAPIView.as_view(
         custom_settings=tasks_schema_settings,
+        authentication_classes=[],
+        permission_classes=[AllowAny],
     )(*args, **kwargs)
     permissions.rbac_perm_cache = None
     return rtn
@@ -100,6 +103,8 @@ def spectacular_json_view(*args, **kwargs):
     permissions.rbac_perm_cache = dict()
     rtn = SpectacularJSONAPIView.as_view(
         custom_settings=tasks_schema_settings,
+        authentication_classes=[],
+        permission_classes=[AllowAny],
     )(*args, **kwargs)
     permissions.rbac_perm_cache = None
     return rtn

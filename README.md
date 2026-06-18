@@ -49,21 +49,14 @@ pipenv install
 pipenv install --dev
 ```
 
-## Database
+## Database and Kafka
 
-To start the database, run required migrations and load required
+To start the database and Kafka, run required migrations and load required
 fixtures you will need to run the following commands:
 ```
 export ADVISOR_DB_HOST=localhost
-podman-compose up -d advisor-db
-pipenv shell
-python api/advisor/manage.py migrate
-python api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources basic_test_data
-```
-... or you can start the database, Kafka, Advisor service and API all together with podman-compose, like so:
-```
-export ADVISOR_DB_HOST=localhost
-podman-compose up -d advisor-db init-kafka kafka advisor-service advisor-api
+podman-compose up -d advisor-db init-kafka kafka
+./container_init_localdev.sh
 ```
 
 ## Feature Flags
