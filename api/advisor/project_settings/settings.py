@@ -130,7 +130,7 @@ CLOUD_CONNECTOR_PORT = os.getenv('CLOUD_CONNECTOR_PORT')
 TASKS_API_BATCH_SIZE = int(os.getenv('TASKS_BATCH_SIZE', '50'))
 
 # Batch size when consuming Kafka messages in the Inventory replication service.
-INVENTORY_BATCH_SIZE = int(os.getenv('INVENTORY_BATCH_SIZE', '500'))
+INVENTORY_BATCH_SIZE = int(os.getenv('INVENTORY_BATCH_SIZE', '50'))
 
 # Rewrite URL links in internal tasks HTML documents - temporary(?) workaround hack for RHINENG-7966
 TASKS_REWRITE_INTERNAL_URLS = string_to_bool(os.getenv('TASKS_REWRITE_INTERNAL_URLS', 'false'))

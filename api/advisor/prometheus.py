@@ -95,6 +95,10 @@ INVENTORY_HOST_DELETED = Counter(
     'insights_advisor_service_inventory_host_deleted',
     'Count how many inventory hosts were deleted'
 )
+INVENTORY_HOST_DELETE_MISSING = Counter(
+    'insights_advisor_service_inventory_host_delete_missing',
+    'Count how many inventory host delete events had no matching record in the DB'
+)
 PAYLOAD_TRACKER_DELIVERY_ERRORS = Counter(
     'insights_advisor_service_payload_tracker_delivery_errors',
     'Counter for how many payload tracker messsages failed delivery'

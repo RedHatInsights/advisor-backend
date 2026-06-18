@@ -270,3 +270,70 @@ class TestKafkaUtils(TestCase):
         self.assertEqual(handler.handled['topic'][0], {'msg': 1})
         self.assertEqual(handler.handled['topic'][1], {'msg': 2})
         self.assertEqual(handler.handled['topic'][2], {'msg': 3})
+
+    def test_handle_batch_messages_returns_true_on_success(self):
+        """Test that _handle_batch_messages returns True when all handlers succeed."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', batch_handler, batch=True)
+
+        messages = consumer.consume(num_messages=1, timeout=1)
+        result = dispatcher._handle_batch_messages(messages)
+
+        self.assertTrue(result)
+
+    def test_handle_batch_messages_returns_false_on_handler_exception(self):
+        """Test that _handle_batch_messages returns False when a batch handler raises."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+
+        def failing_handler(topic, messages):
+            raise RuntimeError("DB is down")
+
+        failing_handler.__name__ = 'failing_handler'
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', failing_handler, batch=True)
+
+        messages = consumer.consume(num_messages=1, timeout=1)
+        with self.assertLogs(logger='advisor-log'):
+            result = dispatcher._handle_batch_messages(messages)
+
+        self.assertFalse(result)
+
+    def test_receive_commits_on_success(self):
+        """Test that receive() commits offsets after successful batch processing."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+        consumer.add_message('topic', {'msg': 2})
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', batch_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        dispatcher.receive(batch_size=10)
+
+        self.assertGreater(consumer.store_offsets_count, 0)
+        self.assertGreater(consumer.commit_count, 0)
+
+    def test_receive_does_not_commit_on_failure(self):
+        """Test that receive() skips commit when a batch handler raises."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+
+        def failing_handler(topic, messages):
+            raise RuntimeError("DB is down")
+
+        failing_handler.__name__ = 'failing_handler'
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', failing_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        with self.assertLogs(logger='advisor-log'):
+            dispatcher.receive(batch_size=10)
+
+        self.assertEqual(consumer.store_offsets_count, 0)
+        self.assertEqual(consumer.commit_count, 0)
