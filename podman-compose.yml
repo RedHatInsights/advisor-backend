@@ -96,6 +96,9 @@ services:
       - TASKS_REWRITE_INTERNAL_URLS=true
       - USE_DJANGO_WEBSERVER=false
       - WEB_CONCURRENCY=2
+      # Uncomment to enable RBAC via the mock-rbac service:
+      # - RBAC_ENABLED=true
+      # - RBAC_URL=http://mock-rbac:8111
     depends_on:
       kafka:
         condition: service_started
@@ -103,6 +106,18 @@ services:
         condition: service_healthy
     command: sh -c "./container_init_localdev.sh &&
                     api/app.sh"
+  mock-rbac:
+    build:
+      context: .
+      dockerfile: Containerfile.localdev
+    ports:
+      - "8111:8111"
+    environment:
+      - MOCK_RBAC_PORT=8111
+      # - MOCK_RBAC_READONLY=true
+      # - MOCK_RBAC_PERMISSIONS=advisor:*:*,tasks:*:*,inventory:*:*
+      # - MOCK_RBAC_GROUPS=uuid1,uuid2
+    command: pipenv run python api/advisor/manage.py mock_rbac
   unleash:
     image: quay.io/cloudservices/unleash-docker:5.6.9
     ports:
