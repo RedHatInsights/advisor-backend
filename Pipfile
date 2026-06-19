@@ -22,6 +22,7 @@ pytest-django = "*"
 unittest-xml-reporting = "*"
 django-stubs = "*"
 mypy = "*"
+grpcio-reflection = "*"
 
 [packages]
 app-common-python = "*"

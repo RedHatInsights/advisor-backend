@@ -508,11 +508,11 @@ def has_kessel_permission(
     identity = request.auth
 
     elapsed = 0.0
-    logger.debug("KESSEL debug: scope = %s", scope)
-    logger.debug("KESSEL debug: identity = %s", repr(identity))
-    logger.debug("KESSEL debug: permission = %s", repr(permission))
+    logger.debug("has_kessel_permission(): scope = %s", scope)
+    logger.debug("has_kessel_permission(): identity = %s", repr(identity))
+    logger.debug("has_kessel_permission(): permission = %s", repr(permission))
     try:
-        logger.debug("Checking %s has %s in %s...", identity, permission, scope)
+        logger.debug(f"has_kessel_permission(): Checking identity {identity} has permission {permission} in scope {scope}...")
         if scope == ResourceScope.ORG:
             # We actually translate this into the default workspace of that org.
             workspace_id, elapsed = get_workspace_id(request)
@@ -520,7 +520,7 @@ def has_kessel_permission(
                 # Log created by exception catch below
                 raise ValueError("No workspace found for org")
             logger.debug(
-                "KESSEL: checking access for org %s workspace %s",
+                "has_kessel_permission(): checking access for ORG %s workspace %s",
                 identity['org_id'], workspace_id
             )
             kessel_permission = permission.as_kessel_permission()
@@ -537,25 +537,25 @@ def has_kessel_permission(
                 identity_to_subject(identity)
             )
         elif scope == ResourceScope.WORKSPACE:
-            logger.debug("KESSEL: checking which workspaces this user has access to")
+            subject = identity_to_subject(identity)
+            logger.debug(f"has_kessel_permission(): checking which WORKSPACEs the subject {subject} has access to")
             # Lookup all the workspaces in which the permission is granted.
-            result, elapsed = kessel.client.host_groups_for(
-                identity_to_subject(identity)
-            )
+            result, elapsed = kessel.client.host_groups_for(subject)
         else:
             # Scope is a specific host.
             # Run a check against that host.
             if host_id is None:
-                raise ValueError("Host scope requested but host_id not provided")
+                raise ValueError("HOST scope requested but host_id not provided")
 
-            logger.debug("KESSEL: checking access to host %s", host_id)
+            subject = identity_to_subject(identity)
+            logger.debug(f"has_kessel_permission(): checking subject {subject} has access to HOST %s", host_id)
             result, elapsed = kessel.client.check(
                 kessel.Host(str(host_id)).to_ref(),
                 permission.as_kessel_permission(),
-                identity_to_subject(identity)
+                subject
             )
 
-        logger.info("KESSEL: returned %s in %s", result, elapsed)
+        logger.info("has_kessel_permission(): returned %s in %s", result, elapsed)
         return result, elapsed
     except Exception as e:
         logger.error(f"Error calling kessel for {scope.name} access check: {e}")
@@ -911,6 +911,7 @@ class InsightsRBACPermission(BasePermission):
             return set_rbac_failure(request, 'authentication not yet complete')
 
         identity = request.auth
+        logger.debug(f"has_permission(): identity = {identity}")
         # Do checks of the identity that we do have, in case some other class
         # allowed us:
         if identity is None:

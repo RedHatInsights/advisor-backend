@@ -32,10 +32,16 @@ services:
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29094
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - CLUSTER_ID=1234567890
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
   init-kafka:
     image: confluentinc/cp-kafka
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     entrypoint: [ '/bin/sh', '-c' ]
     command: |
       "
@@ -60,15 +66,13 @@ services:
       "
   advisor-service:
     depends_on:
-      advisor-api:
-        condition: service_started
       kafka:
-        condition: service_started
+        condition: service_healthy
       advisor-db:
         condition: service_healthy
     build:
       context: .
-      dockerfile: Containerfile
+      dockerfile: Containerfile.localdev
     environment:
       - BOOTSTRAP_SERVERS=kafka:29092
       - ADVISOR_DB_HOST=advisor-db
@@ -96,13 +100,17 @@ services:
       - TASKS_REWRITE_INTERNAL_URLS=true
       - USE_DJANGO_WEBSERVER=false
       - WEB_CONCURRENCY=2
-      # Uncomment to enable RBAC via the mock-rbac service:
-      # - RBAC_ENABLED=true
-      # - RBAC_URL=http://mock-rbac:8111 # Use when mock-rbac runs in a separate container
-      # - RBAC_URL=http://host.containers.internal:8111 # Use when mock-rbac runs via manage.py mock_rbac
+      # Uncomment to enable Kessel (requires MOCK_KESSEL_ENABLED=true on mock-rbac) or RBACv1:
+      # - KESSEL_ENABLED=true
+      # - KESSEL_URL=mock-rbac:9000 # Use this when mock-rbac is running in a container, or ...
+      # - KESSEL_URL=host.containers.internal:9000 # use this when it's running via manage.py
+      # - KESSEL_INSECURE=true
+      # - RBAC_ENABLED=true # RBACv1 only
+      # - RBAC_URL=http://mock-rbac:8111 # Use this when mock-rbac is running in a container, or ...
+      # - RBAC_URL=http://host.containers.internal:8111 # use this when it's running via manage.py
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       advisor-db:
         condition: service_healthy
     command: sh -c "./container_init_localdev.sh &&
@@ -113,11 +121,18 @@ services:
       dockerfile: Containerfile.localdev
     ports:
       - "8111:8111"
+      - "9000:9000"
     environment:
       - MOCK_RBAC_PORT=8111
       # - MOCK_RBAC_READONLY=true
       # - MOCK_RBAC_PERMISSIONS=advisor:*:*,tasks:*:*,inventory:*:*
       # - MOCK_RBAC_GROUPS=uuid1,uuid2
+      # Uncomment to enable Kessel gRPC server:
+      # - MOCK_KESSEL_ENABLED=true
+      # - MOCK_KESSEL_GRPC_PORT=9000
+      # - MOCK_KESSEL_DENY=true
+      # - MOCK_KESSEL_HOST_GROUPS=uuid1,uuid2
+      # - MOCK_KESSEL_WORKSPACE_ID=00000000-0000-0000-0000-000000000000
     command: pipenv run python api/advisor/manage.py mock_rbac
   unleash:
     image: quay.io/cloudservices/unleash-docker:5.6.9
