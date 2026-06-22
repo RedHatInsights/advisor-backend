@@ -803,11 +803,41 @@ Use the Authorize button and paste the `$RH_IDENTITY` value into the `x-rh-ident
 
 Visit `http://localhost:8000/api/insights/v1/` in a browser to see the full list of available endpoints (DRF's browsable API).
 
+## Testing RBAC
+
+Start the mock-rbac service and specify the permissions your users have.  The mock-rbac service can be started with manage.py:
+```bash
+python api/advisor/manage.py mock_rbac --permissions "advisor:recommendation-results:read,advisor:advisor-roots:read"
+```
+... or via podman-compose.  Uncomment and set the environment variable permissions for the mock-rbac service and start the container.
+For example, set `MOCK_RBAC_PERMISSIONS=advisor:recommendation-results:read,advisor:advisor-roots:read`
+```bash
+podman-compose up mock-rbac
+```
+The user will be able to access a number of API endpoints, but not acks or hostacks as they require `advisor:disable-recommendations:read` permissions.
+View the logs of the advisor-api service to see RBAC debugging information.
+
+## Testing host groups
+
+Upload a fake archive for a system and specify the host group the system is a part of, eg my_group:
+```bash
+pipenv shell
+export ADVISOR_DB_HOST=localhost
+python service/manual_test/send_fake_engine_results.py --groups my_group
+python api/advisor/manage.py freshen_hosts
+```
+Then start the mock-rbac service and specify the host group your users are part of:
+```bash
+python api/advisor/manage.py mock_rbac --permissions "advisor:*:*" --groups "$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, 'my_group'))")"
+```
+Then in the UI, your user should only be able to see the `57c4c38b-a8c6-4289-9897-223681fd804d` host when accessing the `system` endpoint,
+because that's the only host in the `my_group` host group.
+
 ### Django ORM
 
 ```bash
-export ADVISOR_DB_HOST=localhost
 pipenv shell
+export ADVISOR_DB_HOST=localhost
 python service/manual_test/send_fake_engine_results.py
 python api/advisor/manage.py freshen_hosts
 python api/advisor/manage.py shell
@@ -868,8 +898,8 @@ print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 ### Raw SQL
 
 ```bash
-export ADVISOR_DB_HOST=localhost
 pipenv shell
+export ADVISOR_DB_HOST=localhost
 python service/manual_test/send_fake_engine_results.py
 python api/advisor/manage.py freshen_hosts
 python api/advisor/manage.py dbshell

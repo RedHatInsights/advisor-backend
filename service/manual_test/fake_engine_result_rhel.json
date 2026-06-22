@@ -32,7 +32,8 @@
         {"namespace": "insights-client", "key": "key_1234567890_hat", "value": null},
         {"namespace": "insights-client", "key": "key_1234567890_hat", "value": "user@example"}
       ],
-      "updated": null
+      "updated": null,
+      "groups": []
     },
     "platform_metadata": {
       "org_id": "9876543",
