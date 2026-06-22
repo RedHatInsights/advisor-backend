@@ -14,8 +14,10 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
 import json
 import os
+import uuid
 
 from confluent_kafka import Producer
 from insert_inventory_host import insert_host
@@ -25,6 +27,17 @@ ENGINE_RESULTS_TOPIC = os.environ.get('ENGINE_RESULTS_TOPIC', 'platform.engine.r
 ENGINE_RESULTS_FILE = os.path.basename(os.environ.get('ENGINE_RESULTS_FILE', 'fake_engine_result_rhel.json'))
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
+parser = argparse.ArgumentParser(description='Send fake engine results to Kafka')
+parser.add_argument(
+    '--groups', type=str, default=None,
+    help=(
+        'Comma-separated host group names to assign to the host. '
+        'Each name gets a deterministic UUID. '
+        'Example: --groups "group_1,group_2"'
+    ),
+)
+args = parser.parse_args()
+
 print('Using BOOTSTRAP_SERVERS %s' % (BOOTSTRAP_SERVERS))
 
 p = Producer({'bootstrap.servers': BOOTSTRAP_SERVERS})
@@ -32,8 +45,22 @@ p = Producer({'bootstrap.servers': BOOTSTRAP_SERVERS})
 with open(os.path.join(THIS_DIR, ENGINE_RESULTS_FILE)) as f:
     engine_results_message = json.load(f)
 
+host_data = engine_results_message['input']['host']
+
+# Inject host groups if --groups is specified
+if args.groups:
+    groups = []
+    for name in args.groups.split(','):
+        name = name.strip()
+        # Generate a deterministic UUID from the group name so that
+        # re-running with the same name produces the same ID.
+        group_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
+        groups.append({'id': group_id, 'name': name})
+    host_data['groups'] = groups
+    print(f'Host groups: {groups}')
+
 # Insert the host into inventory.hosts_table so the API can find it
-insert_host(engine_results_message['input']['host'])
+insert_host(host_data)
 
 
 def delivery_report(err, msg):

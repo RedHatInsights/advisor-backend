@@ -84,6 +84,7 @@ def insert_host(host_data):
                 ON CONFLICT (id) DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     tags = EXCLUDED.tags,
+                    groups = EXCLUDED.groups,
                     updated = EXCLUDED.updated,
                     stale_timestamp = EXCLUDED.stale_timestamp,
                     system_profile = EXCLUDED.system_profile,

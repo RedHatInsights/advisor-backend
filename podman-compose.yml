@@ -91,14 +91,15 @@ services:
       - ENABLE_AUTOSUB="true" # enable auto-subscribe endpoint
       - ENABLE_INIT_CONTAINER_IMPORT_CONTENT=true
       - ENABLE_INIT_CONTAINER_MIGRATIONS=true
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=DEBUG
       - TASKS_REWRITE_INTERNAL_URLS_FOR=internal.localhost
       - TASKS_REWRITE_INTERNAL_URLS=true
       - USE_DJANGO_WEBSERVER=false
       - WEB_CONCURRENCY=2
       # Uncomment to enable RBAC via the mock-rbac service:
       # - RBAC_ENABLED=true
-      # - RBAC_URL=http://mock-rbac:8111
+      # - RBAC_URL=http://mock-rbac:8111 # Use when mock-rbac runs in a separate container
+      # - RBAC_URL=http://host.containers.internal:8111 # Use when mock-rbac runs via manage.py mock_rbac
     depends_on:
       kafka:
         condition: service_started
