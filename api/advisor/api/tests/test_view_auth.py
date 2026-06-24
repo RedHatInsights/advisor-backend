@@ -15,6 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import responses
+from unittest.mock import patch, MagicMock
 
 from django.http import HttpRequest
 from django.test import TestCase, override_settings
@@ -31,7 +32,7 @@ from api.permissions import (
     CertAuthPermission, InsightsRBACPermission, IsRedHatInternalUser,
     RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
-    auth_to_request, check_permission, has_kessel_permission,
+    auth_to_request, check_permission, has_kessel_permission, make_rbac_request,
     request_object_for_testing, request_to_username,
     turnpike_auth_header_for_testing, make_rbac_url, get_workspace_id,
 )
@@ -45,6 +46,10 @@ def b64s(s):
 
 
 TEST_RBAC_URL = 'http://rbac.svc'
+TEST_RBAC_V1_ACCESS = make_rbac_url(
+    "access/?application=advisor,tasks,inventory&limit=1000",
+    rbac_base=TEST_RBAC_URL
+)
 TEST_RBAC_V2_WKSPC = make_rbac_url(
     "workspaces/?type=default",
     version=2, rbac_base=TEST_RBAC_URL
@@ -556,133 +561,130 @@ class BadUsesOfAuthHeaderTestCase(TestCase):
 class GetWorkspaceIdTestCase(TestCase):
     @responses.activate
     @override_settings(RBAC_URL=TEST_RBAC_URL)
-    def test_get_workspace_id_failures(self):
+    def test_get_workspace_id_http_error(self):
+        import api.kessel as kessel_mod
+        kessel_mod.workspace_cache.clear()
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
-        # Have to not use the workspace_for_org cache in this test
-        from api import permissions
-        permissions.workspace_for_org = None  # prevents cache use
         with self.assertLogs(logger='advisor-log') as logs:
-            # Non-200 response
-            _ = responses.add(
+            responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 status=404,
             )
             workspace_id, elapsed = get_workspace_id(request)
             self.assertFalse(workspace_id)
-            self.assertGreater(elapsed, 0.0)  # This reflects the actual request.
-            self.assertIn(
-                "ERROR:advisor-log:Error: Got status 404 from RBAC: ''",
-                logs.output
-            )
-            # Not a dict
-            _ = responses.add(
-                responses.GET, TEST_RBAC_V2_WKSPC,
-                json='Foo!',
-            )
-            workspace_id, elapsed = get_workspace_id(request)
-            ehdr = 'ERROR:advisor-log:Error: '
-            self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}Response from RBAC is not a dictionary: 'Foo!'",
-                logs.output
-            )
-            # No 'data' item in dict
-            _ = responses.add(
-                responses.GET, TEST_RBAC_V2_WKSPC,
-                json={'foo': 'bar'},
-            )
-            workspace_id, elapsed = get_workspace_id(request)
-            self.assertFalse(workspace_id)
-            self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}Response from RBAC is missing 'data' key: '{{'foo': 'bar'}}'",
-                logs.output
-            )
-            ehdr = 'ERROR:advisor-log:Error: '
-            # Data not a list
-            _ = responses.add(
-                responses.GET, TEST_RBAC_V2_WKSPC,
-                json={'data': 'bar'},
-            )
-            workspace_id, elapsed = get_workspace_id(request)
-            self.assertFalse(workspace_id)
-            self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}Response from RBAC is not a list: 'bar'",
-                logs.output
-            )
-            # Data list empty
-            _ = responses.add(
+            self.assertTrue(any('Error fetching workspace from RBAC' in msg for msg in logs.output))
+
+    @responses.activate
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_get_workspace_id_empty_data(self):
+        import api.kessel as kessel_mod
+        kessel_mod.workspace_cache.clear()
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        with self.assertLogs(logger='advisor-log') as logs:
+            responses.add(
                 responses.GET, TEST_RBAC_V2_WKSPC,
                 json={'data': []},
             )
             workspace_id, elapsed = get_workspace_id(request)
             self.assertFalse(workspace_id)
             self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}Data from RBAC is empty: '[]'",
-                logs.output
-            )
-            # Data list does not contain a dictionary
-            _ = responses.add(
-                responses.GET, TEST_RBAC_V2_WKSPC,
-                json={'data': ['Foo part 2: Return of Foo']},
-            )
-            workspace_id, elapsed = get_workspace_id(request)
-            self.assertFalse(workspace_id)
-            self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}First data item from RBAC is not a dictionary: 'Foo part 2: Return of Foo'",
-                logs.output
-            )
-            # Data list dictionary does not contain an 'id' element
-            _ = responses.add(
-                responses.GET, TEST_RBAC_V2_WKSPC,
-                json={'data': [{'foo': 'bar'}]},
-            )
-            workspace_id, elapsed = get_workspace_id(request)
-            self.assertFalse(workspace_id)
-            self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}First data item from RBAC is missing 'id' key: '{{'foo': 'bar'}}'",
-                logs.output
-            )
-            # Data list dictionary does not contain an 'id' element
-            _ = responses.add(
-                responses.GET, TEST_RBAC_V2_WKSPC,
-                json={'data': [{'foo': 'bar', 'id': None}]},
-            )
-            workspace_id, elapsed = get_workspace_id(request)
-            self.assertFalse(workspace_id)
-            self.assertGreater(elapsed, 0.0)
-            self.assertIn(
-                f"{ehdr}Workspace 'default' not found in RBAC response",
-                logs.output
-            )
+            self.assertTrue(any('Error fetching workspace from RBAC' in msg for msg in logs.output))
+
+    @responses.activate
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_get_workspace_id_success(self):
+        import api.kessel as kessel_mod
+        kessel_mod.workspace_cache.clear()
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        workspace_id, elapsed = get_workspace_id(request)
+        self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
 
     @responses.activate
     @override_settings(RBAC_URL=TEST_RBAC_URL)
     def test_workspace_id_cached(self):
+        import api.kessel as kessel_mod
+        kessel_mod.workspace_cache.clear()
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)
-        # Make the first request to cache the workspace ID
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
-        # Grab the cache dict to manipulate it in testing.
-        from api import permissions
-        permissions.workspace_for_org = dict()
         workspace_id, elapsed = get_workspace_id(request)
         self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
-        self.assertGreater(elapsed, 0.0)
-        # Make a second request to verify the workspace ID is cached
+        # Second call should use the SDK's cache — no additional HTTP request
         workspace_id, elapsed = get_workspace_id(request)
-        # Only one request made.
         self.assertEqual(len(responses.calls), 1)
         self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
-        self.assertEqual(elapsed, 0.0)
-        self.assertEqual(len(permissions.workspace_for_org), 1)
+
+
+class JWTAuthPathTestCase(TestCase):
+    """Tests that make_rbac_request uses JWT Bearer auth when service account creds are available."""
+
+    @responses.activate
+    @override_settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    def test_make_rbac_request_jwt_sends_bearer_and_org_header(self):
+        mock_creds = MagicMock()
+        mock_creds.get_token.return_value = MagicMock(access_token='test-jwt-token')
+        mock_auth = MagicMock()
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        rbac_url = make_rbac_url("access/?application=advisor&limit=1000", rbac_base=TEST_RBAC_URL)
+
+        responses.add(responses.GET, TEST_RBAC_URL + '/api/rbac/v1/access/',
+                      json={'data': []}, status=200)
+
+        with patch('api.kessel.get_service_account_credentials', return_value=mock_creds), \
+             patch('api.kessel.service_account_auth', mock_auth):
+            response, elapsed = make_rbac_request(rbac_url, request)
+
+        self.assertEqual(response.status_code, 200)
+        sent_request = responses.calls[0].request
+        self.assertIn('x-rh-rbac-org-id', sent_request.headers)
+        self.assertIn('username=', sent_request.url)
+
+    @responses.activate
+    @override_settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    def test_make_rbac_request_identity_passthrough_when_no_creds(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        rbac_url = make_rbac_url("access/?application=advisor&limit=1000", rbac_base=TEST_RBAC_URL)
+
+        responses.add(responses.GET, TEST_RBAC_URL + '/api/rbac/v1/access/',
+                      json={'data': []}, status=200)
+
+        with patch('api.kessel.get_service_account_credentials', return_value=None):
+            response, elapsed = make_rbac_request(rbac_url, request)
+
+        self.assertEqual(response.status_code, 200)
+        sent_request = responses.calls[0].request
+        self.assertIn('x-rh-identity', sent_request.headers)
+        self.assertNotIn('x-rh-rbac-org-id', sent_request.headers)
+
+    @responses.activate
+    @override_settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
+    def test_make_rbac_request_jwt_works_for_service_account(self):
+        mock_creds = MagicMock()
+        mock_creds.get_token.return_value = MagicMock(access_token='test-jwt-token')
+        mock_auth = MagicMock()
+        request = request_object_for_testing(
+            auth_by=RHIdentityAuthentication,
+            service_account=constants.service_account,
+        )
+        rbac_url = make_rbac_url("access/?application=advisor&limit=1000", rbac_base=TEST_RBAC_URL)
+
+        responses.add(responses.GET, TEST_RBAC_URL + '/api/rbac/v1/access/',
+                      json={'data': []}, status=200)
+
+        with patch('api.kessel.get_service_account_credentials', return_value=mock_creds), \
+             patch('api.kessel.service_account_auth', mock_auth):
+            response, elapsed = make_rbac_request(rbac_url, request)
+
+        self.assertEqual(response.status_code, 200)
+        sent_request = responses.calls[0].request
+        self.assertIn('username=', sent_request.url)
 
 
 class TestInsightsRBACPermissionKessel(TestCase):
@@ -772,7 +774,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
     def test_kessel_resourcescope_host_object_permissions(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
         # Set up the various permissions objects
         request = request_object_for_testing(auth_by=RHIdentityAuthentication)

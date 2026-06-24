@@ -209,7 +209,7 @@ class CertAuthTestCase(TestCase):
     def test_list_system_kessel_on_cert_auth(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
         response = self.client.get(
             reverse('system-list'), **self.self_cert_auth_header

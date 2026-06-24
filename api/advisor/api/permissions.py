@@ -17,6 +17,7 @@
 import base64
 from enum import Enum
 import json
+import time
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import uuid
@@ -69,16 +70,6 @@ def identity_to_subject(identity: dict) -> kessel.SubjectRef:
         raise ValueError(f"Unknown identity type: {identity['type']}")
     user_id = identity[identity_field]['user_id']
     return kessel.SubjectRef(f"redhat/{user_id}", 'principal')
-
-
-##############################################################################
-# Kessel workspace caching
-##############################################################################
-
-# This is a simple cache within the process.  Workspace IDs will remain
-# constant for their lifetime so they can be reused across multiple requests.
-# The key is (org_id, workspace_str), the value is the ID.
-workspace_for_org: dict[tuple[str, str], str] = {}
 
 
 ##############################################################################
@@ -228,44 +219,43 @@ def set_rbac_success(request: Request, message: str) -> None:
 
 def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None, float]:
     """
-    Make a request to the RBAC service.  With RBAC v1 we check permissions,
-    with RBAC v2 we check workspaces.
+    Make a request to the RBAC service for v1/access permission checks.
+    Uses service account JWT when credentials are available (replaces PSK),
+    otherwise falls back to x-rh-identity passthrough.
     """
     logger.debug(f"RBAC request to {rbac_url}")
     identity = request.auth
-    # This has already been checked in callers to this code so we assume
-    # we can get the org_id and username keys.
-    if settings.RBAC_PSK:
-        rbac_header = {
-            "x-rh-rbac-client-id": settings.RBAC_CLIENT_ID,
-            "x-rh-rbac-psk": settings.RBAC_PSK,
-            "x-rh-rbac-org-id": identity['org_id'],
-        }
-        # If there's a simpler way of doing this safely, let me know.
-        urlparts = urlparse(rbac_url)
-        query_params = parse_qs(urlparts.query)
-        query_params['username'] = identity['user']['username']
-        new_query = urlencode(query_params, doseq=True)
-        rbac_url = urlunparse(urlparts._replace(query=new_query))
-    else:
-        # Supply the full x-rh-identity header if we have it, because
-        # that gives is_org_admin and other flags used by RBAC.
-        if request and auth_header_key in request.META:
-            # We don't want the other cruft in request.META...
-            rbac_header = {
-                http_auth_header_key: request.META[auth_header_key]
-            }
-        else:
-            rbac_header = auth_header_for_testing(
-                username=identity['username'], org_id=identity['org_id'],
-                supply_http_header=True, user_opts={
-                    'is_org_admin': identity['user']['is_org_admin']
-                },
-            )
-
     # Do import here because of preloading of permissions classes - if
     # we do it in header then Django's test framework imports get confused.
     from api.utils import retry_request
+
+    creds = kessel.get_service_account_credentials()
+    if creds:
+        rbac_header = {
+            "x-rh-rbac-org-id": identity['org_id'],
+        }
+        user_data = request_to_user_data(request)
+        urlparts = urlparse(rbac_url)
+        query_params = parse_qs(urlparts.query)
+        query_params['username'] = user_data.get('username', '')
+        rbac_url = urlunparse(urlparts._replace(query=urlencode(query_params, doseq=True)))
+        return retry_request(
+            'RBAC', rbac_url, headers=rbac_header,
+            auth=kessel.service_account_auth, timeout=10
+        )
+
+    if request and auth_header_key in request.META:
+        rbac_header = {
+            http_auth_header_key: request.META[auth_header_key]
+        }
+    else:
+        rbac_header = auth_header_for_testing(
+            username=identity['username'], org_id=identity['org_id'],
+            supply_http_header=True, user_opts={
+                'is_org_admin': identity['user']['is_org_admin']
+            },
+        )
+
     return retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10)
 
 
@@ -375,6 +365,7 @@ def check_permission(
     return has_rbac_permission(request, permission)
 
 
+
 def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
@@ -417,8 +408,6 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
         response = rbac_perm_cache[auth_tuple]
         elapsed = 0.0
     else:
-        # Use PSK if it's defined, otherwise fallback to crafting an identity
-        # header for username
         rbac_url = make_rbac_url("access/?application=advisor,tasks,inventory&limit=1000")
         response, elapsed = make_rbac_request(rbac_url, request)
         if (response is None) or response.status_code == 500:
@@ -472,72 +461,25 @@ def get_workspace_id(
     request: Request, workspace: str = "default"
 ) -> tuple[str, float]:
     """
-    Get the ID of the workspace from the RBAC REST API, for the given
-    identity.
+    Get the ID of the workspace from the RBAC REST API via the Kessel SDK's
+    fetch_default_workspace, using OAuth2 service account auth.
     """
-    elapsed = 0.0
-
-    def log_and_return_fail(message: str, *args) -> tuple[str, float]:
-        logger.error(message, *args)
-        return ('', elapsed)
-
     org_id = request.auth['org_id']
-    workspace_key = (org_id, workspace)
-    if workspace_for_org is not None and workspace_key in workspace_for_org:
-        return (workspace_for_org[workspace_key], 0.0)
-    # Note that we should really just use the default 'default' value, so
-    # we're not doing any work with URL-encoding that string... caveat petens.
-    rbac_url = make_rbac_url(f"workspaces/?type={workspace}", version=2)
-    response, elapsed = make_rbac_request(rbac_url, request)
-    if response.status_code != 200:
-        # Report actual time to make RBAC request
-        return log_and_return_fail(
-            "Error: Got status %d from RBAC: '%s'",
-            response.status_code, response.content.decode()
+    cache_key = (org_id, workspace)
+    if cache_key in kessel.workspace_cache:
+        return kessel.workspace_cache[cache_key], 0.0
+    start = time.time()
+    try:
+        ws = kessel.fetch_default_workspace(
+            rbac_base_endpoint=settings.RBAC_URL,
+            org_id=org_id,
+            auth=kessel.service_account_auth,
         )
-    # Check that the actual content is a list of workspaces
-    page = response.json()
-    if not isinstance(page, dict):
-        return log_and_return_fail(
-            "Error: Response from RBAC is not a dictionary: '%s'",
-            page,
-        )
-    if 'data' not in page:
-        return log_and_return_fail(
-            "Error: Response from RBAC is missing 'data' key: '%s'",
-            page,
-        )
-    if not isinstance(page['data'], list):
-        return log_and_return_fail(
-            "Error: Response from RBAC is not a list: '%s'",
-            page['data'],
-        )
-    if len(page['data']) == 0:
-        return log_and_return_fail(
-            "Error: Data from RBAC is empty: '%s'",
-            page['data'],
-        )
-    # There should only ever be one workspace with a given name, certainly
-    # for 'default'.
-    if not isinstance(page['data'][0], dict):
-        return log_and_return_fail(
-            "Error: First data item from RBAC is not a dictionary: '%s'",
-            page['data'][0],
-        )
-    if 'id' not in page['data'][0]:
-        return log_and_return_fail(
-            "Error: First data item from RBAC is missing 'id' key: '%s'",
-            page['data'][0],
-        )
-    workspace_id = page['data'][0]['id']
-    if workspace_id is None:
-        return log_and_return_fail(
-            "Error: Workspace '%s' not found in RBAC response",
-            workspace,
-        )
-    if workspace_for_org is not None:
-        workspace_for_org[workspace_key] = workspace_id
-    return workspace_id, elapsed
+        kessel.workspace_cache[cache_key] = ws.id
+        return ws.id, time.time() - start
+    except Exception as e:
+        logger.error("Error fetching workspace from RBAC: %s", e)
+        return '', time.time() - start
 
 
 def has_kessel_permission(

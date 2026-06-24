@@ -203,6 +203,7 @@ class constants(object):
 
     # Kessel permissions
     kessel_std_workspace_id = api_constants.kessel_std_workspace_id
+    kessel_std_workspace_response = api_constants.kessel_std_workspace_response
     kessel_std_org_obj = api_constants.kessel_std_org_obj
     kessel_std_user_obj = api_constants.kessel_std_user_obj
     # Kessel request check values

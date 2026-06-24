@@ -350,16 +350,6 @@ class WeeklyReportEmailTest(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0]['recipients'], ['"Test User" test-user@example.com'])
 
-        # Repeat test using Advisor PSK
-        mail.outbox = []
-        reset_last_email_at()
-        with self.settings(
-            RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL,
-            RBAC_PSK="007", MIDDLEWARE_HOST_URL=test_middleware_url
-        ):
-            call_command('weekly_report_emails', stdout=out)
-        self.assertEqual(len(mail.outbox), 1)
-
         # Change permissions so no users have permissions on Insights - expect no emails sent
         # Test using identity headers
         global user_permissions_table
@@ -375,15 +365,6 @@ class WeeklyReportEmailTest(TestCase):
             call_command('weekly_report_emails', stdout=out)
         self.assertEqual(len(mail.outbox), 0)
 
-        mail.outbox = []
-        reset_last_email_at()
-        # Repeat test using Advisor PSK
-        with self.settings(
-            RBAC_URL=TEST_RBAC_URL, RBAC_PSK="007",
-            RBAC_ENABLED=True, MIDDLEWARE_HOST_URL=test_middleware_url
-        ):
-            call_command('weekly_report_emails', stdout=out)
-        self.assertEqual(len(mail.outbox), 0)
         user_permissions_table = former_user_permissions_table
 
         # Testing RBAC_ENABLED is set but RBAC_URL isn't - expect an exception

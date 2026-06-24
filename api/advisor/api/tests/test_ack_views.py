@@ -163,7 +163,7 @@ class AckViewTestCase(TestCase):
     def test_ack_add_kessel_enabled_full_write(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
 
         # Post with an existing acked rule should return that ack
@@ -206,7 +206,7 @@ class AckViewTestCase(TestCase):
     def test_ack_add_kessel_enabled_only_read(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
         # We should be able to see the ack in the list for this account
         response = self.client.get(reverse('ack-list'), **self.default_header)

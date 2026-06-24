@@ -380,7 +380,7 @@ class HostGroupsTestCase(TestCase):
     def test_groups_match_kessel_enabled_recom_read_only(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
         # No RBACv1 use when Kessel enabled
         page = self._get_view('rule-list')
