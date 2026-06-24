@@ -22,7 +22,7 @@ from drf_spectacular.utils import extend_schema
 from api.models import WeeklyReportSubscription
 from api.serializers import SettingsDDFSerializer, PreferencesInputSerializer
 from api.permissions import (
-    ResourceScope, has_rbac_permission, request_to_username,
+    ResourceScope, check_permission, request_to_username,
 )
 from api.utils import store_post_data
 from api.wrs_utils import update_wrs
@@ -57,7 +57,7 @@ class PreferencesViewSet(viewsets.ViewSet):
         # compile settings list
         settings = []
         # Can this be a bit more ... data driven?
-        if has_rbac_permission(request, 'advisor:weekly-report:*'):
+        if check_permission(request, 'advisor:weekly-report:read')[0]:
             # Get weekly report subscription setting
             wrs_qs = WeeklyReportSubscription.objects.filter(username=username, org_id=org_id)
             is_subscribed = wrs_qs.exists()

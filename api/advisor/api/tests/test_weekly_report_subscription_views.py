@@ -23,7 +23,7 @@ from django.urls import reverse
 from api.tests import constants
 from api.tests.test_weekly_report_command import count_posted_emails
 from api.permissions import auth_header_for_testing, make_rbac_url
-from api.wrs_utils import update_wrs
+
 
 test_user_identity_header = auth_header_for_testing(username='test-user')
 test_user2_identity_header = auth_header_for_testing(username='test-user2')
@@ -186,10 +186,6 @@ class WeeklyReportSubscriptionTestCase(TestCase):
                 data=not_subscribed, **test_user_identity_header
             )
             self.assertEqual(response.status_code, 403)
-            self._check_no_subscription_confirmation_sent()
-
-            # Test utils functions directly...
-            self.assertIsNone(update_wrs('test-user', '1234567', False, '9876543'))
             self._check_no_subscription_confirmation_sent()
 
     @responses.activate

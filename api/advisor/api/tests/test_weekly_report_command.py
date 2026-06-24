@@ -449,3 +449,113 @@ class WeeklyReportEmailTest(TestCase):
         ):
             call_command('weekly_report_emails', '--org-id=1234567', stdout=out)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class KesselWeeklyReportTest(TestCase):
+    """Test the Kessel/StreamedListSubjects path in get_users_to_email."""
+    fixtures = [
+        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'basic_test_data', 'weekly_report_test_data',
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        update_stale_dates()
+
+    def setUp(self):
+        mail.outbox = []
+        reset_last_email_at()
+
+    @responses.activate
+    def test_kessel_path_filters_by_user_id(self):
+        """When Kessel is enabled, only users whose id is in the permitted
+        set from StreamedListSubjects should receive emails."""
+        from unittest.mock import patch
+        from api.management.commands.weekly_report_emails import get_users_to_email
+
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/users',
+            callback=lookup_user_details,
+        )
+        # test-user has id=123456701 in user_details_table
+        # denied-user has id=123456704
+        # Only test-user's id is in the permitted set
+        with patch(
+            'api.management.commands.weekly_report_emails._get_kessel_permitted_user_ids',
+            return_value={'123456701'},
+        ):
+            with self.settings(MIDDLEWARE_HOST_URL=test_middleware_url):
+                users_to_email, expired = get_users_to_email(
+                    '9876543', '1234567', timezone.now()
+                )
+        usernames = [u['username'] for u in users_to_email]
+        self.assertIn('test-user', usernames)
+        self.assertNotIn('denied-user', usernames)
+        self.assertIn('denied-user', expired)
+
+    @responses.activate
+    def test_kessel_path_empty_permitted_set_sends_no_emails(self):
+        """When Kessel returns no permitted users, no emails are sent."""
+        from unittest.mock import patch
+        from api.management.commands.weekly_report_emails import get_users_to_email
+
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/users',
+            callback=lookup_user_details,
+        )
+        with patch(
+            'api.management.commands.weekly_report_emails._get_kessel_permitted_user_ids',
+            return_value=set(),
+        ):
+            with self.settings(MIDDLEWARE_HOST_URL=test_middleware_url):
+                users_to_email, expired = get_users_to_email(
+                    '9876543', '1234567', timezone.now()
+                )
+        self.assertEqual(len(users_to_email), 0)
+
+    @responses.activate
+    def test_kessel_disabled_falls_back_to_v1(self):
+        """When Kessel is disabled, the v1 path is used."""
+        from api.management.commands.weekly_report_emails import get_users_to_email
+
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/users',
+            callback=lookup_user_details,
+        )
+        responses.add_callback(
+            responses.GET, TEST_RBAC_V1_ACCESS,
+            callback=lookup_rbac_permissions,
+        )
+        with self.settings(
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
+            KESSEL_ENABLED=False,
+            MIDDLEWARE_HOST_URL=test_middleware_url,
+        ):
+            users_to_email, expired = get_users_to_email(
+                '9876543', '1234567', timezone.now()
+            )
+        usernames = [u['username'] for u in users_to_email]
+        self.assertIn('test-user', usernames)
+        self.assertNotIn('denied-user', usernames)
+
+    def test_kessel_error_returns_none(self):
+        """When Kessel errors, _get_kessel_permitted_user_ids returns None
+        so the v1 fallback is used."""
+        from unittest.mock import patch
+        from api.management.commands.weekly_report_emails import _get_kessel_permitted_user_ids
+
+        with patch('api.management.commands.weekly_report_emails.kessel') as mock_kessel:
+            mock_kessel.client.client = True
+            mock_kessel.Workspace.return_value.to_ref.return_value = 'ws-ref'
+            with patch(
+                'api.management.commands.weekly_report_emails.get_workspace_id',
+                side_effect=Exception("gRPC down"),
+            ):
+                with self.settings(KESSEL_ENABLED=True):
+                    with patch(
+                        'api.management.commands.weekly_report_emails.feature_flag_is_enabled',
+                        return_value=True,
+                    ):
+                        result = _get_kessel_permitted_user_ids('9876543')
+        self.assertIsNone(result)

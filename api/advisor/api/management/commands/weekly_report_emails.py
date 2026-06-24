@@ -30,8 +30,11 @@ from api.models import (
     CurrentReport, InventoryHost, WeeklyReportSubscription, stale_systems_q, Ack
 )
 from api.permissions import (
-    RHIdentityAuthentication, has_rbac_permission, request_object_for_testing
+    RHIdentityAuthentication, has_rbac_permission, request_object_for_testing,
+    get_workspace_id,
 )
+from feature_flags import feature_flag_is_enabled, FLAG_ADVISOR_KESSEL_ENABLED
+import api.kessel as kessel
 from api.utils import user_account_details
 from api.views.stats import get_reports_stats, get_rules_stats
 from advisor_logging import logger
@@ -190,6 +193,64 @@ def get_reports(org_id):
     }
 
 
+def _get_kessel_permitted_user_ids(org_id):
+    """
+    Use Kessel StreamedListSubjects to find all user_ids that have the
+    weekly-report view permission on this org's default workspace.
+    Returns a set of user_id strings, or None if Kessel is not available.
+    """
+    if not (settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED)):
+        return None
+    if not kessel.client or not kessel.client.client:
+        logger.warning("Kessel client not available for weekly report permission check")
+        return None
+    try:
+        request = request_object_for_testing(
+            auth_by=RHIdentityAuthentication, org_id=org_id
+        )
+        workspace_id, _ = get_workspace_id(request)
+        if not workspace_id:
+            logger.error("No workspace found for org %s", org_id)
+            return None
+        permitted_ids, _ = kessel.client.subjects_with_permission(
+            kessel.Workspace(workspace_id).to_ref(),
+            'advisor_weekly_report_view'
+        )
+        return set(permitted_ids)
+    except Exception as e:
+        logger.error("Error checking Kessel permissions for weekly report: %s", e)
+        return None
+
+
+def _user_has_permission(username, org_id, account, permitted_user_ids, account_data):
+    """
+    Check if a user has permission via Kessel (user_id match) or v1/access.
+    """
+    if permitted_user_ids is not None:
+        if 'id' not in account_data:
+            logger.warning("No 'id' in account data for user '%s', denying", username)
+            return False
+        user_id = str(account_data['id'])
+        if user_id not in permitted_user_ids:
+            logger.debug(
+                "User '%s' (id=%s) in org_id '%s' denied by Kessel",
+                username, user_id, org_id
+            )
+            return False
+        return True
+
+    request = request_object_for_testing(
+        auth_by=RHIdentityAuthentication, org_id=org_id, username=username
+    )
+    result, _ = has_rbac_permission(request, WEEKLY_REPORT_RBAC_PERMISSION)
+    if not result:
+        logger.debug(
+            "User '%s' in account '%s' org_id '%s' doesn't have permission "
+            "to receive the report email", username, account, org_id
+        )
+    return result
+
+
 def get_users_to_email(org_id, account, latest_email_time):
     subscription_for = {
         wrs.username: wrs
@@ -211,6 +272,8 @@ def get_users_to_email(org_id, account, latest_email_time):
     users_to_email = []
     expired_users = []
 
+    permitted_user_ids = _get_kessel_permitted_user_ids(org_id)
+
     for username in subscription_for:
         # Ensure we have account details for this user
         if username not in account_details_for:
@@ -222,14 +285,7 @@ def get_users_to_email(org_id, account, latest_email_time):
         if not ('is_active' in account_data and account_data['is_active']):
             expired_users.append(username)
             continue
-        org_id = subscription_data.org_id
-        request = request_object_for_testing(
-            auth_by=RHIdentityAuthentication, org_id=org_id, username=username
-        )
-        result, _ = has_rbac_permission(request, WEEKLY_REPORT_RBAC_PERMISSION)
-        # Don't need the elapsed time here.
-        if not result:
-            logger.debug("User '%s' in account '%s' org_id '%s' doesn't have permission to receive the report email", username, account, org_id)
+        if not _user_has_permission(username, org_id, account, permitted_user_ids, account_data):
             expired_users.append(username)
             continue
         user_to_email = account_data

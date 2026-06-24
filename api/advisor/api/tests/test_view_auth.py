@@ -24,12 +24,15 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from api.kessel import add_kessel_response
 from api.models import InventoryHost
+from unittest.mock import patch
+
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
     CertAuthPermission, InsightsRBACPermission, IsRedHatInternalUser,
     RBACPermission, RHIdentityAuthentication, ResourceScope, OrgPermission,
     TurnpikeIdentityAuthentication, auth_header_for_testing, auth_header_key,
-    auth_to_request, has_kessel_permission, request_object_for_testing, request_to_username,
+    auth_to_request, check_permission, has_kessel_permission,
+    request_object_for_testing, request_to_username,
     turnpike_auth_header_for_testing, make_rbac_url, get_workspace_id,
 )
 from api.tests import constants
@@ -1001,3 +1004,67 @@ class TestAssociatePermission(TestCase):
         int_rq = auth_to_request(turnpike_auth_header_for_testing())
         fake_auth_check(int_rq, TurnpikeIdentityAuthentication)
         self.assertTrue(self.APClass.has_permission(int_rq, self.view))
+
+
+class CheckPermissionTestCase(TestCase):
+    """Test the check_permission() unified routing function."""
+
+    def test_rbac_disabled_returns_true(self):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        with self.settings(RBAC_ENABLED=False):
+            result, elapsed = check_permission(request, 'advisor:weekly-report:read')
+            self.assertTrue(result)
+            self.assertEqual(elapsed, 0.0)
+
+    @responses.activate
+    def test_kessel_disabled_delegates_to_v1(self):
+        rbac_access_url = make_rbac_url(
+            'access/?application=advisor,tasks,inventory&limit=1000',
+            rbac_base=TEST_RBAC_URL,
+        )
+        responses.get(
+            rbac_access_url,
+            json={'data': [{'permission': 'advisor:weekly-report:read'}]},
+            status=200,
+        )
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        with self.settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL, KESSEL_ENABLED=False):
+            result, elapsed = check_permission(request, 'advisor:weekly-report:read')
+            self.assertTrue(result)
+
+    @patch('api.permissions.has_kessel_permission', return_value=(True, 0.1))
+    @patch('api.permissions.feature_flag_is_enabled', return_value=True)
+    def test_kessel_enabled_delegates_to_kessel(self, mock_flag, mock_kessel):
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        with self.settings(RBAC_ENABLED=True, KESSEL_ENABLED=True):
+            result, elapsed = check_permission(request, 'advisor:weekly-report:read')
+            self.assertTrue(result)
+            mock_kessel.assert_called_once()
+            args = mock_kessel.call_args
+            self.assertEqual(args[0][0], ResourceScope.ORG)
+            self.assertEqual(str(args[0][1]), 'advisor:weekly-report:read')
+
+    @patch('api.permissions.feature_flag_is_enabled', return_value=True)
+    def test_kessel_path_denies_when_no_user_id(self, mock_flag):
+        request = request_object_for_testing(
+            auth_by=RHIdentityAuthentication, user_id=None
+        )
+        with self.settings(RBAC_ENABLED=True, KESSEL_ENABLED=True):
+            result, elapsed = check_permission(request, 'advisor:weekly-report:read')
+            self.assertFalse(result)
+
+    @responses.activate
+    def test_kessel_disabled_v1_denies_when_no_matching_permission(self):
+        rbac_access_url = make_rbac_url(
+            'access/?application=advisor,tasks,inventory&limit=1000',
+            rbac_base=TEST_RBAC_URL,
+        )
+        responses.get(
+            rbac_access_url,
+            json={'data': [{'permission': 'advisor:recommendation-results:read'}]},
+            status=200,
+        )
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        with self.settings(RBAC_ENABLED=True, RBAC_URL=TEST_RBAC_URL, KESSEL_ENABLED=False):
+            result, elapsed = check_permission(request, 'advisor:weekly-report:read')
+            self.assertFalse(result)

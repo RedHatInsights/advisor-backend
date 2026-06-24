@@ -32,6 +32,7 @@ from kessel.inventory.v1beta2 import (
     reporter_reference_pb2,
     streamed_list_objects_request_pb2,
     streamed_list_objects_response_pb2,
+    streamed_list_subjects_request_pb2,
     subject_reference_pb2
 )
 
@@ -188,6 +189,52 @@ def _get_resource_page(
 
 
 #############################################################################
+# Streaming subject request/response handling (inverse of get_resources)
+#############################################################################
+
+principal_subject_type = representation_type_pb2.RepresentationType(
+    resource_type="principal",
+    reporter_type="rbac",
+)
+
+
+def get_subjects(
+    client_stub: inventory_service_pb2_grpc.KesselInventoryServiceStub,
+    subject_type: representation_type_pb2.RepresentationType,
+    relation: str,
+    resource: resource_reference_pb2.ResourceReference,
+    limit: int = 1000,
+    fetch_all=True
+) -> Generator[
+    subject_reference_pb2.SubjectReference, None, None
+]:
+    """
+    Get all subjects that have the given relation to the given resource.
+    Inverse of get_resources: given a resource, find the subjects.
+    """
+    continuation_token = None
+    while True:
+        request = streamed_list_subjects_request_pb2.StreamedListSubjectsRequest(
+            resource=resource,
+            relation=relation,
+            subject_type=subject_type,
+            pagination=request_pagination_pb2.RequestPagination(
+                limit=limit,
+                continuation_token=continuation_token
+            )
+        )
+        last_data = None
+        for data in client_stub.StreamedListSubjects(request):
+            yield data.subject
+            last_data = data
+        if not fetch_all or last_data is None:
+            break
+        continuation_token = last_data.pagination.continuation_token
+        if not continuation_token:
+            break
+
+
+#############################################################################
 # Test decorator
 #############################################################################
 
@@ -243,6 +290,7 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
     def __init__(self) -> None:
         self.permission_check_responses = dict()
         self.lookup_resources_responses = dict()
+        self.lookup_subjects_responses = dict()
 
     def add_permission_check_response(
         self, check: check_request_pb2.CheckRequest, response_int: int
@@ -321,6 +369,38 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
             return self.lookup_resources_responses[subject_str]
         else:
             raise NotImplementedError(f"Response for lookup {subject_str} not implemented")
+
+    def add_lookup_subjects_response(
+        self, resource: ResourceRef, user_ids: list[str]
+    ) -> None:
+        """
+        When subjects for this resource are requested, return these user_ids.
+        """
+        resource_str = str(resource)
+        response_objs = [
+            SimpleNamespace(
+                subject=SimpleNamespace(
+                    resource=SimpleNamespace(resource_id=f"redhat/{uid}")
+                ),
+                pagination=SimpleNamespace(continuation_token=None)
+            )
+            for uid in user_ids
+        ]
+        self.lookup_subjects_responses[resource_str] = response_objs
+
+    def del_lookup_subjects_response(self, resource: ResourceRef):
+        resource_str = str(resource)
+        del self.lookup_subjects_responses[resource_str]
+
+    def StreamedListSubjects(
+        self, request: streamed_list_subjects_request_pb2.StreamedListSubjectsRequest
+    ) -> list:
+        resource = request.resource
+        resource_str = str(resource)
+        if resource_str in self.lookup_subjects_responses:
+            return self.lookup_subjects_responses[resource_str]
+        else:
+            raise NotImplementedError(f"Response for subject lookup {resource_str} not implemented")
 
 
 #############################################################################
@@ -417,6 +497,34 @@ class Kessel:
             "Getting host groups for subject - Result %s", result
         )
 
+        return result, time.time() - start
+
+    def subjects_with_permission(
+        self, resource: ResourceRef, relation: str
+    ) -> Tuple[list[str], float]:
+        """
+        Find all principals that have the given relation on the given resource.
+        Returns a list of user_id strings (with the 'redhat/' prefix stripped).
+        """
+        if not self.client:
+            logger.error("Kessel client not available (in subjects_with_permission)")
+            return [], 0.0
+        start = time.time()
+        logger.info(
+            "Getting subjects with %s on %s", relation, resource
+        )
+        result = []
+        for subject_ref in get_subjects(
+            self.client, principal_subject_type,
+            relation, resource.as_pb2()
+        ):
+            resource_id = subject_ref.resource.resource_id
+            if resource_id.startswith('redhat/'):
+                result.append(resource_id[len('redhat/'):])
+            else:
+                result.append(resource_id)
+
+        logger.debug("subjects_with_permission result: %s", result)
         return result, time.time() - start
 
 
