@@ -620,6 +620,19 @@ class GetWorkspaceIdTestCase(TestCase):
         workspace_id, elapsed = get_workspace_id(request)
         self.assertEqual(len(responses.calls), 1)
         self.assertEqual(workspace_id, constants.kessel_std_workspace_id)
+        self.assertEqual(elapsed, 0.0)
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL)
+    def test_get_workspace_id_generic_exception(self):
+        import api.kessel as kessel_mod
+        kessel_mod.workspace_cache.clear()
+        request = request_object_for_testing(auth_by=RHIdentityAuthentication)
+        with patch('api.kessel.fetch_default_workspace', side_effect=ValueError("boom")), \
+             self.assertLogs(logger='advisor-log') as logs:
+            workspace_id, elapsed = get_workspace_id(request)
+        self.assertFalse(workspace_id)
+        self.assertGreater(elapsed, 0.0)
+        self.assertTrue(any('Error fetching workspace from RBAC: boom' in msg for msg in logs.output))
 
 
 class JWTAuthPathTestCase(TestCase):
