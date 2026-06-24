@@ -365,7 +365,6 @@ def check_permission(
     return has_rbac_permission(request, permission)
 
 
-
 def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tuple[bool, float]:
     """
     Check if this user in this account has the required permission.
