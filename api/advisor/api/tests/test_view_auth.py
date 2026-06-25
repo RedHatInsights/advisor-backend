@@ -25,7 +25,6 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from api.kessel import add_kessel_response
 from api.models import InventoryHost
-from unittest.mock import patch
 
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
