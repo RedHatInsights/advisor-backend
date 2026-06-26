@@ -289,6 +289,14 @@ class constants(object):
 
     # KESSELWORKSPACE1
     kessel_std_workspace_id = '4f574c45-5353-454b-3145-434150534b52'
+    kessel_std_workspace_response = {
+        'data': [{
+            'id': kessel_std_workspace_id,
+            'name': 'Default Workspace',
+            'type': 'default',
+            'description': '',
+        }]
+    }
 
     # Kessel RBAC permission constants
     kessel_std_org_obj = kessel.Workspace(kessel_std_workspace_id).to_ref().as_pb2()

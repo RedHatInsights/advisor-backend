@@ -20,7 +20,8 @@ from types import SimpleNamespace
 from typing import Generator, Optional, Tuple
 from uuid import UUID
 
-from kessel.auth import fetch_oidc_discovery, OAuth2ClientCredentials
+from kessel.auth import fetch_oidc_discovery, OAuth2ClientCredentials, oauth2_auth_request
+from kessel.rbac.v2 import fetch_default_workspace  # noqa: F401 (used via kessel.fetch_default_workspace)
 from kessel.inventory.v1beta2 import (
     ClientBuilder,
     allowed_pb2,
@@ -404,6 +405,25 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
 
 
 #############################################################################
+# Shared service account credentials
+#############################################################################
+
+_service_account_credentials = None
+
+
+def get_service_account_credentials():
+    global _service_account_credentials
+    if _service_account_credentials is None and settings.KESSEL_AUTH_ENABLED:
+        discovery = fetch_oidc_discovery(settings.KESSEL_AUTH_OIDC_ISSUER)
+        _service_account_credentials = OAuth2ClientCredentials(
+            client_id=settings.KESSEL_AUTH_CLIENT_ID,
+            client_secret=settings.KESSEL_AUTH_CLIENT_SECRET,
+            token_endpoint=discovery.token_endpoint,
+        )
+    return _service_account_credentials
+
+
+#############################################################################
 # The interface we provide to the rest of our code.
 #############################################################################
 
@@ -434,12 +454,7 @@ class Kessel:
             if settings.KESSEL_INSECURE:
                 builder.insecure()
             elif settings.KESSEL_AUTH_ENABLED:
-                discovery = fetch_oidc_discovery(settings.KESSEL_AUTH_OIDC_ISSUER)
-                credentials = OAuth2ClientCredentials(
-                    client_id=settings.KESSEL_AUTH_CLIENT_ID,
-                    client_secret=settings.KESSEL_AUTH_CLIENT_SECRET,
-                    token_endpoint=discovery.token_endpoint
-                )
+                credentials = get_service_account_credentials()
                 builder.oauth2_client_authenticated(credentials)
             else:
                 builder.unauthenticated()
@@ -529,3 +544,8 @@ class Kessel:
 
 
 client = Kessel()
+
+# RBAC workspace auth and cache for v2/workspaces calls
+_sa_creds = get_service_account_credentials()
+service_account_auth = oauth2_auth_request(_sa_creds) if _sa_creds else None
+workspace_cache: dict[tuple[str, str], str] = {}

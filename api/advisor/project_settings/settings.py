@@ -102,8 +102,6 @@ if RBAC_ENABLED:
     RBAC_URL = os.getenv('RBAC_URL')
 else:
     RBAC_URL = None
-RBAC_PSK = os.getenv("RBAC_PSK")
-RBAC_CLIENT_ID = os.getenv("RBAC_CLIENT_ID", "advisor")
 KESSEL_ENABLED = string_to_bool(os.getenv("KESSEL_ENABLED", "false"))
 # Note: tests assume that host='device under test' mean 'use the TestZedClient'.
 KESSEL_URL = os.getenv('KESSEL_URL', 'device under test')

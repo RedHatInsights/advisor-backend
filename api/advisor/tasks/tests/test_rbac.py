@@ -154,7 +154,7 @@ class KesselTestCase(TestCase):
     def test_rbac_basic_allowed_full(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
 
         # Check that we can access the basic views
@@ -173,7 +173,7 @@ class KesselTestCase(TestCase):
     def test_rbac_basic_allowed_read_only(self):
         responses.add(
             responses.GET, TEST_RBAC_V2_WKSPC,
-            json={'data': [{'id': constants.kessel_std_workspace_id}]}
+            json=constants.kessel_std_workspace_response
         )
 
         # Check that we can access the basic views
