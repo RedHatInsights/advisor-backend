@@ -11,7 +11,7 @@ PARTITION_COUNT = int(os.getenv('ADVISOR_INVENTORY_HOST_NUM_PARTITIONS', '1'))
 PARENT_TABLE = 'advisor_inventory_host'
 
 CREATE_PARENT_SQL = f"""
-    CREATE TABLE {PARENT_TABLE} (
+    CREATE TABLE IF NOT EXISTS {PARENT_TABLE} (
         inventory_id UUID NOT NULL,
         account VARCHAR(10),
         org_id VARCHAR(50) NOT NULL,
@@ -43,7 +43,7 @@ CREATE_PARENT_SQL = f"""
 partition_statements = []
 for i in range(PARTITION_COUNT):
     partition_statements.append(
-        f'CREATE TABLE {PARENT_TABLE}_p{i} '
+        f'CREATE TABLE IF NOT EXISTS {PARENT_TABLE}_p{i} '
         f'PARTITION OF {PARENT_TABLE} '
         f'FOR VALUES WITH (MODULUS {PARTITION_COUNT}, REMAINDER {i});'
     )
