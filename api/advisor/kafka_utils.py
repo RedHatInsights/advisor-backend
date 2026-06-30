@@ -477,6 +477,10 @@ class KafkaDispatcher(object):
                     logger.debug("Offsets committed successfully")
                 except Exception as e:
                     logger.exception("Error committing Kafka offsets: %s", e)
+            else:
+                logger.error(
+                    "Batch processing failed; stopping consumer to restart from last committed offset")
+                self.quit = True
 
     def _receive_single(self):
         while not self.quit:

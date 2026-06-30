@@ -17,11 +17,14 @@
 # import responses
 from copy import deepcopy
 from datetime import datetime, timedelta
+from unittest.mock import patch
 from django.test import TestCase  # , override_settings
 from django.utils import timezone
 
+import prometheus
 from feature_flags import set_unleash_flag, FLAG_INVENTORY_EVENT_REPLICATION
-from kafka_utils import JsonValue
+from django.core.signals import request_started, request_finished
+from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
     handle_inventory_event, parse_created_event, parse_deleted_event,
@@ -689,3 +692,53 @@ class TestAdvisorInventoryServer(TestCase):
 
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
         self.assertEqual(inv_host.display_name, 'new-name')
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    @patch.object(prometheus.INVENTORY_EVENT_MALFORMED, 'inc')
+    def test_malformed_messages_increment_prometheus_counter(self, mock_malformed_inc):
+        """Malformed messages increment INVENTORY_EVENT_MALFORMED once per skipped message."""
+        malformed_msg = deepcopy(create_new_host_msg)
+        malformed_msg['host'] = "oops"
+        batch = [
+            {'key': 'value'},           # no type
+            {'type': 'foo'},            # unknown type
+            malformed_msg,              # unexpected parse error
+            deepcopy(delete_host_msg),  # missing request_id
+        ]
+        del batch[3]['request_id']
+
+        with self.assertLogs(logger='advisor-log'):
+            handle_inventory_event('topic', batch)
+
+        self.assertEqual(mock_malformed_inc.call_count, 4)
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_delete_failure_prevents_batch_ack(self):
+        """A failed delete commit must fail the batch so offsets are not committed."""
+        from django.db import close_old_connections
+
+        consumer = DummyConsumer()
+        consumer.add_message('topic', delete_host_msg)
+
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', handle_inventory_event, batch=True)
+
+        request_started.disconnect(close_old_connections)
+        request_finished.disconnect(close_old_connections)
+        try:
+            with patch(
+                'api.management.commands.advisor_inventory_service.bulk_delete_hosts',
+                side_effect=RuntimeError("delete failed"),
+            ):
+                messages = consumer.consume(num_messages=1, timeout=1)
+                with self.assertLogs(logger='advisor-log'):
+                    result = dispatcher._handle_batch_messages(messages)
+        finally:
+            request_started.connect(close_old_connections)
+            request_finished.connect(close_old_connections)
+
+        self.assertFalse(result)
+        self.assertEqual(consumer.commit_count, 0)
+        self.assertTrue(
+            Host.objects.filter(inventory_id=constants.host_01_uuid).exists()
+        )

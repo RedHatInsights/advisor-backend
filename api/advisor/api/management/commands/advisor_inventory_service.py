@@ -23,6 +23,7 @@ import prometheus
 import signal
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 
@@ -165,6 +166,7 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
             if 'type' not in message:
                 logger.error("Message received on topic %s with no 'type' field", topic)
                 prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
+                prometheus.INVENTORY_EVENT_MALFORMED.inc()
                 continue
 
             match message['type']:
@@ -173,20 +175,33 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
                     if parsed is not None:
                         upserts.append(parsed)
                         created_count += 1
+                    else:
+                        prometheus.INVENTORY_EVENT_MALFORMED.inc()
                 case 'updated':
                     parsed = parse_created_event(message)
                     if parsed is not None:
                         upserts.append(parsed)
                         updated_count += 1
+                    else:
+                        prometheus.INVENTORY_EVENT_MALFORMED.inc()
                 case 'delete':
                     parsed = parse_deleted_event(message)
                     if parsed is not None:
                         delete_data.append(parsed)
+                    else:
+                        prometheus.INVENTORY_EVENT_MALFORMED.inc()
                 case msg_type:
                     logger.error("Inventory event: Unknown message type: %s", msg_type)
+                    prometheus.INVENTORY_EVENT_MALFORMED.inc()
         except Exception:
             logger.exception("Failed to parse inventory event, skipping")
+            prometheus.INVENTORY_EVENT_MALFORMED.inc()
             continue
+
+    if delete_data:
+        logger.debug("Starting bulk delete of %d hosts", len(delete_data))
+        bulk_delete_hosts(delete_data)
+        logger.debug("Bulk delete committed successfully")
 
     if upserts:
         # TOCTOU: a concurrent write between this check and bulk_upsert_hosts
@@ -199,14 +214,6 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
                       len(upserts), created_count, updated_count)
         bulk_upsert_hosts(upserts)
         logger.debug("Bulk upsert committed successfully")
-        prometheus.INVENTORY_HOST_CREATED.inc(created_count)
-        prometheus.INVENTORY_HOST_UPDATED.inc(updated_count)
-
-    if delete_data:
-        logger.debug("Starting bulk delete of %d hosts", len(delete_data))
-        bulk_delete_hosts(delete_data)
-        logger.debug("Bulk delete committed successfully")
-        prometheus.INVENTORY_HOST_DELETED.inc(len(delete_data))
 
 
 def log_missing_key(request_id: str, event_type: str, key_name: str):
@@ -347,44 +354,49 @@ def parse_deleted_event(message: dict[str, JsonValue]) -> ParsedDeleteEvent | No
 def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
     """Bulk upsert AdvisorInventoryHost and Host records."""
     inv_instances = [item.to_advisor_model() for item in upserts]
-    AdvisorInventoryHost.objects.bulk_create(
-        inv_instances,
-        update_conflicts=True,
-        unique_fields=['org_id', 'inventory_id'],
-        update_fields=[
-            'display_name', 'account', 'tags', 'workspace_id', 'workspace_name',
-            'created', 'updated', 'last_check_in', 'insights_id', 'stale_timestamp',
-            'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
-            'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
-            'owner_id', 'rhc_client_id', 'workloads', 'system_update_method',
-        ],
-    )
-    logger.debug("Bulk upserted %d AdvisorInventoryHost records", len(inv_instances))
-
     host_instances = [item.to_host_model() for item in upserts]
-    Host.objects.bulk_create(
-        host_instances,
-        update_conflicts=True,
-        unique_fields=['inventory_id'],
-        update_fields=['account', 'org_id', 'satellite_id'],
-    )
-    logger.debug("Bulk upserted %d Host records", len(host_instances))
 
+    with transaction.atomic():
+        advisor_inv_upserted = len(AdvisorInventoryHost.objects.bulk_create(
+            inv_instances,
+            update_conflicts=True,
+            unique_fields=['org_id', 'inventory_id'],
+            update_fields=[
+                'display_name', 'account', 'tags', 'workspace_id', 'workspace_name',
+                'created', 'updated', 'last_check_in', 'insights_id', 'stale_timestamp',
+                'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
+                'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
+                'owner_id', 'rhc_client_id', 'workloads', 'system_update_method',
+            ],
+        ))
+        logger.debug("Bulk upserted %d AdvisorInventoryHost records", advisor_inv_upserted)
+
+        host_upserted = len(Host.objects.bulk_create(
+            host_instances,
+            update_conflicts=True,
+            unique_fields=['inventory_id'],
+            update_fields=['account', 'org_id', 'satellite_id'],
+        ))
+        logger.debug("Bulk upserted %d Host records", host_upserted)
+
+        prometheus.INVENTORY_HOST_UPSERTED.inc(advisor_inv_upserted + host_upserted)
 
 def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
-    """Bulk delete Host and AdvisorInventoryHost records."""
+    """Bulk delete Host and AdvisorInventoryHost records in a single transaction."""
     requested = len(deletes)
     delete_q = Q()
     for item in deletes:
         delete_q |= Q(inventory_id=item.inventory_id, org_id=item.org_id)
 
-    deleted_hosts = Host.objects.filter(delete_q).delete()
-    logger.info("Batch deleted %d records based on Host: %s.", *deleted_hosts)
+    with transaction.atomic():
+        deleted_hosts = Host.objects.filter(delete_q).delete()
+        logger.info("Batch deleted %d records based on Host: %s.", *deleted_hosts)
 
-    deleted_inv = AdvisorInventoryHost.objects.filter(delete_q).delete()
-    logger.info("Batch deleted %d records based on AdvisorInventoryHost: %s.", *deleted_inv)
+        deleted_inv_num, _ = AdvisorInventoryHost.objects.filter(delete_q).delete()
+        logger.info("Batch deleted %d records based on AdvisorInventoryHost", deleted_inv_num)
+        prometheus.INVENTORY_HOST_DELETED.inc(deleted_inv_num)
 
-    deleted_count = deleted_inv[0]
+    deleted_count = deleted_inv_num
     missing = requested - deleted_count
     if missing > 0:
         logger.warning(
