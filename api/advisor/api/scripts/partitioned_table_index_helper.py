@@ -81,7 +81,8 @@ def _create_partitioned_table_index_managed(
 
     db_connection = connections['default']
     db_connection.ensure_connection()
-    db_connection.connection.commit()
+    original_autocommit = db_connection.get_autocommit()
+
     db_connection.set_autocommit(True)
     try:
         with db_connection.cursor() as cursor:
@@ -93,14 +94,16 @@ def _create_partitioned_table_index_managed(
                     f'CREATE {unique_clause}INDEX CONCURRENTLY IF NOT EXISTS {partition_index_name} '
                     f'ON {qualified_partition} {index_definition};'
                 )
-    finally:
-        db_connection.set_autocommit(False)
 
-    _wait_for_concurrent_indexes()
-    _execute_sql(
-        f'CREATE {unique_clause}INDEX IF NOT EXISTS {index_name} '
-        f'ON {qualified_table} {index_definition};'
-    )
+        _wait_for_concurrent_indexes()
+
+        with db_connection.cursor() as cursor:
+            cursor.execute(
+                f'CREATE {unique_clause}INDEX IF NOT EXISTS {index_name} '
+                f'ON {qualified_table} {index_definition};'
+            )
+    finally:
+        db_connection.set_autocommit(original_autocommit)
 
 def create_partitioned_table_index(
     table_name: str,
