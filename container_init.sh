@@ -35,11 +35,17 @@ else
 fi
 set -u
 
+echo "Initializing/updating database environment ..."
 if [ "${ENABLE_INIT_CONTAINER_MIGRATIONS,,}" == "true" ]; then
-    echo "Running database migrations ..."
-    pipenv run python api/advisor/manage.py migrate --noinput
+    echo "Showing database migrations for api and tasks ..."
+    pipenv run python api/advisor/manage.py showmigrations --traceback --verbosity=3 api tasks
+    echo "Running all database migrations ..."
+    pipenv run python api/advisor/manage.py migrate --traceback --noinput --verbosity=3
+    echo "After migrations applied ..."
+    pipenv run python api/advisor/manage.py showmigrations --traceback --verbosity=3 api tasks
 fi
 # Note: don't load data which is loaded by content import - e.g. resolution_risks
+echo "Loading basic fixtures ..."
 pipenv run python api/advisor/manage.py loaddata --verbosity=3 rulesets rule_categories system_types upload_sources
 
 if [ "${ADVISOR_ENV}" != 'dev' ]; then

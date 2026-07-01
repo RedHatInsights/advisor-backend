@@ -20,9 +20,16 @@
 # -u: Treat unset variables and parameters as failures.
 set -eu -o pipefail
 
-echo "Running database migrations ..."
+echo "Initializing/updating local development database environment ..."
 # podman-compose ensures the advisor-db service is running first
-pipenv run python api/advisor/manage.py migrate --noinput
+echo "Showing database migrations for api and tasks ..."
+pipenv run python api/advisor/manage.py showmigrations --traceback --verbosity=3 api tasks
+echo "Running all database migrations ..."
+pipenv run python api/advisor/manage.py migrate --traceback --noinput --verbosity=3
+echo "After migrations applied ..."
+pipenv run python api/advisor/manage.py showmigrations --traceback --verbosity=3 api tasks
+
+echo "Loading basic fixtures ..."
 pipenv run python api/advisor/manage.py loaddata --verbosity=3 rulesets rule_categories system_types upload_sources
 
 echo "Loading production fixtures for tasks and pathways ..."
