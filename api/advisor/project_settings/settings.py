@@ -133,7 +133,7 @@ TASKS_API_BATCH_SIZE = int(os.getenv('TASKS_BATCH_SIZE', '50'))
 TASKS_REWRITE_INTERNAL_URLS = string_to_bool(os.getenv('TASKS_REWRITE_INTERNAL_URLS', 'false'))
 TASKS_REWRITE_INTERNAL_URLS_FOR = os.getenv('TASKS_REWRITE_INTERNAL_URLS_FOR', 'internal.console.')
 
-SPLUNK_URL = "https://http-inputs-rhcorporate.splunkcloud.com/services/collector/event"
+SPLUNK_URL = "https://splunk-hec.redhat.com/services/collector/event"
 SPLUNK_TOKEN = os.getenv('SPLUNK_HEC_TOKEN', '')
 ENABLE_SPLUNK_HEC = string_to_bool(os.getenv('ENABLE_SPLUNK_HEC', 'false'))
 
