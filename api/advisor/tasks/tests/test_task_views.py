@@ -388,24 +388,24 @@ class TaskViewTestCase(TestCase):
         # Test filtering log4shell systems on matching host group
         res = self.client.get(
             reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
-            data={'groups': 'group01'},
+            data={'groups': 'group_1'},
             **self.std_auth)
         self.assertEqual(res.status_code, 200, res.content.decode())
         hosts = res.json()['data']
         self.assertEqual(len(hosts), 1)
         self.assertEqual(hosts[0]['display_name'], constants.host_01_name)
-        self.assertEqual(hosts[0]['groups'][0]['name'], 'group01')
+        self.assertEqual(hosts[0]['groups'][0]['name'], 'group_1')
 
         # Test filtering log4shell systems on matching host group & display name
         res = self.client.get(
             reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
-            data={'groups': 'group01', 'display_name': 'system01'},
+            data={'groups': 'group_1', 'display_name': 'system01'},
             **self.std_auth)
         self.assertEqual(res.status_code, 200, res.content.decode())
         hosts = res.json()['data']
         self.assertEqual(len(hosts), 1)
         self.assertEqual(hosts[0]['display_name'], constants.host_01_name)
-        self.assertEqual(hosts[0]['groups'][0]['name'], 'group01')
+        self.assertEqual(hosts[0]['groups'][0]['name'], 'group_1')
 
         # Test filtering log4system systems on non-matching host group & display name
         res = self.client.get(
@@ -626,7 +626,7 @@ class TaskViewTestCase(TestCase):
         # system01 is RHEL6 so doesn't meet the requirements of being RHEL7 or 8
         self.assertEqual(hosts[2]['display_name'], constants.host_01_name)
         self.assertEqual(hosts[2]['requirements'], [OS_V7_V8_REQ])
-        self.assertEqual(hosts[2]['groups'][0]['name'], 'group01')
+        self.assertEqual(hosts[2]['groups'][0]['name'], 'group_1')
         self.assertEqual(hosts[2]['connection_type'], 'direct')
         # edge01 is RHEL9 so doesn't meet the requirements of being RHEL7 or 8
         self.assertEqual(hosts[6]['display_name'], constants.host_e1_name)

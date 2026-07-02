@@ -914,9 +914,10 @@ required for Kessel mode to grant access to most endpoints.
 
 To allow users access to extra workspaces (host groups) containing specific hosts, add those group UUIDs:
 ```bash
-python api/advisor/manage.py mock_rbac --kessel --host-groups "00000000-0000-0000-0000-000000000000,<test_group_uuid>"
+python api/advisor/manage.py mock_rbac --kessel --host-groups "00000000-0000-0000-0000-000000000000,<group_1_uuid>,<group_2_uuid>,<test_group_uuid>"
 ```
-... with `<test_group_uuid>` being the UUID of the host group containing the host we fake uploaded earlier.
+... with `<group_1_uuid>` being the UUID of `group_1` from the `basic_test_data` fixture
+and `<test_group_uuid>` being the UUID of the host group containing the host we fake uploaded earlier.
 
 #### Inspecting the gRPC server with grpcurl
 
