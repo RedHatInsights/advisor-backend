@@ -126,7 +126,7 @@ class SystemViewTestCase(TestCase):
         self.assertIn('tags', data[3])
         self.assertEqual(data[3]['tags'], [])
         self.assertIn('groups', data[3])
-        self.assertEqual(data[3]['groups'][0]['name'], 'group01')
+        self.assertEqual(data[3]['groups'][0]['name'], 'group_1')
         self.assertIn('updated', data[3])
         self.assertEqual(data[3]['updated'], '2018-12-04T05:15:38Z')
         self.assertIn('last_check_in', data[3])
@@ -351,7 +351,7 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(data[1]['id'], constants.host_e1_uuid)
 
         # Host group filtering - a group with a matching system
-        res = self.client.get(reverse('tasks-system-list'), data={'groups': 'group01'}, **self.std_auth)
+        res = self.client.get(reverse('tasks-system-list'), data={'groups': 'group_1'}, **self.std_auth)
         self.assertEqual(res.status_code, 200, res.content.decode())
         data = res.json()['data']
         self.assertEqual(len(data), 1)
@@ -500,7 +500,7 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(data['os_version'], 'RHEL 7.5')
         self.assertIn('groups', data)
         self.assertEqual(sorted(data['groups'][0].keys()), ['id', 'name'])
-        self.assertEqual(data['groups'][0]['name'], 'group01')
+        self.assertEqual(data['groups'][0]['name'], 'group_1')
         self.assertIn('connection_type', data)
         self.assertEqual(data['connection_type'], 'direct')
         self.assertIn('last_check_in', data)

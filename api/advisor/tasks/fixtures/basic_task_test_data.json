@@ -7,8 +7,8 @@
       "display_name": "system01.example.com",
       "tags": [],
       "groups": [{
-        "id": "00112233-4455-6677-8899-010101010101",
-        "name": "group01"
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "group_1"
       }],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-12-04T05:15:38Z",
@@ -48,7 +48,10 @@
       "org_id": "9876543",
       "display_name": "system03.example.com",
       "tags": [],
-      "groups": [],
+      "groups": [{
+        "id": "11111111-1111-1111-1111-222222222222",
+        "name": "group_2"
+      }],
       "created": "2020-01-01T06:00:00Z",
       "updated": "2018-09-22T02:00:51Z",
       "last_check_in": "2018-12-10T23:32:13Z",
