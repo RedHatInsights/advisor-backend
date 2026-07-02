@@ -17,15 +17,17 @@
 # import responses
 from copy import deepcopy
 from datetime import datetime, timedelta
-
+from unittest.mock import patch
 from django.test import TestCase  # , override_settings
 from django.utils import timezone
 
+import prometheus
 from feature_flags import set_unleash_flag, FLAG_INVENTORY_EVENT_REPLICATION
-from kafka_utils import JsonValue
+from django.core.signals import request_started, request_finished
+from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    handle_inventory_event, handle_created_event, handle_deleted_event
+    handle_inventory_event, parse_created_event, parse_deleted_event,
 )
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, InventoryHost, Upload
 from api.tests import constants
@@ -199,19 +201,21 @@ class TestAdvisorInventoryServer(TestCase):
         """
         with self.assertLogs(logger='advisor-log') as logs:
             # No 'type' field in message
-            handle_inventory_event('topic', {'key': 'value'})
-            self.assertEqual(len(logs.output), 1)
+            handle_inventory_event('topic', [{'key': 'value'}])
             self.assertEqual(
-                "ERROR:advisor-log:Message received on topic topic with no 'type' field",
+                "INFO:advisor-log:Processing batch of 1 inventory events",
                 logs.output[0]
             )
-            # Unknown message type
-            handle_inventory_event('topic', {'type': 'foo'})
             self.assertEqual(
-                "ERROR:advisor-log:Inventory event: Unknown message type: foo",
+                "ERROR:advisor-log:Message received on topic topic with no 'type' field",
                 logs.output[1]
             )
-            self.assertEqual(len(logs.output), 2)
+            # Unknown message type
+            handle_inventory_event('topic', [{'type': 'foo'}])
+            self.assertEqual(
+                "ERROR:advisor-log:Inventory event: Unknown message type: foo",
+                logs.output[3]
+            )
         # Test the actual calls to create and delete in their own test methods.
 
     @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
@@ -221,28 +225,27 @@ class TestAdvisorInventoryServer(TestCase):
         """
         # Start by processing the create message using handle_inventory_event
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            handle_inventory_event('topic', create_new_host_msg)
+            handle_inventory_event('topic', [create_new_host_msg])
             # We aim to remove this debug log soon but in the meantime
             log_lines: list[str] = list(filter(
                 lambda line: 'Using Cyndi replication view' not in line, logs.output
             ))
             self.assertEqual(
-                "INFO:advisor-log:Handling 'created' event",
+                "INFO:advisor-log:Processing batch of 1 inventory events",
                 log_lines[0]
             )
-            self.assertEqual(
-                "DEBUG:advisor-log:Created Inventory host %s account %s org_id %s" % (
-                    new_host_id, constants.standard_acct, constants.standard_org
-                ),
-                log_lines[1]
+            self.assertTrue(
+                any("Handling 'created' event" in line for line in log_lines),
+                "Should log handling of created event"
             )
-            self.assertEqual(
-                "DEBUG:advisor-log:Created Host %s account %s org_id %s" % (
-                    new_host_id, constants.standard_acct, constants.standard_org
-                ),
-                log_lines[2]
+            self.assertTrue(
+                any("Bulk upserted 1 AdvisorInventoryHost records" in line for line in log_lines),
+                "Should log bulk upsert of AdvisorInventoryHost"
             )
-            self.assertEqual(len(log_lines), 3)
+            self.assertTrue(
+                any("Bulk upserted 1 Host records" in line for line in log_lines),
+                "Should log bulk upsert of Host"
+            )
             self.assertEqual(
                 AdvisorInventoryHost.objects.filter(inventory_id=new_host_id).count(),
                 1
@@ -306,14 +309,14 @@ class TestAdvisorInventoryServer(TestCase):
                         del modified_msg[missing_field]
                     case host_field:  # everything else inside host
                         del modified_msg['host'][host_field]
-                handle_created_event(modified_msg)
+                result = parse_created_event(modified_msg)
                 # We aim to remove this debug log soon but in the meantime
                 log_lines: list[str] = list(filter(
                     lambda line: 'Using Cyndi replication view' not in line, logs.output
                 ))
-                self.assertEqual(
-                    "INFO:advisor-log:Handling 'created' event",
-                    log_lines[0]
+                self.assertTrue(
+                    any("Handling 'created' event" in line for line in log_lines),
+                    "Should log handling of created event"
                 )
                 if missing_field == 'metadata':
                     this_req_id = 'metadata'
@@ -321,89 +324,43 @@ class TestAdvisorInventoryServer(TestCase):
                     this_req_id = 'unknown request_id'
                 else:
                     this_req_id = modified_msg['metadata']['request_id']
-                self.assertEqual(
-                    "ERROR:advisor-log:Request %s: Inventory created event did not contain required key '%s'" % (
-                        this_req_id, missing_field
+                self.assertTrue(
+                    any(
+                        "Request %s: Inventory created event did not contain required key '%s'" % (
+                            this_req_id, missing_field
+                        ) in line
+                        for line in log_lines
                     ),
-                    log_lines[1],
                     f"Field {missing_field} is required"
                 )
-                self.assertEqual(len(log_lines), 2)
+                self.assertIsNone(result)
         # The optional fields should allow a success though.
-        # This also tests that receiving a 'create' event on a host that
-        # already exists is treated as an update.
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             modified_msg = deepcopy(create_new_host_msg)
             del modified_msg['host']['account']
-            handle_created_event(modified_msg)
+            result = parse_created_event(modified_msg)
             log_lines: list[str] = list(filter(
                 lambda line: 'Using Cyndi replication view' not in line, logs.output
             ))
-            self.assertEqual(
-                "INFO:advisor-log:Handling 'created' event",
-                log_lines[0]
+            self.assertTrue(
+                any("Handling 'created' event" in line for line in log_lines),
+                "Should log handling of created event"
             )
-            self.assertEqual(
-                "DEBUG:advisor-log:Created Inventory host %s account %s org_id %s" % (
-                    new_host_id, None, constants.standard_org
-                ),
-                log_lines[1]
-            )
-            self.assertEqual(
-                "DEBUG:advisor-log:Created Host %s account %s org_id %s" % (
-                    new_host_id, None, constants.standard_org
-                ),
-                log_lines[2]
-            )
-            self.assertEqual(len(log_lines), 3)
-            # Check existence of AdvisorInventoryHost record
-            self.assertEqual(
-                AdvisorInventoryHost.objects.filter(inventory_id=new_host_id).count(),
-                1
-            )
-            self.assertEqual(
-                Host.objects.filter(inventory_id=new_host_id).count(),
-                1
-            )
-            host = Host.objects.get(inventory_id=new_host_id)
-            self.assertEqual(str(host.satellite_id), new_host_satid.lower())
+            self.assertIsNotNone(result)
+            self.assertIsNone(result.account)
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             modified_msg = deepcopy(create_new_host_msg)
             del modified_msg['host']['satellite_id']
-            handle_created_event(modified_msg)
+            result = parse_created_event(modified_msg)
             log_lines: list[str] = list(filter(
                 lambda line: 'Using Cyndi replication view' not in line, logs.output
             ))
-            self.assertEqual(
-                "INFO:advisor-log:Handling 'created' event",
-                log_lines[0]
+            self.assertTrue(
+                any("Handling 'created' event" in line for line in log_lines),
+                "Should log handling of created event"
             )
-            self.assertEqual(
-                "DEBUG:advisor-log:Updated Inventory host %s account %s org_id %s" % (
-                    new_host_id, constants.standard_acct, constants.standard_org
-                ),
-                log_lines[1]
-            )
-            self.assertEqual(
-                "DEBUG:advisor-log:Updated Host %s account %s org_id %s" % (
-                    new_host_id, constants.standard_acct, constants.standard_org
-                ),
-                log_lines[2]
-            )
-            self.assertEqual(len(log_lines), 3)
-            # Check existence of AdvisorInventoryHost record
-            self.assertEqual(
-                AdvisorInventoryHost.objects.filter(inventory_id=new_host_id).count(),
-                1
-            )
-            self.assertEqual(
-                Host.objects.filter(inventory_id=new_host_id).count(),
-                1
-            )
-            host = Host.objects.get(inventory_id=new_host_id)
-            # Because the host is being updated, the Satellite ID has carried
-            # over from the previous update.
-            self.assertEqual(str(host.satellite_id), new_host_satid.lower())
+            self.assertIsNotNone(result)
+            self.assertIsNone(result.satellite_id)
 
     @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_updated_message_success(self):
@@ -412,29 +369,24 @@ class TestAdvisorInventoryServer(TestCase):
         """
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             # Call via handle_inventory_event to exercise update handling
-            handle_inventory_event('topic', update_host_msg)
+            handle_inventory_event('topic', [update_host_msg])
             # Now check the logs
             # We aim to remove this debug log soon but in the meantime
             log_lines: list[str] = list(filter(
                 lambda line: 'Using Cyndi replication view' not in line, logs.output
             ))
             self.assertEqual(
-                "INFO:advisor-log:Handling 'updated' event",
+                "INFO:advisor-log:Processing batch of 1 inventory events",
                 log_lines[0]
             )
-            self.assertEqual(
-                "DEBUG:advisor-log:Updated Inventory host %s account %s org_id %s" % (
-                    constants.host_01_uuid, constants.standard_acct, constants.standard_org
-                ),
-                log_lines[1]
+            self.assertTrue(
+                any("Handling 'updated' event" in line for line in log_lines),
+                "Should log handling of updated event"
             )
-            self.assertEqual(
-                "DEBUG:advisor-log:Updated Host %s account %s org_id %s" % (
-                    constants.host_01_uuid, constants.standard_acct, constants.standard_org
-                ),
-                log_lines[2]
+            self.assertTrue(
+                any("Bulk upserted" in line for line in log_lines),
+                "Should log bulk upsert"
             )
-            self.assertEqual(len(log_lines), 3)
 
             inv_host = AdvisorInventoryHost.objects.get(inventory_id=constants.host_01_uuid)
             self.assertEqual(inv_host.os_name, "RHEL")
@@ -446,37 +398,37 @@ class TestAdvisorInventoryServer(TestCase):
         """
         Test successful deletion of existing host.
         """
-        # Call handle_created_event directly
+        # Call handle_inventory_event with batch
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
-            handle_inventory_event('topic', delete_host_msg)
+            handle_inventory_event('topic', [delete_host_msg])
             # Now check the logs
             # We aim to remove this debug log soon but in the meantime
             log_lines: list[str] = list(filter(
                 lambda line: 'Using Cyndi replication view' not in line, logs.output
             ))
             self.assertEqual(
-                "INFO:advisor-log:Handling 'deleted' event",
+                "INFO:advisor-log:Processing batch of 1 inventory events",
                 log_lines[0]
             )
             self.assertEqual(
-                "INFO:advisor-log:Received DELETE event from Inventory for host %s." % (
-                    constants.host_01_uuid
-                ),
+                "INFO:advisor-log:Handling 'deleted' event",
                 log_lines[1]
             )
-            self.assertEqual(
-                "INFO:advisor-log:Deleted %d records based on Host: %s." % (
-                    9, "{'api.CurrentReport': 4, 'api.HostAck': 1, 'api.Upload': 3, 'api.Host': 1}"
+            self.assertTrue(
+                any(
+                    "Received DELETE event from Inventory for host %s." % constants.host_01_uuid in line
+                    for line in log_lines
                 ),
-                log_lines[2]
+                "Should log the DELETE event details"
             )
-            self.assertEqual(
-                "INFO:advisor-log:Deleted %d records based on AdvisorInventoryHost: %s." % (
-                    1, "{'api.AdvisorInventoryHost': 1}"
-                ),
-                log_lines[3]
+            self.assertTrue(
+                any("Batch deleted" in line and "Host" in line for line in log_lines),
+                "Should log batch deletion of Host"
             )
-            self.assertEqual(len(log_lines), 4)
+            self.assertTrue(
+                any("Batch deleted" in line and "AdvisorInventoryHost" in line for line in log_lines),
+                "Should log batch deletion of AdvisorInventoryHost"
+            )
         # Now test that we actually deleted all those things:
         self.assertEqual(
             AdvisorInventoryHost.objects.filter(inventory_id=constants.host_01_uuid).count(),
@@ -509,7 +461,7 @@ class TestAdvisorInventoryServer(TestCase):
             with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
                 modified_msg: dict[str, JsonValue] = deepcopy(delete_host_msg)
                 del modified_msg[missing_field]
-                handle_deleted_event(modified_msg)
+                result = parse_deleted_event(modified_msg)
                 # We aim to remove this debug log soon but in the meantime
                 log_lines: list[str] = list(filter(
                     lambda line: 'Using Cyndi replication view' not in line, logs.output
@@ -530,6 +482,7 @@ class TestAdvisorInventoryServer(TestCase):
                     f"Field {missing_field} is required"
                 )
                 self.assertEqual(len(log_lines), 2)
+                self.assertIsNone(result)
 
     @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
     def test_created_nullable_fields(self):
@@ -540,7 +493,7 @@ class TestAdvisorInventoryServer(TestCase):
         modified_msg['host']['system_profile'] = {}
         modified_msg['host']['groups'] = []
         with self.assertLogs(logger='advisor-log', level='DEBUG'):
-            handle_created_event(modified_msg)
+            handle_inventory_event('topic', [modified_msg])
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
         self.assertIsNone(inv_host.workspace_id)
         self.assertIsNone(inv_host.workspace_name)
@@ -554,3 +507,238 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertIsNone(inv_host.rhc_client_id)
         self.assertEqual(inv_host.workloads, {})
         self.assertIsNone(inv_host.system_update_method)
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_batch_created_and_updated(self):
+        """Test that handle_inventory_event processes a batch of create and update messages."""
+        batch = [create_new_host_msg, update_host_msg]
+        handle_inventory_event('topic', batch)
+
+        # New host was created
+        self.assertTrue(
+            AdvisorInventoryHost.objects.filter(
+                inventory_id=new_host_id, org_id=constants.standard_org
+            ).exists()
+        )
+        self.assertTrue(
+            Host.objects.filter(inventory_id=new_host_id).exists()
+        )
+        # Existing host was updated
+        inv_host = AdvisorInventoryHost.objects.get(
+            inventory_id=constants.host_01_uuid, org_id=constants.standard_org
+        )
+        self.assertEqual(inv_host.display_name, constants.host_01_name)
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_batch_deleted(self):
+        """Test that handle_inventory_event processes a batch of delete messages."""
+        # First create the host so we can delete it
+        handle_inventory_event('topic', [create_new_host_msg])
+        self.assertTrue(Host.objects.filter(inventory_id=new_host_id).exists())
+
+        delete_new_host_msg = {
+            "type": "delete",
+            "id": new_host_id,
+            "timestamp": "<delete timestamp>",
+            "org_id": constants.standard_org,
+            "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221120",
+            "request_id": "<request id>",
+        }
+        handle_inventory_event('topic', [delete_new_host_msg])
+
+        self.assertFalse(Host.objects.filter(inventory_id=new_host_id).exists())
+        self.assertFalse(
+            AdvisorInventoryHost.objects.filter(
+                inventory_id=new_host_id, org_id=constants.standard_org
+            ).exists()
+        )
+
+    def test_batch_ignored_when_flag_disabled(self):
+        """
+        Test that batched messages are ignored when INVENTORY_EVENT_REPLICATION
+        is disabled (env + feature flag), and that no DB changes occur.
+        """
+        batch = [create_new_host_msg]
+
+        with self.assertLogs(logger='advisor-log') as logs:
+            handle_inventory_event('topic', batch)
+
+        self.assertTrue(
+            any("feature flag not enabled, ignoring" in line for line in logs.output),
+            msg="Expected 'feature flag not enabled, ignoring' log message",
+        )
+        self.assertFalse(
+            AdvisorInventoryHost.objects.filter(
+                inventory_id=new_host_id, org_id=constants.standard_org
+            ).exists()
+        )
+        self.assertFalse(
+            Host.objects.filter(inventory_id=new_host_id).exists()
+        )
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_batch_skips_invalid_messages(self):
+        """Test that invalid messages in a batch are skipped while valid ones proceed."""
+        invalid_msg_no_type = {'key': 'value'}
+        invalid_msg_unknown_type = {'type': 'foo'}
+        batch = [invalid_msg_no_type, invalid_msg_unknown_type, create_new_host_msg]
+
+        with self.assertLogs(logger='advisor-log') as logs:
+            handle_inventory_event('topic', batch)
+
+        # Valid create message should still succeed
+        self.assertTrue(
+            AdvisorInventoryHost.objects.filter(
+                inventory_id=new_host_id, org_id=constants.standard_org
+            ).exists()
+        )
+        # Error logs for the invalid messages
+        self.assertTrue(any("no 'type' field" in line for line in logs.output))
+        self.assertTrue(any("Unknown message type: foo" in line for line in logs.output))
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_malformed_host_payload_does_not_abort_batch(self):
+        """Test that a message with wrong shape (e.g. host as string) is skipped."""
+        malformed_msg = deepcopy(create_new_host_msg)
+        malformed_msg['host'] = "oops"
+
+        batch = [malformed_msg, create_new_host_msg]
+
+        with self.assertLogs(logger='advisor-log') as logs:
+            handle_inventory_event('topic', batch)
+
+        self.assertTrue(
+            any("Failed to parse inventory event" in line for line in logs.output)
+        )
+        self.assertTrue(
+            AdvisorInventoryHost.objects.filter(
+                inventory_id=new_host_id, org_id=constants.standard_org
+            ).exists()
+        )
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_stale_update_does_not_overwrite_newer_data(self):
+        """Test that an event with an older last_check_in is filtered out."""
+        newer_ts = "2026-06-01T12:00:00Z"
+        older_ts = "2025-01-01T00:00:00Z"
+
+        # Insert host with newer last_check_in
+        msg = deepcopy(create_new_host_msg)
+        msg['host']['last_check_in'] = newer_ts
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [msg])
+
+        inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
+        original_display_name = inv_host.display_name
+
+        # Send update with older last_check_in and different display_name
+        stale_msg = deepcopy(create_new_host_msg)
+        stale_msg['type'] = 'updated'
+        stale_msg['host']['last_check_in'] = older_ts
+        stale_msg['host']['display_name'] = 'stale-name-should-not-appear'
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [stale_msg])
+
+        inv_host.refresh_from_db()
+        self.assertEqual(inv_host.display_name, original_display_name)
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_newer_update_overwrites_older_data(self):
+        """Test that an event with a newer last_check_in updates the record."""
+        older_ts = "2025-01-01T00:00:00Z"
+        newer_ts = "2026-06-01T12:00:00Z"
+
+        # Insert host with older last_check_in
+        msg = deepcopy(create_new_host_msg)
+        msg['host']['last_check_in'] = older_ts
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [msg])
+
+        # Send update with newer last_check_in and different display_name
+        update_msg = deepcopy(create_new_host_msg)
+        update_msg['type'] = 'updated'
+        update_msg['host']['last_check_in'] = newer_ts
+        update_msg['host']['display_name'] = 'updated-name'
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [update_msg])
+
+        inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
+        self.assertEqual(inv_host.display_name, 'updated-name')
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_batch_dedup_keeps_latest_timestamp(self):
+        """Test that duplicate host events in a batch keep the one with latest last_check_in."""
+        older_msg = deepcopy(create_new_host_msg)
+        older_msg['host']['last_check_in'] = "2025-01-01T00:00:00Z"
+        older_msg['host']['display_name'] = 'old-name'
+
+        newer_msg = deepcopy(create_new_host_msg)
+        newer_msg['host']['last_check_in'] = "2026-06-01T12:00:00Z"
+        newer_msg['host']['display_name'] = 'new-name'
+
+        # Send older first, newer second
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [older_msg, newer_msg])
+
+        inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
+        self.assertEqual(inv_host.display_name, 'new-name')
+
+        # Clean up and test reverse order
+        AdvisorInventoryHost.objects.filter(inventory_id=new_host_id).delete()
+        Host.objects.filter(inventory_id=new_host_id).delete()
+
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [newer_msg, older_msg])
+
+        inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
+        self.assertEqual(inv_host.display_name, 'new-name')
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    @patch.object(prometheus.INVENTORY_EVENT_MALFORMED, 'inc')
+    def test_malformed_messages_increment_prometheus_counter(self, mock_malformed_inc):
+        """Malformed messages increment INVENTORY_EVENT_MALFORMED once per skipped message."""
+        malformed_msg = deepcopy(create_new_host_msg)
+        malformed_msg['host'] = "oops"
+        batch = [
+            {'key': 'value'},           # no type
+            {'type': 'foo'},            # unknown type
+            malformed_msg,              # unexpected parse error
+            deepcopy(delete_host_msg),  # missing request_id
+        ]
+        del batch[3]['request_id']
+
+        with self.assertLogs(logger='advisor-log'):
+            handle_inventory_event('topic', batch)
+
+        self.assertEqual(mock_malformed_inc.call_count, 4)
+
+    @set_unleash_flag(FLAG_INVENTORY_EVENT_REPLICATION, True)
+    def test_delete_failure_prevents_batch_ack(self):
+        """A failed delete commit must fail the batch so offsets are not committed."""
+        from django.db import close_old_connections
+
+        consumer = DummyConsumer()
+        consumer.add_message('topic', delete_host_msg)
+
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', handle_inventory_event, batch=True)
+
+        request_started.disconnect(close_old_connections)
+        request_finished.disconnect(close_old_connections)
+        try:
+            with patch(
+                'api.management.commands.advisor_inventory_service.bulk_delete_hosts',
+                side_effect=RuntimeError("delete failed"),
+            ):
+                messages = consumer.consume(num_messages=1, timeout=1)
+                with self.assertLogs(logger='advisor-log'):
+                    result = dispatcher._handle_batch_messages(messages)
+        finally:
+            request_started.connect(close_old_connections)
+            request_finished.connect(close_old_connections)
+
+        self.assertFalse(result)
+        self.assertEqual(consumer.commit_count, 0)
+        self.assertTrue(
+            Host.objects.filter(inventory_id=constants.host_01_uuid).exists()
+        )

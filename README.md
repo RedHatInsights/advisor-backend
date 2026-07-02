@@ -112,6 +112,115 @@ means that Advisor would be able to directly write to the InventoryHost model
 and its underlying table.  This gives several advantage - faster updates,
 fewer containers running, and more flexibility in how Advisor works.
 
+## Inventory Event Consumer
+
+The `advisor_inventory_service` management command (`api/advisor/api/management/commands/advisor_inventory_service.py`) runs a Kafka consumer that replicates host data from the Host-Based Inventory (HBI) service into Advisor's own `AdvisorInventoryHost` and `Host` tables. It consumes messages from the `platform.inventory.events` topic in configurable batches (controlled by the `INVENTORY_BATCH_SIZE` setting).
+
+The consumer is gated by the `INVENTORY_EVENT_REPLICATION` setting or the `advisor.inventory_event_replication` feature flag. When neither is enabled, incoming events are logged and discarded.
+
+### How it works
+
+Messages are consumed in batches and dispatched to `handle_inventory_event()`, which:
+
+1. Classifies each message by its `type` field (`created`, `updated`, or `delete`).
+2. Parses valid messages into typed value objects (`ParsedInventoryHost` or `ParsedDeleteEvent`).
+3. Deduplicates upserts by `(org_id, host_id)` within the batch — when multiple events target the same host, only the last one is applied.
+4. Executes bulk DB operations: `bulk_create(update_conflicts=True)` for upserts, and a combined `Q` filter for deletes.
+
+### Message schemas
+
+The consumer handles three event types. Not all fields in the HBI message are used by Advisor; required fields are marked below.
+
+#### Created / Updated events
+
+```json
+{
+    "type": "created",                          // required: "created" or "updated"
+    "timestamp": "<timestamp>",
+    "platform_metadata": "<metadata_json_doc>",
+    "metadata": {                               // required
+        "request_id": "<request_id>"            // required
+    },
+    "host": {                                   // required
+        "id": "<uuid>",                         // required
+        "account": "<account_number>",          // optional
+        "org_id": "<org_id>",                   // required
+        "display_name": "<display_name>",       // required
+        "ansible_host": "<ansible_host>",
+        "fqdn": "<fqdn>",
+        "insights_id": "<insights_id>",         // required (must be non-empty)
+        "subscription_manager_id": "<sub_mgr_id>",
+        "satellite_id": "<satellite_id>",       // optional
+        "bios_uuid": "<bios_uuid>",
+        "ip_addresses": ["<ip_addresses>"],
+        "mac_addresses": ["<mac_addresses>"],
+        "facts": ["<facts>"],
+        "provider_id": "<provider_id>",
+        "provider_type": "<provider_type>",
+        "created": "<created_date>",            // required
+        "updated": "<updated_date>",            // required
+        "last_check_in": "<last_check_in>",     // required
+        "stale_timestamp": "<stale_timestamp>",  // required
+        "stale_warning_timestamp": "<stale_warning_timestamp>",
+        "culled_timestamp": "<culled_timestamp>",
+        "reporter": "<reporter>",               // required
+        "tags": [<tags>],                       // required
+        "system_profile": {                     // required
+            "host_type": "<host_type>",
+            "operating_system": {
+                "name": "<os_name>",
+                "major": <os_major>,
+                "minor": <os_minor>
+            },
+            "bootc_status": {
+                "booted": {
+                    "image": "<image>",
+                    "image_digest": "<digest>"
+                }
+            },
+            "owner_id": "<owner_uuid>",
+            "rhc_client_id": "<rhc_uuid>",
+            "workloads": {<workloads>},
+            "system_update_method": "<method>"
+        },
+        "per_reporter_staleness": {             // required
+            "<reporter>": {
+                "stale_timestamp": "<timestamp>",
+                "stale_warning_timestamp": "<timestamp>",
+                "culled_timestamp": "<timestamp>"
+            }
+        },
+        "groups": [{                            // required
+            "id": "<group_uuid>",
+            "name": "<group_name>"
+        }],
+        "openshift_cluster_id": "<openshift_cluster_id>"
+    }
+}
+```
+
+Fields within `system_profile` are all optional — the consumer handles missing or
+empty values gracefully.  Only the first entry in `groups` is used to populate
+`workspace_id` and `workspace_name`.
+
+#### Delete events
+
+```json
+{
+    "type": "delete",           // required
+    "id": "<uuid>",             // required — the inventory host ID
+    "timestamp": "<timestamp>",
+    "account": "<account>",     // optional
+    "org_id": "<org_id>",       // required
+    "insights_id": "<insights_id>",
+    "request_id": "<request_id>" // required
+}
+```
+
+Deleting a host cascades through `Host` (which cascades to `Upload`,
+`CurrentReport`, and `HostAck`) and then removes the `AdvisorInventoryHost`
+record.
+
 ## Content load and import
 
 There are four main types of data stored in Advisor.
