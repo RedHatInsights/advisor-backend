@@ -259,6 +259,8 @@ class RuleForAccountSerializer(NonNullModelSerializer):
     tags = serializers.SerializerMethodField()
     rating = serializers.IntegerField(read_only=True)
     pathway = RulePathwaySerializer(many=False, required=False)
+    workspace = serializers.SerializerMethodField()
+    group_id = serializers.SerializerMethodField()
 
     def get_playbook_count(self, value):
         return 0 if value.playbook_count is None else value.playbook_count
@@ -266,6 +268,40 @@ class RuleForAccountSerializer(NonNullModelSerializer):
     @extend_schema_field(OpenApiTypes.STR)
     def get_tags(self, value):
         return ' '.join(tag.name for tag in value.tags.order_by('name'))
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_workspace(self, rule):
+        """Get workspace name from first impacted system."""
+        # Get first current report for this rule
+        request = self.context.get('request')
+        if not request:
+            return None
+
+        from api.models import get_reports_subquery
+        first_report = get_reports_subquery(request, rule_id=rule.id).select_related('inventory').first()
+
+        if not first_report or not first_report.inventory:
+            return None
+
+        return first_report.inventory.group_name
+
+    @extend_schema_field(OpenApiTypes.UUID)
+    def get_group_id(self, rule):
+        """Get group ID from first impacted system."""
+        request = self.context.get('request')
+        if not request:
+            return None
+
+        from api.models import get_reports_subquery
+        first_report = get_reports_subquery(request, rule_id=rule.id).select_related('inventory').first()
+
+        if not first_report or not first_report.inventory:
+            return None
+
+        inventory = first_report.inventory
+        if inventory.groups and len(inventory.groups) > 0:
+            return inventory.groups[0].get('id')
+        return None
 
     class Meta:
         model = models.Rule
@@ -275,7 +311,8 @@ class RuleForAccountSerializer(NonNullModelSerializer):
             'likelihood', 'node_id', 'tags', 'playbook_count',
             'reboot_required', 'publish_date', 'summary', 'generic',
             'reason', 'more_info', 'impacted_systems_count', 'reports_shown', 'rule_status',
-            'resolution_set', 'total_risk', 'hosts_acked_count', 'rating', 'pathway'
+            'resolution_set', 'total_risk', 'hosts_acked_count', 'rating', 'pathway',
+            'workspace', 'group_id'
         )
 
 

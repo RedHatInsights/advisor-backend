@@ -38,7 +38,7 @@ from api.filters import (
     sort_params_to_fields, sort_param_enum, filter_on_display_name,
     systems_detail_name_query_param, host_group_name_query_param,
     topic_query_param, filter_on_topic, update_method_query_param,
-    system_type_query_param,
+    system_type_query_param, group_id_query_param,
 )
 from api.models import (
     Ack, CurrentReport, HostAck, Resolution, Rule,
@@ -356,6 +356,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             filter_system_profile_mssql_query_param,
             filter_system_profile_ansible_query_param,
             host_group_name_query_param, update_method_query_param,
+            group_id_query_param,
         ],
     )
     def list(self, request, format=None):
