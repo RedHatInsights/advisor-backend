@@ -506,11 +506,15 @@ header that the 3Scales would normally provide.  To do this:
 * Install a header modifying plugin in your browser, e.g. "ModHeader" for
   FireFox.
 * Set it up to add the `x-rh-identity` header with this value:
-  `eyJpZGVudGl0eSI6IHsiYWNjb3VudF9udW1iZXIiOiAiMTIzNDU2NyIsICJvcmdfaWQiOiAiOTg3NjU0MyIsICJ0eXBlIjogIlVzZXIiLCAiYXV0aF90eXBlIjogImp3dCIsICJ1c2VyIjogeyJ1c2VybmFtZSI6ICJ0ZXN0aW5nIiwgImlzX2ludGVybmFsIjogdHJ1ZX19fQo=`
+  `eyJpZGVudGl0eSI6IHsiYWNjb3VudF9udW1iZXIiOiAiMTIzNDU2NyIsICJvcmdfaWQiOiAiOTg3NjU0MyIsICJ0eXBlIjogIlVzZXIiLCAiYXV0aF90eXBlIjogImp3dCIsICJ1c2VyIjogeyJ1c2VyX2lkIjogIjE2Nzc3MjE2IiwgInVzZXJuYW1lIjogInRlc3RpbmciLCAiaXNfaW50ZXJuYWwiOiB0cnVlfX19Cg==`
 
 You can generate a similar header using this command:
 ```
-$ echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"username": "testing", "is_internal": true}}}' | base64 -w 0 ; echo
+$ echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"user_id": "16777216", "username": "testing", "is_internal": true}}}' | base64 -w 0 ; echo
+```
+Note, you can decode the header using:
+```
+$ echo <x-rh-identity> | base64 -d
 ```
 
 If you need to vary the data in the header structure, this is the way to do it.

@@ -36,6 +36,14 @@ parser.add_argument(
         'Example: --groups "group_1,group_2"'
     ),
 )
+parser.add_argument(
+    '--group-ids', type=str, default=None,
+    help=(
+        'Comma-separated id:name pairs to assign to the host. '
+        'Use this to specify exact UUIDs (e.g. to match Kessel --host-groups). '
+        'Example: --group-ids "11111111-1111-1111-1111-111111111111:my_group"'
+    ),
+)
 args = parser.parse_args()
 
 print('Using BOOTSTRAP_SERVERS %s' % (BOOTSTRAP_SERVERS))
@@ -47,15 +55,25 @@ with open(os.path.join(THIS_DIR, ENGINE_RESULTS_FILE)) as f:
 
 host_data = engine_results_message['input']['host']
 
-# Inject host groups if --groups is specified
+# Inject host groups if --groups or --group-ids is specified
+groups = []
 if args.groups:
-    groups = []
     for name in args.groups.split(','):
         name = name.strip()
         # Generate a deterministic UUID from the group name so that
         # re-running with the same name produces the same ID.
         group_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
         groups.append({'id': group_id, 'name': name})
+if args.group_ids:
+    for pair in args.group_ids.split(','):
+        pair = pair.strip()
+        if ':' in pair:
+            group_id, name = pair.split(':', 1)
+        else:
+            group_id = pair
+            name = pair
+        groups.append({'id': group_id, 'name': name})
+if groups:
     host_data['groups'] = groups
     print(f'Host groups: {groups}')
 

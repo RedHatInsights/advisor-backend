@@ -17,10 +17,10 @@ Refer to the Pre-requisites and Setup section in its [README](../../../README.md
 
 Start the Advisor DB and create the tables and populate it with fixture data:
 ```bash
+pipenv shell
 export ADVISOR_DB_HOST=localhost
 podman-compose up -d advisor-db
 ./container_init_localdev.sh
-pipenv shell
 ```
 Update the stale timestamps of the hosts in the DB to be in the future.  The
 hosts won't be considered stale then and will show up in queries:

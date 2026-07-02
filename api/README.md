@@ -732,9 +732,8 @@ To view the SQL produced by the ORM, set the environment variable `LOG_LEVEL=DEB
 ## Authentication
 
 All API requests require an `x-rh-identity` header containing a base64-encoded JSON identity. Generate one matching the fake engine results data (org_id `9876543`, account `1234567`):
-
 ```bash
-export RH_IDENTITY=$(echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"username": "testing", "is_internal": true}}}' | base64 -w 0)
+export RH_IDENTITY=$(echo '{"identity": {"account_number": "1234567", "org_id": "9876543", "type": "User", "auth_type": "jwt", "user": {"user_id": "16777216", "username": "testing", "is_internal": true}}}' | base64 -w 0)
 ```
 
 ## API Endpoints
@@ -803,35 +802,157 @@ Use the Authorize button and paste the `$RH_IDENTITY` value into the `x-rh-ident
 
 Visit `http://localhost:8000/api/insights/v1/` in a browser to see the full list of available endpoints (DRF's browsable API).
 
-## Testing RBAC
+## Testing Access Control - RBAC and Kessel
 
-Start the mock-rbac service and specify the permissions your users have.  The mock-rbac service can be started with manage.py:
+Advisor supports two access control systems: **RBAC v1** (the legacy system) and
+**Kessel** (the new gRPC-based ReBAC system).  The `mock_rbac` management
+command provides a mock server for both systems, so you can test either locally.
+
+Both are disabled by default for local development (`RBAC_ENABLED=false`,
+`KESSEL_ENABLED=false`).  When disabled, all API requests are permitted without
+any access control checks.
+
+### Running the mock server and testing RBAC v1 permissions
+
+To test RBAC with the Advisor API, tell the API to use it.  If mock-rbac is running via
+manage.py on the host, set these environment variables before starting the API:
 ```bash
-python api/advisor/manage.py mock_rbac --permissions "advisor:recommendation-results:read,advisor:advisor-roots:read"
+export RBAC_ENABLED=true
+export RBAC_URL=http://localhost:8111
 ```
-... or via podman-compose.  Uncomment and set the environment variable permissions for the mock-rbac service and start the container.
-For example, set `MOCK_RBAC_PERMISSIONS=advisor:recommendation-results:read,advisor:advisor-roots:read`
+If both services are running as containers, uncomment the relevant environment
+variables in `podman-compose.yml` under the `advisor-api` service.
+
+Start the mock-rbac service via manage.py:
+```bash
+python api/advisor/manage.py mock_rbac
+```
+... or as a container via podman-compose:
 ```bash
 podman-compose up mock-rbac
 ```
-The user will be able to access a number of API endpoints, but not acks or hostacks as they require `advisor:disable-recommendations:read` permissions.
-View the logs of the advisor-api service to see RBAC debugging information.
+By default, the mock server grants full read-write access (`advisor:*:*`,`tasks:*:*`, `inventory:*:*`).  
 
-## Testing host groups
+To test with restricted permissions:
+```bash
+python api/advisor/manage.py mock_rbac --permissions "advisor:advisor-roots:*,advisor:recommendation-results:*"
+```
+The user will be able to access most endpoints, including root (`/api/insights/v1/`),
+system (`/api/insights/v1/system/`), and recommendation (`/api/insights/v1/rule/`) endpoints,
+but not acks or hostacks, which require `advisor:disable-recommendations:*` permissions.
 
-Upload a fake archive for a system and specify the host group the system is a part of, eg my_group:
+Use `LOG_LEVEL=DEBUG` with the Advisor API service to see RBAC debugging information.
+
+### Testing host groups
+
+Host group filtering restricts which hosts a user can see based on the groups
+assigned to those hosts.  To test this:
+
+1. Upload a fake archive with a host assigned to a group called `test_group`:
 ```bash
 pipenv shell
 export ADVISOR_DB_HOST=localhost
-python service/manual_test/send_fake_engine_results.py --groups my_group
+python service/manual_test/send_fake_engine_results.py --groups test_group
 python api/advisor/manage.py freshen_hosts
 ```
-Then start the mock-rbac service and specify the host group your users are part of:
+
+2. Start the rbac service with the matching group UUID.  The `--groups` flag uses the same deterministic UUID
+that `send_fake_engine_results.py` generates for the group name:
 ```bash
-python api/advisor/manage.py mock_rbac --permissions "advisor:*:*" --groups "$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, 'my_group'))")"
+python -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, 'test_group'))"
+python api/advisor/manage.py mock_rbac --groups <test_group_uuid>
 ```
-Then in the UI, your user should only be able to see the `57c4c38b-a8c6-4289-9897-223681fd804d` host when accessing the `system` endpoint,
-because that's the only host in the `my_group` host group.
+
+3. The user should now only see the `57c4c38b-a8c6-4289-9897-223681fd804d` host when accessing the `system` endpoint, 
+because it is the only host in the `test_group` host group.
+
+### Testing Kessel
+
+To test with Kessel, firstly set the following environment variables on the Advisor API:
+```bash
+export KESSEL_ENABLED=true
+export KESSEL_URL=localhost:9000
+export KESSEL_INSECURE=true
+export RBAC_ENABLED=true
+export RBAC_URL=http://localhost:8111
+```
+
+Add `--kessel` and `--host-groups` to the mock-rbac service to enable the gRPC server and set the workspace ID
+to the default workspace, without which all access will be denied:
+```bash
+python api/advisor/manage.py mock_rbac --kessel --host-groups "00000000-0000-0000-0000-000000000000"
+```
+This starts both the HTTP server (port 8111) and a gRPC server (port 9000) and sets the user's workspace to
+the default workspace ID for the mock rbac service.  The HTTP server handles RBAC v1 access requests
+and RBAC v2 workspace lookups.  The gRPC server handles Kessel `Check` and `StreamedListObjects` RPCs.
+
+#### How Kessel permission scopes work
+
+The Advisor API uses two different Kessel gRPC methods depending on the **scope** of the
+permission check.  Each API endpoint has a scope set via the `resource_scope` attribute
+on its view or view method (defaulting to `WORKSPACE`):
+
+| Scope | Kessel RPC used | Mock flag | What it checks |
+|---|---|---|---|
+| `ORG` | `Check` | `--deny` | Binary yes/no: does this user have permission on the default workspace? |
+| `HOST` | `Check` | `--deny` | Binary yes/no: does this user have permission on a specific host? |
+| `WORKSPACE` | `StreamedListObjects` | `--host-groups` | List: which workspaces (host groups) does this user have access to? |
+
+**Most endpoints use `WORKSPACE` scope**, which means they call `StreamedListObjects`
+rather than `Check`.  This has an important consequence for the mock server:
+
+- The `--deny` flag only affects `Check` (ORG and HOST scopes).
+- The `--host-groups` flag controls what `StreamedListObjects` returns.
+- If `--host-groups` is not set, `StreamedListObjects` returns an empty list, and
+  the Advisor API treats an empty list as "no access" (`bool([])` is `False`).
+  This means **all WORKSPACE-scoped endpoints will be denied**.
+
+Therefore, `--host-groups` with at least the default workspace ID is effectively
+required for Kessel mode to grant access to most endpoints.
+
+#### Allowing access to extra workspaces (host groups)
+
+To allow users access to extra workspaces (host groups) containing specific hosts, add those group UUIDs:
+```bash
+python api/advisor/manage.py mock_rbac --kessel --host-groups "00000000-0000-0000-0000-000000000000,<test_group_uuid>"
+```
+... with `<test_group_uuid>` being the UUID of the host group containing the host we fake uploaded earlier.
+
+#### Inspecting the gRPC server with grpcurl
+
+The grpcurl command can be used to query the Kessel gRPC server (reflection is enabled):
+```
+$ grpcurl -plaintext localhost:9000 list
+grpc.reflection.v1alpha.ServerReflection
+kessel.inventory.v1beta2.KesselInventoryService
+
+$ grpcurl -plaintext localhost:9000 describe kessel.inventory.v1beta2.KesselInventoryService
+kessel.inventory.v1beta2.KesselInventoryService is a service:
+service KesselInventoryService {
+  rpc Check ( .kessel.inventory.v1beta2.CheckRequest ) returns ( .kessel.inventory.v1beta2.CheckResponse ) {
+    option (.google.api.http) = { post: "/api/kessel/v1beta2/check", body: "*" };
+  }
+...
+```
+More information on Kessel can be found here: https://project-kessel.github.io/docs/
+
+### RBAC & Kessel Environment variables for podman-compose
+
+The mock server can be configured entirely via environment variables in `podman-compose.yml` when using containers:
+
+| Variable | Description | Default |
+|---|---|---|
+| `MOCK_RBAC_PORT` | HTTP port | `8111` |
+| `MOCK_RBAC_READONLY` | Read-only permissions | `false` |
+| `MOCK_RBAC_PERMISSIONS` | Comma-separated permissions | `advisor:*:*,tasks:*:*,inventory:*:*` |
+| `MOCK_RBAC_GROUPS` | Host group UUIDs (RBAC v1) | none (unrestricted) |
+| `MOCK_KESSEL_ENABLED` | Enable Kessel gRPC server | `false` |
+| `MOCK_KESSEL_GRPC_PORT` | gRPC port | `9000` |
+| `MOCK_KESSEL_DENY` | Deny all Kessel permission checks | `false` |
+| `MOCK_KESSEL_HOST_GROUPS` | Kessel host group workspace UUIDs (required for access) | none (denied) |
+| `MOCK_KESSEL_WORKSPACE_ID` | Default workspace UUID | `00000000-...` |
+
+Command-line arguments take precedence over environment variables.
 
 ### Django ORM
 
@@ -862,7 +983,6 @@ CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').val
 CurrentReport.objects.filter(
     host_id='57c4c38b-a8c6-4289-9897-223681fd804d'
 ).values('rule__rule_id', 'org_id', 'impacted_date', 'details')
-
 # Query by org_id instead
 Host.objects.filter(org_id='9876543').values()
 CurrentReport.objects.filter(org_id='9876543').values('host_id', 'rule__rule_id')

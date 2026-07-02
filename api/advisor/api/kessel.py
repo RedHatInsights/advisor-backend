@@ -470,8 +470,8 @@ class Kessel:
             logger.error("Kessel client not available (in check)")
             return False, 0.0
         start = time.time()
-        logger.info(
-            "Checking resource %s with relation %s for subject %s",
+        logger.debug(
+            "Kessel check(): Checking resource %s with relation %s for subject %s",
             resource, relation, subject
         )
         response = self.client.Check(
