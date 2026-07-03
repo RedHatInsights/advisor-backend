@@ -83,17 +83,21 @@ INVENTORY_EVENT_ERROR = Counter(
     'insights_advisor_service_inventory_event_error',
     'Counter for how many inventory events errored'
 )
-INVENTORY_HOST_CREATED = Counter(
-    'insights_advisor_service_inventory_host_created',
-    'Count how many inventory hosts were created'
+INVENTORY_EVENT_MALFORMED = Counter(
+    'insights_advisor_service_inventory_event_malformed',
+    'Counter for inventory events that failed validation or parsing'
 )
-INVENTORY_HOST_UPDATED = Counter(
-    'insights_advisor_service_inventory_host_updated',
-    'Count how many inventory hosts were updated'
+INVENTORY_HOST_UPSERTED = Counter(
+    'insights_advisor_service_inventory_host_upserted',
+    'Count how many inventory hosts were upserted'
 )
 INVENTORY_HOST_DELETED = Counter(
     'insights_advisor_service_inventory_host_deleted',
     'Count how many inventory hosts were deleted'
+)
+INVENTORY_HOST_DELETE_MISSING = Counter(
+    'insights_advisor_service_inventory_host_delete_missing',
+    'Count how many inventory host delete events had no matching record in the DB'
 )
 PAYLOAD_TRACKER_DELIVERY_ERRORS = Counter(
     'insights_advisor_service_payload_tracker_delivery_errors',

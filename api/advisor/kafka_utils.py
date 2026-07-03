@@ -35,6 +35,7 @@ type HandlerFunc = Callable[[str, JsonValue], None]
 class HandlerEntry(TypedDict):
     handler: HandlerFunc
     filters: dict[str, str]
+    batch: bool
 
 
 type HandlerDataValue = HandlerEntry
@@ -141,6 +142,8 @@ class DummyConsumer():
         self.message_index: int = 0
         self.subscribed_topics: list[str] = []
         self.closed: bool = False
+        self.commit_count: int = 0
+        self.store_offsets_count: int = 0
         self.dispatcher_to_quit: 'KafkaDispatcher' | None = None
 
     def add_message(
@@ -194,6 +197,27 @@ class DummyConsumer():
         # This would be a good point for the calling message handler to have
         # set up a function which sets the KafkaHandler's `quit` property.
         return None
+
+    def consume(self, num_messages: int = 1, timeout: float = 1.0) -> list[DummyMessage]:
+        """
+        Return up to num_messages from the queue, or an empty list if exhausted.
+        """
+        batch = []
+        try:
+            for _ in range(num_messages):
+                msg = self.poll(timeout)
+                if msg is None:
+                    break
+                batch.append(msg)
+        except KafkaError:
+            pass
+        return batch
+
+    def store_offsets(self, message=None, offsets=None):
+        self.store_offsets_count += 1
+
+    def commit(self, asynchronous=False):
+        self.commit_count += 1
 
     def close(self):
         """Close the consumer."""
@@ -288,7 +312,7 @@ class KafkaDispatcher(object):
     def __init__(self, consumer: Consumer | None = None):
         self.registered_handlers: dict[str, HandlerEntry] = {}
         self.quit: bool = False
-        self.loop_timeout: int = 1
+        self.loop_timeout: float = 0.5
         # When being tested, supply a DummyConsumer object that has added
         # messages via consumer.add_message().  Those messages will be processed
         # in the order they were added.
@@ -297,7 +321,7 @@ class KafkaDispatcher(object):
         else:
             self.consumer: Consumer = Consumer(settings.KAFKA_SETTINGS)
 
-    def register_handler(self, topic: str, handler_fn: HandlerFunc, **filters: dict[str, str]):
+    def register_handler(self, topic: str, handler_fn: HandlerFunc, batch: bool = False, **filters: dict[str, str]):
         if topic in self.registered_handlers:
             logger.warning(
                 duplicate_handler_warning_message,
@@ -307,38 +331,34 @@ class KafkaDispatcher(object):
             return
         self.registered_handlers[topic] = {
             'handler': handler_fn,
-            'filters': filters
+            'filters': filters,
+            'batch': batch,
         }
 
-    def _handle_message(self, message: confluent_kafka.Message | DummyMessage | None):
+    def _prepare_message(
+        self, message: confluent_kafka.Message | DummyMessage | None
+    ) -> tuple[str, JsonValue] | None:
         """
-        Receive a message, find the handler for this topic, and run the
-        message handler for this topic.
+        Validate a raw Kafka message: check for errors, verify topic
+        registration, match header filters, and decode JSON.
+
+        Returns (topic, body) or None if the message should be skipped.
         """
         if message is None:
-            return
+            return None
         if message.error():
             logger.error(message.error())
-            return
+            return None
 
         topic = message.topic()
         if topic not in self.registered_handlers:
-            # Would this be too noisy?
             logger.info("Received message for unregistered topic '%s'", topic)
-            return
+            return None
 
-        # It is important we filter by headers so that we don't json.loads
-        # every upload that is sent to CRC.
-        # The headers come in as a list of tuples.  The filters is a dictionary.
-        # Example Filters: {'service': 'tasks'}
-        # Example Headers: [('service', b'tasks')]
         headers: list[tuple[str, bytes]] | None = message.headers()
         if headers is None:
             headers = []
         header_filters: dict[str, str] = self.registered_handlers[topic]['filters']
-
-        # It's a toss-up here whether converting this to a dictionary makes
-        # for faster comparisons, but it makes the code easier to read.
         header_dict: dict[str, str] = {
             key: value.decode('utf-8')
             for key, value in headers
@@ -348,22 +368,38 @@ class KafkaDispatcher(object):
             (key in header_dict and header_dict[key] == value)
             for key, value in header_filters.items()
         )
-
         if not filters_matched:
-            return
+            return None
 
-        # Decode JSON
         try:
             body = json.loads(message.value().decode('utf-8').strip('"'))
         except Exception as e:
             logger.exception(f"Malformed JSON when handling {topic}: {e}")
+            return None
+
+        return topic, body
+
+    def _handle_message(self, message: confluent_kafka.Message | DummyMessage | None):
+        """
+        Receive a message, find the handler for this topic, and run the
+        message handler for this topic.
+        """
+        prepared = self._prepare_message(message)
+        if prepared is None:
             return
-        # Tell Django we're starting a 'request' (db connection restarts...)
+
+        topic, body = prepared
+        handler_entry = self.registered_handlers[topic]
+        if handler_entry['batch']:
+            logger.error(
+                "Handler for topic '%s' requires batch mode but receive() "
+                "was called without batch_size — skipping message", topic
+            )
+            return
+
         request_started.send(sender=self.__class__)
-        # Call handler with JSON
         try:
-            handler = self.registered_handlers[topic]['handler']
-            # assert isinstance(handler, AbcCallable)
+            handler = handler_entry['handler']
             handler(topic, body)
         except Exception as e:
             logger.exception(
@@ -374,17 +410,92 @@ class KafkaDispatcher(object):
                     'error': str(e)
                 }
             )
-        # and we're finishing the 'request'
         request_finished.send(sender=self.__class__)
 
-    def receive(self):
+    def _handle_batch_messages(self, messages: list[confluent_kafka.Message | DummyMessage]) -> bool:
+        """
+        Handle a batch of messages: group by topic, call each handler once
+        with the full list of parsed bodies.
+
+        Returns True if all batch handlers succeeded, False if any raised.
+        """
+        grouped: dict[str, list[JsonValue]] = {}
+        for message in messages:
+            prepared = self._prepare_message(message)
+            if prepared is None:
+                continue
+            topic, body = prepared
+            if topic not in grouped:
+                grouped[topic] = []
+            grouped[topic].append(body)
+
+        batch_success = True
+        for topic, bodies in grouped.items():
+            handler_entry = self.registered_handlers[topic]
+            handler = handler_entry['handler']
+            invocations = [bodies] if handler_entry['batch'] else bodies
+
+            for payload in invocations:
+                request_started.send(sender=self.__class__)
+                try:
+                    handler(topic, payload)
+                except Exception as e:
+                    batch_success = False
+                    logger.exception(
+                        "Error processing kafka message",
+                        extra={
+                            'topic': topic,
+                            'error': str(e)
+                        }
+                    )
+                request_finished.send(sender=self.__class__)
+
+        return batch_success
+
+    def _store_offsets(self, messages: list[confluent_kafka.Message | DummyMessage]) -> None:
+        for message in messages:
+            if message.error():
+                continue
+            self.consumer.store_offsets(message=message)
+
+    def _receive_batch(self, batch_size: int):
+        while not self.quit:
+            try:
+                messages = self.consumer.consume(num_messages=batch_size, timeout=self.loop_timeout)
+            except Exception as e:
+                logger.exception("Error consuming Kafka messages: %s", e)
+                continue
+            if not messages:
+                continue
+            success = self._handle_batch_messages(messages)
+            if success:
+                try:
+                    logger.debug("Storing offsets for %d messages", len(messages))
+                    self._store_offsets(messages)
+                    logger.debug("Committing offsets for %d messages", len(messages))
+                    self.consumer.commit(asynchronous=False)
+                    logger.debug("Offsets committed successfully")
+                except Exception as e:
+                    logger.exception("Error committing Kafka offsets: %s", e)
+            else:
+                logger.error(
+                    "Batch processing failed; stopping consumer to restart from last committed offset")
+                self.quit = True
+
+    def _receive_single(self):
+        while not self.quit:
+            self._handle_message(self.consumer.poll(self.loop_timeout))
+
+    def receive(self, batch_size: int | None = None):
         """
         Run the receive loop continuously until told to stop.
+        When batch_size is provided, consume messages in batches.
         """
         self.consumer.subscribe(list(self.registered_handlers.keys()))
 
-        while not self.quit:
-            # longer polling timeouts mean fewer iterations through this loop,
-            # but a longer time to respond to SIGTERM.  Here's the compromise:
-            self._handle_message(self.consumer.poll(self.loop_timeout))
+        if batch_size is not None:
+            self._receive_batch(batch_size)
+        else:
+            self._receive_single()
+
         self.consumer.close()

@@ -54,10 +54,16 @@ LOGGING = {
         'console': {
             'level': LOG_LEVEL,
             'class': 'logging.StreamHandler' if ENVIRONMENT == 'dev' else 'advisor_logging.AdvisorStreamHandler',
+            'formatter': 'dev' if ENVIRONMENT == 'dev' else 'json',
             'filters': ['hide_metrics']
         },
     },
     'formatters': {
+        'dev': {
+            'format': '[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] '
+                      '[%(thread)d  %(threadName)s] [%(process)d] %(message)s',
+            'datefmt': '%H:%M:%S',
+        },
         'json': {
             'class': 'advisor_logging.OurFormatter',
             'format': json.dumps({"extra": {"component": 'insights-advisor-api'}}),
