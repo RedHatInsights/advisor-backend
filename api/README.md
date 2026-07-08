@@ -105,9 +105,10 @@ You can also run Advisor from the host.  Here's how ...
     ```
     - or via gunicorn:
     ```bash
-    $ ./app.sh
-    [2018-06-21 14:30:23 -0400] [31722] [INFO] Starting gunicorn 19.8.1
-    [2018-06-21 14:30:23 -0400] [31722] [INFO] Listening at: http://0.0.0.0:8000 (31722)
+    $ api/app_localdev.sh
+    ...
+    [11:25:52] INFO ... Starting gunicorn 26.0.0
+    [11:25:52] INFO ... Listening at: http://0.0.0.0:8000 (1577131)
     ...
     ```
 
