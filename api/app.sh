@@ -50,6 +50,7 @@ else
     GUNICORN_CONF=${GUNICORN_CONF:-gunicorn_conf.py}
     BIND_ADDR="0.0.0.0:${GUNICORN_PORT:-8000}"
     TIMEOUT=${GUNICORN_TIMEOUT:-120}
+    LIMIT_REQUEST_FIELD_SIZE=${GUNICORN_LIMIT_REQUEST_FIELD_SIZE:-16384} # Use 16k to avoid 431 errors
 
     export PYTHONPATH=${APP_HOME}
     export PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-/metrics}
@@ -59,7 +60,13 @@ else
     # not in that directory the import fails.  So we 'cd' first, then the
     # --chdir option is no longer needed and the config imports work.
     cd ${APP_HOME}
-    CMD="pipenv run gunicorn --preload --config ${GUNICORN_CONF} --bind ${BIND_ADDR} --timeout ${TIMEOUT} ${APP_MODULE}"
+    CMD="pipenv run gunicorn
+      --preload
+      --config ${GUNICORN_CONF}
+      --bind ${BIND_ADDR}
+      --timeout ${TIMEOUT}
+      --limit-request-field_size ${LIMIT_REQUEST_FIELD_SIZE}
+      ${APP_MODULE}"
 fi
 
 echo "Running ${CMD} ..."
