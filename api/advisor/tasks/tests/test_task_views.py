@@ -616,12 +616,12 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(len(hosts), 7)
         self.assertEqual(hosts[0]['display_name'], 'centos.example.com')
         self.assertEqual(hosts[0]['requirements'], [RHEL_REQ])
-        self.assertEqual(hosts[0]['groups'], [])
+        self.assertEqual(hosts[0]['groups'][0]['name'], 'Ungrouped Hosts')
         self.assertEqual(hosts[0]['connection_type'], 'direct')
         # system05 isn't RHEL and isn't connected via RHC / Satellite, so it doesn't meet those requirements
         self.assertEqual(hosts[1]['display_name'], constants.host_05_name)
         self.assertEqual(hosts[1]['requirements'], [RHEL_REQ, CONNECTED_REQ])
-        self.assertEqual(hosts[1]['groups'], [])
+        self.assertEqual(hosts[1]['groups'][0]['name'], 'Ungrouped Hosts')
         self.assertEqual(hosts[1]['connection_type'], 'none')
         # system01 is RHEL6 so doesn't meet the requirements of being RHEL7 or 8
         self.assertEqual(hosts[2]['display_name'], constants.host_01_name)
@@ -631,7 +631,7 @@ class TaskViewTestCase(TestCase):
         # edge01 is RHEL9 so doesn't meet the requirements of being RHEL7 or 8
         self.assertEqual(hosts[6]['display_name'], constants.host_e1_name)
         self.assertEqual(hosts[6]['requirements'], [OS_V7_V8_REQ])
-        self.assertEqual(hosts[6]['groups'], [])
+        self.assertEqual(hosts[6]['groups'][0]['name'], 'Ungrouped Hosts')
         self.assertEqual(hosts[6]['connection_type'], 'satellite')
 
         # set an empty operating_system field for system01's system_profile to get os_version = Unknown OS name

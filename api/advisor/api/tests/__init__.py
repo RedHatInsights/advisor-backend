@@ -139,6 +139,8 @@ class constants(object):
     subset_working = 'foreman__32ad2ec89a7c20c4cd75394aaf393182ee1cb4b6'
     subset_missing = 'foreman__42cfd4137cc112f5459554c9b927e4ffbc137a04'
 
+    standard_org_ungrouped_id = '98765430-0000-0000-0000-000000000000'
+    alternate_org_ungrouped_id = '99887760-0000-0000-0000-000000000000'
     host_group_1_id = '11111111-1111-1111-1111-111111111111'
     host_group_1_name = 'group_1'
     host_group_2_id = '11111111-1111-1111-1111-222222222222'

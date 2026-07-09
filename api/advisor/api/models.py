@@ -38,8 +38,7 @@ from api.filters import (
     filter_on_update_method, filter_on_has_disabled_recommendation,
 )
 
-import logging
-logger = logging.getLogger(settings.APP_NAME)
+from advisor_logging import logger
 
 
 ##############################################################################
@@ -188,8 +187,8 @@ def get_host_group_filter(request, relation=None):
     WHERE "inventory"."hosts"."groups" @> [{"id": <uuid>}]
 
     We also collect group names via the host_group_name_query_param
-    parameter.  Note that this does not allow users to specify null in order
-    to see 'hosts not in a group'.
+    parameter.  An empty string in the group names list means 'ungrouped
+    hosts' - i.e. hosts with an empty groups list.
 
     These two are ANDed together, so a user cannot request to see a group
     by name that they do not have permissions to see by RBAC.
@@ -197,6 +196,7 @@ def get_host_group_filter(request, relation=None):
     # If we have a list of groups, combine them in an OR query clause
     host_groups = getattr(request, host_group_attr, [])
     host_groups_param = value_of_param(host_group_name_query_param, request)
+    logger.debug("host_groups_rbac: %s, host_groups_query_param: %s", host_groups, host_groups_param)
     if not (host_groups or host_groups_param):
         return Q()
     group_clause = 'groups'
@@ -207,7 +207,11 @@ def get_host_group_filter(request, relation=None):
     host_group_name_filter = Q()
     if host_groups_param:
         for group_name in host_groups_param:
-            host_group_name_filter |= Q(**{group_contains_clause: [{'name': group_name}]})
+            if group_name == '':
+                # Empty string means "ungrouped hosts" and matches hosts in a group marked as ungrouped
+                host_group_name_filter |= Q(**{group_contains_clause: [{'ungrouped': True}]})
+            else:
+                host_group_name_filter |= Q(**{group_contains_clause: [{'name': group_name}]})
     # Add RBAC group IDs
     host_group_rbac_filter = Q()
     assert isinstance(host_groups, list)

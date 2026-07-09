@@ -98,7 +98,7 @@ class SystemViewTestCase(TestCase):
                 'critical_hits', 'important_hits', 'moderate_hits', 'low_hits'
             ))
         )
-        self.assertEqual(systems[1]['group_name'], None)
+        self.assertEqual(systems[1]['group_name'], 'Ungrouped Hosts')
 
         self.assertEqual(systems[2]['system_uuid'], constants.host_01_uuid)
         self.assertEqual(systems[2]['display_name'], constants.host_01_name)
@@ -130,7 +130,7 @@ class SystemViewTestCase(TestCase):
                 'critical_hits', 'important_hits', 'moderate_hits', 'low_hits'
             ))
         )
-        self.assertEqual(systems[3]['group_name'], None)
+        self.assertEqual(systems[3]['group_name'], 'Ungrouped Hosts')
 
         self.assertEqual(systems[4]['system_uuid'], constants.host_05_uuid)
         self.assertEqual(systems[4]['display_name'], constants.host_05_name)
@@ -146,7 +146,7 @@ class SystemViewTestCase(TestCase):
                 'critical_hits', 'important_hits', 'moderate_hits', 'low_hits'
             ))
         )
-        self.assertEqual(systems[4]['group_name'], None)
+        self.assertEqual(systems[4]['group_name'], 'Ungrouped Hosts')
 
         self.assertEqual(systems[5]['display_name'], constants.host_e1_name)
 
