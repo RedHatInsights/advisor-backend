@@ -847,7 +847,7 @@ By default, the mock server grants full read-write access (`advisor:*:*`,`tasks:
 
 To test with restricted permissions:
 ```bash
-python api/advisor/manage.py mock_rbac --permissions "advisor:advisor-roots:*,advisor:recommendation-results:*"
+python api/advisor/manage.py mock_rbac --rbac-permissions "advisor:advisor-roots:*,advisor:recommendation-results:*"
 ```
 The user will be able to access most endpoints, including root (`/api/insights/v1/`),
 system (`/api/insights/v1/system/`), and recommendation (`/api/insights/v1/rule/`) endpoints,
@@ -868,15 +868,21 @@ python service/manual_test/send_fake_engine_results.py --groups test_group
 python api/advisor/manage.py freshen_hosts
 ```
 
-2. Start the rbac service with the matching group UUID.  The `--groups` flag uses the same deterministic UUID
+2. Start the rbac service with the matching group UUID.  The `--rbac-host-groups` flag uses the same deterministic UUID
 that `send_fake_engine_results.py` generates for the group name:
 ```bash
 python -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, 'test_group'))"
-python api/advisor/manage.py mock_rbac --groups <test_group_uuid>
+python api/advisor/manage.py mock_rbac --rbac-host-groups <test_group_uuid>
 ```
 
 3. The user should now only see the `57c4c38b-a8c6-4289-9897-223681fd804d` host when accessing the `system` endpoint, 
 because it is the only host in the `test_group` host group.
+
+The mock_rbac service can also be passed the `null` group, which means the user has access to ungrouped hosts:
+```bash
+python api/advisor/manage.py mock_rbac --rbac-host-groups null
+```
+Run `python api/advisor/manage.py mock_rbac --help` for all options.
 
 ### Testing Kessel
 
@@ -889,10 +895,10 @@ export RBAC_ENABLED=true
 export RBAC_URL=http://localhost:8111
 ```
 
-Add `--kessel` and `--host-groups` to the mock-rbac service to enable the gRPC server and set the workspace ID
+Add `--kessel-enabled` and `--kessel-host-groups` to the mock-rbac service to enable the gRPC server and set the workspace ID
 to the default workspace, without which all access will be denied:
 ```bash
-python api/advisor/manage.py mock_rbac --kessel --host-groups "00000000-0000-0000-0000-000000000000"
+python api/advisor/manage.py mock_rbac --kessel-enabled --kessel-host-groups "00000000-0000-0000-0000-000000000000"
 ```
 This starts both the HTTP server (port 8111) and a gRPC server (port 9000) and sets the user's workspace to
 the default workspace ID for the mock rbac service.  The HTTP server handles RBAC v1 access requests
@@ -906,27 +912,27 @@ on its view or view method (defaulting to `WORKSPACE`):
 
 | Scope | Kessel RPC used | Mock flag | What it checks |
 |---|---|---|---|
-| `ORG` | `Check` | `--deny` | Binary yes/no: does this user have permission on the default workspace? |
-| `HOST` | `Check` | `--deny` | Binary yes/no: does this user have permission on a specific host? |
-| `WORKSPACE` | `StreamedListObjects` | `--host-groups` | List: which workspaces (host groups) does this user have access to? |
+| `ORG` | `Check` | `--kessel-deny` | Binary yes/no: does this user have permission on the default workspace? |
+| `HOST` | `Check` | `--kessel-deny` | Binary yes/no: does this user have permission on a specific host? |
+| `WORKSPACE` | `StreamedListObjects` | `--kessel-host-groups` | List: which workspaces (host groups) does this user have access to? |
 
 **Most endpoints use `WORKSPACE` scope**, which means they call `StreamedListObjects`
 rather than `Check`.  This has an important consequence for the mock server:
 
-- The `--deny` flag only affects `Check` (ORG and HOST scopes).
-- The `--host-groups` flag controls what `StreamedListObjects` returns.
-- If `--host-groups` is not set, `StreamedListObjects` returns an empty list, and
+- The `--kessel-deny` flag only affects `Check` (ORG and HOST scopes).
+- The `--kessel-host-groups` flag controls what `StreamedListObjects` returns.
+- If `--kessel-host-groups` is not set, `StreamedListObjects` returns an empty list, and
   the Advisor API treats an empty list as "no access" (`bool([])` is `False`).
   This means **all WORKSPACE-scoped endpoints will be denied**.
 
-Therefore, `--host-groups` with at least the default workspace ID is effectively
+Therefore, `--kessel-host-groups` with at least the default workspace ID is effectively
 required for Kessel mode to grant access to most endpoints.
 
 #### Allowing access to extra workspaces (host groups)
 
 To allow users access to extra workspaces (host groups) containing specific hosts, add those group UUIDs:
 ```bash
-python api/advisor/manage.py mock_rbac --kessel --host-groups "00000000-0000-0000-0000-000000000000,<group_1_uuid>,<group_2_uuid>,<test_group_uuid>"
+python api/advisor/manage.py mock_rbac --kessel-enabled --kessel-host-groups "00000000-0000-0000-0000-000000000000,<group_1_uuid>,<group_2_uuid>,<test_group_uuid>"
 ```
 ... with `<group_1_uuid>` being the UUID of `group_1` from the `basic_test_data` fixture
 and `<test_group_uuid>` being the UUID of the host group containing the host we fake uploaded earlier.
@@ -958,9 +964,9 @@ The mock server can be configured entirely via environment variables in `podman-
 | `MOCK_RBAC_PORT` | HTTP port | `8111` |
 | `MOCK_RBAC_READONLY` | Read-only permissions | `false` |
 | `MOCK_RBAC_PERMISSIONS` | Comma-separated permissions | `advisor:*:*,tasks:*:*,inventory:*:*` |
-| `MOCK_RBAC_GROUPS` | Host group UUIDs (RBAC v1) | none (unrestricted) |
+| `MOCK_RBAC_HOST_GROUPS` | Host group UUIDs (RBAC v1) | none (unrestricted) |
 | `MOCK_KESSEL_ENABLED` | Enable Kessel gRPC server | `false` |
-| `MOCK_KESSEL_GRPC_PORT` | gRPC port | `9000` |
+| `MOCK_KESSEL_PORT` | gRPC port | `9000` |
 | `MOCK_KESSEL_DENY` | Deny all Kessel permission checks | `false` |
 | `MOCK_KESSEL_HOST_GROUPS` | Kessel host group workspace UUIDs (required for access) | none (denied) |
 | `MOCK_KESSEL_WORKSPACE_ID` | Default workspace UUID | `00000000-...` |

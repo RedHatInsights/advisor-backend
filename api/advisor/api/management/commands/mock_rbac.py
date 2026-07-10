@@ -23,26 +23,26 @@ Supports two modes:
    Serves GET /api/rbac/v1/access/ with configurable permissions.
    Also serves /api/rbac/v2/workspaces/ for workspace ID lookups.
 
-2. Kessel mode (--kessel):
+2. Kessel mode (--kessel-enabled):
    Additionally starts a gRPC server implementing KesselInventoryService
    (Check and StreamedListObjects RPCs).  The HTTP server serves both
    RBAC v1 access and RBAC v2 workspace endpoints.
 
 Usage (command line):
     python api/advisor/manage.py mock_rbac
-    python api/advisor/manage.py mock_rbac --readonly
-    python api/advisor/manage.py mock_rbac --groups id1,id2
-    python api/advisor/manage.py mock_rbac --kessel
-    python api/advisor/manage.py mock_rbac --kessel --deny
-    python api/advisor/manage.py mock_rbac --kessel --host-groups id1,id2
+    python api/advisor/manage.py mock_rbac --rbac-readonly
+    python api/advisor/manage.py mock_rbac --rbac-host-groups id1,id2
+    python api/advisor/manage.py mock_rbac --kessel-enabled
+    python api/advisor/manage.py mock_rbac --kessel-enabled --kessel-deny
+    python api/advisor/manage.py mock_rbac --kessel-enabled --kessel-host-groups id1,id2
 
 Usage (environment variables, e.g. in podman-compose):
     MOCK_RBAC_PORT=8111              HTTP port (default: 8111)
     MOCK_RBAC_READONLY=true          Read-only permissions (default: false)
     MOCK_RBAC_PERMISSIONS=...        Comma-separated permission strings
-    MOCK_RBAC_GROUPS=id1,id2         Comma-separated host group UUIDs (RBAC v1)
+    MOCK_RBAC_HOST_GROUPS=id1,id2    Comma-separated host group UUIDs (RBAC v1)
     MOCK_KESSEL_ENABLED=true         Enable Kessel gRPC server
-    MOCK_KESSEL_GRPC_PORT=9000       gRPC port (default: 9000)
+    MOCK_KESSEL_PORT=9000       gRPC port (default: 9000)
     MOCK_KESSEL_DENY=true            Deny all Kessel permission checks
     MOCK_KESSEL_HOST_GROUPS=id1,id2  Workspace IDs for StreamedListObjects
     MOCK_KESSEL_WORKSPACE_ID=...     Default workspace UUID
@@ -61,6 +61,7 @@ For Kessel mode, set on the Advisor API:
     RBAC_URL=http://mock-rbac:8111
 """
 
+import base64
 import json
 import os
 import threading
@@ -69,6 +70,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 from django.core.management.base import BaseCommand
+from advisor_logging import logger
 
 
 # Full read-write permissions for all three applications that Advisor
@@ -100,6 +102,14 @@ def build_rbac_response(permissions, host_groups=None):
     """
     data = []
     for perm in permissions:
+        # When host groups are specified, exclude inventory permissions with
+        # empty resourceDefinitions.  find_host_groups() in permissions.py
+        # returns early (granting full access) when it encounters any
+        # inventory:hosts:read-matching permission with no resourceDefinitions,
+        # so any such entry (e.g. inventory:*:*) would override the
+        # group-filtered entry we add below.
+        if host_groups is not None and perm.startswith('inventory:'):
+            continue
         entry = {
             'permission': perm,
             'resourceDefinitions': [],
@@ -135,6 +145,28 @@ class RBACRequestHandler(BaseHTTPRequestHandler):
     /api/rbac/v2/workspaces/.
     """
 
+    def _username_from_identity(self):
+        """Extract the username from the x-rh-identity header."""
+        header = self.headers.get('x-rh-identity')
+        if not header:
+            return None
+        try:
+            decoded_header = base64.b64decode(header)
+            identity_wrapper = json.loads(decoded_header)
+        except Exception as exc:
+            logger.debug("Failed to decode x-rh-identity header: %s", exc)
+            return None
+
+        identity = identity_wrapper.get('identity') or {}
+        # Check user, then service_account (see user_details_key in permissions.py)
+        for key in ('user', 'service_account'):
+            username = identity.get(key, {}).get('username')
+            if username:
+                return username
+
+        logger.debug("x-rh-identity header present but no username found in 'user' or 'service_account'")
+        return None
+
     def do_GET(self):
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
@@ -142,11 +174,10 @@ class RBACRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == '/api/rbac/v1/access/':
             applications = query.get('application', [''])[0].split(',')
             username = query.get('username', [None])[0]
+            if username is None:
+                username = self._username_from_identity()
 
-            self.log_message(
-                "RBAC v1 access request: applications=%s username=%s",
-                applications, username
-            )
+            logger.info("RBAC v1 access request: applications=%s username=%s", applications, username)
 
             response_body = json.dumps(self.server.rbac_response).encode()
             self.send_response(200)
@@ -154,12 +185,11 @@ class RBACRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(response_body)))
             self.end_headers()
             self.wfile.write(response_body)
+            logger.info("RBAC v1 access response: %s", response_body)
 
         elif parsed.path == '/api/rbac/v2/workspaces/':
             workspace_type = query.get('type', ['default'])[0]
-            self.log_message(
-                "RBAC v2 workspace request: type=%s", workspace_type
-            )
+            logger.info("RBAC v2 workspace request: type=%s", workspace_type)
             workspace_response = {
                 'data': [{
                     'id': self.server.workspace_id,
@@ -174,9 +204,10 @@ class RBACRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(response_body)))
             self.end_headers()
             self.wfile.write(response_body)
+            logger.info("RBAC v2 workspace response: %s", response_body)
 
         else:
-            self.log_message("Unknown path: %s", self.path)
+            logger.warning("Unknown path: %s", self.path)
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -184,7 +215,7 @@ class RBACRequestHandler(BaseHTTPRequestHandler):
 
 
 ###############################################################################
-# Kessel gRPC servicer (only used when --kessel is enabled)
+# Kessel gRPC servicer (only used when --kessel-enabled is set)
 ###############################################################################
 
 
@@ -213,14 +244,14 @@ def _get_kessel_imports():
     }
 
 
-def _make_kessel_servicer(kessel_modules, allow_all, host_groups, log):
+def _make_kessel_servicer(kessel_modules, allow_all, host_groups):
     """Create a MockKesselServicer that inherits from the gRPC base class.
 
     The base class is imported lazily, so we build the class dynamically
     to avoid importing gRPC/Kessel at module load time.
     """
-    k = kessel_modules
-    base = k['inventory_service_pb2_grpc'].KesselInventoryServiceServicer
+    km = kessel_modules  # Renamed to km to save repeating the full variable name
+    base = km['inventory_service_pb2_grpc'].KesselInventoryServiceServicer
 
     class MockKesselServicer(base):
         """
@@ -232,20 +263,21 @@ def _make_kessel_servicer(kessel_modules, allow_all, host_groups, log):
         def Check(self, request, context):
             """Permission check: does subject X have relation Y on object Z?"""
             allowed = (
-                k['allowed_pb2'].ALLOWED_TRUE
+                km['allowed_pb2'].ALLOWED_TRUE
                 if allow_all
-                else k['allowed_pb2'].ALLOWED_FALSE
+                else km['allowed_pb2'].ALLOWED_FALSE
             )
             result_str = 'ALLOWED' if allow_all else 'DENIED'
-            context.set_code(k['grpc'].StatusCode.OK)
-            log(
-                f"  Check: subject={request.subject.resource.resource_id} "
-                f"relation={request.relation} "
-                f"object={request.object.resource_type}/"
-                f"{request.object.resource_id} "
-                f"-> {result_str}"
+            context.set_code(km['grpc'].StatusCode.OK)
+            logger.info(
+                "Check: subject=%s relation=%s object=%s/%s -> %s",
+                request.subject.resource.resource_id,
+                request.relation,
+                request.object.resource_type,
+                request.object.resource_id,
+                result_str,
             )
-            return k['check_response_pb2'].CheckResponse(allowed=allowed)
+            return km['check_response_pb2'].CheckResponse(allowed=allowed)
 
         def StreamedListObjects(self, request, context):
             """
@@ -255,24 +287,28 @@ def _make_kessel_servicer(kessel_modules, allow_all, host_groups, log):
             subject_id = request.subject.resource.resource_id
             relation = request.relation
             object_type = request.object_type.resource_type
-            log(
-                f"  StreamedListObjects: subject={subject_id} "
-                f"relation={relation} object_type={object_type} "
-                f"-> {len(host_groups or [])} workspace(s)"
+            logger.info(
+                "StreamedListObjects request: subject=%s relation=%s object_type=%s -> %d workspace(s)",
+                subject_id, relation, object_type, len(host_groups or []),
             )
-            for group_id in (host_groups or []):
-                yield k['streamed_list_objects_response_pb2'].StreamedListObjectsResponse(
-                    object=k['resource_reference_pb2'].ResourceReference(
+            if not host_groups:
+                logger.info("StreamedListObjects response: no host groups/workspaces configured, access will be denied")
+                return
+            for group_id in host_groups:
+                response = km['streamed_list_objects_response_pb2'].StreamedListObjectsResponse(
+                    object=km['resource_reference_pb2'].ResourceReference(
                         resource_id=group_id,
                         resource_type="workspace",
-                        reporter=k['reporter_reference_pb2'].ReporterReference(
+                        reporter=km['reporter_reference_pb2'].ReporterReference(
                             type="rbac"
                         ),
                     ),
-                    pagination=k['response_pagination_pb2'].ResponsePagination(
+                    pagination=km['response_pagination_pb2'].ResponsePagination(
                         continuation_token="",
                     ),
                 )
+                logger.info("StreamedListObjects response yielding: %s", response.object)
+                yield response
 
     return MockKesselServicer()
 
@@ -286,52 +322,53 @@ class Command(BaseCommand):
     help = (
         'Run a mock RBAC server for local development. '
         'Serves /api/rbac/v1/access/ and /api/rbac/v2/workspaces/. '
-        'With --kessel, also runs a Kessel gRPC server for Check and '
+        'With --kessel-enabled, also runs a Kessel gRPC server for Check and '
         'StreamedListObjects RPCs. '
         'Options can also be set via environment variables.'
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--port', type=int, default=None,
+            '--rbac-port', type=int, default=None,
             help='HTTP port to listen on (env: MOCK_RBAC_PORT, default: 8111)',
         )
         parser.add_argument(
-            '--readonly', action='store_true', default=None,
+            '--rbac-readonly', action='store_true', default=None,
             help='Grant read-only permissions instead of full read-write (env: MOCK_RBAC_READONLY)',
         )
         parser.add_argument(
-            '--permissions', type=str, default=None,
+            '--rbac-permissions', type=str, default=None,
             help=(
                 'Comma-separated list of custom permission strings to return '
                 '(e.g. "advisor:*:*,tasks:*:read"). '
-                'Overrides --readonly. (env: MOCK_RBAC_PERMISSIONS)'
+                'Overrides --rbac-readonly. (env: MOCK_RBAC_PERMISSIONS)'
             ),
         )
         parser.add_argument(
-            '--groups', type=str, default=None,
+            '--rbac-host-groups', type=str, default=None,
             help=(
                 'Comma-separated list of host group UUIDs to restrict access to '
                 '(RBAC v1 resourceDefinitions). '
+                'Use "null" to include ungrouped hosts. '
                 'If not set, the user has unrestricted access to all hosts. '
-                '(env: MOCK_RBAC_GROUPS)'
+                '(env: MOCK_RBAC_HOST_GROUPS)'
             ),
         )
         # Kessel options
         parser.add_argument(
-            '--kessel', action='store_true', default=None,
+            '--kessel-enabled', action='store_true', default=None,
             help='Enable the Kessel gRPC server (env: MOCK_KESSEL_ENABLED)',
         )
         parser.add_argument(
-            '--grpc-port', type=int, default=None,
-            help='gRPC port for Kessel (env: MOCK_KESSEL_GRPC_PORT, default: 9000)',
+            '--kessel-port', type=int, default=None,
+            help='gRPC port for Kessel (env: MOCK_KESSEL_PORT, default: 9000)',
         )
         parser.add_argument(
-            '--deny', action='store_true', default=None,
+            '--kessel-deny', action='store_true', default=None,
             help='Deny all Kessel permission checks (env: MOCK_KESSEL_DENY)',
         )
         parser.add_argument(
-            '--host-groups', type=str, default=None,
+            '--kessel-host-groups', type=str, default=None,
             help=(
                 'Comma-separated list of workspace/host group UUIDs returned '
                 'by Kessel StreamedListObjects. REQUIRED for Kessel mode: '
@@ -340,7 +377,7 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
-            '--workspace-id', type=str, default=None,
+            '--kessel-workspace-id', type=str, default=None,
             help=(
                 'The default workspace UUID returned by the RBAC v2 '
                 'workspace endpoint. (env: MOCK_KESSEL_WORKSPACE_ID, '
@@ -350,21 +387,21 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # ----- Resolve RBAC v1 options -----
-        port = options['port']
+        port = options['rbac_port']
         if port is None:
             port = int(os.environ.get('MOCK_RBAC_PORT', '8111'))
 
-        permissions_str = options['permissions']
+        permissions_str = options['rbac_permissions']
         if permissions_str is None:
             permissions_str = os.environ.get('MOCK_RBAC_PERMISSIONS')
 
-        readonly = options['readonly']
+        readonly = options['rbac_readonly']
         if readonly is None:
             readonly = string_to_bool(os.environ.get('MOCK_RBAC_READONLY', ''))
 
-        groups_str = options['groups']
+        groups_str = options['rbac_host_groups']
         if groups_str is None:
-            groups_str = os.environ.get('MOCK_RBAC_GROUPS')
+            groups_str = os.environ.get('MOCK_RBAC_HOST_GROUPS')
 
         # Determine permissions
         if permissions_str:
@@ -375,32 +412,39 @@ class Command(BaseCommand):
             permissions = list(ALL_RW_PERMISSIONS)
 
         # Determine host groups (RBAC v1)
+        # "null" is converted to None, which serializes as JSON null in the
+        # RBAC response.  find_host_groups() in permissions.py passes this
+        # through to get_host_group_filter() in models.py, which translates
+        # None into a filter for hosts with an empty groups list (ungrouped).
         host_groups = None
         if groups_str:
-            host_groups = [g.strip() for g in groups_str.split(',')]
+            host_groups = [
+                None if g.strip() == 'null' else g.strip()
+                for g in groups_str.split(',')
+            ]
 
         rbac_response = build_rbac_response(permissions, host_groups)
 
         # ----- Resolve Kessel options -----
-        kessel_enabled = options['kessel']
+        kessel_enabled = options['kessel_enabled']
         if kessel_enabled is None:
             kessel_enabled = string_to_bool(
                 os.environ.get('MOCK_KESSEL_ENABLED', '')
             )
 
-        grpc_port = options['grpc_port']
+        grpc_port = options['kessel_port']
         if grpc_port is None:
-            grpc_port = int(os.environ.get('MOCK_KESSEL_GRPC_PORT', '9000'))
+            grpc_port = int(os.environ.get('MOCK_KESSEL_PORT', '9000'))
 
-        deny = options['deny']
+        deny = options['kessel_deny']
         if deny is None:
             deny = string_to_bool(os.environ.get('MOCK_KESSEL_DENY', ''))
 
-        kessel_host_groups_str = options['host_groups']
+        kessel_host_groups_str = options['kessel_host_groups']
         if kessel_host_groups_str is None:
             kessel_host_groups_str = os.environ.get('MOCK_KESSEL_HOST_GROUPS')
 
-        workspace_id = options['workspace_id']
+        workspace_id = options['kessel_workspace_id']
         if workspace_id is None:
             workspace_id = os.environ.get(
                 'MOCK_KESSEL_WORKSPACE_ID', DEFAULT_WORKSPACE_ID
@@ -415,56 +459,51 @@ class Command(BaseCommand):
 
         # ----- Print configuration -----
         mode = 'Kessel + RBAC v1' if kessel_enabled else 'RBAC v1'
-        self.stdout.write(self.style.SUCCESS(
-            f'Mock RBAC server starting ({mode} mode)'
-        ))
-        self.stdout.write(f'  HTTP port: {port}')
-        self.stdout.write(f'  Permissions (RBAC v1): {permissions}')
+        logger.info('Mock RBAC server starting (%s mode)', mode)
+        logger.info('  HTTP port: %s', port)
+        logger.info('  Permissions (RBAC v1): %s', permissions)
         if host_groups:
-            self.stdout.write(f'  Host groups (RBAC v1): {host_groups}')
+            logger.info('  Host groups (RBAC v1): %s', host_groups)
         else:
-            self.stdout.write('  Host groups (RBAC v1): unrestricted (all hosts)')
-        self.stdout.write(f'  Workspace ID: {workspace_id}')
+            logger.info('  Host groups (RBAC v1): unrestricted (all hosts)')
+        logger.info('  Workspace ID: %s', workspace_id)
 
         if kessel_enabled:
             allow_all = not deny
             check_str = 'ALLOW' if allow_all else 'DENY'
-            self.stdout.write(f'  gRPC port: {grpc_port}')
-            self.stdout.write(
-                f'  Kessel Check RPC (--deny): '
-                f'{"ALLOW all" if allow_all else "DENY all"}'
+            logger.info('  gRPC port: %s', grpc_port)
+            logger.info(
+                '  Kessel Check RPC (--kessel-deny): %s',
+                'ALLOW all' if allow_all else 'DENY all',
             )
             if kessel_host_groups:
-                self.stdout.write(
-                    f'  Kessel StreamedListObjects (--host-groups): '
-                    f'{kessel_host_groups}'
+                logger.info(
+                    '  Kessel StreamedListObjects (--kessel-host-groups): %s',
+                    kessel_host_groups,
                 )
             else:
-                self.stdout.write(
-                    '  Kessel StreamedListObjects (--host-groups): none'
+                logger.info(
+                    '  Kessel StreamedListObjects (--kessel-host-groups): none'
                 )
             # Show effective access per scope
             workspace_access = 'ALLOW' if kessel_host_groups else 'DENY'
-            self.stdout.write('')
-            self.stdout.write('  Effective access by scope:')
-            self.stdout.write(f'    ORG scope  (Check RPC):              {check_str}')
-            self.stdout.write(f'    HOST scope (Check RPC):              {check_str}')
+            logger.info('  Effective access by scope:')
+            logger.info('    ORG scope  (Check RPC):              %s', check_str)
+            logger.info('    HOST scope (Check RPC):              %s', check_str)
             if kessel_host_groups:
                 groups_str = ', '.join(kessel_host_groups)
-                self.stdout.write(f'    WORKSPACE scope (StreamedListObjects): {workspace_access} [{groups_str}]')
+                logger.info('    WORKSPACE scope (StreamedListObjects): %s [%s]', workspace_access, groups_str)
             else:
-                self.stdout.write(f'    WORKSPACE scope (StreamedListObjects): {workspace_access}')
+                logger.info('    WORKSPACE scope (StreamedListObjects): %s', workspace_access)
             if not kessel_host_groups:
-                self.stdout.write(self.style.WARNING(
-                    '  WARNING: Most endpoints use WORKSPACE scope and will '
-                    'be denied. Use --host-groups with the default workspace '
-                    f'ID {workspace_id} for full access.'
-                ))
+                logger.warning(
+                    '  Most endpoints use WORKSPACE scope and will '
+                    'be denied. Use --kessel-host-groups with the default workspace '
+                    'ID %s for full access.', workspace_id,
+                )
 
-        self.stdout.write('')
-        self.stdout.write('RBAC v1 response payload:')
-        self.stdout.write(json.dumps(rbac_response, indent=2))
-        self.stdout.write('')
+        logger.info('RBAC v1 response payload:')
+        logger.info(json.dumps(rbac_response, indent=2))
 
         # ----- Start Kessel gRPC server (if enabled) -----
         grpc_server = None
@@ -475,7 +514,6 @@ class Command(BaseCommand):
                 kessel_modules,
                 allow_all=allow_all,
                 host_groups=kessel_host_groups,
-                log=self.stdout.write,
             )
             grpc_server = kessel_modules['grpc'].server(
                 futures.ThreadPoolExecutor(max_workers=4)
@@ -494,9 +532,7 @@ class Command(BaseCommand):
             reflection.enable_server_reflection(service_names, grpc_server)
             grpc_server.add_insecure_port(f'0.0.0.0:{grpc_port}')
             grpc_server.start()
-            self.stdout.write(self.style.SUCCESS(
-                f'  gRPC server listening on 0.0.0.0:{grpc_port}'
-            ))
+            logger.info('gRPC server listening on 0.0.0.0:%s', grpc_port)
 
         # ----- Start HTTP server -----
         server = HTTPServer(('0.0.0.0', port), RBACRequestHandler)
@@ -504,10 +540,7 @@ class Command(BaseCommand):
         server.rbac_response = rbac_response
         server.workspace_id = workspace_id
 
-        self.stdout.write(self.style.SUCCESS(
-            f'  HTTP server listening on 0.0.0.0:{port}'
-        ))
-        self.stdout.write('')
+        logger.info('HTTP server listening on 0.0.0.0:%s', port)
 
         if grpc_server:
             # Run HTTP in a background thread, gRPC blocks on main thread
@@ -518,16 +551,12 @@ class Command(BaseCommand):
             try:
                 grpc_server.wait_for_termination()
             except KeyboardInterrupt:
-                self.stdout.write(self.style.WARNING(
-                    '\nShutting down mock RBAC + Kessel servers.'
-                ))
+                logger.info('Shutting down mock RBAC + Kessel servers.')
                 grpc_server.stop(grace=0)
                 server.shutdown()
         else:
             try:
                 server.serve_forever()
             except KeyboardInterrupt:
-                self.stdout.write(self.style.WARNING(
-                    '\nShutting down mock RBAC server.'
-                ))
+                logger.info('Shutting down mock RBAC server.')
                 server.server_close()

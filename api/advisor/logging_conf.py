@@ -60,7 +60,7 @@ LOGGING = {
     },
     'formatters': {
         'dev': {
-            'format': '[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] '
+            'format': '[%(asctime)s] %(levelname)s [%(name)s.%(module)s.%(funcName)s:%(lineno)d] '
                       '[%(thread)d  %(threadName)s] [%(process)d] %(message)s',
             'datefmt': '%H:%M:%S',
         },
