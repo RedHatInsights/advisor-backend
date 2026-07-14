@@ -61,6 +61,11 @@ class InventoryHostTestCase(TestCase):
                     ],
                     'instance_number': '00',
                     'version': '2.00.122.04.1478575636'
+                },
+                'crowdstrike': {
+                    'falcon_aid': 'abc123def456',
+                    'falcon_backend': 'bpf',
+                    'falcon_version': '7.14.0'
                 }
             }
         })

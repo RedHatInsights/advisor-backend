@@ -23,8 +23,9 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from api.filters import (
     filter_on_param, host_tags_query_param,
-    filter_multi_param, filter_system_profile_sap_system_query_param,
+    filter_multi_param,
     filter_system_profile_sap_sids_contains_query_param,
+    workload_filter_query_params,
     host_group_name_query_param, filter_on_host_tags
 )
 from api.models import (
@@ -102,8 +103,8 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         parameters=[
             rule_id_param, host_tags_query_param,
-            filter_system_profile_sap_system_query_param,
             filter_system_profile_sap_sids_contains_query_param,
+            *workload_filter_query_params,
             host_group_name_query_param,
         ],
     )

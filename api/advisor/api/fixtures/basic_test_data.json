@@ -446,6 +446,11 @@
               ],
               "instance_number": "00",
               "version": "2.00.122.04.1478575636"
+            },
+            "crowdstrike": {
+              "falcon_aid": "abc123def456",
+              "falcon_backend": "bpf",
+              "falcon_version": "7.14.0"
             }
           }
       },
@@ -487,6 +492,9 @@
                 "hub_version": "4.5.6",
                 "catalog_worker_version": "1.2.3",
                 "sso_version": "7.8.9"
+            },
+            "ibm_db2": {
+                "is_running": true
             }
           }
       },
@@ -530,6 +538,9 @@
             },
             "mssql": {
                 "version": "15.2.0"
+            },
+            "intersystems": {
+                "is_intersystems": true
             }
           }
       },
@@ -575,6 +586,10 @@
             "ansible": {
                 "controller_version": "4.2.1",
                 "hub_version": "4.2.1"
+            },
+            "rhel_ai": {
+                "variant": "RHEL AI",
+                "rhel_ai_version_id": "v1.1.3"
             }
           }
       },
@@ -731,6 +746,11 @@
               ],
               "instance_number": "04",
               "version": "2.00.122.04.1478575636"
+            },
+            "crowdstrike": {
+              "falcon_aid": "def456abc789",
+              "falcon_backend": "kernel",
+              "falcon_version": "7.15.0"
             }
           }
       },

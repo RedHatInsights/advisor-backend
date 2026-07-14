@@ -23,10 +23,13 @@ from api.permissions import auth_header_for_testing
 
 class WorkloadsFieldRedirectionTestCase(TestCase):
     """
-    Test workloads field redirection functionality for schema compatibility.
+    Test workloads-related field filtering through actual API endpoints.
 
-    Tests that workloads-related fields (SAP, Ansible, MSSQL) are correctly
-    redirected between old and new schemas through actual API endpoints.
+    SAP, Ansible, and MSSQL use flat legacy paths (e.g. filter[system_profile][ansible])
+    that are redirected internally to filter[system_profile][workloads][*].
+
+    CrowdStrike, IBM Db2, InterSystems, Oracle DB, and RHEL AI were introduced
+    directly under filter[system_profile][workloads][*] and require no redirection.
     """
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
@@ -170,6 +173,28 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         # 6 systems are visible after staleness filtering (9 total - 3 stale-hide systems)
         self.assertEqual(len(systems), 6)
         self.assertEqual(json_data['meta']['count'], 6)
+
+    def test_canonical_workloads_path(self):
+        """Test filtering for workloads that live natively under filter[system_profile][workloads][*]."""
+        cases = [
+            ('crowdstrike', {constants.host_01_uuid, constants.host_e1_uuid}),
+            ('ibm_db2', {constants.host_03_uuid}),
+            ('intersystems', {constants.host_04_uuid}),
+            ('oracle_db', {constants.host_06_uuid}),
+            ('rhel_ai', {constants.host_05_uuid}),
+        ]
+        for workload_name, expected_uuids in cases:
+            with self.subTest(workload=workload_name):
+                response = self.client.get(
+                    reverse('system-list'),
+                    data={f'filter[system_profile][workloads][{workload_name}][not_nil]': 'true'},
+                    **auth_header_for_testing()
+                )
+                json_data = self._response_is_good(response)
+                systems = json_data['data']
+                actual_uuids = {system['system_uuid'] for system in systems}
+                self.assertEqual(actual_uuids, expected_uuids)
+                self.assertEqual(json_data['meta']['count'], len(expected_uuids))
 
     def test_workloads_false_filtering(self):
         """Test filtering systems without specific workloads."""

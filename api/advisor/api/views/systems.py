@@ -25,10 +25,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from api.filters import (
     value_of_param, host_tags_query_param, system_type_query_param,
-    filter_system_profile_sap_system_query_param,
     filter_system_profile_sap_sids_contains_query_param,
-    filter_system_profile_mssql_query_param,
-    filter_system_profile_ansible_query_param,
+    workload_filter_query_params,
     pathway_query_param, display_name_query_param,
     hits_query_param, incident_query_param, rhel_version_query_param,
     sort_params_to_fields, sort_param_enum, host_group_name_query_param,
@@ -92,12 +90,11 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         parameters=[
             sort_query_param, display_name_query_param, host_tags_query_param,
-            hits_query_param, filter_system_profile_sap_system_query_param,
+            hits_query_param,
             filter_system_profile_sap_sids_contains_query_param,
             incident_query_param, rhel_version_query_param, pathway_query_param,
             host_group_name_query_param, update_method_query_param,
-            filter_system_profile_mssql_query_param,
-            filter_system_profile_ansible_query_param,
+            *workload_filter_query_params,
             has_disabled_recommendation_query_param,
             system_type_query_param,
         ],
@@ -118,11 +115,10 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[
-            host_tags_query_param, filter_system_profile_sap_system_query_param,
+            host_tags_query_param,
             filter_system_profile_sap_sids_contains_query_param,
             host_group_name_query_param, update_method_query_param,
-            filter_system_profile_mssql_query_param,
-            filter_system_profile_ansible_query_param,
+            *workload_filter_query_params,
             system_type_query_param,
         ],
         responses={200: ReportSerializer(many=True)}
