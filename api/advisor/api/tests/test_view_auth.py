@@ -811,9 +811,6 @@ class TestInsightsRBACPermissionKessel(TestCase):
                 logs.output[1],
                 'DEBUG:advisor-log:InsightsRBACPermission has_permission() check starting'
             )
-            self.assertTrue(
-                logs.output[2].startswith('DEBUG:advisor-log:has_permission(): identity ='),
-            )
             self.assertEqual(
                 request.rbac_message,
                 'KESSEL: ResourceScope is HOST - defer to has_object_permission'
