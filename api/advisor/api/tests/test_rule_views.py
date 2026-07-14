@@ -2424,7 +2424,7 @@ class RuleHostTagsTestCase(TestCase):
             **auth_header_for_testing(account='1234567', org_id='9876543')
         )
         self.assertEqual(get_hosts(response), [
-            "stale-warn.example.com", "system04.example.com", "system01.example.com", "system03.example.com"
+            "system01.example.com", "system03.example.com", "stale-warn.example.com", "system04.example.com"
         ])
 
         # Sort by group_name descending.  Hosts with no groups will be at the bottom of the list (sorted by hostname)
@@ -2434,7 +2434,7 @@ class RuleHostTagsTestCase(TestCase):
             **auth_header_for_testing(account='1234567', org_id='9876543')
         )
         self.assertEqual(get_hosts(response), [
-            "system03.example.com", "system01.example.com", "stale-warn.example.com", "system04.example.com"
+            "stale-warn.example.com", "system04.example.com", "system03.example.com", "system01.example.com"
         ])
 
         # Test sorting by group_name ascending, filtering on specific groups

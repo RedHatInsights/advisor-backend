@@ -773,6 +773,17 @@ curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/s
 curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?tags=insights-client/custom%2FLast%20Reboot=2023-07-14%2011%3A26%3A07,insights-client%2FPrivate+IPv4%3D192.168.1.100
 ```
 
+**Get systems via host groups, aka workgroups:**
+```bash
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?groups=
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/system/?groups=group_1,group_2&groups=
+```
+The first request returns ungrouped hosts, i.e. hosts not in a host group.
+The second request returns hosts in either group_1 or group_2 host groups, or ungrouped hosts.
+
+Note: when using the mock_rbac service, the results returned may be also filtered by the host groups the user is part of.
+So if the user is not a member of the host group(s) used in the query parameter, the results will be empty.
+
 **Other useful endpoints:**
 ```bash
 # Acknowledgements

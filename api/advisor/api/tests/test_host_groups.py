@@ -647,10 +647,10 @@ class HostGroupsTestCase(TestCase):
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
-    def test_groups_match_null_group(self):
+    def test_groups_match_ungrouped_group(self):
         responses.add(
             responses.GET, TEST_RBAC_V1_ACCESS, status=200,
-            json=rbac_data(groups=[constants.host_group_2_id, None])
+            json=rbac_data(groups=[constants.host_group_2_id, constants.standard_org_ungrouped_id])
         )
         # Pathways systems list
         page = self._get_view(
@@ -839,3 +839,73 @@ class HostGroupsTestCase(TestCase):
                 'total_risk': {'1': 4, '2': 0, '3': 0, '4': 0}
             }
         )
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
+    @responses.activate
+    def test_groups_match_ungrouped_query_param(self):
+        """
+        When the frontend sends groups= (empty string), it means
+        'ungrouped hosts' - hosts with a group entry marked ungrouped: true.
+        """
+        # No groups defined in RBAC
+        responses.add(
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200, json=rbac_data()
+        )
+        # Systems list - should return only ungrouped hosts
+        page = self._get_view(
+            'system-list', data={'groups': ''}
+        )
+        # Ungrouped hosts in the test data (non-stale): host_04, host_05, host_06, host_e1
+        # These have groups=[{"id": "98765430-...", "name": "Ungrouped Hosts", "ungrouped": true}]
+        self.assertEqual(page['meta']['count'], 4)
+        self.assertEqual(len(page['data']), 4)
+        # Verify all returned hosts are in the ungrouped group
+        for system in page['data']:
+            self.assertIn('group_name', system)
+            self.assertEqual(system['group_name'], 'Ungrouped Hosts')
+            self.assertNotEqual(system['display_name'], constants.host_01_name)
+            self.assertNotEqual(system['display_name'], constants.host_03_name)
+
+        # Test with both ungrouped (groups=) and a named group (group_1)
+        responses.replace(
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200, json=rbac_data()
+        )
+        page = self._get_view(
+            'system-list', data={'groups': ',group_1'}
+        )
+        # Should return ungrouped hosts (host_04, host_05, host_06, host_e1)
+        # plus group_1 hosts (host_01) = 5 total
+        self.assertEqual(page['meta']['count'], 5)
+        self.assertEqual(len(page['data']), 5)
+        returned_names = {s['display_name'] for s in page['data']}
+        self.assertIn(constants.host_01_name, returned_names)
+        self.assertIn(constants.host_04_name, returned_names)
+        self.assertIn(constants.host_05_name, returned_names)
+        self.assertIn(constants.host_06_name, returned_names)
+        self.assertIn(constants.host_e1_name, returned_names)
+        # group_2 host should not be returned
+        self.assertNotIn(constants.host_03_name, returned_names)
+
+        # Test with alternate org (9988776) - ungrouped hosts have
+        # a different UUID (99887760-...)
+        responses.replace(
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200, json=rbac_data()
+        )
+        response = self.client.get(
+            reverse('system-list'), data={'groups': ''},
+            **auth_header_for_testing(
+                account=constants.alternate_acct,
+                org_id=constants.alternate_org
+            )
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        page = response.json()
+        # Ungrouped hosts in alternate org (non-stale): host_02, host_07
+        self.assertEqual(page['meta']['count'], 2)
+        self.assertEqual(len(page['data']), 2)
+        for system in page['data']:
+            self.assertIn('group_name', system)
+            self.assertEqual(system['group_name'], 'Ungrouped Hosts')
+        returned_names = {s['display_name'] for s in page['data']}
+        self.assertIn(constants.host_02_name, returned_names)
+        self.assertIn(constants.host_07_name, returned_names)
