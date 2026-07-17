@@ -69,6 +69,14 @@ def pytest_configure():
     os.environ.update(TEST_ENV_VARS)
 
 
+@pytest.fixture(scope="session")
+def django_db_modify_db_settings(request):
+    from django.conf import settings
+    db_port = os.environ.get('ADVISOR_DB_PORT', '')
+    if db_port:
+        settings.DATABASES['default']['PORT'] = db_port
+
+
 @pytest.fixture
 def env():
     return TEST_ENV_VARS

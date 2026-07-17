@@ -1204,3 +1204,35 @@ def test_rhel6_system_filtering(db, service, mocker, sample_rhel6_engine_results
     assert reports.count() == 1
     assert reports.filter(rule__rule_id="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
     assert not reports.filter(rule__rule_id="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_id_property(db):
+    import uuid
+    inventory_id = uuid.uuid4()
+    host = models.AdvisorInventoryHost(inventory_id=inventory_id, org_id="123")
+    assert host.id == inventory_id
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_major_minor(db):
+    host = models.AdvisorInventoryHost(os_major=8, os_minor=6, org_id="123")
+    assert host.rhel_version == "8.6"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_major_only(db):
+    host = models.AdvisorInventoryHost(os_major=9, os_minor=None, org_id="123")
+    assert host.rhel_version == "9"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_name_only(db):
+    host = models.AdvisorInventoryHost(os_name="CentOS", os_major=None, os_minor=None, org_id="123")
+    assert host.rhel_version == "Unknown CentOS version"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_unknown(db):
+    host = models.AdvisorInventoryHost(os_name=None, os_major=None, os_minor=None, org_id="123")
+    assert host.rhel_version == "Unknown OS version"

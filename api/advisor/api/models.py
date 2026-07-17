@@ -751,6 +751,21 @@ class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), m
     workloads = models.JSONField(default=dict)
     system_update_method = models.CharField(max_length=50, null=True, blank=True)
 
+    @property
+    def id(self):
+        return self.inventory_id
+
+    @property
+    def rhel_version(self):
+        if self.os_major is not None and self.os_minor is not None:
+            return f"{self.os_major}.{self.os_minor}"
+        elif self.os_major is not None:
+            return str(self.os_major)
+        elif self.os_name:
+            return f"Unknown {self.os_name} version"
+        else:
+            return "Unknown OS version"
+
     class Meta:
         db_table = 'advisor_inventory_host'
 
