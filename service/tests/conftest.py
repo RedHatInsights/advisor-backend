@@ -52,6 +52,7 @@ def db(request, django_db_setup, django_db_blocker):
         'advisor_service_inventoryhost',
         'service_test_data',
         'basic_test_data',
+        'advisor_inventory_host_test_data',
         'rulesets',
         'rule_categories',
         'system_types',
