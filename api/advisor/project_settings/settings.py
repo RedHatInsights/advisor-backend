@@ -65,6 +65,7 @@ TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
 _DEFAULT_ALLOWED_HOSTS = ",".join([
     'testserver', 'insights-advisor-api', 'advisor-api', 'localhost', '127.0.0.1',
+    'host.containers.internal',
     '.insights.openshiftapps.com', '.svc.cluster.local'
 ])
 
