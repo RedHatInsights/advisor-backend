@@ -1204,3 +1204,6 @@ def test_rhel6_system_filtering(db, service, mocker, sample_rhel6_engine_results
     assert reports.count() == 1
     assert reports.filter(rule__rule_id="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
     assert not reports.filter(rule__rule_id="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
+
+def test_something(service):
+    return True
