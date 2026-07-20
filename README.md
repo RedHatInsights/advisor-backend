@@ -116,7 +116,7 @@ fewer containers running, and more flexibility in how Advisor works.
 
 The `advisor_inventory_service` management command (`api/advisor/api/management/commands/advisor_inventory_service.py`) runs a Kafka consumer that replicates host data from the Host-Based Inventory (HBI) service into Advisor's own `AdvisorInventoryHost` and `Host` tables. It consumes messages from the `platform.inventory.events` topic in configurable batches (controlled by the `INVENTORY_BATCH_SIZE` setting).
 
-The consumer is gated by the `INVENTORY_EVENT_REPLICATION` setting or the `advisor.inventory_event_replication` feature flag. When neither is enabled, incoming events are logged and discarded.
+The consumer is gated by the `advisor.enable_inventory_replication` feature flag (`FLAG_ENABLE_INVENTORY_REPLICATION`). When the flag is disabled (and the `ENABLE_INVENTORY_REPLICATION` env var fallback is also `false`), incoming events are logged and discarded.
 
 ### How it works
 
@@ -398,6 +398,13 @@ users can see.  For testing this is normally disabled as well.
 - `UNLEASH_BOOTSTRAP_FILE` - A JSON file with feature flags set, in the
   same format as the Unleash API returns.  Defaults to no file.
 
+### Active feature flags
+
+| Flag | Constant | Description |
+|------|----------|-------------|
+| `advisor.enable_inventory_replication` | `FLAG_ENABLE_INVENTORY_REPLICATION` | Gates the Kafka consumer that replicates host data from HBI into the local `AdvisorInventoryHost` table. Falls back to the `ENABLE_INVENTORY_REPLICATION` env var when Unleash is unavailable. |
+| `advisor.read_local_inventory` | `FLAG_READ_LOCAL_INVENTORY` | When enabled, the service webhook and API read paths query the local `AdvisorInventoryHost` table instead of the Cyndi `inventory.hosts` view (`InventoryHost`). |
+
 ## Monitoring/Observability
 
 - `PROMETHEUS_PATH` - Default: `metrics` (or from Clowder config)
@@ -418,9 +425,8 @@ users can see.  For testing this is normally disabled as well.
 
 ## Inventory Event Replication settings
 
-- `INVENTORY_EVENT_REPLICATION` - If set to `True`, will process Inventory
-  Events for replication (and not check the `advisor.inventory_event_replication`
-  feature flag).  Default: `False`.
+- `ENABLE_INVENTORY_REPLICATION` - Fallback for the `advisor.enable_inventory_replication`
+  Unleash feature flag when Unleash is unavailable. Default: `False`.
 
 ## Host-Based Inventory (HBI) Settings
 

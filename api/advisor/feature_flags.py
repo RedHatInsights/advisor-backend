@@ -22,7 +22,8 @@ from UnleashClient import _RunState
 
 # Define actual feature flags here, to be used as module properties.
 FLAG_ADVISOR_KESSEL_ENABLED = "advisor.kessel_enabled"
-FLAG_INVENTORY_EVENT_REPLICATION = "advisor.inventory_event_replication"
+FLAG_ENABLE_INVENTORY_REPLICATION = "advisor.enable_inventory_replication"
+FLAG_READ_LOCAL_INVENTORY = "advisor.read_local_inventory"
 
 
 def setting(name, default=None):

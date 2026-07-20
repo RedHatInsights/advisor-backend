@@ -29,7 +29,7 @@ from django.utils.dateparse import parse_datetime
 
 from advisor_logging import logger
 from feature_flags import (
-    feature_flag_is_enabled, FLAG_INVENTORY_EVENT_REPLICATION
+    feature_flag_is_enabled, FLAG_ENABLE_INVENTORY_REPLICATION
 )
 from api.models import AdvisorInventoryHost, Host
 
@@ -145,9 +145,7 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
     """
     Handle a batch of inventory events.
     """
-    if settings.INVENTORY_EVENT_REPLICATION:
-        pass
-    elif not feature_flag_is_enabled(FLAG_INVENTORY_EVENT_REPLICATION):
+    if not feature_flag_is_enabled(FLAG_ENABLE_INVENTORY_REPLICATION):
         logger.info(
             "Received %d Inventory events - feature flag not enabled, ignoring",
             len(messages)
