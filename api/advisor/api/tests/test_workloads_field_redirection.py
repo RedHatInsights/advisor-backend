@@ -129,8 +129,13 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         self.assertEqual(actual_system_uuids, expected_mssql_systems)
 
     def test_multiple_workloads_fields_new_schema(self):
-        """Test multiple workloads fields together through API."""
-        # Test SAP + Ansible combination
+        """Test SAP (sap_system=true) + Ansible (not_nil) combination uses OR.
+
+        Both are workload presence checks and are ORed together:
+        - sap_system=true: host_01, host_04, host_05, host_e1
+        - ansible not_nil: host_03, host_05
+        OR result: host_01, host_03, host_04, host_05, host_e1
+        """
         response = self.client.get(
             reverse('system-list'),
             data={
@@ -143,13 +148,71 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         systems = json_data['data']
 
         self.assertIsInstance(systems, list)
-        # Expect exactly 1 system with both SAP and Ansible workloads
-        expected_combined_systems = {constants.host_05_uuid}
+        expected_combined_systems = {
+            constants.host_01_uuid, constants.host_03_uuid,
+            constants.host_04_uuid, constants.host_05_uuid,
+            constants.host_e1_uuid,
+        }
         actual_system_uuids = {system['system_uuid'] for system in systems}
 
-        self.assertEqual(len(systems), 1)
-        self.assertEqual(json_data['meta']['count'], 1)
         self.assertEqual(actual_system_uuids, expected_combined_systems)
+        self.assertEqual(json_data['meta']['count'], len(expected_combined_systems))
+
+    def test_sap_system_param_ored_with_other_workloads(self):
+        """Legacy sap_system=true param participates in OR with other not_nil workloads.
+
+        sap_system=true: host_01, host_04, host_05, host_e1
+        oracle_db not_nil: host_06 (oracle_db host, sap_system=false)
+        OR result: host_01, host_04, host_05, host_06, host_e1
+        host_06 only appears because of oracle_db — confirms OR, not AND.
+        """
+        response = self.client.get(
+            reverse('system-list'),
+            data={
+                'filter[system_profile][sap_system]': 'true',
+                'filter[system_profile][workloads][oracle_db][not_nil]': 'true',
+            },
+            **auth_header_for_testing()
+        )
+        json_data = self._response_is_good(response)
+        systems = json_data['data']
+
+        self.assertIsInstance(systems, list)
+        expected_systems = {
+            constants.host_01_uuid, constants.host_04_uuid,
+            constants.host_05_uuid, constants.host_06_uuid,
+            constants.host_e1_uuid,
+        }
+        actual_system_uuids = {system['system_uuid'] for system in systems}
+
+        self.assertEqual(actual_system_uuids, expected_systems)
+        self.assertEqual(json_data['meta']['count'], len(expected_systems))
+
+    def test_multiple_not_nil_workloads_ored(self):
+        """Multiple not_nil workload filters are ORed, returning hosts with any of them.
+
+        ansible: host_03, host_05
+        ibm_db2: host_03
+        OR result: host_03 (has ibm_db2), host_05 (has ansible)
+        AND result would be: host_03 only (has both) — but we expect OR here.
+        """
+        response = self.client.get(
+            reverse('system-list'),
+            data={
+                'filter[system_profile][ansible][not_nil]': 'true',
+                'filter[system_profile][workloads][ibm_db2][not_nil]': 'true',
+            },
+            **auth_header_for_testing()
+        )
+        json_data = self._response_is_good(response)
+        systems = json_data['data']
+
+        self.assertIsInstance(systems, list)
+        expected_systems = {constants.host_03_uuid, constants.host_05_uuid}
+        actual_system_uuids = {system['system_uuid'] for system in systems}
+
+        self.assertEqual(actual_system_uuids, expected_systems)
+        self.assertEqual(json_data['meta']['count'], len(expected_systems))
 
     def test_non_workloads_fields_unaffected(self):
         """Test that non-workloads fields work normally through API."""

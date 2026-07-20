@@ -690,20 +690,20 @@ class MultiParamParsingTestCase(TestCase):
 
     def test_multiple_parameters(self):
         # Both parameters match the filter prefix
-        rq = self._make_request_obj('filter[system_profile][sap_system]', 'true')
+        rq = self._make_request_obj('filter[system_profile][arch][nil]', 'true')
         rq.query_params['filter[system_profile][bios_vendor][nil]'] = 'true'
         # Note that AND comparisons on Q objects are order dependent.
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__workloads__sap__sap_system=True) & Q(system_profile__bios_vendor__isnull=True)
+            Q(system_profile__arch__isnull=True) & Q(system_profile__bios_vendor__isnull=True)
         )
         # One parameter doesn't match the filter prefix, the other does
-        rq = self._make_request_obj('filter[system_profile][sap_system]', 'true')
+        rq = self._make_request_obj('filter[system_profile][arch][nil]', 'true')
         rq.query_params['filter[facts][bios_vendor][nil]'] = 'true'
         # Note that AND comparisons on Q objects are order dependent.
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__workloads__sap__sap_system=True)
+            Q(system_profile__arch__isnull=True)
         )
 
     _NEW_WORKLOADS = ('crowdstrike', 'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai')

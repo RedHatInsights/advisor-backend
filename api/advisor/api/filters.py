@@ -313,6 +313,7 @@ def filter_multi_param(
     provide an OpenAPI 'Parameter' object to include in the parameter spec.
     """
     end_filter = Q()
+    workload_presence_filters = []
     # Prefix, one or more square-bracketed words, and an optional '[]'
     fre = re.compile(r'^(?P<prefix>\w+)(?P<brackets>(?:\[\w+\])+)(?:\[\])?$')
     comparator_translations = {
@@ -352,6 +353,16 @@ def filter_multi_param(
                 filter_parts = [filter_prefix, 'workloads', 'sap', 'sids'] + filter_parts[2:]
             elif field_name in ('ansible', 'mssql'):
                 filter_parts = [filter_prefix, 'workloads'] + filter_parts[1:]
+
+        # Workload presence checks are ORed together; all other filters are ANDed.
+        # Covers: nil/not_nil on any top-level workload, and the legacy sap_system boolean
+        # (which redirects to workloads.sap.sap_system and represents SAP host presence).
+        is_workload_presence = (
+            filter_prefix == 'system_profile' and
+            len(filter_parts) == 4 and
+            filter_parts[1] == 'workloads' and
+            (filter_parts[3] in ('not_nil', 'nil') or filter_parts[3] == 'sap_system')
+        )
 
         # Keep the filter prefix here though
         operator = filter_parts[-1]
@@ -410,8 +421,17 @@ def filter_multi_param(
             # Invert Q sense if `__ne`.
             if filter_not_equal:
                 this_filter = ~this_filter
-            # Add it to the expression
-            end_filter = end_filter & this_filter
+            # Workload presence checks are ORed; everything else is ANDed.
+            if is_workload_presence:
+                workload_presence_filters.append(this_filter)
+            else:
+                end_filter = end_filter & this_filter
+
+    if workload_presence_filters:
+        or_q = workload_presence_filters[0]
+        for f in workload_presence_filters[1:]:
+            or_q |= f
+        end_filter &= or_q
 
     return end_filter
 
@@ -508,8 +528,16 @@ filter_system_profile_rhel_ai_query_param = OpenApiParameter(
     required=False, type=OpenApiTypes.BOOL,
 )
 
+
+filter_system_profile_sap_query_param = OpenApiParameter(
+    name='filter[system_profile][workloads][sap][not_nil]', location=OpenApiParameter.QUERY,
+    description='Does this system have a SAP workload?',
+    required=False, type=OpenApiTypes.BOOL,
+)
+
 workload_filter_query_params = [
     filter_system_profile_sap_system_query_param,
+    filter_system_profile_sap_query_param,
     filter_system_profile_mssql_query_param,
     filter_system_profile_ansible_query_param,
     filter_system_profile_crowdstrike_query_param,
