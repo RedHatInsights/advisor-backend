@@ -25,10 +25,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from api.filters import (
     value_of_param, filter_on_param, host_tags_query_param,
-    filter_system_profile_sap_system_query_param,
     filter_system_profile_sap_sids_contains_query_param,
-    filter_system_profile_mssql_query_param,
-    filter_system_profile_ansible_query_param,
+    workload_filter_query_params,
     category_query_param, host_group_name_query_param,
     update_method_query_param,
 )
@@ -193,10 +191,9 @@ class PathwayViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[
-            host_tags_query_param, filter_system_profile_sap_system_query_param,
+            host_tags_query_param,
             filter_system_profile_sap_sids_contains_query_param,
-            filter_system_profile_mssql_query_param,
-            filter_system_profile_ansible_query_param,
+            *workload_filter_query_params,
             category_query_param, text_query_param, host_group_name_query_param,
             sort_query_param, impacting_query_param, reboot_required_filter_param,
             has_incident_filter_param,
@@ -218,10 +215,9 @@ class PathwayViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[
-            host_tags_query_param, filter_system_profile_sap_system_query_param,
+            host_tags_query_param,
             filter_system_profile_sap_sids_contains_query_param,
-            filter_system_profile_mssql_query_param,
-            filter_system_profile_ansible_query_param,
+            *workload_filter_query_params,
             category_query_param, text_query_param, host_group_name_query_param,
         ],
         summary="Returns an individual Pathway based on slug",
@@ -240,10 +236,9 @@ class PathwayViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[
-            host_tags_query_param, filter_system_profile_sap_system_query_param,
+            host_tags_query_param,
             filter_system_profile_sap_sids_contains_query_param,
-            filter_system_profile_mssql_query_param,
-            filter_system_profile_ansible_query_param,
+            *workload_filter_query_params,
             category_query_param, text_query_param, host_group_name_query_param,
             update_method_query_param,
         ],

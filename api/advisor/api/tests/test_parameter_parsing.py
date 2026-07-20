@@ -705,3 +705,23 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(rq, 'system_profile'),
             Q(system_profile__workloads__sap__sap_system=True)
         )
+
+    _NEW_WORKLOADS = ('crowdstrike', 'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai')
+
+    def test_new_workloads_canonical_path(self):
+        for workload in self._NEW_WORKLOADS:
+            rq = self._make_request_obj(f'filter[system_profile][workloads][{workload}][not_nil]', 'true')
+            self.assertEqual(
+                filter_multi_param(rq, 'system_profile'),
+                Q(**{f'system_profile__workloads__{workload}__isnull': False}),
+                msg=f'Canonical path failed for workload: {workload}',
+            )
+
+    def test_new_workloads_boolean_filters(self):
+        for workload in self._NEW_WORKLOADS:
+            rq = self._make_request_obj(f'filter[system_profile][workloads][{workload}]', 'true')
+            self.assertEqual(
+                filter_multi_param(rq, 'system_profile'),
+                Q(**{f'system_profile__workloads__{workload}': True}),
+                msg=f'Boolean filter failed for workload: {workload}',
+            )
