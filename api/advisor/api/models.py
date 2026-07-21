@@ -35,7 +35,7 @@ from api.filters import (
     category_query_param, host_group_name_query_param, pathway_query_param,
     filter_on_branch_id, filter_on_display_name, filter_on_system_type,
     filter_on_hits, filter_on_host_tags, filter_on_incident, filter_on_rhel_version,
-    filter_on_update_method, filter_on_has_disabled_recommendation,
+    filter_on_update_method, filter_on_has_disabled_recommendation, filter_on_workspace,
 )
 
 from advisor_logging import logger
@@ -414,6 +414,7 @@ def get_reports_subquery(
             branch_id_filter,
             filter_on_update_method(request, relation='inventory'),
             get_host_group_filter(request, relation='inventory'),
+            filter_on_workspace(request, relation='inventory'),
             stale_systems_filter,
         ) if exclude_ineligible_hosts else Q(),
         **outer_table_join

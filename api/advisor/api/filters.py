@@ -637,6 +637,17 @@ update_method_query_param = OpenApiParameter(
     enum=('ostree', 'dnfyum')
 )
 
+group_id_query_param = OpenApiParameter(
+    name='group_id', location=OpenApiParameter.QUERY,
+    required=False, many=True, style='form', type=OpenApiTypes.UUID,
+    description=(
+        'Filter recommendations by group UUID. '
+        'Groups organize hosts in Inventory into workspaces. '
+        'Pass one or more group UUIDs to filter recommendations for hosts in those groups. '
+        'If omitted, shows recommendations from all groups.'
+    )
+)
+
 
 ##############################################################################
 # Commonly used filters
@@ -869,6 +880,39 @@ def filter_on_update_method(request, relation: Optional[str] = None):
     if 'dnfyum' in update_methods:
         update_method_filter |= Q(**{base_parameter + '__in': ('dnf', 'yum')})
     return update_method_filter
+
+
+def filter_on_workspace(request, relation: Optional[str] = None):
+    """
+    Filter recommendations by group UUID(s).
+
+    Groups are used in Inventory to organize hosts into workspaces.
+    This filter matches hosts that belong to any of the specified groups.
+
+    Args:
+        request: The HTTP request containing query parameters
+        relation: Optional relation prefix (e.g., 'inventory' for inventory__groups)
+
+    Returns:
+        Q object for filtering by group UUID(s)
+    """
+    group_ids = value_of_param(group_id_query_param, request)
+    if not group_ids:
+        return Q()
+
+    group_field = 'groups'
+    if relation:
+        group_field = f'{relation}__{group_field}'
+    group_contains_clause = group_field + '__contains'
+
+    # Build OR filter for multiple group IDs
+    group_filter = Q()
+    for group_id in group_ids:
+        # Filter by group UUID
+        # JSONField contains array of objects with 'id' field
+        group_filter |= Q(**{group_contains_clause: [{'id': str(group_id)}]})
+
+    return group_filter
 
 
 #######################################################
