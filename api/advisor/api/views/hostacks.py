@@ -25,7 +25,7 @@ from api.filters import (
     filter_on_param, host_tags_query_param,
     filter_multi_param,
     filter_system_profile_sap_sids_contains_query_param,
-    workload_filter_query_params,
+    workload_filter_query_params, workload_query_param,
     host_group_name_query_param, filter_on_host_tags
 )
 from api.models import (
@@ -104,7 +104,7 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         parameters=[
             rule_id_param, host_tags_query_param,
             filter_system_profile_sap_sids_contains_query_param,
-            *workload_filter_query_params,
+            *workload_filter_query_params, workload_query_param,
             host_group_name_query_param,
         ],
     )

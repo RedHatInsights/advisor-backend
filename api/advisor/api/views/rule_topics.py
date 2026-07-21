@@ -26,7 +26,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from api.filters import (
     value_of_param, host_tags_query_param,
     filter_system_profile_sap_sids_contains_query_param,
-    workload_filter_query_params,
+    workload_filter_query_params, workload_query_param,
     sort_params_to_fields, host_group_name_query_param,
     update_method_query_param,
 )
@@ -82,7 +82,7 @@ class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
         parameters=[
             show_disabled_query_param, host_tags_query_param,
             filter_system_profile_sap_sids_contains_query_param,
-            *workload_filter_query_params,
+            *workload_filter_query_params, workload_query_param,
             host_group_name_query_param, update_method_query_param,
         ],
     )
@@ -120,7 +120,7 @@ class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
         parameters=[
             host_tags_query_param, systems_sort_query_param,
             filter_system_profile_sap_sids_contains_query_param,
-            *workload_filter_query_params,
+            *workload_filter_query_params, workload_query_param,
             host_group_name_query_param, update_method_query_param,
         ],
         responses={200: SystemsForRuleSerializer(many=False)},

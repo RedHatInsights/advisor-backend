@@ -520,6 +520,23 @@ workload_filter_query_params = [
 ]
 
 
+WORKLOAD_NAMES = (
+    'sap', 'ansible', 'mssql', 'crowdstrike',
+    'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai',
+)
+
+workload_query_param = OpenApiParameter(
+    name='workload', location=OpenApiParameter.QUERY,
+    description=(
+        'Filter systems by workload type. '
+        'Multiple workloads are OR\'d together. '
+        'Valid workloads: ' + ', '.join(WORKLOAD_NAMES)
+    ),
+    required=False, many=True, style='form', type=OpenApiTypes.STR,
+    enum=WORKLOAD_NAMES,
+)
+
+
 filter_system_profile_sap_sids_contains_query_param = OpenApiParameter(
     name='filter[system_profile][sap_sids][contains]',
     location=OpenApiParameter.QUERY,
@@ -851,6 +868,29 @@ def filter_on_topic(request, relation: Optional[str] = None):
         return Q(**{base_parameter: topic_param})
     else:
         return Q()
+
+
+def filter_on_workload(request, relation: Optional[str] = None):
+    """
+    Filter systems by workload type.  Multiple workloads are OR'd together,
+    following the same pattern as get_host_group_filter.
+
+    For 'sap', checks system_profile__workloads__sap__sap_system=True.
+    For all others, checks system_profile__workloads__<workload>__isnull=False.
+    """
+    workloads = value_of_param(workload_query_param, request)
+    if not workloads:
+        return Q()
+    base = 'system_profile__workloads'
+    if relation:
+        base = f"{relation}__{base}"
+    workload_filter = Q()
+    for workload in workloads:
+        if workload == 'sap':
+            workload_filter |= Q(**{f"{base}__sap__sap_system": True})
+        else:
+            workload_filter |= Q(**{f"{base}__{workload}__isnull": False})
+    return workload_filter
 
 
 def filter_on_update_method(request, relation: Optional[str] = None):
