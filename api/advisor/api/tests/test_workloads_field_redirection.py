@@ -219,3 +219,139 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         self.assertEqual(len(systems), 4)
         self.assertEqual(json_data['meta']['count'], 4)
         self.assertEqual(actual_system_uuids, expected_non_mssql_systems)
+
+
+class WorkloadQueryParamTestCase(TestCase):
+    """
+    Test the workload query parameter (?workload=sap, ?workload=ansible, etc.)
+    which filters systems by workload type via filter_on_workload().
+
+    This is distinct from the filter[system_profile][...] bracket-syntax
+    filtering tested in WorkloadsFieldRedirectionTestCase above.
+    """
+    fixtures = [
+        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'basic_test_data'
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        update_stale_dates()
+
+    def _get_system_uuids(self, data=None):
+        """Helper to GET system-list and return the set of system UUIDs."""
+        response = self.client.get(
+            reverse('system-list'), data=data or {},
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        json_data = response.json()
+        return json_data, {s['system_uuid'] for s in json_data['data']}
+
+    def test_workload_sap(self):
+        """SAP filter checks sap_system=True, not just presence of the sap key."""
+        json_data, uuids = self._get_system_uuids({'workload': 'sap'})
+        # host_01, host_04, host_05, host_e1 have sap_system=True
+        # host_03, host_06 have sap_system=false so are excluded
+        expected = {
+            constants.host_01_uuid, constants.host_04_uuid,
+            constants.host_05_uuid, constants.host_e1_uuid,
+        }
+        self.assertEqual(json_data['meta']['count'], len(expected))
+        self.assertEqual(uuids, expected)
+
+    def test_workload_ansible(self):
+        json_data, uuids = self._get_system_uuids({'workload': 'ansible'})
+        expected = {constants.host_03_uuid, constants.host_05_uuid}
+        self.assertEqual(json_data['meta']['count'], len(expected))
+        self.assertEqual(uuids, expected)
+
+    def test_workload_mssql(self):
+        json_data, uuids = self._get_system_uuids({'workload': 'mssql'})
+        expected = {constants.host_04_uuid, constants.host_06_uuid}
+        self.assertEqual(json_data['meta']['count'], len(expected))
+        self.assertEqual(uuids, expected)
+
+    def test_workload_crowdstrike(self):
+        json_data, uuids = self._get_system_uuids({'workload': 'crowdstrike'})
+        expected = {constants.host_01_uuid, constants.host_e1_uuid}
+        self.assertEqual(json_data['meta']['count'], len(expected))
+        self.assertEqual(uuids, expected)
+
+    def test_workload_single_host_types(self):
+        """Each of these workloads is present on exactly one visible host."""
+        cases = [
+            ('ibm_db2', {constants.host_03_uuid}),
+            ('intersystems', {constants.host_04_uuid}),
+            ('oracle_db', {constants.host_06_uuid}),
+            ('rhel_ai', {constants.host_05_uuid}),
+        ]
+        for workload_name, expected in cases:
+            with self.subTest(workload=workload_name):
+                json_data, uuids = self._get_system_uuids({'workload': workload_name})
+                self.assertEqual(json_data['meta']['count'], len(expected))
+                self.assertEqual(uuids, expected)
+
+    def test_multiple_workloads_ored(self):
+        """Multiple workload values are OR'd together."""
+        json_data, uuids = self._get_system_uuids({
+            'workload': 'mssql,crowdstrike'
+        })
+        # mssql: host_04, host_06; crowdstrike: host_01, host_e1
+        expected = {
+            constants.host_01_uuid, constants.host_04_uuid,
+            constants.host_06_uuid, constants.host_e1_uuid,
+        }
+        self.assertEqual(json_data['meta']['count'], len(expected))
+        self.assertEqual(uuids, expected)
+
+    def test_multiple_workloads_overlap(self):
+        """OR with overlapping hosts doesn't duplicate."""
+        json_data, uuids = self._get_system_uuids({
+            'workload': 'sap,crowdstrike'
+        })
+        # sap: host_01, host_04, host_05, host_e1
+        # crowdstrike: host_01, host_e1 (subset of sap hosts)
+        expected = {
+            constants.host_01_uuid, constants.host_04_uuid,
+            constants.host_05_uuid, constants.host_e1_uuid,
+        }
+        self.assertEqual(json_data['meta']['count'], len(expected))
+        self.assertEqual(uuids, expected)
+
+    def test_no_workload_param_returns_all(self):
+        """Without the workload param, all visible systems are returned."""
+        json_data, uuids = self._get_system_uuids()
+        # 6 visible systems in the standard org
+        self.assertEqual(json_data['meta']['count'], 6)
+        self.assertEqual(len(uuids), 6)
+
+    def test_workload_on_rules_list(self):
+        """The workload filter affects impacted_systems_count on rules."""
+        # With ansible filter: only host_03 and host_05 are visible
+        response = self.client.get(
+            reverse('rule-list'), data={'workload': 'ansible'},
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        rules = response.json()['data']
+        # Find the active rule and check its impacted count
+        for rule in rules:
+            if rule['rule_id'] == constants.active_rule:
+                # active_rule hits: host_01, host_03, host_04, host_06
+                # intersected with ansible hosts (host_03, host_05) => host_03
+                self.assertEqual(rule['impacted_systems_count'], 1)
+                break
+
+    def test_workload_on_stats(self):
+        """The workload filter affects stats-systems counts."""
+        response = self.client.get(
+            reverse('stats-systems'), data={'workload': 'mssql'},
+            **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        stats = response.json()
+        # mssql hosts: host_04, host_06
+        # host_04 has hits (active_rule, second_rule), host_06 has hits (active_rule)
+        self.assertEqual(stats['total'], 2)

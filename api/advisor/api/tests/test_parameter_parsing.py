@@ -27,7 +27,7 @@ from drf_spectacular.types import OpenApiTypes
 
 from api.filters import (
     OpenApiParameter, value_of_param, filter_on_param, filter_multi_param,
-    incident_query_param, filter_on_host_tags
+    incident_query_param, filter_on_host_tags, filter_on_workload,
 )
 
 
@@ -725,3 +725,62 @@ class MultiParamParsingTestCase(TestCase):
                 Q(**{f'system_profile__workloads__{workload}': True}),
                 msg=f'Boolean filter failed for workload: {workload}',
             )
+
+
+class FilterOnWorkloadTestCase(TestCase):
+    """
+    Unit tests for filter_on_workload(), which builds Q objects from the
+    ?workload= query parameter.
+    """
+    def _make_request(self, *values):
+        rq = HttpRequest()
+        rq.query_params = MultiValueDict()
+        for v in values:
+            rq.query_params.appendlist('workload', v)
+        return rq
+
+    def test_no_param_returns_empty_q(self):
+        rq = HttpRequest()
+        rq.query_params = MultiValueDict()
+        self.assertEqual(filter_on_workload(rq), Q())
+
+    def test_sap_uses_sap_system_true(self):
+        """SAP workload checks sap_system=True, not isnull."""
+        rq = self._make_request('sap')
+        self.assertEqual(
+            filter_on_workload(rq),
+            Q(system_profile__workloads__sap__sap_system=True)
+        )
+
+    def test_non_sap_uses_isnull_false(self):
+        """Non-SAP workloads check isnull=False."""
+        for workload in ('ansible', 'mssql', 'crowdstrike', 'ibm_db2',
+                         'intersystems', 'oracle_db', 'rhel_ai'):
+            with self.subTest(workload=workload):
+                rq = self._make_request(workload)
+                self.assertEqual(
+                    filter_on_workload(rq),
+                    Q(**{f'system_profile__workloads__{workload}__isnull': False})
+                )
+
+    def test_multiple_workloads_ored(self):
+        """Multiple workloads produce an OR'd Q object."""
+        rq = self._make_request('sap,mssql')
+        expected = (
+            Q(system_profile__workloads__sap__sap_system=True)
+            | Q(system_profile__workloads__mssql__isnull=False)
+        )
+        self.assertEqual(filter_on_workload(rq), expected)
+
+    def test_relation_prefix(self):
+        """The relation parameter prefixes all field lookups."""
+        rq = self._make_request('ansible')
+        self.assertEqual(
+            filter_on_workload(rq, relation='inventory'),
+            Q(inventory__system_profile__workloads__ansible__isnull=False)
+        )
+        rq = self._make_request('sap')
+        self.assertEqual(
+            filter_on_workload(rq, relation='inventory'),
+            Q(inventory__system_profile__workloads__sap__sap_system=True)
+        )
