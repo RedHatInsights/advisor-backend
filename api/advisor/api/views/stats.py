@@ -26,7 +26,7 @@ from drf_spectacular.utils import extend_schema
 from api.filters import (
     host_tags_query_param,
     filter_system_profile_sap_sids_contains_query_param,
-    workload_filter_query_params, workload_query_param,
+    workload_query_param,
     host_group_name_query_param,
 )
 from api.models import RuleCategory, get_reports_subquery
@@ -112,7 +112,7 @@ def get_systems_stats(org_id):
 standard_parameters = [
     host_tags_query_param, host_group_name_query_param,
     filter_system_profile_sap_sids_contains_query_param,
-    *workload_filter_query_params, workload_query_param,
+    workload_query_param,
 ]
 
 

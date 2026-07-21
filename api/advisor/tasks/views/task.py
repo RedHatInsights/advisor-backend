@@ -34,7 +34,7 @@ from api.filters import (
     host_tags_query_param, filter_multi_param,
     sort_params_to_fields, value_of_param,
     display_name_query_param, filter_on_display_name,
-    filter_system_profile_sap_system_query_param,
+    workload_query_param,
     filter_system_profile_sap_sids_contains_query_param,
     host_group_name_query_param, filter_on_host_tags,
 )
@@ -172,7 +172,7 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         parameters=[
             system_sort_query_param, host_tags_query_param, display_name_query_param,
             os_version_query_param, os_name_query_param, os_query_param,
-            filter_system_profile_sap_system_query_param,
+            workload_query_param,
             filter_system_profile_sap_sids_contains_query_param,
             host_group_name_query_param, all_systems_query_param,
         ],
