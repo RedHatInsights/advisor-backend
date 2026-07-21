@@ -31,7 +31,7 @@ from django.http import StreamingHttpResponse
 from api.filters import (
     host_tags_query_param, filter_on_param, value_of_param,
     filter_system_profile_sap_sids_contains_query_param,
-    workload_filter_query_params,
+    workload_query_param,
     rule_id_query_param, filter_on_display_name,
     host_id_query_param, filter_on_host_id, host_group_name_query_param,
     topic_query_param, filter_on_topic, update_method_query_param,
@@ -239,7 +239,7 @@ hits_common_params = [
     category_query_param, impact_query_param, likelihood_query_param,
     res_risk_query_param, text_query_param, total_risk_query_param,
     host_tags_query_param, incident_query_param, has_playbook_query_param,
-    reboot_required_query_param, *workload_filter_query_params,
+    reboot_required_query_param, workload_query_param,
     filter_system_profile_sap_sids_contains_query_param, display_name_query_param,
     host_id_query_param, host_group_name_query_param, topic_query_param,
     update_method_query_param,

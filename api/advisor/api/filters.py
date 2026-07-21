@@ -453,71 +453,21 @@ display_name_query_param = OpenApiParameter(
 )
 
 
-filter_system_profile_sap_system_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][sap][sap_system]', location=OpenApiParameter.QUERY,
-    description='Is this a SAP system?',
-    required=False, type=OpenApiTypes.BOOL,
+WORKLOAD_NAMES = (
+    'sap', 'ansible', 'mssql', 'crowdstrike',
+    'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai',
 )
 
-
-filter_system_profile_ansible_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][ansible][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this an Ansible system?',
-    required=False, type=OpenApiTypes.BOOL,
+workload_query_param = OpenApiParameter(
+    name='workload', location=OpenApiParameter.QUERY,
+    description=(
+        'Filter systems by workload type. '
+        'Multiple workloads are OR\'d together. '
+        'Valid workloads: ' + ', '.join(WORKLOAD_NAMES)
+    ),
+    required=False, many=True, style='form', type=OpenApiTypes.STR,
+    enum=WORKLOAD_NAMES,
 )
-
-
-filter_system_profile_mssql_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][mssql][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this a Microsoft SQL system?',
-    required=False, type=OpenApiTypes.BOOL,
-)
-
-
-filter_system_profile_crowdstrike_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][crowdstrike][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this a CrowdStrike system?',
-    required=False, type=OpenApiTypes.BOOL,
-)
-
-
-filter_system_profile_ibm_db2_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][ibm_db2][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this an IBM Db2 system?',
-    required=False, type=OpenApiTypes.BOOL,
-)
-
-
-filter_system_profile_intersystems_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][intersystems][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this an InterSystems system?',
-    required=False, type=OpenApiTypes.BOOL,
-)
-
-
-filter_system_profile_oracle_db_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][oracle_db][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this an Oracle DB system?',
-    required=False, type=OpenApiTypes.BOOL,
-)
-
-
-filter_system_profile_rhel_ai_query_param = OpenApiParameter(
-    name='filter[system_profile][workloads][rhel_ai][not_nil]', location=OpenApiParameter.QUERY,
-    description='Is this a RHEL AI system?',
-    required=False, type=OpenApiTypes.BOOL,
-)
-
-workload_filter_query_params = [
-    filter_system_profile_sap_system_query_param,
-    filter_system_profile_mssql_query_param,
-    filter_system_profile_ansible_query_param,
-    filter_system_profile_crowdstrike_query_param,
-    filter_system_profile_ibm_db2_query_param,
-    filter_system_profile_intersystems_query_param,
-    filter_system_profile_oracle_db_query_param,
-    filter_system_profile_rhel_ai_query_param,
-]
 
 
 filter_system_profile_sap_sids_contains_query_param = OpenApiParameter(
@@ -851,6 +801,29 @@ def filter_on_topic(request, relation: Optional[str] = None):
         return Q(**{base_parameter: topic_param})
     else:
         return Q()
+
+
+def filter_on_workload(request, relation: Optional[str] = None):
+    """
+    Filter systems by workload type.  Multiple workloads are OR'd together,
+    following the same pattern as get_host_group_filter.
+
+    For 'sap', checks system_profile__workloads__sap__sap_system=True.
+    For all others, checks system_profile__workloads__<workload>__isnull=False.
+    """
+    workloads = value_of_param(workload_query_param, request)
+    if not workloads:
+        return Q()
+    base = 'system_profile__workloads'
+    if relation:
+        base = f"{relation}__{base}"
+    workload_filter = Q()
+    for workload in workloads:
+        if workload == 'sap':
+            workload_filter |= Q(**{f"{base}__sap__sap_system": True})
+        else:
+            workload_filter |= Q(**{f"{base}__{workload}__isnull": False})
+    return workload_filter
 
 
 def filter_on_update_method(request, relation: Optional[str] = None):
