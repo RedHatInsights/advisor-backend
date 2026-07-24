@@ -46,6 +46,7 @@ from django.db import OperationalError, InterfaceError, transaction
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 django.setup()
 import api.models as db  # noqa
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 # Import Kafka settings
 from project_settings.settings import (
@@ -482,25 +483,24 @@ def create_db_reports(
             # figure out which reports are NEW
             # figure out which reports are resolved
             if WEBHOOKS_TOPIC or REMEDIATIONS_HOOK_TOPIC:
-                # Fetch some of these fields from the InventoryHost object
-                # Catch errors and do not fail entire upload on this
+                if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+                    inventory_table = db.AdvisorInventoryHost
+                    host_lookup = {'inventory_id': host_obj.inventory_id, 'org_id': org_id}
+                else:
+                    inventory_table = db.InventoryHost
+                    host_lookup = {'id': host_obj.inventory_id, 'org_id': org_id}
                 try:
-                    inventory_host = db.InventoryHost.objects.get(
-                        id=host_obj.inventory_id, org_id=org_id
-                    )
+                    inventory_host = inventory_table.objects.get(**host_lookup)
                     report_hooks.trigger_report_hooks(
                         inventory_host, webhook_report_rule_objs, db_report_values
                     )
-                except db.InventoryHost.DoesNotExist:
+                except inventory_table.DoesNotExist:
                     logger.warning(
-                        "InventoryHost not found for host", extra={
+                        "%s not found for host" % inventory_table.__name__, extra={
                             'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id
                         }
                     )
-                    # Otherwise, we don't need to report an error to payload
-                    # tracker here, as we have actually done everything else
-                    # that we needed to do for this upload.
-                except:
+                except Exception:
                     logger.exception("Error sending Report Hooks",
                                      extra={'inventory_id': inventory_uuid, 'account': account, 'org_id': org_id})
                     the_error = traceback.format_exc()

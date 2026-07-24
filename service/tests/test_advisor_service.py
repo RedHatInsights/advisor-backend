@@ -36,6 +36,8 @@ sys.path.append(PARENT)
 service_file = "service/service.py" if os.path.exists("service/service.py") else "../service.py"
 
 import reports
+from api.models import AdvisorInventoryHost
+from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 from service import db as models  # avoid clash with 'db' fixture from pytest-django
 from settings import AUTOACK
 
@@ -1204,3 +1206,154 @@ def test_rhel6_system_filtering(db, service, mocker, sample_rhel6_engine_results
     assert reports.count() == 1
     assert reports.filter(rule__rule_id="rhel6_upgrade|RHEL6_HAS_TO_UPGRADE_WARN_V1").exists()
     assert not reports.filter(rule__rule_id="hardening_gpg_pubkey|REDHAT_GPGKEY_NOT_INSTALLED").exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_id_property(db):
+    import uuid
+    inventory_id = uuid.uuid4()
+    host = models.AdvisorInventoryHost(inventory_id=inventory_id, org_id="123")
+    assert host.id == inventory_id
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_major_minor(db):
+    host = models.AdvisorInventoryHost(os_major=8, os_minor=6, org_id="123")
+    assert host.rhel_version == "8.6"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_major_only(db):
+    host = models.AdvisorInventoryHost(os_major=9, os_minor=None, org_id="123")
+    assert host.rhel_version == "9"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_name_only(db):
+    host = models.AdvisorInventoryHost(os_name="CentOS", os_major=None, os_minor=None, org_id="123")
+    assert host.rhel_version == "Unknown CentOS version"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_advisor_inventory_host_rhel_version_unknown(db):
+    host = models.AdvisorInventoryHost(os_name=None, os_major=None, os_minor=None, org_id="123")
+    assert host.rhel_version == "Unknown OS version"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_engine_results_feature_flag_switches_to_advisor_inventory_host(
+    db, service, sample_engine_results, mock_request_post_return_200, mocker
+):
+    """With the flag on, handle_engine_results reads from AdvisorInventoryHost for webhooks."""
+    mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
+    with set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True):
+        service.handle_engine_results(sample_engine_results)
+
+    assert mocked_webhook_func.called
+    webhook_msg = mocked_webhook_func.call_args_list[0][0][0]
+    context = json.loads(webhook_msg['context'])
+    assert context['display_name'] == "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test"
+    assert context['inventory_id'] == "57c4c38b-a8c6-4289-9897-223681fd804d"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_generate_webhook_msgs_new_report_with_advisor_inventory_host(db, mocker, service):
+    mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
+    mocked_remediations_func = mocker.patch.object(service.report_hooks, "send_remediations_event")
+
+    inventory_uuid = "00112233-4455-6677-8899-012345678901"
+
+    new_report_rule_ids = ['test|Active_rule', 'test|Second_rule', 'test|Inactive_rule', 'test|Acked_rule']
+    new_report_rules = models.Rule.objects.filter(rule_id__in=new_report_rule_ids).values(
+                'id', 'rule_id', 'active', 'total_risk', 'description',
+                'publish_date', 'reboot_required'
+            ).annotate(
+                has_incident=models.Exists(models.Rule.objects.filter(id=models.OuterRef('id'), tags__name='incident'))
+            )
+
+    report_models = models.CurrentReport.objects.filter(rule__rule_id='test|Second_rule').values('id', 'rule_id',
+            'rule__total_risk', 'rule__description', 'rule__publish_date',
+            'rule__rule_id', 'rule__active', 'rule__reboot_required', 'rule__id').annotate(
+                has_incident=models.Exists(models.Rule.objects.filter(id=models.OuterRef('rule'), tags__name='incident'))
+            )
+    cur_reports = [report_models.first()]
+    host_obj = models.AdvisorInventoryHost.objects.get(inventory_id=inventory_uuid)
+
+    service.report_hooks.trigger_report_hooks(host_obj, new_report_rules, cur_reports)
+
+    new = 0
+    resolved = 0
+    remediations = 0
+    for args, _ in mocked_webhook_func.call_args_list:
+        msg_obj = args[0]
+        if 'event_type' in msg_obj:
+            if msg_obj['event_type'] == service.report_hooks.NEW_REPORT_EVENT:
+                new += 1
+                assert 'account_id' in msg_obj
+                assert msg_obj['account_id'] == '1234567'
+                assert 'org_id' in msg_obj
+                assert msg_obj['org_id'] == '9876543'
+                assert 'context' in msg_obj
+                context = json.loads(msg_obj['context'])
+                assert isinstance(context, dict)
+                assert 'tags' in context
+                assert context['tags'] == []
+                assert context['rhel_version'] == '7.5'
+                assert context['display_name'] == 'system01.example.com'
+                assert context['inventory_id'] == inventory_uuid
+                assert 'events' in msg_obj
+                assert isinstance(msg_obj['events'], list)
+                assert isinstance(msg_obj['events'][0], dict)
+                assert 'payload' in msg_obj['events'][0]
+                payload = json.loads(msg_obj['events'][0]['payload'])
+                assert isinstance(payload, dict)
+                assert 'rule_id' in payload
+                assert 'reboot_required' in payload
+                assert 'has_incident' in payload
+            elif msg_obj['event_type'] == service.report_hooks.RESOLVED_REPORT_EVENT:
+                resolved += 1
+    for args, _ in mocked_remediations_func.call_args_list:
+        if (args[0] == inventory_uuid) and len(args[1]['issues']) > 0:
+            remediations += 1
+    assert new == 1
+    assert resolved == 0
+    assert remediations == 1
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_engine_results_flag_off_uses_cyndi(
+    db, service, sample_engine_results, mock_request_post_return_200, mocker
+):
+    """When the feature flag is off, webhooks should read from InventoryHost (Cyndi) as before."""
+    mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
+    with set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, False):
+        service.handle_engine_results(sample_engine_results)
+
+    assert mocked_webhook_func.called
+    webhook_msg = mocked_webhook_func.call_args_list[0][0][0]
+    context = json.loads(webhook_msg['context'])
+    assert context['display_name'] == "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test"
+    assert context['inventory_id'] == "57c4c38b-a8c6-4289-9897-223681fd804d"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_engine_results_flag_on_advisor_host_not_found(
+    db, service, sample_engine_results, mock_request_post_return_200, mocker
+):
+    """With the flag on and no AdvisorInventoryHost record, the warning is logged and no webhook fires."""
+    AdvisorInventoryHost.objects.filter(inventory_id="57c4c38b-a8c6-4289-9897-223681fd804d").delete()
+
+    mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
+    mock_logger = mocker.patch("service.logger")
+
+    with set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True):
+        service.handle_engine_results(sample_engine_results)
+
+    assert not mocked_webhook_func.called
+    mock_logger.warning.assert_any_call(
+        "AdvisorInventoryHost not found for host",
+        extra={
+            'inventory_id': "57c4c38b-a8c6-4289-9897-223681fd804d",
+            'account': '477931',
+            'org_id': '5882103',
+        }
+    )

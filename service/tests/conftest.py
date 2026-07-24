@@ -52,6 +52,7 @@ def db(request, django_db_setup, django_db_blocker):
         'advisor_service_inventoryhost',
         'service_test_data',
         'basic_test_data',
+        'advisor_inventory_host_test_data',
         'rulesets',
         'rule_categories',
         'system_types',
@@ -67,6 +68,14 @@ def pytest_configure():
     Update env vars here so that when django.setup() runs it loads our test vars
     """
     os.environ.update(TEST_ENV_VARS)
+
+
+@pytest.fixture(scope="session")
+def django_db_modify_db_settings(request):
+    from django.conf import settings
+    db_port = os.environ.get('ADVISOR_DB_PORT', '')
+    if db_port:
+        settings.DATABASES['default']['PORT'] = db_port
 
 
 @pytest.fixture

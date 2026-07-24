@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS inventory.hosts_table (
     insights_id uuid
 );
 
+DROP VIEW IF EXISTS inventory.hosts;
+
 CREATE OR REPLACE VIEW inventory.hosts (
     id, account, org_id, display_name, tags, groups, updated, created,
     last_check_in, stale_timestamp, system_profile, reporter,

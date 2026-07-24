@@ -456,7 +456,7 @@ UNLEASH_METRICS_INTERVAL = int(os.getenv("UNLEASH_METRICS_INTERVAL", 10))
 UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
 
 # Inventory Event replication settings
-INVENTORY_EVENT_REPLICATION = string_to_bool(os.getenv("INVENTORY_EVENT_REPLICATION", "false"))
+ENABLE_INVENTORY_REPLICATION = string_to_bool(os.getenv("ENABLE_INVENTORY_REPLICATION", "false"))
 
 # Old settings for Logical replication system - will be removed in future.
 HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
