@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "572ce116cda1c005db77354261a2a9308395c6e22a7131c4f6e479891c003dfa"
+            "sha256": "f32fdba99f810433d97407febc4555079520df4c390a1ea710fe3df4a63f740e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -583,12 +583,12 @@
         },
         "kessel-sdk": {
             "hashes": [
-                "sha256:1506564e7ea363429720cd6efb2eebba32b0829800298e9571fa58a4cc12d173",
-                "sha256:3efdb4d51d44ba646e36c75c42503b3109b9629df5dab22b704eb454068ff1e2"
+                "sha256:2159e7b68fbd8b1c38d0e8dc8a314dea8ac8cf91688f2c5e789881e612efcc33",
+                "sha256:8f689484d2a1204ad7b93ae733cce95903cf95f457279ef22233a3ef7942f6e9"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.11'",
-            "version": "==2.7.0"
+            "version": "==2.8.0"
         },
         "launchdarkly-eventsource": {
             "hashes": [
