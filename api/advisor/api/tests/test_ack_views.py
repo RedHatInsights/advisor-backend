@@ -27,7 +27,7 @@ from api.tests import constants
 
 TEST_RBAC_URL = 'http://rbac.svc'
 TEST_RBAC_V2_WKSPC = make_rbac_url(
-    "workspaces/?type=default",
+    "workspaces/?type=default&with_ancestry=true",
     version=2, rbac_base=TEST_RBAC_URL
 )
 
