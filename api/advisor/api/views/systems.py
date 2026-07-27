@@ -40,6 +40,7 @@ from api.serializers import ReportSerializer, SystemSerializer
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin,
 )
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 sort_fields = [
     'hits', 'last_seen', 'display_name', 'rhel_version', 'group_name',
@@ -51,6 +52,10 @@ sort_field_map = {
         'system_profile__operating_system__minor'
     ],
     'group_name': 'groups__0__name',
+}
+sort_field_map_local = {
+    'rhel_version': ['os_major', 'os_minor'],
+    'group_name': 'workspace_name',
 }
 sort_query_param = OpenApiParameter(
     name='sort', location=OpenApiParameter.QUERY,
@@ -105,11 +110,14 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
         Results can be sorted and systems can be filtered by display name and hits
         """
+        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+        active_sort_map = sort_field_map_local if use_local else sort_field_map
+        id_field = 'inventory_id' if use_local else 'id'
         sort_fields = sort_params_to_fields(
             value_of_param(sort_query_param, request),
-            sort_field_map
+            active_sort_map
         )
-        systems = self.get_queryset().order_by(*sort_fields, 'id')
+        systems = self.get_queryset().order_by(*sort_fields, id_field)
 
         return self._paginated_response(systems, request)
 

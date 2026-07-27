@@ -39,6 +39,7 @@ from api.filters import (
 )
 
 from advisor_logging import logger
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 
 ##############################################################################
@@ -176,7 +177,7 @@ def calculate_rec_level(percentage_of_systems, has_incidents, max_risk):
     return base
 
 
-def get_host_group_filter(request, relation=None):
+def get_host_group_filter(request, relation=None, use_local=False):
     """
     If the request has any host groups attached to it during the authentication
     process, then create a filter searching for a host with an ID being one
@@ -199,6 +200,10 @@ def get_host_group_filter(request, relation=None):
     logger.debug("host_groups_rbac: %s, host_groups_query_param: %s", host_groups, host_groups_param)
     if not (host_groups or host_groups_param):
         return Q()
+
+    if use_local:
+        return _get_host_group_filter_local(host_groups, host_groups_param, relation)
+
     group_clause = 'groups'
     if relation:
         group_clause = relation + '__' + group_clause
@@ -227,15 +232,42 @@ def get_host_group_filter(request, relation=None):
     return Q(host_group_rbac_filter & host_group_name_filter)
 
 
+def _get_host_group_filter_local(host_groups, host_groups_param, relation=None):
+    prefix = ''
+    if relation:
+        prefix = relation + '__'
+
+    host_group_name_filter = Q()
+    if host_groups_param:
+        for group_name in host_groups_param:
+            if group_name == '':
+                host_group_name_filter |= Q(**{f"{prefix}workspace_ungrouped": True})
+            else:
+                host_group_name_filter |= Q(**{f"{prefix}workspace_name": group_name})
+
+    host_group_rbac_filter = Q()
+    assert isinstance(host_groups, list)
+    for group in host_groups:
+        if group is None:
+            host_group_rbac_filter |= Q(**{f"{prefix}workspace_id__isnull": True})
+        else:
+            host_group_rbac_filter |= Q(**{f"{prefix}workspace_id": group})
+
+    return Q(host_group_rbac_filter & host_group_name_filter)
+
+
 def get_systems_queryset(request):
     """
     A common queryset for both the systems list view, the rule systems view,
     and the exported systems list.
     """
+    use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+
     # We don't need to filter out stale systems etc because that's
     # done at the host model level.
+    host_id_ref = OuterRef('inventory_id') if use_local else OuterRef('id')
     reports_q = get_reports_subquery(
-        request, exclude_ineligible_hosts=False, host=OuterRef('id'),
+        request, exclude_ineligible_hosts=False, host=host_id_ref,
     )
     report_counts = convert_to_count_query(reports_q)
 
@@ -248,10 +280,15 @@ def get_systems_queryset(request):
         return Subquery(convert_to_count_query(reports_q.filter(rule__total_risk=value)))
 
     last_seen_upload_qs = Upload.objects.filter(
-        host_id=OuterRef('id'), source_id=1, current=True
+        host_id=host_id_ref, source_id=1, current=True
     ).order_by().values('checked_on')
 
-    systems = InventoryHost.objects.for_account(request).annotate(
+    if use_local:
+        base_qs = AdvisorInventoryHost.objects.for_account(request)
+    else:
+        base_qs = InventoryHost.objects.for_account(request)
+
+    systems = base_qs.annotate(
         hits=Subquery(report_counts),
         last_seen=Subquery(last_seen_upload_qs),
         critical_hits=hits_risk_count(4),
@@ -262,27 +299,44 @@ def get_systems_queryset(request):
         all_pathway_hits=Subquery(all_pathway_hits),
         pathway_filter_hits=Subquery(pathway_filter_hits)
     )
-    # We used to set the query.group_by here but that seemed to change the
-    # count() values for some reason.
 
     # if we are filtering by pathway slug this will be greater than zero
     if pathway_slug:
         systems = systems.filter(pathway_filter_hits__isnull=False, pathway_filter_hits__gt=0)
 
+    rhel_version_filter = filter_on_rhel_version(request, use_local=use_local)
+
     return systems.filter(
         filter_on_display_name(request),
         filter_on_hits(request),
         filter_on_incident(request),
-        filter_on_rhel_version(request),
+        rhel_version_filter,
         filter_on_has_disabled_recommendation(request)
     )
 
 
-def stale_systems_q(org_id, field='host_id'):
+def stale_systems_q(org_id, field='host_id', model_class=None):
     """
     Returns a subquery filter that removes all stale systems.
     The org_id parameter while not necessary for correctness, does increase performance.
     """
+    if model_class is None:
+        model_class = InventoryHost
+
+    if model_class is AdvisorInventoryHost:
+        return Q(Exists(
+            AdvisorInventoryHost.objects.annotate(
+                puptoo_stale_timestamp=Cast(Cast(
+                    'per_reporter_staleness__puptoo__stale_warning_timestamp',
+                    output_field=models.CharField()
+                ), output_field=models.DateTimeField())
+            ).filter(
+                org_id=OuterRef('org_id'),
+                inventory_id=OuterRef(field),
+                puptoo_stale_timestamp__gt=timezone.now(),
+            )
+        ))
+
     field_in = field + '__in'
     return Q(**{field_in: models.Subquery(
         InventoryHost.objects.annotate(
@@ -297,7 +351,7 @@ def stale_systems_q(org_id, field='host_id'):
     )})
 
 
-def cert_auth_q(request, relation=''):
+def cert_auth_q(request, relation='', use_local=False):
     """
     Returns a Q object that filters InventoryHost on the system's certificate
     if Certificate Authentication is used, or an empty Q object otherwise.
@@ -312,7 +366,10 @@ def cert_auth_q(request, relation=''):
     # Satellite will have this owner_id; if this is a system then it gets
     # its own ID as the owner_id - i.e. it's 'self-owned'.  So this always
     # works :-)
-    relation_field = relation + 'system_profile__owner_id'
+    if use_local:
+        relation_field = relation + 'owner_id'
+    else:
+        relation_field = relation + 'system_profile__owner_id'
 
     return models.Q(**{relation_field: cert_auth_owner})
 
@@ -366,11 +423,20 @@ def get_reports_subquery(
     org_id = request_to_org(request)
     if not org_id:
         return CurrentReport.objects.none()
-    host_tags_q = filter_on_host_tags(request)
-    system_type_q = filter_on_system_type(request, relation='inventory')
+
+    use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+    if use_local:
+        inv_relation = 'advisor_inventory'
+        inv_model = AdvisorInventoryHost
+    else:
+        inv_relation = 'inventory'
+        inv_model = InventoryHost
+
+    host_tags_q = filter_on_host_tags(request, use_local=use_local)
+    system_type_q = filter_on_system_type(request, relation=inv_relation, use_local=use_local)
 
     system_profile_filter = filter_multi_param(
-        request, 'system_profile', field_prefix='inventory'
+        request, 'system_profile', field_prefix=inv_relation, use_local=use_local
     )
 
     category_filter = Q()
@@ -393,28 +459,47 @@ def get_reports_subquery(
                     Ack.objects.order_by().filter(org_id=org_id).values('rule_id')
                 ))
 
-    stale_systems_filter = Q(
-        Exists(InventoryHost.objects.annotate(
-            puptoo_stale_timestamp=Cast(Cast(
-                'per_reporter_staleness__puptoo__stale_warning_timestamp',
-                output_field=models.CharField()
-            ), output_field=models.DateTimeField())
-        ).filter(
-            id=OuterRef('host'),
-            org_id=org_id,
-            puptoo_stale_timestamp__gt=timezone.now()
-        ))
-    ) if use_joins else Q(stale_systems_q(org_id), org_id=org_id)
+    if use_joins:
+        if use_local:
+            stale_systems_filter = Q(
+                Exists(AdvisorInventoryHost.objects.annotate(
+                    puptoo_stale_timestamp=Cast(Cast(
+                        'per_reporter_staleness__puptoo__stale_warning_timestamp',
+                        output_field=models.CharField()
+                    ), output_field=models.DateTimeField())
+                ).filter(
+                    inventory_id=OuterRef('host'),
+                    org_id=OuterRef('org_id'),
+                    puptoo_stale_timestamp__gt=timezone.now()
+                ))
+            )
+        else:
+            stale_systems_filter = Q(
+                Exists(InventoryHost.objects.annotate(
+                    puptoo_stale_timestamp=Cast(Cast(
+                        'per_reporter_staleness__puptoo__stale_warning_timestamp',
+                        output_field=models.CharField()
+                    ), output_field=models.DateTimeField())
+                ).filter(
+                    id=OuterRef('host'),
+                    org_id=org_id,
+                    puptoo_stale_timestamp__gt=timezone.now()
+                ))
+            )
+    else:
+        stale_systems_filter = Q(
+            stale_systems_q(org_id, model_class=inv_model), org_id=org_id
+        )
 
     return CurrentReport.objects.filter(
         Q(
             host_tags_q, system_type_q, system_profile_filter,
             category_filter,
-            cert_auth_q(request, relation='inventory'),
+            cert_auth_q(request, relation=inv_relation, use_local=use_local),
             branch_id_filter,
-            filter_on_update_method(request, relation='inventory'),
-            filter_on_workload(request, relation='inventory'),
-            get_host_group_filter(request, relation='inventory'),
+            filter_on_update_method(request, relation=inv_relation, use_local=use_local),
+            filter_on_workload(request, relation=inv_relation, use_local=use_local),
+            get_host_group_filter(request, relation=inv_relation, use_local=use_local),
             stale_systems_filter,
         ) if exclude_ineligible_hosts else Q(),
         **outer_table_join
@@ -549,6 +634,12 @@ class CurrentReport(ExportModelOperationsMixin('currentreport'), models.Model):
     inventory = Relationship(
         'InventoryHost', from_fields=['host_id'], to_fields=['id'],
         related_name='currentreports'
+    )
+    advisor_inventory = Relationship(
+        'AdvisorInventoryHost',
+        from_fields=['host_id', 'org_id'],
+        to_fields=['inventory_id', 'org_id'],
+        related_name='advisor_currentreports'
     )
     upload = models.ForeignKey('Upload', on_delete=models.CASCADE, db_index=True)
     details = models.JSONField()
@@ -724,6 +815,45 @@ class InventoryHost(models.Model):
         db_table = '"inventory"."hosts"'
 
 
+class AdvisorInventoryHostManager(models.Manager):
+    def for_account(
+        self, request, filter_stale=True,
+        filter_branch_id=True, require_host=True
+    ):
+        host_tags_q = filter_on_host_tags(request, field_name='inventory_id', use_local=True)
+        system_type_q = filter_on_system_type(request, use_local=True)
+        system_profile_filter = filter_multi_param(request, 'system_profile', use_local=True)
+        staleness_filter = Q()
+        if filter_stale:
+            staleness_filter = Q(puptoo_stale_timestamp__gt=timezone.now())
+        branch_id_filter = Q()
+        if filter_branch_id:
+            branch_id_filter = filter_on_branch_id(request, relation='host')
+        require_host_filter = Q()
+        if require_host:
+            from django.apps import apps
+            HostModel = apps.get_model('api', 'Host')
+            require_host_filter = Q(Exists(
+                HostModel.objects.filter(inventory_id=OuterRef('inventory_id'))
+            ))
+        host_group_filter = get_host_group_filter(request, use_local=True)
+
+        return AdvisorInventoryHost.objects.annotate(
+            puptoo_stale_timestamp=Cast(Cast(
+                'per_reporter_staleness__puptoo__stale_warning_timestamp',
+                output_field=models.CharField()
+            ), output_field=models.DateTimeField())
+        ).filter(
+            host_tags_q, system_type_q, system_profile_filter,
+            cert_auth_q(request, use_local=True), branch_id_filter,
+            staleness_filter,
+            filter_on_update_method(request, use_local=True),
+            filter_on_workload(request, use_local=True),
+            require_host_filter, host_group_filter,
+            org_id=request.auth['org_id']
+        )
+
+
 class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), models.Model):
     pk = models.CompositePrimaryKey("org_id", "inventory_id")
     inventory_id = models.UUIDField()
@@ -751,10 +881,17 @@ class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), m
     rhc_client_id = models.UUIDField(null=True)
     workloads = models.JSONField(default=dict)
     system_update_method = models.CharField(max_length=50, null=True, blank=True)
+    workspace_ungrouped = models.BooleanField(null=True)
+
+    objects = AdvisorInventoryHostManager()
 
     @property
     def id(self):
         return self.inventory_id
+
+    @property
+    def group_name(self):
+        return self.workspace_name
 
     @property
     def rhel_version(self):
