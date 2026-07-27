@@ -32,6 +32,8 @@ definition rbac/platform {
 	permission advisor_recommendation_results_read_assigned = t_binding->advisor_recommendation_results_read
 	permission advisor_recommendation_results_read = advisor_recommendation_results_read_assigned & inventory_host_view
 	permission advisor_disable_recommendations_write = t_binding->advisor_disable_recommendations_write
+	permission advisor_weekly_report_edit = t_binding->advisor_weekly_report_edit
+	permission advisor_weekly_report_view = t_binding->advisor_weekly_report_view
 	permission inventory_host_update = t_binding->inventory_host_update
 	permission inventory_host_view = t_binding->inventory_host_view
 	permission notifications_applications_view = t_binding->notifications_applications_view
@@ -71,6 +73,10 @@ definition rbac/role {
 	relation t_advisor_recommendation_results_read: rbac/principal:*
 	permission advisor_weekly_email_read = t_advisor_weekly_email_read
 	relation t_advisor_weekly_email_read: rbac/principal:*
+	permission advisor_weekly_report_edit = t_advisor_weekly_report_edit + t_advisor_all_all
+	relation t_advisor_weekly_report_edit: rbac/principal:*
+	permission advisor_weekly_report_view = t_advisor_weekly_report_view + t_advisor_all_all + t_advisor_all_read
+	relation t_advisor_weekly_report_view: rbac/principal:*
 	permission all_all_all = t_all_all_all
 	relation t_all_all_all: rbac/principal:*
 	permission ansible_wisdom_admin_dashboard_chart_active_users_read = t_ansible_wisdom_admin_dashboard_chart_active_users_read
@@ -411,6 +417,8 @@ definition rbac/role_binding {
 	permission advisor_pathways_read = subject & t_role->advisor_pathways_read
 	permission advisor_recommendation_results_read = subject & t_role->advisor_recommendation_results_read
 	permission advisor_disable_recommendations_write = subject & t_role->advisor_disable_recommendations_write
+	permission advisor_weekly_report_edit = subject & t_role->advisor_weekly_report_edit
+	permission advisor_weekly_report_view = subject & t_role->advisor_weekly_report_view
 	permission inventory_host_update = subject & t_role->inventory_host_update
 	permission inventory_host_view = subject & t_role->inventory_host_view
 	permission notifications_applications_view = subject & t_role->notifications_applications_view
@@ -465,6 +473,8 @@ definition rbac/tenant {
 	permission advisor_recommendation_results_read_assigned = t_binding->advisor_recommendation_results_read + t_platform->advisor_recommendation_results_read_assigned
 	permission advisor_recommendation_results_read = advisor_recommendation_results_read_assigned & inventory_host_view
 	permission advisor_disable_recommendations_write = t_binding->advisor_disable_recommendations_write + t_platform->advisor_disable_recommendations_write
+	permission advisor_weekly_report_edit = t_binding->advisor_weekly_report_edit + t_platform->advisor_weekly_report_edit
+	permission advisor_weekly_report_view = t_binding->advisor_weekly_report_view + t_platform->advisor_weekly_report_view
 	permission platform = t_platform
 	relation t_platform: rbac/platform
 }
@@ -497,6 +507,8 @@ definition rbac/workspace {
 	permission advisor_recommendation_results_read_assigned = t_binding->advisor_recommendation_results_read + t_parent->advisor_recommendation_results_read_assigned
 	permission advisor_recommendation_results_read = advisor_recommendation_results_read_assigned & inventory_host_view
 	permission advisor_disable_recommendations_write = t_binding->advisor_disable_recommendations_write + t_parent->advisor_disable_recommendations_write
+	permission advisor_weekly_report_edit = t_binding->advisor_weekly_report_edit + t_parent->advisor_weekly_report_edit
+	permission advisor_weekly_report_view = t_binding->advisor_weekly_report_view + t_parent->advisor_weekly_report_view
 	permission parent = t_parent
 	relation t_parent: rbac/workspace | rbac/tenant
 }
