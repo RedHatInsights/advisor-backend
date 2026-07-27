@@ -45,6 +45,7 @@ class ParsedInventoryHost:
     tags: list[Any]
     workspace_id: str | None
     workspace_name: str | None
+    workspace_ungrouped: bool | None
     created: str
     updated: str
     last_check_in: str
@@ -73,6 +74,7 @@ class ParsedInventoryHost:
             tags=self.tags,
             workspace_id=self.workspace_id,
             workspace_name=self.workspace_name,
+            workspace_ungrouped=self.workspace_ungrouped,
             created=self.created,
             updated=self.updated,
             last_check_in=parse_datetime(self.last_check_in),
@@ -280,6 +282,7 @@ def parse_created_event(message: dict[str, JsonValue]) -> ParsedInventoryHost | 
 
     workspace_id = groups[0].get('id') if groups else None
     workspace_name = groups[0].get('name') if groups else None
+    workspace_ungrouped = groups[0].get('ungrouped') if groups else None
 
     return ParsedInventoryHost(
         host_id=host_id,
@@ -289,6 +292,7 @@ def parse_created_event(message: dict[str, JsonValue]) -> ParsedInventoryHost | 
         tags=tags,
         workspace_id=workspace_id,
         workspace_name=workspace_name,
+        workspace_ungrouped=workspace_ungrouped,
         created=created,
         updated=updated,
         last_check_in=last_check_in,
@@ -360,7 +364,7 @@ def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
             update_conflicts=True,
             unique_fields=['org_id', 'inventory_id'],
             update_fields=[
-                'display_name', 'account', 'tags', 'workspace_id', 'workspace_name',
+                'display_name', 'account', 'tags', 'workspace_id', 'workspace_name', 'workspace_ungrouped',
                 'created', 'updated', 'last_check_in', 'insights_id', 'stale_timestamp',
                 'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
                 'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
