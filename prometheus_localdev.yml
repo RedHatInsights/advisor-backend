@@ -1,0 +1,14 @@
+scrape_configs:
+  - job_name: 'advisor-api'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'host.containers.internal:8000'
+
+  - job_name: 'advisor-service'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'host.containers.internal:8001'

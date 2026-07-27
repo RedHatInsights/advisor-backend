@@ -73,9 +73,12 @@ services:
     build:
       context: .
       dockerfile: Containerfile.localdev
+    ports:
+      - "8001:8001"
     environment:
       - BOOTSTRAP_SERVERS=kafka:29092
       - ADVISOR_DB_HOST=advisor-db
+      - PROMETHEUS_PORT=8001
     command: pipenv run python service/service.py
   advisor-api:
     build:
@@ -134,6 +137,13 @@ services:
       # - MOCK_KESSEL_HOST_GROUPS=uuid1,uuid2
       # - MOCK_KESSEL_WORKSPACE_ID=00000000-0000-0000-0000-000000000000
     command: pipenv run python api/advisor/manage.py mock_rbac
+  prometheus:
+    image: docker.io/prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus_localdev.yml:/etc/prometheus/prometheus.yml:Z
+
   unleash:
     image: quay.io/cloudservices/unleash-docker:5.6.9
     ports:

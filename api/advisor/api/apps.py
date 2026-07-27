@@ -19,3 +19,7 @@ from django.apps import AppConfig
 
 class ApiConfig(AppConfig):
     name = 'api'
+
+    def ready(self):
+        # include additional metrics from prometheus.py
+        import prometheus  # noqa: F401
