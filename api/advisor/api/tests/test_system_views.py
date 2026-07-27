@@ -23,9 +23,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from api import kessel
-from api.models import Ack, InventoryHost, Upload
+from api.models import Ack, AdvisorInventoryHost, InventoryHost, Upload
 from api.permissions import auth_header_for_testing, make_rbac_url
 from api.tests import constants, update_stale_dates
+from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 
 
 TEST_RBAC_URL = 'http://rbac.svc'
@@ -1160,3 +1161,183 @@ class SystemHostTagsViewTestCase(TestCase):
         rules = self._response_is_good(response)
         self.assertIsInstance(rules, list)
         self.assertEqual(len(rules), 0)
+
+
+def _replicate_to_advisor_inventory():
+    """Copy InventoryHost records into AdvisorInventoryHost with flattened fields."""
+    for inv in InventoryHost.objects.all():
+        sp = inv.system_profile or {}
+        os_info = sp.get('operating_system', {})
+        if not isinstance(os_info, dict):
+            os_info = {}
+        groups = inv.groups or []
+        g0 = groups[0] if groups else {}
+        bootc = sp.get('bootc_status', {})
+        bootc_booted = bootc.get('booted', {}) if isinstance(bootc, dict) else {}
+        workloads = sp.get('workloads', {})
+        workloads = workloads if isinstance(workloads, dict) else {}
+
+        AdvisorInventoryHost.objects.update_or_create(
+            inventory_id=inv.id,
+            org_id=inv.org_id,
+            defaults={
+                'account': inv.account,
+                'display_name': inv.display_name,
+                'tags': inv.tags,
+                'workspace_id': g0.get('id'),
+                'workspace_name': g0.get('name'),
+                'workspace_ungrouped': g0.get('ungrouped'),
+                'updated': inv.updated,
+                'created': inv.created,
+                'last_check_in': inv.last_check_in,
+                'stale_timestamp': inv.stale_timestamp,
+                'insights_id': inv.insights_id,
+                'reporter': inv.reporter,
+                'per_reporter_staleness': inv.per_reporter_staleness,
+                'os_name': os_info.get('name'),
+                'os_major': os_info.get('major'),
+                'os_minor': os_info.get('minor'),
+                'host_type': sp.get('host_type'),
+                'bootc_booted_image': bootc_booted.get('image') if isinstance(bootc_booted, dict) else None,
+                'bootc_booted_image_digest': bootc_booted.get('image_digest') if isinstance(bootc_booted, dict) else None,
+                'owner_id': sp.get('owner_id'),
+                'rhc_client_id': sp.get('rhc_client_id'),
+                'workloads': workloads,
+                'system_update_method': sp.get('system_update_method'),
+            }
+        )
+
+
+class AdvisorInventorySystemViewTestCase(TestCase):
+    """Tests that verify API system endpoints work with AdvisorInventoryHost (flag on)."""
+    fixtures = [
+        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'basic_test_data', 'high_severity_rule',
+    ]
+
+    std_auth_header = auth_header_for_testing()
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        update_stale_dates()
+
+    def setUp(self):
+        _replicate_to_advisor_inventory()
+
+    def _response_is_good(self, response):
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertEqual(response.accepted_media_type, constants.json_mime)
+        return response.json()
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_local_inventory(self):
+        """System list returns same results from AdvisorInventoryHost."""
+        response = self.client.get(
+            reverse('system-list'), **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+
+        self.assertIsInstance(systems, list)
+        self.assertEqual(len(systems), 6)
+
+        self.assertEqual(systems[0]['system_uuid'], constants.host_03_uuid)
+        self.assertEqual(systems[0]['display_name'], constants.host_03_name)
+        self.assertEqual(systems[0]['os_name'], 'RHEL')
+        self.assertEqual(systems[0]['rhel_version'], '7.5')
+        self.assertEqual(systems[0]['hits'], 2)
+        self.assertEqual(systems[0]['group_name'], 'group_2')
+
+        self.assertEqual(systems[1]['system_uuid'], constants.host_04_uuid)
+        self.assertEqual(systems[1]['hits'], 2)
+        self.assertEqual(systems[1]['group_name'], 'Ungrouped Hosts')
+
+        self.assertEqual(systems[2]['system_uuid'], constants.host_01_uuid)
+        self.assertEqual(systems[2]['hits'], 1)
+        self.assertEqual(systems[2]['group_name'], 'group_1')
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_sort_by_rhel_version(self):
+        """Sorting by rhel_version uses flat columns."""
+        response = self.client.get(
+            reverse('system-list'), data={'sort': 'rhel_version'},
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertIsInstance(systems, list)
+        self.assertTrue(len(systems) > 0)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_sort_by_group_name(self):
+        """Sorting by group_name uses workspace_name."""
+        response = self.client.get(
+            reverse('system-list'), data={'sort': 'group_name'},
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertIsInstance(systems, list)
+        self.assertTrue(len(systems) > 0)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_rhel_version_filter(self):
+        """RHEL version filter works with flat columns."""
+        response = self.client.get(
+            reverse('system-list'), data={'rhel_version': '7.5'},
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        for s in systems:
+            self.assertEqual(s['rhel_version'], '7.5')
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_update_method_filter(self):
+        """Update method filter works with flat columns."""
+        response = self.client.get(
+            reverse('system-list'), data={'update_method': 'dnfyum'},
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertEqual(len(systems), 5)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_update_method_ostree_filter(self):
+        """Update method ostree filter works with flat columns."""
+        response = self.client.get(
+            reverse('system-list'), data={'update_method': 'ostree'},
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertEqual(len(systems), 1)
+        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_retrieve_system_reports(self):
+        """Reports endpoint works with AdvisorInventoryHost."""
+        response = self.client.get(
+            reverse('system-reports', kwargs={
+                'uuid': constants.host_01_uuid
+            }),
+            **self.std_auth_header
+        )
+        rules = self._response_is_good(response)
+        self.assertIsInstance(rules, list)
+        self.assertEqual(len(rules), 1)
+        self.assertEqual(rules[0]['rule']['rule_id'], constants.active_rule)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_list_system_display_name_filter(self):
+        """Display name filter works identically."""
+        response = self.client.get(
+            reverse('system-list'), data={'display_name': 'system01'},
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        systems = json['data']
+        self.assertEqual(len(systems), 1)
+        self.assertEqual(systems[0]['display_name'], constants.host_01_name)
