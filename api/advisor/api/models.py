@@ -820,6 +820,10 @@ class AdvisorInventoryHostManager(models.Manager):
         self, request, filter_stale=True,
         filter_branch_id=True, require_host=True
     ):
+        org_id = request_to_org(request)
+        if not org_id:
+            return AdvisorInventoryHost.objects.none()
+
         host_tags_q = filter_on_host_tags(request, field_name='inventory_id', use_local=True)
         system_type_q = filter_on_system_type(request, use_local=True)
         system_profile_filter = filter_multi_param(request, 'system_profile', use_local=True)
@@ -850,7 +854,7 @@ class AdvisorInventoryHostManager(models.Manager):
             filter_on_update_method(request, use_local=True),
             filter_on_workload(request, use_local=True),
             require_host_filter, host_group_filter,
-            org_id=request.auth['org_id']
+            org_id=org_id
         )
 
 
