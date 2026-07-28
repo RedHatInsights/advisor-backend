@@ -899,12 +899,16 @@ class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), m
 
     @property
     def rhel_version(self):
-        if self.os_major is not None and self.os_minor is not None:
-            return f"{self.os_major}.{self.os_minor}"
-        elif self.os_major is not None:
-            return str(self.os_major)
-        elif self.os_name:
-            return f"Unknown {self.os_name} version"
+        return self.get_rhel_version_from_flat(self.os_major, self.os_minor, self.os_name)
+
+    @staticmethod
+    def get_rhel_version_from_flat(os_major, os_minor, os_name):
+        if os_major is not None and os_minor is not None:
+            return f"{os_major}.{os_minor}"
+        elif os_major is not None:
+            return str(os_major)
+        elif os_name:
+            return f"Unknown {os_name} version"
         else:
             return "Unknown OS version"
 
@@ -922,6 +926,12 @@ class Host(ExportModelOperationsMixin('host'), TimestampedModel):
     inventory = models.OneToOneField(
         InventoryHost, on_delete=models.DO_NOTHING, primary_key=True,
         db_constraint=False, db_column='system_uuid',
+    )
+    advisor_inventory = Relationship(
+        'AdvisorInventoryHost',
+        from_fields=['inventory_id', 'org_id'],
+        to_fields=['inventory_id', 'org_id'],
+        related_name='host',
     )
     account = models.CharField(max_length=10, blank=True, null=True)
     org_id = models.CharField(max_length=50)
@@ -1234,9 +1244,19 @@ class Pathway(ExportModelOperationsMixin('pathway'), models.Model):
         if self.impacted_systems_count:
             report_query = self.get_reports(request)
             system_query = get_systems_queryset(request)
-            filtered_systems_queryset = system_query.filter(id__in=report_query.values('host__inventory'))
+            use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+            if use_local:
+                filtered_systems_queryset = system_query.filter(
+                    inventory_id__in=report_query.values('host_id')
+                )
+            else:
+                filtered_systems_queryset = system_query.filter(
+                    id__in=report_query.values('host__inventory')
+                )
             return filtered_systems_queryset
         else:
+            if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+                return AdvisorInventoryHost.objects.none()
             return InventoryHost.objects.none()
 
     def __str__(self):
