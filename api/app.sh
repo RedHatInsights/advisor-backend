@@ -53,7 +53,7 @@ else
     LIMIT_REQUEST_FIELD_SIZE=${GUNICORN_LIMIT_REQUEST_FIELD_SIZE:-16384} # Use 16k to avoid 431 errors
 
     export PYTHONPATH=${APP_HOME}
-    export PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-/metrics}
+    export PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-/tmp}
     # 2022-10-18 PJW - looks like the '--chdir' option takes place AFTER
     # it tries to load the configuration file.  Unfortunately, the config
     # tries to load other packages without an explicit path, and since we're

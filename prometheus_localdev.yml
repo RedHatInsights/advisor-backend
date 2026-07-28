@@ -1,6 +1,7 @@
 scrape_configs:
   - job_name: 'advisor-api'
     scrape_interval: 15s
+    # metrics_path is the URL endpoint, not the directory containing prometheus metric files
     metrics_path: /metrics
     static_configs:
       - targets:
