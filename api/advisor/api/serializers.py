@@ -21,6 +21,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 
 from api import models
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 
 def existing_rule_id_validator(rule_id):
@@ -29,7 +30,14 @@ def existing_rule_id_validator(rule_id):
 
 
 def existing_host_id_validator(host_id):
-    if not models.InventoryHost.objects.filter(pk=host_id).exists():
+    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+        if not models.AdvisorInventoryHost.objects.filter(
+            inventory_id=host_id
+        ).exists():
+            raise serializers.ValidationError(
+                f"Host with UUID '{host_id}' not found"
+            )
+    elif not models.InventoryHost.objects.filter(pk=host_id).exists():
         raise serializers.ValidationError(f"Host with UUID '{host_id}' not found")
 
 
@@ -408,7 +416,12 @@ class HostAckSerializer(serializers.ModelSerializer):
         queryset=models.Rule.objects.filter(active=True),
     )
     system_uuid = serializers.UUIDField(source='host_id')
-    display_name = serializers.CharField(source='host.inventory.display_name', read_only=True)
+    display_name = serializers.SerializerMethodField()
+
+    def get_display_name(self, obj):
+        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+            return getattr(obj.host.advisor_inventory, 'display_name', None)
+        return getattr(obj.host.inventory, 'display_name', None)
 
     class Meta:
         model = models.HostAck
@@ -464,9 +477,14 @@ def validate_hosts_in_org(hosts, org_id, field_name='systems'):
     Check that the hosts given exist, and they are in this org.  We need to
     not distinguish between the two to avoid leaking that a host UUID exists.
     """
-    valid_hosts = set(models.InventoryHost.objects.filter(
-        org_id=org_id, id__in=hosts
-    ).values_list('id', flat=True))
+    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+        valid_hosts = set(models.AdvisorInventoryHost.objects.filter(
+            org_id=org_id, inventory_id__in=hosts
+        ).values_list('inventory_id', flat=True))
+    else:
+        valid_hosts = set(models.InventoryHost.objects.filter(
+            org_id=org_id, id__in=hosts
+        ).values_list('id', flat=True))
     nonexistent_hosts = {
         str(row): [f"Host with UUID '{str(system_uuid)}' not found"]
         for row, system_uuid in enumerate(hosts)
@@ -790,6 +808,28 @@ class SystemsDetailSerializer(SystemSerializer):
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
             'os_name', 'rhel_version', 'impacted_date'
         )
+
+
+class AdvisorSystemSerializer(SystemSerializer):
+    class Meta(SystemSerializer.Meta):
+        model = models.AdvisorInventoryHost
+
+
+class AdvisorSystemsDetailSerializer(SystemsDetailSerializer):
+    class Meta(SystemsDetailSerializer.Meta):
+        model = models.AdvisorInventoryHost
+
+
+def get_system_serializer():
+    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+        return AdvisorSystemSerializer
+    return SystemSerializer
+
+
+def get_systems_detail_serializer():
+    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+        return AdvisorSystemsDetailSerializer
+    return SystemsDetailSerializer
 
 
 class UploadSerializer(serializers.ModelSerializer):
