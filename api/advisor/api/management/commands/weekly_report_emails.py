@@ -27,8 +27,10 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from api.models import (
-    CurrentReport, InventoryHost, WeeklyReportSubscription, stale_systems_q, Ack
+    AdvisorInventoryHost, CurrentReport, Host, InventoryHost,
+    WeeklyReportSubscription, stale_systems_q, Ack,
 )
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 from api.permissions import (
     RHIdentityAuthentication, has_rbac_permission, request_object_for_testing,
     get_workspace_id,
@@ -173,11 +175,19 @@ def get_rhdisabled_rules_systems(org_id):
 
 
 def get_inventory_hosts_stats(org_id):
-    # Used in new email template to get the total number of registered & stale hosts
-    hosts_qs = InventoryHost.objects.filter(org_id=org_id, host__isnull=False)
+    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+        hosts_qs = AdvisorInventoryHost.objects.filter(
+            org_id=org_id,
+        ).filter(
+            Exists(Host.objects.filter(inventory_id=OuterRef('inventory_id')))
+        )
+    else:
+        hosts_qs = InventoryHost.objects.filter(org_id=org_id, host__isnull=False)
     return {
         'total': hosts_qs.count(),
-        'stale': hosts_qs.filter(per_reporter_staleness__puptoo__stale_timestamp__lt=str(timezone.now())).count()
+        'stale': hosts_qs.filter(
+            per_reporter_staleness__puptoo__stale_timestamp__lt=str(timezone.now())
+        ).count()
     }
 
 
