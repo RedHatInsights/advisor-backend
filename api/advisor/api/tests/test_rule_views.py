@@ -20,7 +20,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from api.models import Ack, Rule, RuleCategory
-from api.tests import constants, update_stale_dates
+from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
+from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 from api.permissions import (
     auth_header_for_testing, turnpike_auth_header_for_testing
 )
@@ -2456,3 +2457,32 @@ class RuleHostTagsTestCase(TestCase):
         self.assertEqual(get_hosts(response), [
             "system03.example.com", "system01.example.com"
         ])
+
+
+class AdvisorInventoryRuleViewTestCase(AdvisorInventoryTestMixin, TestCase):
+    """Tests that verify rule endpoints work with AdvisorInventoryHost."""
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_rule_systems_local_inventory(self):
+        """Rule systems endpoint works with flag on."""
+        response = self.client.get(
+            reverse('rule-systems', kwargs={'rule_id': constants.active_rule}),
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        self.assertIn('host_ids', json)
+        self.assertIsInstance(json['host_ids'], list)
+        self.assertTrue(len(json['host_ids']) > 0)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_rule_systems_detail_local_inventory(self):
+        """Rule systems_detail endpoint works with flag on."""
+        response = self.client.get(
+            reverse('rule-systems-detail', kwargs={'rule_id': constants.active_rule}),
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        self.assertIn('data', json)
+        systems = json['data']
+        self.assertIsInstance(systems, list)
+        self.assertTrue(len(systems) > 0)

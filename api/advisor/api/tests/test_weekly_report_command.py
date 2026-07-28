@@ -30,7 +30,8 @@ from api.management.commands.weekly_report_emails import get_rhdisabled_rules_sy
 from project_settings import settings
 from api.models import WeeklyReportSubscription, Rule, Tag, InventoryHost, Ack
 from api.permissions import has_rbac_permission, http_auth_header_key, make_rbac_url
-from api.tests import constants, update_stale_dates
+from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
+from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 
 test_middleware_url = 'https://middleware.svc/'
 
@@ -540,3 +541,19 @@ class KesselWeeklyReportTest(TestCase):
                     ):
                         result = _get_kessel_permitted_user_ids('9876543')
         self.assertIsNone(result)
+
+
+class AdvisorInventoryWeeklyReportTestCase(AdvisorInventoryTestMixin, TestCase):
+    """Tests that weekly report stats work with AdvisorInventoryHost."""
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_get_inventory_hosts_stats_local(self):
+        """get_inventory_hosts_stats returns correct counts from AdvisorInventoryHost."""
+        from api.management.commands.weekly_report_emails import (
+            get_inventory_hosts_stats,
+        )
+        stats = get_inventory_hosts_stats(constants.standard_org)
+        self.assertIn('total', stats)
+        self.assertIn('stale', stats)
+        self.assertIsInstance(stats['total'], int)
+        self.assertTrue(stats['total'] > 0)
