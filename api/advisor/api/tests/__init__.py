@@ -21,7 +21,7 @@ from kessel.inventory.v1beta2 import check_request_pb2
 from django.utils import timezone
 
 from api import kessel
-from api.models import InventoryHost
+from api.models import AdvisorInventoryHost, InventoryHost
 from api.permissions import identity_to_subject, auth_header_for_testing
 
 
@@ -489,3 +489,80 @@ def rbac_data(permissions='advisor:*:*', raw=None, groups=None):
     else:
         rbac_data = {'data': [{'permission': permissions}]}
     return rbac_data
+
+
+def replicate_to_advisor_inventory():
+    """Copy InventoryHost records into AdvisorInventoryHost with flattened fields."""
+    for inv in InventoryHost.objects.all():
+        sp = inv.system_profile or {}
+        os_info = sp.get('operating_system', {})
+        if not isinstance(os_info, dict):
+            os_info = {}
+        groups = inv.groups or []
+        g0 = groups[0] if groups else {}
+        bootc = sp.get('bootc_status', {})
+        bootc_booted = bootc.get('booted', {}) if isinstance(bootc, dict) else {}
+        workloads = sp.get('workloads', {})
+        workloads = workloads if isinstance(workloads, dict) else {}
+
+        AdvisorInventoryHost.objects.update_or_create(
+            inventory_id=inv.id,
+            org_id=inv.org_id,
+            defaults={
+                'account': inv.account,
+                'display_name': inv.display_name,
+                'tags': inv.tags,
+                'workspace_id': g0.get('id'),
+                'workspace_name': g0.get('name'),
+                'workspace_ungrouped': g0.get('ungrouped'),
+                'updated': inv.updated,
+                'created': inv.created,
+                'last_check_in': inv.last_check_in,
+                'stale_timestamp': inv.stale_timestamp,
+                'insights_id': inv.insights_id,
+                'reporter': inv.reporter,
+                'per_reporter_staleness': inv.per_reporter_staleness,
+                'os_name': os_info.get('name'),
+                'os_major': os_info.get('major'),
+                'os_minor': os_info.get('minor'),
+                'host_type': sp.get('host_type'),
+                'bootc_booted_image': (
+                    bootc_booted.get('image')
+                    if isinstance(bootc_booted, dict) else None
+                ),
+                'bootc_booted_image_digest': (
+                    bootc_booted.get('image_digest')
+                    if isinstance(bootc_booted, dict) else None
+                ),
+                'owner_id': sp.get('owner_id'),
+                'rhc_client_id': sp.get('rhc_client_id'),
+                'workloads': workloads,
+                'system_update_method': sp.get('system_update_method'),
+            }
+        )
+
+
+class AdvisorInventoryTestMixin:
+    """Shared test setup for AdvisorInventoryHost flag-on tests."""
+    fixtures = [
+        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'basic_test_data', 'high_severity_rule',
+    ]
+    std_auth_header = auth_header_for_testing()
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        update_stale_dates()
+
+    def setUp(self):
+        super().setUp()
+        replicate_to_advisor_inventory()
+
+    def _response_is_good(self, response):
+        from django.test import TestCase
+        tc = TestCase()
+        tc.maxDiff = None
+        tc.assertEqual(response.status_code, 200, response.content.decode())
+        tc.assertEqual(response.accepted_media_type, constants.json_mime)
+        return response.json()
