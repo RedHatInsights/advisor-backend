@@ -46,8 +46,10 @@ from api.serializers import (
     RuleForAccountSerializer, RuleUsageStatsSerializer, SystemsForRuleSerializer,
     MultiHostAckSerializer, MultiHostUnAckSerializer, MultiAckResponseSerializer,
     JustificationCountSerializer, ReportForRuleSerializer,
-    RuleSerializer, SystemsDetailSerializer
+    RuleSerializer, SystemsDetailSerializer,
+    get_systems_detail_serializer,
 )
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 from api.permissions import (
     TurnpikeIdentityAuthentication,
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
@@ -175,6 +177,11 @@ systems_sort_field_map = {
     'stale_at': 'inventory__stale_timestamp', 'system_uuid': 'host_id',
     'updated': 'inventory__updated'
 }
+systems_sort_field_map_local = {
+    'display_name': 'advisor_inventory__display_name', 'last_seen': 'last_upload',
+    'stale_at': 'advisor_inventory__stale_timestamp', 'system_uuid': 'host_id',
+    'updated': 'advisor_inventory__updated'
+}
 systems_sort_query_param = OpenApiParameter(
     name='sort', location=OpenApiParameter.QUERY,
     description="Order by this field",
@@ -194,6 +201,10 @@ systems_detail_sort_field_map = {
         'system_profile__operating_system__minor'
     ],
     'group_name': 'groups__0__name'
+}
+systems_detail_sort_field_map_local = {
+    'rhel_version': ['os_major', 'os_minor'],
+    'group_name': 'workspace_name',
 }
 systems_detail_sort_query_param = OpenApiParameter(
     name='sort', location=OpenApiParameter.QUERY,
@@ -522,8 +533,14 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         of systems and accounts impacted by a rule.
         """
         rule = get_object_or_404(Rule, rule_id=rule_id)
+        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+        inv_relation = 'advisor_inventory' if use_local else 'inventory'
+        staleness_kwarg = {
+            f'{inv_relation}__per_reporter_staleness__puptoo__stale_warning_timestamp__gt':
+            str(timezone.now())
+        }
         hit_counts = CurrentReport.objects.filter(
-            inventory__per_reporter_staleness__puptoo__stale_warning_timestamp__gt=str(timezone.now()),
+            **staleness_kwarg,
             rule=rule,
         ).aggregate(
             systems_hit=Count('host_id', distinct=True),
@@ -588,25 +605,26 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         Insights Inventory UUID.
         """
         rule = get_object_or_404(Rule, rule_id=rule_id)
+        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+        active_sort_map = systems_sort_field_map_local if use_local else systems_sort_field_map
+        inv_relation = 'advisor_inventory' if use_local else 'inventory'
         sort_fields = sort_params_to_fields(
             value_of_param(systems_sort_query_param, request),
-            systems_sort_field_map
+            active_sort_map
         )
 
-        # NOTE: host tags are filtered inside the Rule model's
-        # impacted_systems method.  Have to use the reports_for_account method
-        # so that we cope with systems that are host-acked as well as this
-        # rule being acked.
         impacted_systems = (
             get_reporting_system_ids_queryset(
                 request, rule=rule
             )
             .filter(
                 filter_on_display_name(
-                    request, relation='inventory',
+                    request, relation=inv_relation,
                     param=systems_detail_name_query_param
                 ),
-                filter_on_rhel_version(request, relation='inventory'),
+                filter_on_rhel_version(
+                    request, relation=inv_relation, use_local=use_local
+                ),
             )
             .order_by(*sort_fields, 'host_id')
         )
@@ -639,12 +657,18 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         Additional information includes hit counts and upload/stale timestamps.
         """
         rule = self.get_object()
+        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+        active_sort_map = (
+            systems_detail_sort_field_map_local if use_local
+            else systems_detail_sort_field_map
+        )
+        host_id_ref = OuterRef('inventory_id') if use_local else OuterRef('id')
         sort_fields = sort_params_to_fields(
             value_of_param(systems_detail_sort_query_param, request),
-            systems_detail_sort_field_map
+            active_sort_map
         )
         reports = get_reports_subquery(
-            request, exclude_ineligible_hosts=False, host=OuterRef('id'),
+            request, exclude_ineligible_hosts=False, host=host_id_ref,
             rule=rule
         )
         systems_detail_qs = (
@@ -653,7 +677,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
                 filter_on_display_name(
                     request, param=systems_detail_name_query_param,
                 ),
-                filter_on_rhel_version(request),
+                filter_on_rhel_version(request, use_local=use_local),
                 Exists(reports)
             )
             .annotate(impacted_date=Subquery(reports.values('impacted_date')))
@@ -661,7 +685,8 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         )
 
         return self._paginated_response(
-            systems_detail_qs, request, serializer_class=SystemsDetailSerializer
+            systems_detail_qs, request,
+            serializer_class=get_systems_detail_serializer()
         )
 
 

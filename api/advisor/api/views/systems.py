@@ -33,10 +33,11 @@ from api.filters import (
     update_method_query_param, has_disabled_recommendation_query_param,
 )
 from api.models import (
-    InventoryHost, get_systems_queryset, get_reports_subquery
+    InventoryHost,
+    get_systems_queryset, get_reports_subquery
 )
 from api.permissions import ResourceScope
-from api.serializers import ReportSerializer, SystemSerializer
+from api.serializers import ReportSerializer, SystemSerializer, get_system_serializer
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin,
 )
@@ -88,8 +89,10 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     resource_scope = ResourceScope.WORKSPACE
     serializer_class = SystemSerializer
 
+    def get_serializer_class(self):
+        return get_system_serializer()
+
     def get_queryset(self):
-        # Used in export systems as well
         return get_systems_queryset(self.request)
 
     @extend_schema(
