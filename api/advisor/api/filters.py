@@ -242,9 +242,25 @@ def filter_on_param(query_field, param, request, value_map=None):
     return Q(**{query_field: param_value})
 
 
+def _remap_system_profile_parts_for_local(filter_parts):
+    """
+    Remap system_profile JSON paths to AdvisorInventoryHost flat column names.
+    Strips the leading 'system_profile' element and remaps known nested paths.
+    """
+    parts = filter_parts[1:]  # strip 'system_profile'
+
+    if len(parts) >= 2 and parts[0] == 'operating_system':
+        if parts[1] == 'major':
+            parts = ['os_major'] + parts[2:]
+        elif parts[1] == 'minor':
+            parts = ['os_minor'] + parts[2:]
+
+    return parts
+
+
 def filter_multi_param(
     request, filter_prefix, param_name='filter', field_prefix=None,
-    use_contains_for_eq=True
+    use_contains_for_eq=True, use_local=False
 ):
     """
     Find a parameter starting with the given param_name (= 'filter') and
@@ -352,6 +368,9 @@ def filter_multi_param(
                 filter_parts = [filter_prefix, 'workloads', 'sap', 'sids'] + filter_parts[2:]
             elif field_name in ('ansible', 'mssql'):
                 filter_parts = [filter_prefix, 'workloads'] + filter_parts[1:]
+
+        if use_local and filter_prefix == 'system_profile':
+            filter_parts = _remap_system_profile_parts_for_local(filter_parts)
 
         # Keep the filter prefix here though
         operator = filter_parts[-1]
@@ -697,7 +716,7 @@ def filter_on_host_id(request, relation='', param=host_id_query_param):
     return Q(**{relation + 'host': host_id})
 
 
-def filter_on_host_tags(request, field_name='host_id'):
+def filter_on_host_tags(request, field_name='host_id', use_local=False):
     host_tags = value_of_param(host_tags_query_param, request)
 
     if not host_tags:
@@ -723,8 +742,6 @@ def filter_on_host_tags(request, field_name='host_id'):
 
         tag_query &= Q(tags__contains=[{"namespace": namespace, "key": key, "value": value}])
 
-    # Add org_id to the filter for partition pruning
-    # Need to import this here to avoid circular import error
     from api.permissions import request_to_org
 
     org_id = request_to_org(request)
@@ -732,26 +749,38 @@ def filter_on_host_tags(request, field_name='host_id'):
     if org_id:
         tag_query &= Q(org_id=org_id)
 
-    # Getting InventoryHost via apps to avoid circular import on models
+    if use_local:
+        AdvisorInventoryHost = apps.get_model('api', 'AdvisorInventoryHost')
+        return Q(**{field_name + '__in': Subquery(
+            AdvisorInventoryHost.objects.filter(tag_query).values('inventory_id')
+        )})
+
     InventoryHost = apps.get_model('api', 'InventoryHost')
     return Q(**{field_name + '__in': Subquery(
          InventoryHost.objects.filter(tag_query).values('id')
     )})
 
 
-def filter_on_system_type(request, relation: Optional[str] = None):
+def filter_on_system_type(request, relation: Optional[str] = None, use_local=False):
     """
     Filter on the host_type field (currently within system_profile).
     """
     system_type = value_of_param(system_type_query_param, request)
-    base_parameter = 'system_profile__'
-    if relation:
-        base_parameter = f"{relation}__{base_parameter}"
+    if use_local:
+        base_parameter = ''
+        if relation:
+            base_parameter = f"{relation}__"
+    else:
+        base_parameter = 'system_profile__'
+        if relation:
+            base_parameter = f"{relation}__{base_parameter}"
     if system_type is None or system_type == 'all':
         return Q()
     elif system_type == 'edge':
         return Q(**{f"{base_parameter}host_type": 'edge'})
     elif system_type == 'bootc':
+        if use_local:
+            return Q(**{f"{base_parameter}bootc_booted_image__isnull": False})
         return Q(**{f"{base_parameter}bootc_status__isnull": False})
     elif system_type == 'conventional':
         return Q(**{f"{base_parameter}host_type__isnull": True})
@@ -768,19 +797,27 @@ def filter_on_incident(request):
         return Q(incident_hits=0)
 
 
-def filter_on_rhel_version(request, relation: Optional[str] = None):
+def filter_on_rhel_version(request, relation: Optional[str] = None, use_local=False):
     versions = value_of_param(rhel_version_query_param, request)
-    # Based on InventoryHost so look up directly
     version_filter = Q()
     if versions is None:
+        return version_filter
+
+    if use_local:
+        prefix = ''
+        if relation:
+            prefix = f"{relation}__"
+        for version in versions:
+            major, minor = map(int, version.split('.'))
+            version_filter |= Q(**{
+                f"{prefix}os_major": major, f"{prefix}os_minor": minor,
+            })
         return version_filter
 
     base_parameter = 'system_profile__operating_system'
     if relation:
         base_parameter = f"{relation}__{base_parameter}"
     for version in versions:
-        # Assertion: our parameters always have 'major.minor', and those are
-        # always ints.
         major, minor = map(int, version.split('.'))
         major_param = f"{base_parameter}__major"
         minor_param = f"{base_parameter}__minor"
@@ -803,7 +840,7 @@ def filter_on_topic(request, relation: Optional[str] = None):
         return Q()
 
 
-def filter_on_workload(request, relation: Optional[str] = None):
+def filter_on_workload(request, relation: Optional[str] = None, use_local=False):
     """
     Filter systems by workload type.  Multiple workloads are OR'd together,
     following the same pattern as get_host_group_filter.
@@ -814,7 +851,10 @@ def filter_on_workload(request, relation: Optional[str] = None):
     workloads = value_of_param(workload_query_param, request)
     if not workloads:
         return Q()
-    base = 'system_profile__workloads'
+    if use_local:
+        base = 'workloads'
+    else:
+        base = 'system_profile__workloads'
     if relation:
         base = f"{relation}__{base}"
     workload_filter = Q()
@@ -826,7 +866,7 @@ def filter_on_workload(request, relation: Optional[str] = None):
     return workload_filter
 
 
-def filter_on_update_method(request, relation: Optional[str] = None):
+def filter_on_update_method(request, relation: Optional[str] = None, use_local=False):
     update_methods = value_of_param(update_method_query_param, request)
     if not update_methods:
         return Q()
@@ -834,7 +874,10 @@ def filter_on_update_method(request, relation: Optional[str] = None):
     if all(value in update_methods for value in update_method_query_param.enum):
         return Q()
     update_method_filter = Q()
-    base_parameter = 'system_profile__system_update_method'
+    if use_local:
+        base_parameter = 'system_update_method'
+    else:
+        base_parameter = 'system_profile__system_update_method'
     if relation:
         base_parameter = f"{relation}__{base_parameter}"
     if 'ostree' in update_methods:

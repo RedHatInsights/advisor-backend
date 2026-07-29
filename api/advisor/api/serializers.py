@@ -753,7 +753,9 @@ class SystemsForRuleSerializer(serializers.Serializer):
 
 class SystemSerializer(serializers.ModelSerializer):
     # Fields now based on InventoryHost
-    system_uuid = serializers.UUIDField(source='pk')
+    # source='id' for compatibility with both InventoryHost (id is the UUID PK)
+    # and AdvisorInventoryHost (id is a property returning inventory_id)
+    system_uuid = serializers.UUIDField(source='id')
     hits = serializers.IntegerField(read_only=True)
     last_seen = serializers.DateTimeField(read_only=True, allow_null=True)
     stale_at = serializers.DateTimeField(source='stale_timestamp', read_only=True)
