@@ -114,7 +114,7 @@ def _filter_stale_events(upserts: list[ParsedInventoryHost]) -> list[ParsedInven
     deduped: dict[tuple, ParsedInventoryHost] = {}
     for item in upserts:
         key = (item.org_id, item.host_id)
-        if key not in deduped or item.last_check_in > deduped[key].last_check_in:
+        if key not in deduped or item.updated > deduped[key].updated:
             deduped[key] = item
     unique = list(deduped.values())
 
@@ -123,17 +123,17 @@ def _filter_stale_events(upserts: list[ParsedInventoryHost]) -> list[ParsedInven
             Q(org_id=item.org_id, inventory_id=item.host_id)
             for item in unique
         ))
-    ).values_list('org_id', 'inventory_id', 'last_check_in')
+    ).values_list('org_id', 'inventory_id', 'updated')
 
     existing_ts = {
-        (org_id, str(inv_id)): last_check_in
-        for org_id, inv_id, last_check_in in existing
+        (org_id, str(inv_id)): updated
+        for org_id, inv_id, updated in existing
     }
 
     fresh = [
         item for item in unique
         if (item.org_id, item.host_id) not in existing_ts
-        or parse_datetime(item.last_check_in) > existing_ts[(item.org_id, item.host_id)]
+        or parse_datetime(item.updated) > existing_ts[(item.org_id, item.host_id)]
     ]
 
     stale_count = len(unique) - len(fresh)

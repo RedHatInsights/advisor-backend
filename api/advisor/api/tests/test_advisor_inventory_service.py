@@ -617,24 +617,24 @@ class TestAdvisorInventoryServer(TestCase):
         )
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
-    def test_stale_update_does_not_overwrite_newer_data(self):
-        """Test that an event with an older last_check_in is filtered out."""
+    def test_stale_event_does_not_overwrite_newer_data(self):
+        """Test that an event with an older 'updated' timestamp is filtered out."""
         newer_ts = "2026-06-01T12:00:00Z"
         older_ts = "2025-01-01T00:00:00Z"
 
-        # Insert host with newer last_check_in
+        # Insert host with newer 'updated'
         msg = deepcopy(create_new_host_msg)
-        msg['host']['last_check_in'] = newer_ts
+        msg['host']['updated'] = newer_ts
         with self.assertLogs(logger='advisor-log', level='DEBUG'):
             handle_inventory_event('topic', [msg])
 
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
         original_display_name = inv_host.display_name
 
-        # Send update with older last_check_in and different display_name
+        # Send event with older 'updated' — should be filtered as stale
         stale_msg = deepcopy(create_new_host_msg)
         stale_msg['type'] = 'updated'
-        stale_msg['host']['last_check_in'] = older_ts
+        stale_msg['host']['updated'] = older_ts
         stale_msg['host']['display_name'] = 'stale-name-should-not-appear'
         with self.assertLogs(logger='advisor-log', level='DEBUG'):
             handle_inventory_event('topic', [stale_msg])
@@ -643,21 +643,21 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertEqual(inv_host.display_name, original_display_name)
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
-    def test_newer_update_overwrites_older_data(self):
-        """Test that an event with a newer last_check_in updates the record."""
+    def test_newer_event_overwrites_older_data(self):
+        """Test that an event with a newer 'updated' timestamp updates the record."""
         older_ts = "2025-01-01T00:00:00Z"
         newer_ts = "2026-06-01T12:00:00Z"
 
-        # Insert host with older last_check_in
+        # Insert host with older 'updated'
         msg = deepcopy(create_new_host_msg)
-        msg['host']['last_check_in'] = older_ts
+        msg['host']['updated'] = older_ts
         with self.assertLogs(logger='advisor-log', level='DEBUG'):
             handle_inventory_event('topic', [msg])
 
-        # Send update with newer last_check_in and different display_name
+        # Send event with newer 'updated' and different display_name
         update_msg = deepcopy(create_new_host_msg)
         update_msg['type'] = 'updated'
-        update_msg['host']['last_check_in'] = newer_ts
+        update_msg['host']['updated'] = newer_ts
         update_msg['host']['display_name'] = 'updated-name'
         with self.assertLogs(logger='advisor-log', level='DEBUG'):
             handle_inventory_event('topic', [update_msg])
@@ -666,14 +666,14 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertEqual(inv_host.display_name, 'updated-name')
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
-    def test_batch_dedup_keeps_latest_timestamp(self):
-        """Test that duplicate host events in a batch keep the one with latest last_check_in."""
+    def test_batch_dedup_keeps_latest_event(self):
+        """Test that duplicate host events in a batch keep the one with latest 'updated'."""
         older_msg = deepcopy(create_new_host_msg)
-        older_msg['host']['last_check_in'] = "2025-01-01T00:00:00Z"
+        older_msg['host']['updated'] = "2025-01-01T00:00:00Z"
         older_msg['host']['display_name'] = 'old-name'
 
         newer_msg = deepcopy(create_new_host_msg)
-        newer_msg['host']['last_check_in'] = "2026-06-01T12:00:00Z"
+        newer_msg['host']['updated'] = "2026-06-01T12:00:00Z"
         newer_msg['host']['display_name'] = 'new-name'
 
         # Send older first, newer second
@@ -692,6 +692,36 @@ class TestAdvisorInventoryServer(TestCase):
 
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
         self.assertEqual(inv_host.display_name, 'new-name')
+
+    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
+    def test_group_change_event_updates_workspace(self):
+        """Test that a group-change event (same last_check_in, newer updated) is not filtered out."""
+        initial_ts = "2025-11-28T03:53:20Z"
+        group_change_ts = "2025-11-28T04:00:00Z"
+
+        # Create host with no group
+        msg = deepcopy(create_new_host_msg)
+        msg['host']['updated'] = initial_ts
+        msg['host']['last_check_in'] = initial_ts
+        msg['host']['groups'] = []
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [msg])
+
+        inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
+        self.assertIsNone(inv_host.workspace_name)
+
+        # HBI emits updated event for group assignment — same last_check_in, newer updated
+        group_msg = deepcopy(create_new_host_msg)
+        group_msg['type'] = 'updated'
+        group_msg['host']['updated'] = group_change_ts
+        group_msg['host']['last_check_in'] = initial_ts
+        group_msg['host']['groups'] = [{"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "name": "test-group"}]
+        with self.assertLogs(logger='advisor-log', level='DEBUG'):
+            handle_inventory_event('topic', [group_msg])
+
+        inv_host.refresh_from_db()
+        self.assertEqual(inv_host.workspace_name, "test-group")
+        self.assertEqual(str(inv_host.workspace_id), "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     @patch.object(prometheus.INVENTORY_EVENT_MALFORMED, 'inc')
