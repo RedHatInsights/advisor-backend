@@ -421,7 +421,7 @@ class HostAckSerializer(serializers.ModelSerializer):
     system_uuid = serializers.UUIDField(source='host_id')
     display_name = serializers.SerializerMethodField()
 
-    def get_display_name(self, obj):
+    def get_display_name(self, obj) -> str | None:
         if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
             return getattr(obj.host.advisor_inventory, 'display_name', None)
         return getattr(obj.host.inventory, 'display_name', None)
