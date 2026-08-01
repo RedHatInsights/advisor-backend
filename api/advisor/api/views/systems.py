@@ -92,6 +92,11 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     def get_serializer_class(self):
         return get_system_serializer()
 
+    def get_object(self):
+        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+            self.lookup_field = 'inventory_id'
+        return super().get_object()
+
     def get_queryset(self):
         return get_systems_queryset(self.request)
 
