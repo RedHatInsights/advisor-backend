@@ -811,11 +811,21 @@ class SystemsDetailSerializer(SystemSerializer):
 
 
 class AdvisorSystemSerializer(SystemSerializer):
+    os_name = serializers.SerializerMethodField()
+
+    def get_os_name(self, obj):
+        return obj.os_name or "Unknown operating system"
+
     class Meta(SystemSerializer.Meta):
         model = models.AdvisorInventoryHost
 
 
 class AdvisorSystemsDetailSerializer(SystemsDetailSerializer):
+    os_name = serializers.SerializerMethodField()
+
+    def get_os_name(self, obj):
+        return obj.os_name or "Unknown operating system"
+
     class Meta(SystemsDetailSerializer.Meta):
         model = models.AdvisorInventoryHost
 
