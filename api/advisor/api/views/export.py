@@ -499,7 +499,9 @@ class SystemsViewSet(ExportViewSet):
             Exists(reports) if rule_id_value else Q()
         ).order_by(sort, id_field)
         return self.stream_response(
-            systems, 'systems', format=format
+            systems, 'systems',
+            transformer=make_serializer_transform(self.get_serializer_class()),
+            format=format,
         )
 
 

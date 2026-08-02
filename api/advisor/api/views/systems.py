@@ -127,7 +127,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         )
         systems = self.get_queryset().order_by(*sort_fields, id_field)
 
-        return self._paginated_response(systems, request)
+        return self._paginated_response(systems, request, serializer_class=self.get_serializer_class())
 
     @extend_schema(
         parameters=[
