@@ -910,7 +910,11 @@ class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), m
         elif os_name:
             return f"Unknown {os_name} version"
         else:
-            return "Unknown OS version"
+            return "Unknown system version"
+
+    @property
+    def acks(self):
+        return []
 
     class Meta:
         db_table = 'advisor_inventory_host'
