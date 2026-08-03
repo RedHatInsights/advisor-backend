@@ -502,6 +502,7 @@ def get_reports_subquery(
             get_host_group_filter(request, relation=inv_relation, use_local=use_local),
             stale_systems_filter,
         ) if exclude_ineligible_hosts else Q(),
+        org_id=org_id,
         **outer_table_join
     ).filter(
         Q(rule__active=True) if use_joins and exclude_ineligible_rules else Q()
