@@ -304,9 +304,12 @@ else:
     PROMETHEUS_PATH = os.getenv('PROMETHEUS_PATH', 'metrics')
     PROMETHEUS_PORT = int(os.getenv('PROMETHEUS_PORT', 8000))
 
-# if the prometheus port is not 8000 then export
-if PROMETHEUS_PORT != 8000:
-    PROMETHEUS_METRICS_EXPORT_PORT = int(PROMETHEUS_PORT)
+# Note: We intentionally do NOT set PROMETHEUS_METRICS_EXPORT_PORT here.
+# django_prometheus's start_http_server() uses the default in-process registry,
+# which doesn't work with gunicorn's multiprocess mode (workers write to per-PID
+# .db files via MultiProcessValue, but the standalone server doesn't aggregate
+# them via MultiProcessCollector). Instead, we start a custom multiprocess-aware
+# metrics server in gunicorn_conf.py that properly collects from all worker .db files.
 PROMETHEUS_METRICS_EXPORT_ADDRESS = '0.0.0.0'  # listen on all addresses
 
 DATABASE_ROUTERS = ['project_settings.db_routing.ReadOnlyReplicaRouter']
