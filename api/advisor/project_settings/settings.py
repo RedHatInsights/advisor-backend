@@ -311,7 +311,6 @@ else:
 # them via MultiProcessCollector). Instead, we start a custom multiprocess-aware
 # metrics server in gunicorn_conf.py that properly collects from all worker .db files.
 PROMETHEUS_METRICS_EXPORT_ADDRESS = '0.0.0.0'  # listen on all addresses
-PROMETHEUS_EXPORT_MIGRATIONS = True
 
 DATABASE_ROUTERS = ['project_settings.db_routing.ReadOnlyReplicaRouter']
 
