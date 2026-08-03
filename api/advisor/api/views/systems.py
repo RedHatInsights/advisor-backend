@@ -155,7 +155,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         active_reports = get_reports_subquery(
             request, host_id=uuid, use_joins=True
         ).select_related(
-            'rule__category', 'rule__impact', 'rule__ruleset',
+            'upload', 'rule__category', 'rule__impact', 'rule__ruleset',
         ).prefetch_related(
             'rule__resolution_set', 'rule__resolution_set__playbook_set',
             'rule__resolution_set__resolution_risk',
