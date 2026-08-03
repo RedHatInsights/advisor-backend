@@ -56,6 +56,7 @@ unleashclient = "==6.7.0"
 rpds-py = "==0.30.0"
 jsonschema = "==4.24.0"
 confluent-kafka = "==2.10.1"
+certifi = "*"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"

@@ -32,7 +32,7 @@ COPY Pipfile Pipfile.lock ./
 # in one step so the FS layer has minimal changes
 RUN microdnf -y install python3.12-pip python3.12-devel gcc libpq-devel && \
     pip3 -q install pipenv && \
-    pipenv install && \
+    PIP_IGNORE_INSTALLED=1 pipenv install && \
     microdnf remove -y python3.12-devel gcc libpq-devel \
     acl binutils binutils-gold cpp \
     elfutils-debuginfod-client elfutils-default-yama-scope elfutils-libelf \
