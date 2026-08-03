@@ -656,7 +656,10 @@ def filter_on_has_disabled_recommendation(request, param=has_disabled_recommenda
 
     if use_local:
         outer_host_ref = OuterRef('inventory_id')
-        hostacks = HostAck.objects.filter(host__advisor_inventory__inventory_id=outer_host_ref)
+        hostacks = HostAck.objects.filter(
+            host__advisor_inventory__inventory_id=outer_host_ref,
+            host__advisor_inventory__org_id=OuterRef('org_id'),
+        )
         acks = CurrentReport.objects.filter(
             advisor_inventory__inventory_id=outer_host_ref, rule__ack__org_id=org_id
         )
