@@ -1285,6 +1285,7 @@ class RuleManager(models.Manager):
         # filter everything by matching org_id.  At some point we can do the
         # semantic name change to `for_org()`.
         username = request_to_username(request)
+        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
 
         report_query = get_reports_subquery(
             request, exclude_ineligible_rules=False, rule_id=OuterRef('id'),
@@ -1295,20 +1296,34 @@ class RuleManager(models.Manager):
         # Because the only time we can get a rule list is in views that have
         # already authenticated, we must have an account here.
 
-        system_profile_filter = filter_multi_param(
-            request, 'system_profile', field_prefix='host__inventory'
-        )
         playbooks_for_rule = Playbook.objects.filter(
             resolution__rule=models.OuterRef('id')
         ).order_by()
-        hosts_acked_for_rule = HostAck.objects.filter(
-            filter_on_host_tags(request, field_name='host_id'),
-            system_profile_filter,
-            stale_systems_q(org_id, field='host_id'),
-            org_id=org_id, rule=models.OuterRef('id'),
-        ).annotate(
-            hosts_acked=models.Count('id')
-        ).values('hosts_acked').order_by()
+
+        if use_local:
+            system_profile_filter = filter_multi_param(
+                request, 'system_profile', field_prefix='host__advisor_inventory'
+            )
+            hosts_acked_for_rule = HostAck.objects.filter(
+                filter_on_host_tags(request, field_name='host_id', use_local=True),
+                system_profile_filter,
+                stale_systems_q(org_id, field='host_id', model_class=AdvisorInventoryHost),
+                org_id=org_id, rule=models.OuterRef('id'),
+            ).annotate(
+                hosts_acked=models.Count('id')
+            ).values('hosts_acked').order_by()
+        else:
+            system_profile_filter = filter_multi_param(
+                request, 'system_profile', field_prefix='host__inventory'
+            )
+            hosts_acked_for_rule = HostAck.objects.filter(
+                filter_on_host_tags(request, field_name='host_id'),
+                system_profile_filter,
+                stale_systems_q(org_id, field='host_id'),
+                org_id=org_id, rule=models.OuterRef('id'),
+            ).annotate(
+                hosts_acked=models.Count('id')
+            ).values('hosts_acked').order_by()
         hosts_acked_for_rule.query.group_by = []  # Otherwise it groups by host_id
 
         return self.get_queryset().filter(
