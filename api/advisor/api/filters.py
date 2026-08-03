@@ -639,7 +639,7 @@ def filter_on_display_name(request, relation='', param=display_name_query_param)
     return Q(**{relation + 'display_name__icontains': display_name})
 
 
-def filter_on_has_disabled_recommendation(request, param=has_disabled_recommendation_query_param):
+def filter_on_has_disabled_recommendation(request, param=has_disabled_recommendation_query_param, use_local=False):
     """
     Filter systems which has at least one disabled recommendation.
     """
@@ -650,19 +650,21 @@ def filter_on_has_disabled_recommendation(request, param=has_disabled_recommenda
     # Need to import this here to avoid circular import error
     from api.permissions import request_to_org
 
-    # Getting HostAck using apps.get_model to avoid circular import error
     HostAck = apps.get_model('api', 'HostAck')
-    # Small extra note here: we're relying on the inventory UUID being unique
-    # to avoid having to check the org_id of HostAcks here.
-    hostacks = HostAck.objects.filter(host__inventory=OuterRef('pk'))
-    # To find whether this host has any system-wide Acks, we need to ask
-    # 'are there any current reports of acked rules for this host?'.  So for
-    # that we _do_ need the org_id...
     CurrentReport = apps.get_model('api', 'CurrentReport')
     org_id = request_to_org(request)
-    acks = CurrentReport.objects.filter(
-        inventory=OuterRef('pk'), rule__ack__org_id=org_id
-    )
+
+    if use_local:
+        outer_host_ref = OuterRef('inventory_id')
+        hostacks = HostAck.objects.filter(host__inventory=outer_host_ref)
+        acks = CurrentReport.objects.filter(
+            inventory=outer_host_ref, rule__ack__org_id=org_id
+        )
+    else:
+        hostacks = HostAck.objects.filter(host__inventory=OuterRef('pk'))
+        acks = CurrentReport.objects.filter(
+            inventory=OuterRef('pk'), rule__ack__org_id=org_id
+        )
 
     condition = Q(Exists(hostacks) | Exists(acks))
     return condition if param_value else ~condition

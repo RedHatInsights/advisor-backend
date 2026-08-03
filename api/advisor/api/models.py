@@ -311,7 +311,7 @@ def get_systems_queryset(request):
         filter_on_hits(request),
         filter_on_incident(request),
         rhel_version_filter,
-        filter_on_has_disabled_recommendation(request)
+        filter_on_has_disabled_recommendation(request, use_local=use_local)
     )
 
 
