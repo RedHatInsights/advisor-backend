@@ -41,7 +41,8 @@ from api.serializers import (
     RuleSerializer, SystemsForRuleSerializer, TopicSerializer, TopicEditSerializer
 )
 from api.utils import CustomPageNumberPagination
-from api.views.rules import systems_sort_field_map, systems_sort_query_param
+from api.views.rules import systems_sort_field_map, systems_sort_field_map_local, systems_sort_query_param
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 
 show_disabled_query_param = OpenApiParameter(
@@ -135,7 +136,11 @@ class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
         # Avoid get_queryset because of annotation:
         topic = get_object_or_404(RuleTopic, slug=slug)
         sort_list = value_of_param(systems_sort_query_param, request)
-        sort_fields = sort_params_to_fields(sort_list, systems_sort_field_map)
+        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+            active_sort_map = systems_sort_field_map_local
+        else:
+            active_sort_map = systems_sort_field_map
+        sort_fields = sort_params_to_fields(sort_list, active_sort_map)
         # Because we're possibly seeing the current reports for different
         # rules on the same system, we need to make the sort fields distinct.
         impacted_systems = get_reporting_system_ids_queryset(

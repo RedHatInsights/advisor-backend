@@ -17,8 +17,9 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from api.tests import constants, update_stale_dates
+from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
 from api.permissions import auth_header_for_testing
+from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 from api.models import Rule, Tag
 
 import csv
@@ -1248,3 +1249,32 @@ class ExportViewHostTagsTestCase(TestCase):
         self.assertEqual(row_data[0]['rhel_version'], '8.3')
         self.assertEqual(row_data[0]['group_name'], '')
         self.assertEqual(len(row_data), 1)
+
+
+class AdvisorInventoryExportHitsTestCase(AdvisorInventoryTestMixin, TestCase):
+    """Tests that verify export hits endpoint works with AdvisorInventoryHost."""
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_export_hits_local_inventory(self):
+        """Hits export returns correct data from AdvisorInventoryHost."""
+        response = self.client.get(
+            reverse('export-hits-list'), **self.std_auth_header
+        )
+        self.assertEqual(response.status_code, 200)
+        import json
+        data = json.loads(b''.join(response.streaming_content))
+        self.assertIsInstance(data, list)
+        self.assertTrue(len(data) > 0)
+        hit = data[0]
+        self.assertIn('hostname', hit)
+        self.assertIn('rhel_version', hit)
+        self.assertIn('stale_at', hit)
+        self.assertIn('uuid', hit)
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_export_systems_local_inventory(self):
+        """Systems export works with AdvisorInventoryHost."""
+        response = self.client.get(
+            reverse('export-systems-list'), **self.std_auth_header
+        )
+        self.assertEqual(response.status_code, 200)

@@ -17,8 +17,9 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from api.tests import constants, update_stale_dates
+from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
 from api.permissions import auth_header_for_testing
+from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 
 
 class PathwayModelTestCase(TestCase):
@@ -868,3 +869,20 @@ class PathwayViewHostTagsTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['data'], [])
+
+
+class AdvisorInventoryPathwayViewTestCase(AdvisorInventoryTestMixin, TestCase):
+    """Tests that verify pathway endpoints work with AdvisorInventoryHost."""
+
+    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
+    def test_pathway_systems_local_inventory(self):
+        """Pathway systems endpoint works with flag on."""
+        response = self.client.get(
+            reverse('pathway-systems', kwargs={'slug': 'test-component-1'}),
+            **self.std_auth_header
+        )
+        json = self._response_is_good(response)
+        self.assertIn('data', json)
+        systems = json['data']
+        self.assertIsInstance(systems, list)
+        self.assertTrue(len(systems) > 0)

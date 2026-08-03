@@ -1237,7 +1237,7 @@ def test_advisor_inventory_host_rhel_version_name_only(db):
 @pytest.mark.django_db(transaction=True)
 def test_advisor_inventory_host_rhel_version_unknown(db):
     host = models.AdvisorInventoryHost(os_name=None, os_major=None, os_minor=None, org_id="123")
-    assert host.rhel_version == "Unknown OS version"
+    assert host.rhel_version == "Unknown system version"
 
 
 @pytest.mark.django_db(transaction=True)

@@ -33,10 +33,11 @@ from api.filters import (
     update_method_query_param, has_disabled_recommendation_query_param,
 )
 from api.models import (
-    InventoryHost, get_systems_queryset, get_reports_subquery
+    InventoryHost,
+    get_systems_queryset, get_reports_subquery
 )
 from api.permissions import ResourceScope
-from api.serializers import ReportSerializer, SystemSerializer
+from api.serializers import ReportSerializer, SystemSerializer, get_system_serializer
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin,
 )
@@ -83,13 +84,20 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = 'id'
     lookup_url_kwarg = 'uuid'
     pagination_class = CustomPageNumberPagination
-    queryset = InventoryHost.objects.all()
+    queryset = InventoryHost.objects.all()  # overridden by get_queryset()
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.WORKSPACE
     serializer_class = SystemSerializer
 
+    def get_serializer_class(self):
+        return get_system_serializer()
+
+    def get_object(self):
+        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+            self.lookup_field = 'inventory_id'
+        return super().get_object()
+
     def get_queryset(self):
-        # Used in export systems as well
         return get_systems_queryset(self.request)
 
     @extend_schema(
@@ -119,7 +127,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         )
         systems = self.get_queryset().order_by(*sort_fields, id_field)
 
-        return self._paginated_response(systems, request)
+        return self._paginated_response(systems, request, serializer_class=self.get_serializer_class())
 
     @extend_schema(
         parameters=[
@@ -147,7 +155,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         active_reports = get_reports_subquery(
             request, host_id=uuid, use_joins=True
         ).select_related(
-            'rule__category', 'rule__impact', 'rule__ruleset',
+            'upload', 'rule__category', 'rule__impact', 'rule__ruleset',
         ).prefetch_related(
             'rule__resolution_set', 'rule__resolution_set__playbook_set',
             'rule__resolution_set__resolution_risk',

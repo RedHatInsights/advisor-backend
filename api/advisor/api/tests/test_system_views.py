@@ -23,9 +23,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from api import kessel
-from api.models import Ack, AdvisorInventoryHost, InventoryHost, Upload
+from api.models import Ack, InventoryHost, Upload
 from api.permissions import auth_header_for_testing, make_rbac_url
-from api.tests import constants, update_stale_dates
+from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
 from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 
 
@@ -1163,72 +1163,8 @@ class SystemHostTagsViewTestCase(TestCase):
         self.assertEqual(len(rules), 0)
 
 
-def _replicate_to_advisor_inventory():
-    """Copy InventoryHost records into AdvisorInventoryHost with flattened fields."""
-    for inv in InventoryHost.objects.all():
-        sp = inv.system_profile or {}
-        os_info = sp.get('operating_system', {})
-        if not isinstance(os_info, dict):
-            os_info = {}
-        groups = inv.groups or []
-        g0 = groups[0] if groups else {}
-        bootc = sp.get('bootc_status', {})
-        bootc_booted = bootc.get('booted', {}) if isinstance(bootc, dict) else {}
-        workloads = sp.get('workloads', {})
-        workloads = workloads if isinstance(workloads, dict) else {}
-
-        AdvisorInventoryHost.objects.update_or_create(
-            inventory_id=inv.id,
-            org_id=inv.org_id,
-            defaults={
-                'account': inv.account,
-                'display_name': inv.display_name,
-                'tags': inv.tags,
-                'workspace_id': g0.get('id'),
-                'workspace_name': g0.get('name'),
-                'workspace_ungrouped': g0.get('ungrouped'),
-                'updated': inv.updated,
-                'created': inv.created,
-                'last_check_in': inv.last_check_in,
-                'stale_timestamp': inv.stale_timestamp,
-                'insights_id': inv.insights_id,
-                'reporter': inv.reporter,
-                'per_reporter_staleness': inv.per_reporter_staleness,
-                'os_name': os_info.get('name'),
-                'os_major': os_info.get('major'),
-                'os_minor': os_info.get('minor'),
-                'host_type': sp.get('host_type'),
-                'bootc_booted_image': bootc_booted.get('image') if isinstance(bootc_booted, dict) else None,
-                'bootc_booted_image_digest': bootc_booted.get('image_digest') if isinstance(bootc_booted, dict) else None,
-                'owner_id': sp.get('owner_id'),
-                'rhc_client_id': sp.get('rhc_client_id'),
-                'workloads': workloads,
-                'system_update_method': sp.get('system_update_method'),
-            }
-        )
-
-
-class AdvisorInventorySystemViewTestCase(TestCase):
+class AdvisorInventorySystemViewTestCase(AdvisorInventoryTestMixin, TestCase):
     """Tests that verify API system endpoints work with AdvisorInventoryHost (flag on)."""
-    fixtures = [
-        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'high_severity_rule',
-    ]
-
-    std_auth_header = auth_header_for_testing()
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        update_stale_dates()
-
-    def setUp(self):
-        _replicate_to_advisor_inventory()
-
-    def _response_is_good(self, response):
-        self.assertEqual(response.status_code, 200, response.content.decode())
-        self.assertEqual(response.accepted_media_type, constants.json_mime)
-        return response.json()
 
     @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
     def test_list_system_local_inventory(self):
