@@ -29,8 +29,9 @@ from api.filters import (
     host_group_name_query_param, filter_on_host_tags
 )
 from api.models import (
-    HostAck, stale_systems_q
+    AdvisorInventoryHost, HostAck, stale_systems_q
 )
+from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 from api.permissions import (
     request_to_username, InsightsRBACPermission, CertAuthPermission,
     request_to_org, IsRedHatInternalUser, ResourceScope,
@@ -94,9 +95,12 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         # its primary key.  This is the least-pain defence against that.
         swagger_fake_view = getattr(self, 'swagger_fake_view', False)
         org_id = request_to_org(self.request) if not swagger_fake_view else None
+        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+            stale_filter = stale_systems_q(org_id, field='host_id', model_class=AdvisorInventoryHost)
+        else:
+            stale_filter = stale_systems_q(org_id, field='host_id')
         return self.queryset.filter(
-            stale_systems_q(org_id, field='host_id'),
-            # TODO should filter on host groups too, to prevent acking a host you dont have access to, or seeing acks for hosts you no longer have access to
+            stale_filter,
             org_id=org_id
         )
 
@@ -115,12 +119,18 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
         Hostacks are retrieved, edited and deleted by the 'id' field.
         """
-        system_profile_filter = filter_multi_param(
-            request, 'system_profile', field_prefix='host__inventory'
-        )
+        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+        if use_local:
+            system_profile_filter = filter_multi_param(
+                request, 'system_profile', field_prefix='host__advisor_inventory', use_local=True
+            )
+        else:
+            system_profile_filter = filter_multi_param(
+                request, 'system_profile', field_prefix='host__inventory'
+            )
         qs = self.get_queryset().filter(
             filter_on_param('rule__rule_id', rule_id_param, request),
-            filter_on_host_tags(request, field_name='host_id'),
+            filter_on_host_tags(request, field_name='host_id', use_local=use_local),
             system_profile_filter,
         )
         return self._paginated_response(qs, request)

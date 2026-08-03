@@ -951,7 +951,16 @@ class Host(ExportModelOperationsMixin('host'), TimestampedModel):
 
     @property
     def rhel_version(self):
-        return self.inventory.rhel_version
+        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
+            try:
+                inv = self.advisor_inventory
+                return AdvisorInventoryHost.get_rhel_version_from_flat(
+                    inv.os_major, inv.os_minor, inv.os_name
+                )
+            except AdvisorInventoryHost.DoesNotExist:
+                return "Unknown system version"
+        else:
+            return self.inventory.rhel_version
 
     def __str__(self):
         return str(self.inventory_id)

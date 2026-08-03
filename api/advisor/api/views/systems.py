@@ -84,7 +84,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = 'id'
     lookup_url_kwarg = 'uuid'
     pagination_class = CustomPageNumberPagination
-    queryset = InventoryHost.objects.all()
+    queryset = InventoryHost.objects.all()  # overridden by get_queryset()
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.WORKSPACE
     serializer_class = SystemSerializer
