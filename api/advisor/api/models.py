@@ -1311,7 +1311,8 @@ class RuleManager(models.Manager):
 
         if use_local:
             system_profile_filter = filter_multi_param(
-                request, 'system_profile', field_prefix='host__advisor_inventory'
+                request, 'system_profile', field_prefix='host__advisor_inventory',
+                use_local=True
             )
             hosts_acked_for_rule = HostAck.objects.filter(
                 filter_on_host_tags(request, field_name='host_id', use_local=True),
