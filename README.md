@@ -660,6 +660,30 @@ To run API Tests
 pipenv run testapi
 ```
 
+## Prometheus and Grafana
+
+To monitor the API locally with Prometheus and Grafana, start both services:
+```
+podman-compose up -d prometheus grafana
+```
+
+Prometheus scrapes the API metrics endpoint and is available at http://localhost:9090.
+
+Grafana is available at http://localhost:3000 (no login required). The Advisor Backend API
+dashboard is automatically provisioned and will appear under Dashboards.
+
+The Prometheus datasource is pre-configured. You can also run Grafana without the
+local Prometheus container by port-forwarding from an OpenShift cluster, which is
+useful for testing dashboards against real production or stage data:
+```
+oc port-forward --address 0.0.0.0 <prometheus-pod> 9090:9090
+podman-compose up -d grafana
+```
+The `--address 0.0.0.0` flag is required so the Grafana container can reach the
+forwarded port via `host.containers.internal`. If your forwarded port differs from
+9090, edit `grafana/provisioning/datasources/prometheus.yml` and update the `url`
+field, then restart the grafana container.
+
 ![Ingress Pipeline](./ingress-pipeline.png)
 
 # TODO - Documentation Improvements
