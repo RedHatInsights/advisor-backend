@@ -6,6 +6,8 @@ scrape_configs:
     static_configs:
       - targets:
           - 'host.containers.internal:8000'
+        labels:
+          service: 'advisor-backend-api'
 
   - job_name: 'advisor-service'
     scrape_interval: 15s
@@ -13,3 +15,5 @@ scrape_configs:
     static_configs:
       - targets:
           - 'host.containers.internal:8001'
+        labels:
+          service: 'advisor-backend-service'
