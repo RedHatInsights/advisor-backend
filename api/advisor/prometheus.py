@@ -29,7 +29,7 @@ INVENTORY_EVENT_MALFORMED = Counter(
 )
 INVENTORY_EVENT_INSIGHTS_ONLY_FILTERED = Counter(
     'insights_advisor_api_inventory_event_insights_only_filtered',
-    'Counter for inventory events filtered out due to missing or nil insights_id'
+    'Counter for inventory events filtered out due to nil insights_id (insightsOnly filter)'
 )
 INVENTORY_HOST_UPSERTED = Counter(
     'insights_advisor_api_inventory_host_upserted',
