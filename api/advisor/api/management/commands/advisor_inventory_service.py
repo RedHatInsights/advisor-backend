@@ -36,6 +36,8 @@ from api.models import AdvisorInventoryHost, Host
 
 from kafka_utils import JsonValue, KafkaDispatcher
 
+NIL_UUID = '00000000-0000-0000-0000-000000000000'
+
 
 @dataclass
 class ParsedInventoryHost:
@@ -266,11 +268,20 @@ def parse_created_event(message: dict[str, JsonValue]) -> ParsedInventoryHost | 
         return None
 
     if not insights_id:
-        logger.error(
+        # Defensive: HBI always provides insights_id, but guard against upstream changes
+        logger.warning(
             "Request %s: Inventory %s event has null or empty insights_id for host %s",
             request_id, event_type, host_id
         )
         prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
+        return None
+
+    if insights_id == NIL_UUID:
+        logger.info(
+            "Request %s: Inventory %s event filtered — host %s has nil insights_id",
+            request_id, event_type, host_id
+        )
+        prometheus.INVENTORY_EVENT_INSIGHTS_ONLY_FILTERED.inc()
         return None
 
     system_profile_raw: dict[str, JsonValue] = system_profile_field

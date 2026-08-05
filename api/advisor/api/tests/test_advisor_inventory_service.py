@@ -27,7 +27,7 @@ from django.core.signals import request_started, request_finished
 from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    handle_inventory_event, parse_created_event, parse_deleted_event,
+    handle_inventory_event, parse_created_event, parse_deleted_event, NIL_UUID,
 )
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, InventoryHost, Upload
 from api.tests import constants
@@ -361,6 +361,29 @@ class TestAdvisorInventoryServer(TestCase):
             )
             self.assertIsNotNone(result)
             self.assertIsNone(result.satellite_id)
+
+    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
+    def test_created_message_filtered_nil_insights_id(self):
+        """
+        Test that hosts with nil UUID insights_id are filtered out (insightsOnly filter).
+        """
+        modified_msg = deepcopy(create_new_host_msg)
+        modified_msg['host']['insights_id'] = NIL_UUID
+
+        with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
+            handle_inventory_event('topic', [modified_msg])
+            log_lines = [line for line in logs.output if 'Using Cyndi replication view' not in line]
+            self.assertTrue(
+                any("has nil insights_id" in line for line in log_lines),
+                "Should log that nil insights_id was filtered"
+            )
+
+        self.assertFalse(
+            AdvisorInventoryHost.objects.filter(
+                inventory_id=new_host_id, org_id=constants.standard_org
+            ).exists(),
+            "Host with nil insights_id should not be upserted"
+        )
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_updated_message_success(self):
