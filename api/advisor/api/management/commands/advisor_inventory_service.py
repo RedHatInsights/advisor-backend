@@ -23,6 +23,7 @@ import prometheus
 import signal
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from prometheus_client import start_http_server
 from django.db import transaction
 from django.db.models import Q
 from django.utils.dateparse import parse_datetime
@@ -416,6 +417,8 @@ class Command(BaseCommand):
         Run the handler loop continuously until interrupted by SIGTERM.
         """
         logger.info('Advisor Inventory replication service starting up')
+        start_http_server(settings.PROMETHEUS_PORT)
+        logger.info('Prometheus metrics server started on port %d', settings.PROMETHEUS_PORT)
         settings.KAFKA_SETTINGS.update({
             'group.id': settings.GROUP_ID,
             'enable.auto.commit': False,
