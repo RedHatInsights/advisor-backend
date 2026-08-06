@@ -381,7 +381,7 @@ def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
         ))
         logger.debug("Bulk upserted %d Host records", host_upserted)
 
-        prometheus.INVENTORY_HOST_UPSERTED.inc(advisor_inv_upserted + host_upserted)
+        prometheus.INVENTORY_HOST_UPSERTED.inc(advisor_inv_upserted)
 
 def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
     """Bulk delete Host and AdvisorInventoryHost records in a single transaction."""
