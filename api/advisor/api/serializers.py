@@ -298,7 +298,10 @@ class ExportHitsSerializer(serializers.Serializer):
     uuid = serializers.UUIDField()
     last_seen = serializers.DateTimeField(allow_null=True)
     title = serializers.CharField()
-    solution_url = serializers.URLField(allow_blank=True)
+    # CharField instead of URLField(allow_blank=True) to avoid drf-spectacular
+    # generating a oneOf[uri, maxLength=0] schema that breaks openapi-generator.
+    # See https://github.com/OpenAPITools/openapi-generator/issues/19034
+    solution_url = serializers.CharField(allow_blank=True)
     total_risk = serializers.IntegerField()
     likelihood = serializers.IntegerField()
     publish_date = serializers.DateTimeField()
