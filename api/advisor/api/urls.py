@@ -16,7 +16,7 @@
 
 from django.urls import path, include
 
-from rest_framework.routers import APIRootView, DefaultRouter
+from rest_framework.routers import APIRootView, DefaultRouter, SimpleRouter
 
 # Flake8 doesn't like star imports, and we can't seem to do 'from api import
 # views' and then use views.acks.AckViewSet.  Better solutions welcomed!
@@ -74,6 +74,10 @@ router.register(
     basename='weeklyreportautosubscribe'
 )
 
+# Internal-only routes not shown in the API root listing.
+internal_router = SimpleRouter()
+internal_router.register(r'topic-admin', rule_topics.RuleTopicAdminViewSet, basename='ruletopic-admin')
+
 advisor_schema_settings = {
     'TITLE': 'Insights Advisor API',
     'DESCRIPTION': "The API for viewing Red Hat recommendations for your systems",
@@ -83,6 +87,7 @@ advisor_schema_settings = {
 
 urlpatterns = [
     path(r'', include(router.urls)),
+    path(r'', include(internal_router.urls)),
     path(r'export/', include(export.router.urls), name='export-list'),
     path('openapi/', swagger.spectacular_view, name='advisor-openapi-spec'),
     path('openapi.json', swagger.spectacular_json_view, name='advisor-openapi-spec-json'),
