@@ -32,7 +32,7 @@ from advisor_logging import logger
 from feature_flags import (
     feature_flag_is_enabled, FLAG_ENABLE_INVENTORY_REPLICATION
 )
-from api.models import AdvisorInventoryHost, Host
+from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 
 from kafka_utils import JsonValue, KafkaDispatcher
 
@@ -396,19 +396,25 @@ def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
         prometheus.INVENTORY_HOST_UPSERTED.inc(advisor_inv_upserted)
 
 def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
-    """Bulk delete Host and AdvisorInventoryHost records in a single transaction."""
+    """Bulk delete AdvisorInventoryHost and Host records, including FK-dependent data."""
     requested = len(deletes)
     delete_q = Q()
+    host_q = Q()
     for item in deletes:
         delete_q |= Q(inventory_id=item.inventory_id, org_id=item.org_id)
+        host_q |= Q(host_id=item.inventory_id, org_id=item.org_id)
 
     with transaction.atomic():
-        deleted_hosts = Host.objects.filter(delete_q).delete()
-        logger.info("Batch deleted %d records based on Host: %s.", *deleted_hosts)
-
         deleted_inv_num, _ = AdvisorInventoryHost.objects.filter(delete_q).delete()
         logger.info("Batch deleted %d records based on AdvisorInventoryHost", deleted_inv_num)
         prometheus.INVENTORY_HOST_DELETED.inc(deleted_inv_num)
+
+        Upload.objects.filter(host_q).delete()
+        CurrentReport.objects.filter(host_q).delete()
+        HostAck.objects.filter(host_q).delete()
+
+        deleted_hosts = Host.objects.filter(delete_q).delete()
+        logger.info("Batch deleted %d records based on Host: %s.", *deleted_hosts)
 
     deleted_count = deleted_inv_num
     missing = requested - deleted_count
