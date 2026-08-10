@@ -28,7 +28,7 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
     SAP, Ansible, and MSSQL use flat legacy paths (e.g. filter[system_profile][ansible])
     that are redirected internally to filter[system_profile][workloads][*].
 
-    CrowdStrike, IBM Db2, InterSystems, Oracle DB, and RHEL AI were introduced
+    CrowdStrike, IBM Db2, InterSystems, Oracle DB, RHEL AI, and Satellite were introduced
     directly under filter[system_profile][workloads][*] and require no redirection.
     """
     fixtures = [
@@ -182,6 +182,7 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
             ('intersystems', {constants.host_04_uuid}),
             ('oracle_db', {constants.host_06_uuid}),
             ('rhel_ai', {constants.host_05_uuid}),
+            ('satellite', {constants.host_01_uuid}),
         ]
         for workload_name, expected_uuids in cases:
             with self.subTest(workload=workload_name):
@@ -286,6 +287,7 @@ class WorkloadQueryParamTestCase(TestCase):
             ('intersystems', {constants.host_04_uuid}),
             ('oracle_db', {constants.host_06_uuid}),
             ('rhel_ai', {constants.host_05_uuid}),
+            ('satellite', {constants.host_01_uuid}),
         ]
         for workload_name, expected in cases:
             with self.subTest(workload=workload_name):
