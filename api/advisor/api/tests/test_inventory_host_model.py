@@ -66,6 +66,10 @@ class InventoryHostTestCase(TestCase):
                     'falcon_aid': 'abc123def456',
                     'falcon_backend': 'bpf',
                     'falcon_version': '7.14.0'
+                },
+                'satellite': {
+                    'type': 'server',
+                    'version': '6.17.6.1'
                 }
             }
         })
