@@ -399,22 +399,27 @@ def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
     """Bulk delete AdvisorInventoryHost and Host records, including FK-dependent data."""
     requested = len(deletes)
     delete_q = Q()
-    host_q = Q()
     for item in deletes:
         delete_q |= Q(inventory_id=item.inventory_id, org_id=item.org_id)
-        host_q |= Q(host_id=item.inventory_id, org_id=item.org_id)
 
     with transaction.atomic():
         deleted_inv_num, _ = AdvisorInventoryHost.objects.filter(delete_q).delete()
         logger.info("Batch deleted %d records based on AdvisorInventoryHost", deleted_inv_num)
         prometheus.INVENTORY_HOST_DELETED.inc(deleted_inv_num)
 
-        Upload.objects.filter(host_q).delete()
-        CurrentReport.objects.filter(host_q).delete()
-        HostAck.objects.filter(host_q).delete()
+        host_ids = list(
+            Host.objects.filter(delete_q)
+            .select_for_update()
+            .values_list('inventory_id', flat=True)
+        )
+        if host_ids:
+            host_id_q = Q(host_id__in=host_ids)
+            Upload.objects.filter(host_id_q).delete()
+            CurrentReport.objects.filter(host_id_q).delete()
+            HostAck.objects.filter(host_id_q).delete()
 
-        deleted_hosts = Host.objects.filter(delete_q).delete()
-        logger.info("Batch deleted %d records based on Host: %s.", *deleted_hosts)
+            deleted_hosts = Host.objects.filter(inventory_id__in=host_ids).delete()
+            logger.info("Batch deleted %d records based on Host: %s.", *deleted_hosts)
 
     deleted_count = deleted_inv_num
     missing = requested - deleted_count
