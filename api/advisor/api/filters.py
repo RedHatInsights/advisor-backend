@@ -475,7 +475,6 @@ display_name_query_param = OpenApiParameter(
 WORKLOAD_NAMES = (
     'sap', 'ansible', 'mssql', 'crowdstrike',
     'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai',
-    'satellite',
 )
 
 workload_query_param = OpenApiParameter(

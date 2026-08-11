@@ -706,7 +706,7 @@ class MultiParamParsingTestCase(TestCase):
             Q(system_profile__workloads__sap__sap_system=True)
         )
 
-    _NEW_WORKLOADS = ('crowdstrike', 'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai', 'satellite')
+    _NEW_WORKLOADS = ('crowdstrike', 'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai')
 
     def test_new_workloads_canonical_path(self):
         for workload in self._NEW_WORKLOADS:
@@ -755,7 +755,7 @@ class FilterOnWorkloadTestCase(TestCase):
     def test_non_sap_uses_isnull_false(self):
         """Non-SAP workloads check isnull=False."""
         for workload in ('ansible', 'mssql', 'crowdstrike', 'ibm_db2',
-                         'intersystems', 'oracle_db', 'rhel_ai', 'satellite'):
+                         'intersystems', 'oracle_db', 'rhel_ai'):
             with self.subTest(workload=workload):
                 rq = self._make_request(workload)
                 self.assertEqual(
