@@ -21,7 +21,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 
 from api.filters import (
     value_of_param, host_tags_query_param,
@@ -168,9 +168,17 @@ class RuleTopicViewSet(viewsets.ReadOnlyModelViewSet):
         ).data)
 
 
-class InternalRuleTopicViewSet(viewsets.ModelViewSet):
+@extend_schema_view(
+    list=extend_schema(exclude=True),
+    create=extend_schema(exclude=True),
+    retrieve=extend_schema(exclude=True),
+    update=extend_schema(exclude=True),
+    partial_update=extend_schema(exclude=True),
+    destroy=extend_schema(exclude=True),
+)
+class RuleTopicAdminViewSet(viewsets.ModelViewSet):
     """
-    Internal editing interface for rule topics.
+    Editing interface for rule topics.
 
     This viewset is only available to Red hat associates.
     """
