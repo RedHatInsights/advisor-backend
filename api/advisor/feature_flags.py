@@ -17,7 +17,6 @@
 import logging
 
 from UnleashClient import UnleashClient
-from UnleashClient import _RunState
 
 
 # Define actual feature flags here, to be used as module properties.
@@ -95,7 +94,7 @@ class Client:
         )
 
         if self._fake_initialize:
-            client._run_state = _RunState.INITIALIZED
+            client.is_initialized = True
         else:
             client.initialize_client()
 
