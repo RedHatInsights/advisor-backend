@@ -4,20 +4,20 @@
   "metadata": {
     "name": "wUa2bXdMz",
     "namespace": "default",
-    "uid": "fdce48ae-dab8-4863-a8eb-6fb2963d16ab",
-    "resourceVersion": "1785818339456981",
+    "uid": "48d9f963-0fa3-42a8-9eaf-e6d56dde0087",
+    "resourceVersion": "1786673035914002",
     "generation": 1,
-    "creationTimestamp": "2026-08-04T04:38:59Z",
+    "creationTimestamp": "2026-08-14T02:03:55Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "3836287062904832"
+      "grafana.app/deprecatedInternalID": "2917544202592256"
     },
     "annotations": {
       "grafana.app/createdBy": "access-policy:service",
       "grafana.app/managedBy": "classic-file-provisioning",
       "grafana.app/managerId": "advisor",
-      "grafana.app/sourceChecksum": "2b799e29531143bfde1fc12bcbc572f1",
+      "grafana.app/sourceChecksum": "90512ac32e7bce8270a12ac6b5a61444",
       "grafana.app/sourcePath": "/var/lib/grafana/dashboards/advisor-api.json",
-      "grafana.app/sourceTimestamp": "1785818305000",
+      "grafana.app/sourceTimestamp": "1786669740000",
       "grafana.app/folder": ""
     }
   },
@@ -609,7 +609,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_upserted_total{service=\"advisor-backend-api\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_upserted_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -624,7 +624,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Count how many inventory hosts were upserted",
           "id": 64,
           "links": [],
           "title": "Inventory hosts upserted",
@@ -690,7 +690,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_deleted_total{service=\"advisor-backend-api\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_deleted_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -705,7 +705,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Count how many inventory hosts were deleted",
           "id": 65,
           "links": [],
           "title": "Inventory hosts deleted",
@@ -771,7 +771,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_delete_missing_total{service=\"advisor-backend-api\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_delete_missing_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -786,7 +786,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Count how many inventory host delete events had no matching record in the DB",
           "id": 66,
           "links": [],
           "title": "Inventory host delete (missing)",
@@ -852,7 +852,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_malformed_total{service=\"advisor-backend-api\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_malformed_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -867,7 +867,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Counter for inventory events that failed validation or parsing",
           "id": 67,
           "links": [],
           "title": "Inventory events malformed",
@@ -933,7 +933,8 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_missing_keys_total{service=\"advisor-backend-api\"}[$__range])))",
+                        "editorMode": "code",
+                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_missing_keys_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -948,7 +949,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Counter for how many inventory event requests are malformed, missing keys",
           "id": 68,
           "links": [],
           "title": "Inventory events missing keys",
@@ -1009,7 +1010,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "PBFA97CFB590B2093"
+                        "name": "$datasource"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -1119,6 +1120,90 @@
             "version": "13.1.1"
           }
         }
+      },
+      "panel-70": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_insights_only_filtered{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "legendFormat": "__auto",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Counter for inventory events filtered out due to nil insights_id (insightsOnly filter)",
+          "id": 70,
+          "links": [],
+          "title": "Inventory events nil insights_id",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.1.1"
+          }
+        }
       }
     },
     "layout": {
@@ -1211,7 +1296,7 @@
                 "name": "panel-64"
               },
               "height": 3,
-              "width": 5,
+              "width": 8,
               "x": 0,
               "y": 19
             }
@@ -1224,8 +1309,8 @@
                 "name": "panel-65"
               },
               "height": 3,
-              "width": 5,
-              "x": 5,
+              "width": 8,
+              "x": 8,
               "y": 19
             }
           },
@@ -1237,8 +1322,8 @@
                 "name": "panel-66"
               },
               "height": 3,
-              "width": 5,
-              "x": 10,
+              "width": 8,
+              "x": 16,
               "y": 19
             }
           },
@@ -1250,9 +1335,9 @@
                 "name": "panel-67"
               },
               "height": 3,
-              "width": 5,
-              "x": 15,
-              "y": 19
+              "width": 8,
+              "x": 0,
+              "y": 22
             }
           },
           {
@@ -1263,9 +1348,22 @@
                 "name": "panel-68"
               },
               "height": 3,
-              "width": 4,
-              "x": 20,
-              "y": 19
+              "width": 8,
+              "x": 8,
+              "y": 22
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-70"
+              },
+              "height": 3,
+              "width": 8,
+              "x": 16,
+              "y": 22
             }
           }
         ]
