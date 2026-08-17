@@ -206,7 +206,7 @@ Handles `delete` events from HBI. When a host is deleted from inventory:
 - **`payload_tracker.py`**: Produces status messages to a Kafka topic for payload lifecycle tracking (received → processing → success/error)
 - **`reports.py`**: Produces webhook and remediations events to Kafka when recommendations change
 - **`thread_storage.py`**: Thread-local storage for request context (request_id, inventory_id, org_id, timing metrics) used by logging and payload tracker
-- **`prometheus.py`**: Prometheus metrics — request counts, timing histograms, error counters, service status
+- **`inventory_prometheus_metrics.py`**: Prometheus metrics for the inventory service — hosts inserted and deleted, error counters
 - **`settings.py`**: Configuration via environment variables with Clowder integration for OpenShift deployments
 
 ## Error Handling

@@ -17,3 +17,12 @@ scrape_configs:
           - 'host.containers.internal:8001'
         labels:
           service: 'advisor-backend-service'
+
+  - job_name: 'advisor-inventory-service'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'host.containers.internal:8002'
+        labels:
+          service: 'advisor-backend-inventory-event-service'

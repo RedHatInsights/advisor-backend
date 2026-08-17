@@ -118,6 +118,22 @@ services:
         condition: service_healthy
     command: sh -c "./container_init_localdev.sh &&
                     api/app.sh"
+  advisor-inventory-service:
+    depends_on:
+      kafka:
+        condition: service_healthy
+      advisor-db:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: Containerfile.localdev
+    ports:
+      - "8002:8002"
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - ADVISOR_DB_HOST=advisor-db
+      - PROMETHEUS_PORT=8002
+    command: pipenv run python api/advisor/manage.py advisor_inventory_service
   mock-rbac:
     build:
       context: .

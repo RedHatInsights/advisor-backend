@@ -20,26 +20,26 @@ from prometheus_client import Counter
 
 # Prometheus configuration
 INVENTORY_EVENT_MISSING_KEYS = Counter(
-    'insights_advisor_api_inventory_event_missing_keys',
-    'Counter for how many inventory event requests are malformed, missing keys'
+    'insights_advisor_inventory_event_missing_keys',
+    'Count of inventory event requests that are malformed, missing keys'
 )
 INVENTORY_EVENT_MALFORMED = Counter(
-    'insights_advisor_api_inventory_event_malformed',
-    'Counter for inventory events that failed validation or parsing'
+    'insights_advisor_inventory_event_malformed',
+    'Count of inventory events that failed validation or parsing'
 )
 INVENTORY_EVENT_INSIGHTS_ONLY_FILTERED = Counter(
-    'insights_advisor_api_inventory_event_insights_only_filtered',
-    'Counter for inventory events filtered out due to nil insights_id (insightsOnly filter)'
+    'insights_advisor_inventory_event_insights_only_filtered',
+    'Count of inventory events filtered out due to nil insights_id (insightsOnly filter)'
 )
 INVENTORY_HOST_UPSERTED = Counter(
-    'insights_advisor_api_inventory_host_upserted',
-    'Count how many inventory hosts were upserted'
+    'insights_advisor_inventory_host_upserted',
+    'Count of inventory hosts upserted'
 )
 INVENTORY_HOST_DELETED = Counter(
-    'insights_advisor_api_inventory_host_deleted',
-    'Count how many inventory hosts were deleted'
+    'insights_advisor_inventory_host_deleted',
+    'Count of inventory hosts deleted'
 )
 INVENTORY_HOST_DELETE_MISSING = Counter(
-    'insights_advisor_api_inventory_host_delete_missing',
-    'Count how many inventory host delete events had no matching record in the DB'
+    'insights_advisor_inventory_host_delete_missing',
+    'Count of inventory host delete events with no matching record in the DB'
 )

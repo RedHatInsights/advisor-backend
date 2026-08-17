@@ -381,6 +381,7 @@
                     "mode": "thresholds"
                   },
                   "decimals": 0,
+                  "noValue": "0",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -461,6 +462,7 @@
                     "mode": "thresholds"
                   },
                   "decimals": 0,
+                  "noValue": "0",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -549,6 +551,7 @@
                     "mode": "thresholds"
                   },
                   "decimals": 0,
+                  "noValue": "0",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -609,7 +612,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_upserted_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_inventory_host_upserted_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -624,7 +627,7 @@
               "transformations": []
             }
           },
-          "description": "Count how many inventory hosts were upserted",
+          "description": "Count of inventory hosts upserted",
           "id": 64,
           "links": [],
           "title": "Inventory hosts upserted",
@@ -690,7 +693,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_deleted_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_inventory_host_deleted_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -705,7 +708,7 @@
               "transformations": []
             }
           },
-          "description": "Count how many inventory hosts were deleted",
+          "description": "Count of inventory hosts deleted",
           "id": 65,
           "links": [],
           "title": "Inventory hosts deleted",
@@ -771,7 +774,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_host_delete_missing_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_inventory_host_delete_missing_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -786,7 +789,7 @@
               "transformations": []
             }
           },
-          "description": "Count how many inventory host delete events had no matching record in the DB",
+          "description": "Count of inventory host delete events with no matching record in the DB",
           "id": 66,
           "links": [],
           "title": "Inventory host delete (missing)",
@@ -852,7 +855,7 @@
                       "group": "prometheus",
                       "kind": "DataQuery",
                       "spec": {
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_malformed_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_inventory_event_malformed_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -867,7 +870,7 @@
               "transformations": []
             }
           },
-          "description": "Counter for inventory events that failed validation or parsing",
+          "description": "Count of inventory events that failed validation or parsing",
           "id": 67,
           "links": [],
           "title": "Inventory events malformed",
@@ -934,7 +937,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_missing_keys_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_inventory_event_missing_keys_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "instant": true,
                         "interval": "15m",
                         "legendFormat": ""
@@ -949,7 +952,7 @@
               "transformations": []
             }
           },
-          "description": "Counter for how many inventory event requests are malformed, missing keys",
+          "description": "Count of inventory event requests that are malformed, missing keys",
           "id": 68,
           "links": [],
           "title": "Inventory events missing keys",
@@ -1140,7 +1143,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "round(sum(increase(insights_advisor_api_inventory_event_insights_only_filtered{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
+                        "expr": "round(sum(increase(insights_advisor_inventory_event_insights_only_filtered_total{service=\"advisor-backend-inventory-event-service\"}[$__range])))",
                         "legendFormat": "__auto",
                         "range": true
                       },
@@ -1154,7 +1157,7 @@
               "transformations": []
             }
           },
-          "description": "Counter for inventory events filtered out due to nil insights_id (insightsOnly filter)",
+          "description": "Count of inventory events filtered out due to nil insights_id (insightsOnly filter)",
           "id": 70,
           "links": [],
           "title": "Inventory events nil insights_id",

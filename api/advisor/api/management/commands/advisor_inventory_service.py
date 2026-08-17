@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import Any
 
-import prometheus
+import inventory_prometheus_metrics as prometheus
 import signal
 from django.conf import settings
 from django.core.management.base import BaseCommand

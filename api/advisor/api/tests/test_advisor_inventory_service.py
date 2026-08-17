@@ -21,7 +21,7 @@ from unittest.mock import patch
 from django.test import TestCase  # , override_settings
 from django.utils import timezone
 
-import prometheus
+import inventory_prometheus_metrics as prometheus
 from feature_flags import set_unleash_flag, FLAG_ENABLE_INVENTORY_REPLICATION
 from django.core.signals import request_started, request_finished
 from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
