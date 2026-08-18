@@ -183,7 +183,7 @@ class TaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers['Content-Type'], constants.yaml_mime)
-        playbook = yaml.load(res.content, yaml.Loader)[0]
+        playbook = yaml.safe_load(res.content)[0]
 
         # If an invalid token is given, but it can't be found for any executed task, it's ignored
         res = self.client.get(
@@ -193,7 +193,7 @@ class TaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers['Content-Type'], constants.yaml_mime)
-        playbook = yaml.load(res.content, yaml.Loader)[0]
+        playbook = yaml.safe_load(res.content)[0]
 
         # Even if a token exists, if it's not for this task we get no parameters
         res = self.client.get(
@@ -203,7 +203,7 @@ class TaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers['Content-Type'], constants.yaml_mime)
-        playbook = yaml.load(res.content, yaml.Loader)[0]
+        playbook = yaml.safe_load(res.content)[0]
 
         # Only when the token belongs to an execution of this task do we get
         # parameters filled out.
@@ -217,7 +217,7 @@ class TaskViewTestCase(TestCase):
         # This is the last line in the playbook
         last_line = '- convert2rhel: null\n'
         self.assertTrue(res.content.endswith(bytes(last_line, 'utf-8')))
-        playbook = yaml.load(res.content, yaml.Loader)[0]
+        playbook = yaml.safe_load(res.content)[0]
         # Because this is a test of parameters, all parameters have been given values.
         self.assertIn('content_vars', playbook['vars'])
         self.assertEqual(
@@ -276,7 +276,7 @@ class TaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers['Content-Type'], constants.yaml_mime)
-        playbook = yaml.load(res.content, yaml.Loader)[0]
+        playbook = yaml.safe_load(res.content)[0]
         self.assertEqual(playbook['hosts'], ["example.system.com"])
 
     @override_settings(INVENTORY_SERVER_URL=INVENTORY_SERVER_URL)
@@ -305,7 +305,7 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers['Content-Type'], constants.yaml_mime)
         #  Ansible host takes precedence over fqdn
-        playbook = yaml.load(res.content, yaml.Loader)[0]
+        playbook = yaml.safe_load(res.content)[0]
         self.assertEqual(playbook['hosts'], ["example.ansible.system.com"])
 
     def test_task_systems_requirements(self):

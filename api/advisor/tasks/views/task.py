@@ -92,7 +92,7 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
 
         task = get_object_or_404(Task, slug=slug)
 
-        playbook = yaml.load(task.playbook, yaml.Loader)[0]
+        playbook = yaml.safe_load(task.playbook)[0]
         playbook_content_changed = False
 
         #  Since cyndi doesn't syndicate ansible_host and fqdn, we need to reach out to the inventory.

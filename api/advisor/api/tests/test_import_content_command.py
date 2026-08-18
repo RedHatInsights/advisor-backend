@@ -183,7 +183,7 @@ def modify_yaml(**kwargs: dict[str, str]) -> Callable[[str], str]:
     text.
     """
     def modify_yaml_text(text: str) -> str:
-        in_dict: dict[str, str] = yaml.load(text, yaml.Loader)
+        in_dict: dict[str, str] = yaml.safe_load(text)
         return yaml.dump({**in_dict, **kwargs})
 
     return modify_yaml_text

@@ -63,7 +63,7 @@ class ProductionFixturesTestCase(TestCase):
         for elsewhere.
         """
         for task in Task.objects.filter(active=True):
-            playbook = yaml.load(task.playbook, yaml.Loader)
+            playbook = yaml.safe_load(task.playbook)
             self.assertIsInstance(playbook, list)
             self.assertEqual(len(playbook), 1)
             # self.assertIn('hosts', playbook[0], f'Task {task.id} - {task.slug} - has no "hosts" field')
