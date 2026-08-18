@@ -91,7 +91,7 @@ def read_plugin_content(plugin_path):
     # We know there's a plugin.yaml file here because that's what tells us
     # this is a plugin directory and to read the plugin content.
     with open(path.join(plugin_path, 'plugin.yaml'), 'r') as fd:
-        plugin_data = yaml.load(fd, yaml.Loader)
+        plugin_data = yaml.safe_load(fd)
     add_markdown_fields(plugin_data, plugin_path)
     return plugin_data
 
@@ -106,7 +106,7 @@ def read_rule_content(plugin_data, rule_path):
     rule_content = dict(plugin_data)
     metadata_filename = path.join(rule_path, 'metadata.yaml')
     with open(metadata_filename, 'r') as fd:
-        metadata = yaml.load(fd, yaml.Loader)
+        metadata = yaml.safe_load(fd)
     # The actual rule metadata always supplies settings, right?
     assert metadata, f"Metadata file at {metadata_filename} must have settings"
     rule_content.update(metadata)
@@ -219,7 +219,7 @@ def read_playbook(this_path, file):
     playbook_filename = path.join(this_path, file)
     with open(playbook_filename, 'r') as fh:
         playbook_content = fh.read()
-    playbook_data = yaml.load(playbook_content, yaml.Loader)
+    playbook_data = yaml.safe_load(playbook_content)
     assert len(playbook_data) > 0, f"Playbook {playbook_filename} empty?"
     assert isinstance(playbook_data[0], dict), f"Playbook {playbook_filename} not a dict?"
     name = get_playbook_name(playbook_data, playbook_filename)

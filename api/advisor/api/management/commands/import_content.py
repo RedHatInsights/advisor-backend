@@ -72,7 +72,7 @@ def load_previous_dump(yaml_filename):
         if yaml_filename.endswith('.gz'):
             # wbits=25 means expect the gzip header here.
             dump_data = zlib.decompress(dump_data, wbits=25)
-        return yaml.load(dump_data.decode('utf-8'), yaml.Loader)
+        return yaml.safe_load(dump_data.decode('utf-8'))
 
 
 def load_previous_dump_from_url(url):
@@ -97,7 +97,7 @@ def load_previous_dump_from_url(url):
     if compressed:
         # wbits=25 means expect the gzip header here.
         dump_data = zlib.decompress(dump_data, wbits=25)
-    return yaml.load(dump_data.decode('utf-8'), yaml.Loader)
+    return yaml.safe_load(dump_data.decode('utf-8'))
 
 
 ##############################################################################
