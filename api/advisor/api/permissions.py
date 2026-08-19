@@ -16,6 +16,7 @@
 
 import base64
 from enum import Enum
+import hmac
 import json
 import time
 from typing import Any
@@ -746,6 +747,43 @@ class TurnpikeIdentityAuthentication(BaseAuthentication):
         # Save the associate identity in the request properties
         setattr(request, TP_ASSOCIATE, identity['associate'])
         return (identity['associate'], identity)
+
+
+class ImportContentPSKAuthentication(BaseAuthentication):
+    """
+    Authenticate internal service-to-service requests using a pre-shared key.
+
+    Expects an ``Authorization: PSK <token>`` header whose token matches the
+    ``IMPORT_CONTENT_PSK`` Django setting (sourced from the environment).
+
+    If no PSK is configured on the server the endpoint is left open for
+    backward compatibility; a warning is logged so operators can detect the
+    missing configuration.
+    """
+
+    def authenticate(self, request: Request):
+        psk = getattr(settings, 'IMPORT_CONTENT_PSK', None)
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+
+        if not psk:
+            # No PSK configured — allow the request but warn.
+            logger.warning(
+                "IMPORT_CONTENT_PSK is not set; "
+                "import_content endpoint is unauthenticated"
+            )
+            return None
+
+        if not auth_header:
+            error_and_deny("Authorization header is required")
+
+        if not auth_header.startswith('PSK '):
+            error_and_deny("Authorization header must start with 'PSK '")
+
+        token = auth_header[4:]
+        if not hmac.compare_digest(token, psk):
+            error_and_deny("Invalid pre-shared key")
+
+        return None, 'import-content-psk-authenticated'
 
 
 def set_resource(resource=None, scope: ResourceScope | None = None):

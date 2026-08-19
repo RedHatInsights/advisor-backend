@@ -102,6 +102,7 @@ services:
       - TASKS_REWRITE_INTERNAL_URLS_FOR=internal.localhost
       - TASKS_REWRITE_INTERNAL_URLS=true
       - USE_DJANGO_WEBSERVER=false
+      - IMPORT_CONTENT_PSK=localdev-psk
       - WEB_CONCURRENCY=2
       # Uncomment to enable Kessel (requires MOCK_KESSEL_ENABLED=true on mock-rbac) or RBACv1:
       # - KESSEL_ENABLED=true
@@ -201,6 +202,13 @@ services:
     depends_on:
       advisor-db:
         condition: service_healthy
+
+  content-server:
+    image: localhost/content-server:latest
+    network_mode: host
+    environment:
+      - IMPORT_CONTENT_PSK=localdev-psk
+      - ADVISOR_URL=http://localhost:8000/private/import_content/
 
 networks:
   default:

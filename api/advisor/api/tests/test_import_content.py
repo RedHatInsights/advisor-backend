@@ -22,7 +22,7 @@ from os import environ
 import pytz
 
 from django.conf import settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from api.scripts import import_content
@@ -1263,6 +1263,42 @@ class ImportContentViewTestCase(TestCase):
         json_data = {'config': json.loads(CONFIG_JSON), 'content': json.loads(CONTENT_JSON)}
         response = self.client.post(reverse('import_content-list'), data=json_data, content_type='application/jason')
         self.assertEqual(response.status_code, 415)
+
+
+class ImportContentPSKTestCase(TestCase):
+    """Tests for ImportContentPSKAuthentication on the import_content endpoint."""
+    fixtures = ['rulesets', 'system_types', 'rule_categories']
+
+    def _post_valid_content(self, **extra):
+        json_data = {'config': json.loads(CONFIG_JSON), 'content': json.loads(CONTENT_JSON)}
+        return self.client.post(
+            reverse('import_content-list'), data=json_data,
+            content_type='application/json', **extra
+        )
+
+    @override_settings(IMPORT_CONTENT_PSK='server-secret')
+    def test_psk_required_but_client_sends_none(self):
+        """Server requires PSK but client sends no Authorization header — should fail."""
+        response = self._post_valid_content()
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(IMPORT_CONTENT_PSK=None)
+    def test_no_psk_configured_client_sends_one(self):
+        """Server has no PSK configured, client sends one — should pass (backward compat)."""
+        response = self._post_valid_content(HTTP_AUTHORIZATION='PSK client-secret')
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(IMPORT_CONTENT_PSK='shared-secret')
+    def test_matching_psk(self):
+        """Both server and client use the same PSK — should pass."""
+        response = self._post_valid_content(HTTP_AUTHORIZATION='PSK shared-secret')
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(IMPORT_CONTENT_PSK='server-secret')
+    def test_mismatched_psk(self):
+        """Server and client use different PSKs — should fail."""
+        response = self._post_valid_content(HTTP_AUTHORIZATION='PSK wrong-secret')
+        self.assertEqual(response.status_code, 403)
 
 
 # Create config and content that matches the data from the basic_test_data fixture
