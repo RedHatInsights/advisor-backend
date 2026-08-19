@@ -28,6 +28,7 @@ from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
     handle_inventory_event, parse_created_event, parse_deleted_event, NIL_UUID,
+    INSIGHTS_ONLY_FILTERED,
 )
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, InventoryHost, Upload
 from api.tests import constants
@@ -363,7 +364,11 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertIsNone(result.satellite_id)
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
-    def test_created_message_filtered_nil_insights_id(self):
+    @patch.object(prometheus.INVENTORY_EVENT_MALFORMED, 'inc')
+    @patch.object(prometheus.INVENTORY_EVENT_INSIGHTS_ONLY_FILTERED, 'inc')
+    def test_created_message_filtered_nil_insights_id(
+        self, mock_filtered_inc, mock_malformed_inc
+    ):
         """
         Test that hosts with nil UUID insights_id are filtered out (insightsOnly filter).
         """
@@ -384,6 +389,14 @@ class TestAdvisorInventoryServer(TestCase):
             ).exists(),
             "Host with nil insights_id should not be upserted"
         )
+        mock_filtered_inc.assert_called_once()
+        mock_malformed_inc.assert_not_called()
+
+    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
+    def test_parse_created_event_returns_sentinel_for_nil_insights_id(self):
+        modified_msg = deepcopy(create_new_host_msg)
+        modified_msg['host']['insights_id'] = NIL_UUID
+        self.assertIs(parse_created_event(modified_msg), INSIGHTS_ONLY_FILTERED)
 
     @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_updated_message_success(self):
