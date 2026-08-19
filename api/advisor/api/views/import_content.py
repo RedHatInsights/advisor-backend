@@ -18,6 +18,7 @@ from django.http import HttpResponseBadRequest
 from rest_framework import viewsets
 from rest_framework.response import Response
 
+from api.permissions import ImportContentPSKAuthentication
 from api.serializers import ImportStatsSerializer
 from api.scripts import import_content
 
@@ -28,7 +29,7 @@ class ImportContentViewSet(viewsets.ViewSet):
     """
     Imports content from the content server.
     """
-    authentication_classes = []
+    authentication_classes = [ImportContentPSKAuthentication]
     permission_classes = []
     # Don't generate an openapi/swagger schema
     schema = None
