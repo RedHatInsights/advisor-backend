@@ -39,6 +39,13 @@ from kafka_utils import JsonValue, KafkaDispatcher
 NIL_UUID = '00000000-0000-0000-0000-000000000000'
 
 
+class InsightsOnlyFiltered:
+    """Sentinel returned when a host is skipped due to nil insights_id."""
+
+
+INSIGHTS_ONLY_FILTERED = InsightsOnlyFiltered()
+
+
 @dataclass
 class ParsedInventoryHost:
     host_id: str
@@ -175,17 +182,17 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
             match message['type']:
                 case 'created':
                     parsed = parse_created_event(message)
-                    if parsed is not None:
+                    if isinstance(parsed, ParsedInventoryHost):
                         upserts.append(parsed)
                         created_count += 1
-                    else:
+                    elif parsed is None:
                         prometheus.INVENTORY_EVENT_MALFORMED.inc()
                 case 'updated':
                     parsed = parse_created_event(message)
-                    if parsed is not None:
+                    if isinstance(parsed, ParsedInventoryHost):
                         upserts.append(parsed)
                         updated_count += 1
-                    else:
+                    elif parsed is None:
                         prometheus.INVENTORY_EVENT_MALFORMED.inc()
                 case 'delete':
                     parsed = parse_deleted_event(message)
@@ -227,10 +234,13 @@ def log_missing_key(request_id: str, event_type: str, key_name: str):
     prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
 
 
-def parse_created_event(message: dict[str, JsonValue]) -> ParsedInventoryHost | None:
+def parse_created_event(
+    message: dict[str, JsonValue],
+) -> ParsedInventoryHost | InsightsOnlyFiltered | None:
     """
     Validate and extract fields from a created/updated event message.
-    Returns a ParsedInventoryHost, or None if validation fails.
+    Returns a ParsedInventoryHost, INSIGHTS_ONLY_FILTERED if skipped due to
+    nil insights_id, or None if validation fails.
     """
     event_type: str = str(message['type'])
     host_data = message.get('host', {}) or {}
@@ -282,7 +292,7 @@ def parse_created_event(message: dict[str, JsonValue]) -> ParsedInventoryHost | 
             request_id, event_type, host_id
         )
         prometheus.INVENTORY_EVENT_INSIGHTS_ONLY_FILTERED.inc()
-        return None
+        return INSIGHTS_ONLY_FILTERED
 
     system_profile_raw: dict[str, JsonValue] = system_profile_field
     os_info = system_profile_raw.get('operating_system', {})
