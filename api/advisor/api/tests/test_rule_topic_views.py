@@ -116,7 +116,7 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 405)
         # Nor the internal API either, this gives permission denied.
         response = self.client.patch(
-            reverse('ruletopic-admin-detail', kwargs={'slug': 'Disabled'}),
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Disabled'}),
             data={'enabled': True},
             content_type=constants.json_mime,
             **self.is_internal_auth
@@ -124,7 +124,7 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 403)
         # But using the Turnpike internal API works
         response = self.client.patch(
-            reverse('ruletopic-admin-detail', kwargs={'slug': 'Disabled'}),
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Disabled'}),
             data={'enabled': True},
             content_type=constants.json_mime,
             **self.turnpike_auth
@@ -150,7 +150,7 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(topic['enabled'], True)
         # Take an enabled topic, and disable it,
         response = self.client.patch(
-            reverse('ruletopic-admin-detail', kwargs={'slug': 'Active'}),
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Active'}),
             data={'enabled': False},
             content_type=constants.json_mime,
             **self.turnpike_auth
@@ -229,7 +229,7 @@ class RuleTopicViewsTestCase(TestCase):
 
         # Adding a new topic with a nonexistent tag should report 400
         response = self.client.post(
-            reverse('ruletopic-admin-list'), data={
+            reverse('internal-ruletopic-list'), data={
                 'name': 'New topic',
                 'slug': 'New',
                 'description': 'A new topic created through the API',
@@ -242,7 +242,7 @@ class RuleTopicViewsTestCase(TestCase):
 
         # Adding a new topic should return that data
         response = self.client.post(
-            reverse('ruletopic-admin-list'), data={
+            reverse('internal-ruletopic-list'), data={
                 'name': 'New topic',
                 'slug': 'New',
                 'description': 'A new topic created through the API',
@@ -290,7 +290,7 @@ class RuleTopicViewsTestCase(TestCase):
 
         # Now delete it
         response = self.client.delete(
-            reverse('ruletopic-admin-detail', kwargs={'slug': 'New'}),
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'New'}),
             **self.turnpike_auth
         )
         self.assertEqual(response.status_code, 204)
@@ -326,7 +326,7 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 405)
         # Update topic with new details - including slug!
         response = self.client.patch(
-            reverse('ruletopic-admin-detail', kwargs={'slug': 'Active'}), data={
+            reverse('internal-ruletopic-detail', kwargs={'slug': 'Active'}), data={
                 'name': 'Active topic (updated)',
                 'slug': 'Updated',
             },
