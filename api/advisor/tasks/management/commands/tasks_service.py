@@ -609,9 +609,10 @@ class Command(BaseCommand):
         """
         Run the handler loop continuously until interrupted by SIGTERM.
         """
-        logger.info('Tasks service starting up')
+        logger.info('Tasks service starting up ...')
 
         receiver = KafkaDispatcher()
+        logger.info("Registering kafka topic handlers ...")
         receiver.register_handler(settings.TASKS_UPDATES_TOPIC, handle_ansible_job_updates, service='tasks')
         receiver.register_handler(settings.TASKS_SOURCES_TOPIC, handle_sources_event)
         receiver.register_handler(settings.TASKS_UPLOAD_TOPIC, handle_script_job_updates, service='tasks')
@@ -624,5 +625,6 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, terminate)
 
         # Loops until receiver.quit is set
+        logger.info("Starting tasks service loop ...")
         receiver.receive()
-        logger.info('Tasks service shutting down')
+        logger.info('Tasks service shutting down ...')
