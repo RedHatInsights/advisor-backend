@@ -805,7 +805,7 @@ class SatSystemsSerializer(serializers.ModelSerializer):
     acks = SatSystemAcksSerializer(many=True)
 
     class Meta:
-        model = models.InventoryHost
+        model = models.AdvisorInventoryHost
         fields = (
             'toString', 'isCheckingIn', 'system_id', 'display_name',
             'account_number', 'org_id', 'hostname', 'last_check_in', 'created_at',
@@ -838,7 +838,7 @@ class SatSystemEditSerializer(serializers.ModelSerializer):
     """
 
     class Meta:
-        model = models.InventoryHost
+        model = models.AdvisorInventoryHost
         fields = ('display_name', )
 
 
@@ -925,7 +925,7 @@ class SatSystemReportsSerializer(NonNullModelSerializer):
     reports = SatSystemReportSerializer(many=True)
 
     class Meta:
-        model = models.InventoryHost
+        model = models.AdvisorInventoryHost
         fields = (
             'toString', 'isCheckingIn', 'system_id', 'display_name',
             'account_number', 'org_id', 'hostname', 'last_check_in', 'created_at',
