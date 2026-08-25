@@ -887,6 +887,11 @@ class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), m
     workloads = models.JSONField(default=dict)
     system_update_method = models.CharField(max_length=50, null=True, blank=True)
     workspace_ungrouped = models.BooleanField(null=True)
+    infrastructure_type = models.CharField(max_length=50, null=True, blank=True)
+    bios_release_date = models.CharField(max_length=50, null=True, blank=True)
+    bios_vendor = models.CharField(max_length=100, null=True, blank=True)
+    bios_version = models.CharField(max_length=100, null=True, blank=True)
+    release = models.CharField(max_length=200, null=True, blank=True)
 
     objects = AdvisorInventoryHostManager()
 
