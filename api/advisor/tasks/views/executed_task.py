@@ -91,8 +91,8 @@ extask_sort_query_param = OpenApiParameter(
 # Have to have our own here because we operate via the 'system' foreign key
 jobs_sort_field_map = {
     'os_version': [
-        'system__system_profile__operating_system__major',
-        'system__system_profile__operating_system__minor'
+        'system__os_major',
+        'system__os_minor'
     ],
     'last_seen': 'system__updated',
     'status': ['status', 'system__display_name'],
@@ -126,10 +126,10 @@ def satellite_id_from_tags(tags):
 def execute_playbook_dispatcher(hosts, org_id, task, user, executed_task_url):
     dispatch_body = []
     for host in hosts:
-        if host['rhc_client_id'] is None:
-            raise ValidationError({'hosts': f'host {host["id"]} does not have an associated RHC client id'})
+        if host['effective_rhc_client_id'] is None:
+            raise ValidationError({'hosts': f'host {host["inventory_id"]} does not have an associated RHC client id'})
         run = {
-            'recipient': str(host['rhc_client_id']),
+            'recipient': str(host['effective_rhc_client_id']),
             'org_id': org_id,
             'url': executed_task_url,
             'principal': user,
@@ -140,8 +140,8 @@ def execute_playbook_dispatcher(hosts, org_id, task, user, executed_task_url):
                 "sat_id": host['satellite_instance_id'],
                 "sat_org_id": host['satellite_org_id']
             }
-            run['hosts'] = [{'inventory_id': str(host['id'])}]
-            run['url'] = f"{run['url']}?inventory_id={str(host['id'])}"
+            run['hosts'] = [{'inventory_id': str(host['inventory_id'])}]
+            run['url'] = f"{run['url']}?inventory_id={str(host['inventory_id'])}"
         dispatch_body.append(run)
     logger.info(dispatch_body)
     (response, elapsed) = retry_request(
@@ -164,8 +164,8 @@ def execute_playbook_dispatcher(hosts, org_id, task, user, executed_task_url):
 def execute_cloud_connector(hosts, task, auth_header, executed_task_url):
     runs_created = []
     for host in hosts:
-        if host['rhc_client_id'] is None:
-            raise ValidationError({'hosts': f'host {host["id"]} does not have an associated RHC client id'})
+        if host['effective_rhc_client_id'] is None:
+            raise ValidationError({'hosts': f'host {host["inventory_id"]} does not have an associated RHC client id'})
         run_id = str(uuid.uuid4())
         run = {
             'payload': executed_task_url,
@@ -178,7 +178,7 @@ def execute_cloud_connector(hosts, task, auth_header, executed_task_url):
         }
         (response, elapsed) = retry_request(
             'Cloud Connector',
-            f'http://{settings.CLOUD_CONNECTOR_HOST}:{settings.CLOUD_CONNECTOR_PORT}/api/cloud-connector/v2/connections/{host["rhc_client_id"]}/message',
+            f'http://{settings.CLOUD_CONNECTOR_HOST}:{settings.CLOUD_CONNECTOR_PORT}/api/cloud-connector/v2/connections/{host["effective_rhc_client_id"]}/message',
             max_retries=1,
             mode='POST',
             headers={http_auth_header_key: auth_header},
@@ -263,10 +263,10 @@ def create_jobs_for_executed_task(extask, hosts, runs_created, dispatcher, now):
     for host_no, host in enumerate(hosts):
         run_id = runs_created[host_no].get('id')
         job = Job(
-            executed_task=extask, system_id=host['id'], updated_on=now,
+            executed_task=extask, system_id=host['inventory_id'], updated_on=now,
             status=JobStatusChoices.RUNNING if run_id else JobStatusChoices.FAILURE,
             results={}, run_id=run_id if run_id else uuid.UUID(int=0),
-            rhc_client_id=host['rhc_client_id']
+            rhc_client_id=host['effective_rhc_client_id']
         )
         job.save()
         if run_id:
@@ -483,23 +483,23 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         # to make sure that the recipients we send to are in the same order
         # as our query here, we don't group systems by Satellite.
         hosts = Host.objects.filter(
-            get_host_group_filter(request),
+            get_host_group_filter(request, use_local=True),
             org_id=self.request.auth['org_id'],
-            id__in=validated_data['hosts'],
+            inventory_id__in=validated_data['hosts'],
         ).annotate(
             satellite_instance_id=Host.tag_query('satellite_instance_id'),
             satellite_org_id=Host.tag_query('organization_id'),
-            rhc_client_id=Coalesce(
-                Cast(RawSQL("system_profile->>'rhc_client_id'", []), output_field=UUIDField()),
+            effective_rhc_client_id=Coalesce(
+                F('rhc_client_id'),
                 Subquery(SatelliteRhc.objects.filter(
                     instance_id=Cast(Host.tag_query('satellite_instance_id'), output_field=UUIDField())
                 ).values('rhc_client_id'))
             )
         ).order_by(
-            'id'  # for repeatable testing
+            'inventory_id'
         ).values(
-            'id', 'satellite_instance_id', 'satellite_org_id', 'rhc_client_id',
-            'display_name',
+            'inventory_id', 'satellite_instance_id', 'satellite_org_id',
+            'display_name', 'effective_rhc_client_id',
         )
 
         dispatcher = 'Cloud Connector' if task.type == TaskTypeChoices.SCRIPT else 'Playbook Dispatcher'
@@ -598,8 +598,8 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
             jobs_sort_field_map
         )) + ['id']  # Enforce a repeatable ordering just in case
         jobs = Job.objects.select_related('system').filter(
-            filter_on_host_tags(request, field_name='system_id'),
-            get_host_group_filter(request, relation='system'),
+            filter_on_host_tags(request, field_name='system_id', use_local=True),
+            get_host_group_filter(request, relation='system', use_local=True),
             filter_on_display_name(request, relation='system'),
             filter_on_os_version(request, relation='system'),
             filter_on_param(

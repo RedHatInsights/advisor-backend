@@ -192,12 +192,12 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
             value_of_param(system_sort_query_param, request),
             system_sort_field_map,
             reverse_nulls_order=True
-        )) + ['id']  # Enforce a repeatable ordering just in case
+        )) + ['inventory_id']
         systems = Host.objects.filter(
             apply_system_connected_filter(request),
-            filter_on_host_tags(request, field_name='id'),
-            filter_multi_param(request, 'system_profile'),
-            get_host_group_filter(request),
+            filter_on_host_tags(request, field_name='inventory_id', use_local=True),
+            filter_multi_param(request, 'system_profile', use_local=True),
+            get_host_group_filter(request, use_local=True),
             system_requirements_filter(request, task),
             filter_on_display_name(request),
             filter_on_os_version(request), filter_on_os_name(request), filter_on_os(request),
