@@ -74,6 +74,11 @@ class ParsedInventoryHost:
     rhc_client_id: str | None
     workloads: dict[str, Any]
     system_update_method: str | None
+    infrastructure_type: str | None
+    bios_release_date: str | None
+    bios_vendor: str | None
+    bios_version: str | None
+    release: str | None
 
     def to_advisor_model(self) -> AdvisorInventoryHost:
         return AdvisorInventoryHost(
@@ -102,6 +107,11 @@ class ParsedInventoryHost:
             rhc_client_id=self.rhc_client_id,
             workloads=self.workloads,
             system_update_method=self.system_update_method,
+            infrastructure_type=self.infrastructure_type,
+            bios_release_date=self.bios_release_date,
+            bios_vendor=self.bios_vendor,
+            bios_version=self.bios_version,
+            release=self.release,
         )
 
     def to_host_model(self) -> Host:
@@ -333,6 +343,11 @@ def parse_created_event(
         rhc_client_id=system_profile_raw.get('rhc_client_id') or None,
         workloads=workloads,
         system_update_method=system_profile_raw.get('system_update_method'),
+        infrastructure_type=system_profile_raw.get('infrastructure_type'),
+        bios_release_date=system_profile_raw.get('bios_release_date'),
+        bios_vendor=system_profile_raw.get('bios_vendor'),
+        bios_version=system_profile_raw.get('bios_version'),
+        release=system_profile_raw.get('release'),
     )
 
 
@@ -391,6 +406,8 @@ def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
                 'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
                 'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
                 'owner_id', 'rhc_client_id', 'workloads', 'system_update_method',
+                'infrastructure_type', 'bios_release_date', 'bios_vendor',
+                'bios_version', 'release',
             ],
         ))
         logger.debug("Bulk upserted %d AdvisorInventoryHost records", advisor_inv_upserted)
