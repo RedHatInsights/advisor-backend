@@ -445,6 +445,8 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
             self.get_queryset(), uuid, org_id
         )
         host = system.host.first()
+        if not host:
+            raise NotFound(f"System with insights_id {uuid} not found")
         with transaction.atomic():
             host.currentreport_set.all().delete()
             host.upload_set.filter(current=True).delete()
