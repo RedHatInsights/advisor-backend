@@ -286,6 +286,8 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         # duplicating the list of fields needed in the serializer.  Caveat.
 
         host = system.host.first()
+        if not host:
+            raise NotFound(f"System with insights_id {uuid} not found")
         system.reports = get_reports_subquery(
             request, host=host,
         ).annotate(
