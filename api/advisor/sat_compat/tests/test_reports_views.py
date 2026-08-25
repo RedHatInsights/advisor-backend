@@ -24,7 +24,7 @@ from api.permissions import auth_header_for_testing
 class ReportsViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data',
+        'basic_test_data', 'advisor_inventory_host_test_data',
     ]
 
     @classmethod
@@ -138,7 +138,8 @@ class ReportsViewTestCase(TestCase):
 class ReportsDupInsightsIDViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'sat_dup_insights_id_host',
+        'basic_test_data', 'advisor_inventory_host_test_data',
+        'sat_dup_insights_id_host',
     ]
     std_header = auth_header_for_testing()
 
