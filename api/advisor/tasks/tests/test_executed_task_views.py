@@ -33,6 +33,7 @@ from tasks.views.executed_task import extask_sort_fields
 PLAYBOOK_DISPATCHER_URL = "http://localhost/internal/v2/dispatch"
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class ExecutedTaskViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing(user_opts={'is_org_admin': True})
@@ -1030,10 +1031,10 @@ class ExecutedTaskViewTestCase(TestCase):
     @responses.activate
     def test_executed_task_create_fifty_systems(self):
         system_count = 50
-        original_host = Host.objects.get(id=constants.host_01_uuid)
+        original_host = Host.objects.get(inventory_id=constants.host_01_uuid)
         # clone the original system 50 times
         for i in range(system_count):
-            original_host.pk = uuid.UUID(int=i)
+            original_host.inventory_id = uuid.UUID(int=i)
             original_host.save()
 
         def dispatcher_call_back(request):
@@ -1468,7 +1469,7 @@ class ExecutedTaskViewTestCase(TestCase):
     def test_executed_task_job_log_deleted_host(self):
         # Test that if we display logs for a system that's deleted we can
         # still read them.
-        Host.objects.get(id=constants.host_03_uuid).delete()
+        Host.objects.get(inventory_id=constants.host_03_uuid).delete()
         # And the job logs should still show up
         res = self.client.get(
             reverse('tasks-executedtask-job-logs', kwargs={'id': constants.executed_task_id}),
