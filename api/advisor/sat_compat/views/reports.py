@@ -60,14 +60,14 @@ class ReportsViewSet(ReadOnlyModelViewSet, PaginateMixin):
         return get_reports_subquery(
             self.request, rule__active=True,
         ).annotate(
-            rule_name=F('rule__rule_id'),  # rule_id is a field already
+            rule_name=F('rule__rule_id'),
             date=F('upload__checked_on'),
-            insights_id=F('host__inventory__insights_id'),
+            insights_id=F('host__advisor_inventory__insights_id'),
         ).select_related('rule', 'upload').prefetch_related(
             Prefetch('host', queryset=Host.objects.annotate(
-                system_id=F('inventory__insights_id'),
-                display_name=F('inventory__display_name'),
-                last_check_in=F('inventory__updated'),
+                system_id=F('advisor_inventory__insights_id'),
+                display_name=F('advisor_inventory__display_name'),
+                last_check_in=F('advisor_inventory__updated'),
             ))
         )
 
@@ -83,6 +83,6 @@ class ReportsViewSet(ReadOnlyModelViewSet, PaginateMixin):
         reports = (
             self.get_queryset()
             .filter(filter_on_param('rule__rule_id', rule_query_param, request))
-            .order_by('rule__rule_id', 'host__inventory__display_name')
+            .order_by('rule__rule_id', 'host__advisor_inventory__display_name')
         )
         return self._paginated_response(reports)

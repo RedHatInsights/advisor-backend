@@ -27,7 +27,7 @@ from api.filters import (
     branch_id_param, filter_on_branch_id, filter_on_param,
     OpenApiParameter
 )
-from api.models import InventoryHost, get_reports_subquery
+from api.models import AdvisorInventoryHost, get_reports_subquery
 from api.permissions import request_to_org
 from sat_compat.serializers import (
     SatStatsSerializer, SatStatsSubRRSerializer, SatStatsSubSSerializer
@@ -53,7 +53,7 @@ class StatsViewSet(ViewSet):
     def get_queryset(self):
         org_id = request_to_org(self.request)
         host_branch_id_q = filter_on_branch_id(self.request, relation='host')
-        total_systems = InventoryHost.objects.filter(
+        total_systems = AdvisorInventoryHost.objects.filter(
             host_branch_id_q,
             org_id=org_id,
             per_reporter_staleness__puptoo__stale_warning_timestamp__gt=str(timezone.now()),

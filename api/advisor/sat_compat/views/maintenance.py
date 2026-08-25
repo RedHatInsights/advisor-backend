@@ -45,7 +45,7 @@ from api.filters import (
     value_of_param, branch_id_param, required_branch_id_param,
     OpenApiParameter,
 )
-from api.models import Ack, Host, InventoryHost, Playbook, Rule
+from api.models import Ack, AdvisorInventoryHost, Host, Playbook, Rule
 from api.permissions import (
     request_to_username, http_auth_header_key, auth_header_key, request_to_org
 )
@@ -149,15 +149,14 @@ def hosts_for_rules_in_plan(plan, use_inventory_id=False, **plan_filters):
     hosts_for_rule = OrderedDict()
     # Don't need to deduplicate here, it's already been deduplicated.
     for act in plan.actions.filter(**plan_filters).order_by(
-        'rule__rule_id', 'host__inventory__display_name'
+        'rule__rule_id', 'host__advisor_inventory__display_name'
     ):
         if act.rule.rule_id not in hosts_for_rule:
-            # Store the action data as well as the hosts list.
             hosts_for_rule[act.rule.rule_id] = {
                 'action': act, 'hosts': []
             }
         hosts_for_rule[act.rule.rule_id]['hosts'].append(str(
-            act.host_id if use_inventory_id else act.host.inventory.insights_id
+            act.host_id if use_inventory_id else act.host.advisor_inventory.insights_id
         ))
     return hosts_for_rule
 
@@ -236,26 +235,25 @@ def add_actions(plan_obj, validated_actions, request):
             insights_ids = [action_data['system_id']]
         else:
             # Therefore these need to be insights_ids
-            insights_ids = rule.reports_for_account(  # Will need to rename/redo this function after adoption
+            insights_ids = rule.reports_for_account(
                 request,
             ).filter(
-                # Only hosts which are owned by this Satellite
                 host__branch_id=plan_obj.branch_id
             ).values_list(
-                'host__inventory__insights_id', flat=True
+                'host__advisor_inventory__insights_id', flat=True
             ).distinct()
         if rule.rule_id not in hosts_for_rule:
             hosts_for_rule[rule.rule_id] = {'hosts': []}
         for host in Host.objects.filter(
-            inventory__insights_id__in=insights_ids,
-            inventory__account=request.account,  # To be replaced with org_id after adoption
+            advisor_inventory__insights_id__in=insights_ids,
+            advisor_inventory__account=request.account,
         ).exclude(
-            inventory__insights_id__in=hosts_for_rule[rule.rule_id]['hosts']
-        ).select_related('inventory').order_by('inventory__display_name'):
+            advisor_inventory__insights_id__in=hosts_for_rule[rule.rule_id]['hosts']
+        ).order_by('advisor_inventory__display_name'):
             actions.append(
                 SatMaintenanceAction(plan=plan_obj, rule=rule, host=host)
             )
-            hosts_for_rule[rule.rule_id]['hosts'].append(str(host.inventory.insights_id))
+            hosts_for_rule[rule.rule_id]['hosts'].append(str(host.advisor_inventory.insights_id))
     SatMaintenanceAction.objects.bulk_create(actions)
 
 
@@ -290,9 +288,9 @@ class MaintenanceViewSet(GenericViewSet):
         # We have to filter actions to be on hosts that exist in Inventory.
         if not org_id:
             return self.queryset.none()
-        acct_org_id_hosts_qs = InventoryHost.objects.filter(
+        acct_org_id_hosts_qs = AdvisorInventoryHost.objects.filter(
             org_id=org_id
-        ).values('id')
+        ).values('inventory_id')
         acks_qs = Ack.objects.filter(org_id=org_id).values('rule_id')
         # Note that we filter acks and not hostacks because Satellite can't
         # set or remove host acks, which is why they don't have a branch ID.
@@ -307,16 +305,16 @@ class MaintenanceViewSet(GenericViewSet):
                         host_id__in=acct_org_id_hosts_qs, rule__active=True
                     ).exclude(
                         rule__in=Subquery(acks_qs),
-                    ).order_by('rule__rule_id', 'host__inventory__display_name')
+                    ).order_by('rule__rule_id', 'host__advisor_inventory__display_name')
                 ),
                 Prefetch(
                     'actions__host', queryset=Host.objects.filter(
                         upload__current=True, inventory_id__in=acct_org_id_hosts_qs,
-                    ).select_related('inventory').annotate(
-                        display_name=F('inventory__display_name'),
-                        isCheckingIn=isCheckingIn_case('inventory'),
-                        system_type_id=F('upload__system_type_id'),  # see filter above
-                        last_check_in=F('inventory__updated'),
+                    ).annotate(
+                        display_name=F('advisor_inventory__display_name'),
+                        isCheckingIn=isCheckingIn_case('advisor_inventory'),
+                        system_type_id=F('upload__system_type_id'),
+                        last_check_in=F('advisor_inventory__updated'),
                     )
                 ),
                 Prefetch(
@@ -373,8 +371,8 @@ class MaintenanceViewSet(GenericViewSet):
 
         # Output just the action details in CSV format
         actions_qs = plan.actions.annotate(
-            display_name=F('host__inventory__display_name'),
-            insights_id=F('host__inventory__insights_id'),
+            display_name=F('host__advisor_inventory__display_name'),
+            insights_id=F('host__advisor_inventory__insights_id'),
             description=F('rule__description'),
             category=F('rule__category__name'),
             severity=F('rule__total_risk'),
