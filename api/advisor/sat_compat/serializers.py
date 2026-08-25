@@ -258,7 +258,7 @@ class SatExportSystemSerializer(serializers.ModelSerializer):
     url = serializers.CharField()
 
     class Meta:
-        model = models.InventoryHost
+        model = models.AdvisorInventoryHost
         fields = (
             'display_name', 'insights_id', 'system_type', 'created', 'updated',
             'stale', 'actions', 'url'
@@ -320,17 +320,15 @@ class SatMaintenanceActionRuleSerializer(serializers.ModelSerializer):
 
 class SatMaintenanceActionSystemSerializer(serializers.ModelSerializer):
     "System details in action detail of maintenance object"
-    # Based on InventoryHost model for the fields, although the queryset is
-    # actually based on the Host model and includes the Inventory fields.
     toString = serializers.CharField(source='display_name')
     isCheckingIn = serializers.BooleanField()
-    system_id = serializers.UUIDField(source='inventory.insights_id')
+    system_id = serializers.UUIDField(source='advisor_inventory.insights_id')
     hostname = serializers.CharField(source='display_name')
     system_type_id = serializers.IntegerField()
     last_check_in = serializers.DateTimeField()
 
     class Meta:
-        model = models.InventoryHost
+        model = models.AdvisorInventoryHost
         fields = (
             'toString', 'isCheckingIn', 'system_id', 'display_name',
             'hostname', 'last_check_in', 'system_type_id',

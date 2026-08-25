@@ -24,7 +24,7 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 from drf_spectacular.utils import extend_schema
 
 from api.filters import branch_id_param
-from api.models import Ack, CurrentReport, InventoryHost, get_reports_subquery
+from api.models import Ack, AdvisorInventoryHost, CurrentReport, get_reports_subquery
 from api.permissions import request_to_org
 from api.views.export import ExportViewSet, ExportRouter
 
@@ -65,8 +65,8 @@ class SystemsCSVRenderer(CSVStreamingRenderer):
 
 def transform_reports(report):
     return {
-        'display_name': report['inventory__display_name'],
-        'insights_id': report['inventory__insights_id'],
+        'display_name': report['advisor_inventory__display_name'],
+        'insights_id': report['advisor_inventory__insights_id'],
         'title': report['rule__description'],
         'rule_id_name': report['rule__rule_id'],  # rule_id already a field in CR
         'category': report['rule__category__name'],
@@ -107,11 +107,11 @@ class ReportsViewSet(ExportViewSet):
         reports = get_reports_subquery(
             request,
         ).values(
-            'inventory__display_name', 'inventory__insights_id',
+            'advisor_inventory__display_name', 'advisor_inventory__insights_id',
             'rule__description', 'rule__rule_id', 'rule__category__name',
             'rule__total_risk', 'host_id', 'rule__node_id',
             'upload__checked_on',
-        ).order_by('rule__rule_id', 'inventory__display_name', 'host_id')
+        ).order_by('rule__rule_id', 'advisor_inventory__display_name', 'host_id')
         return self.stream_response(
             reports, 'reports', transform_reports, format
         )
@@ -128,7 +128,7 @@ def transform_systems(system):
         'actions': system['actions_count'],
         'url': "{base}/{id}".format(
             base='https://console.redhat.com/insights/advisor/systems/classic',
-            id=system['id']
+            id=system['inventory_id']
         ),
     }
 
@@ -139,7 +139,7 @@ class SystemsViewSet(ExportViewSet):
 
     Systems can be filtered by branch_id so far.
     """
-    queryset = InventoryHost.objects.all()
+    queryset = AdvisorInventoryHost.objects.all()
     serializer_class = SatExportSystemSerializer
     renderer_classes = (SystemsCSVRenderer, JSONRenderer, )
 
@@ -154,7 +154,7 @@ class SystemsViewSet(ExportViewSet):
             org_id=org_id
         ).values('rule_id')
         # for_account already handles the host filtering
-        systems = InventoryHost.objects.for_account(
+        systems = AdvisorInventoryHost.objects.for_account(
             request, filter_stale=False,
         ).annotate(
             puptoo_stale_timestamp=Cast(Cast(
@@ -166,10 +166,10 @@ class SystemsViewSet(ExportViewSet):
             ) & ~ Q(
                 host__satmaintenanceaction__rule__in=acks_qs
             )),
-        ).values(  # acts as a select_related
-            'id', 'display_name', 'insights_id',
+        ).values(
+            'inventory_id', 'display_name', 'insights_id',
             'created', 'updated', 'puptoo_stale_timestamp', 'actions_count',
-        ).order_by('display_name', 'id')
+        ).order_by('display_name', 'inventory_id')
         return self.stream_response(
             systems, 'systems', transform_systems, format
         )

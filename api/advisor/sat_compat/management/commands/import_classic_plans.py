@@ -21,7 +21,7 @@ import sys
 
 from django.core.management.base import BaseCommand
 
-from api.models import InventoryHost, Rule
+from api.models import AdvisorInventoryHost, Rule
 from django.db import connection, transaction
 from sat_compat.models import SatMaintenance, SatMaintenanceAction
 
@@ -145,10 +145,10 @@ class Command(BaseCommand):
         for account in classic_plans_by_account:
             # Cache insights_id to id for current account
             host_object_for = {
-                str(ih['insights_id']): ih['id']
-                for ih in InventoryHost.objects.filter(
+                str(ih['insights_id']): ih['inventory_id']
+                for ih in AdvisorInventoryHost.objects.filter(
                      account=account
-                ).values('id', 'insights_id')
+                ).values('inventory_id', 'insights_id')
             }
 
             for classic_plan in classic_plans_by_account[account]:
