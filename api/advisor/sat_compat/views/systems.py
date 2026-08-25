@@ -184,7 +184,7 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
             ),
             remote_branch=F('host__branch_id'),
             remote_leaf=F('host__satellite_id'),
-        ).select_related('host')
+        ).prefetch_related('host')
 
     @extend_schema(
         parameters=[
@@ -285,8 +285,9 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         # The easiest way to do this is with `values()` - which means we're
         # duplicating the list of fields needed in the serializer.  Caveat.
 
+        host = system.host.first()
         system.reports = get_reports_subquery(
-            request, host=system.host,
+            request, host=host,
         ).annotate(
             insights_id=F('host__advisor_inventory__insights_id'),
             checked_on=F('upload__checked_on'),
@@ -441,11 +442,10 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         system = get_system_or_404(
             self.get_queryset(), uuid, org_id
         )
+        host = system.host.first()
         with transaction.atomic():
-            # Delete its current reports
-            system.host.currentreport_set.all().delete()
-            # Delete the previous upload
-            system.host.upload_set.filter(current=True).delete()
+            host.currentreport_set.all().delete()
+            host.upload_set.filter(current=True).delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -482,7 +482,7 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
             report_count=Value(1),
             remote_branch=F('host__branch_id'),
             remote_leaf=F('host__satellite_id'),
-        ).select_related('host')  # can't seem to prefetch acks here.
+        ).prefetch_related('host')
 
     @extend_schema(
         parameters=[branch_id_param],

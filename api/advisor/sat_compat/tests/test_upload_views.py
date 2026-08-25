@@ -24,7 +24,7 @@ from api.permissions import auth_header_for_testing
 class UploaderTestCase(TestCase):
     fixtures = [
         'rule_categories', 'rulesets', 'system_types', 'upload_sources',
-        'basic_test_data',
+        'basic_test_data', 'advisor_inventory_host_test_data',
     ]
 
     @classmethod

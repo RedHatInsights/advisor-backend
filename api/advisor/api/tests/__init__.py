@@ -452,6 +452,40 @@ def update_stale_dates(valid_days: float = 3.0):
         }
         inventory_host.save()
 
+    for aih in AdvisorInventoryHost.objects.all():
+        if aih.display_name.startswith('stale-warn'):
+            check_in = somewhat_stale
+            stale_timestamp = somewhat_stale
+            stale_warning_timestamp = all_valid
+            culled_timestamp = full_valid
+        elif aih.display_name.startswith('stale-hide'):
+            check_in = really_stale
+            stale_timestamp = really_stale
+            stale_warning_timestamp = somewhat_stale
+            culled_timestamp = all_valid
+        elif aih.display_name.startswith('culled'):
+            check_in = really_stale
+            stale_timestamp = really_stale
+            stale_warning_timestamp = really_stale
+            culled_timestamp = somewhat_stale
+        else:
+            check_in = now
+            stale_timestamp = all_valid
+            stale_warning_timestamp = full_valid
+            culled_timestamp = full_valid
+
+        aih.last_check_in = check_in
+        aih.per_reporter_staleness = {
+            "puptoo": {
+                "stale_timestamp": str(stale_timestamp),
+                "stale_warning_timestamp": str(stale_warning_timestamp),
+                "culled_timestamp": str(culled_timestamp),
+                "last_check_in": str(check_in),
+                "check_in_succeeded": True
+            }
+        }
+        aih.save()
+
 
 def rbac_data(permissions='advisor:*:*', raw=None, groups=None):
     """
