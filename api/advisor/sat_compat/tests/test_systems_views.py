@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from rest_framework.serializers import CharField
 
-from api.models import Host, InventoryHost
+from api.models import AdvisorInventoryHost, Host, InventoryHost
 from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing
 from sat_compat.serializers import LabelSerializer
@@ -37,7 +37,7 @@ non_interp_warning = "Warning: this content is not able to be interpolated"
 class SystemViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data',
+        'basic_test_data', 'advisor_inventory_host_test_data',
     ]
     systems_data = [{
         'toString': constants.host_01_name,
@@ -310,7 +310,7 @@ class SystemViewTestCase(TestCase):
         )
         # And make this show up as 'culled' and give it a culled date (since
         # this happens after update_stale_dates()
-        stale_host = InventoryHost.objects.get(id=constants.host_06_uuid)
+        stale_host = AdvisorInventoryHost.objects.get(inventory_id=constants.host_06_uuid)
         stale_host.display_name = 'culled.example.com'
         prs = stale_host.per_reporter_staleness
         # Have to modify the per-reporter staleness structure and then put it
@@ -1031,7 +1031,8 @@ class SystemViewTestCase(TestCase):
 class SystemDupInsightsIDViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'sat_dup_insights_id_host',
+        'basic_test_data', 'advisor_inventory_host_test_data',
+        'sat_dup_insights_id_host',
     ]
 
     @classmethod
@@ -1042,13 +1043,13 @@ class SystemDupInsightsIDViewTestCase(TestCase):
     def test_systems_available(self):
         # Bit of a sanity check here.
         self.assertEqual(constants.host_01_inid, constants.host_11_inid)
-        systems = InventoryHost.objects.filter(
+        systems = AdvisorInventoryHost.objects.filter(
             insights_id=constants.host_01_inid
-        ).values('id', 'insights_id', 'display_name').order_by('id')
-        self.assertEqual(systems[0]['id'], UUID(constants.host_01_uuid))
+        ).values('inventory_id', 'insights_id', 'display_name').order_by('inventory_id')
+        self.assertEqual(systems[0]['inventory_id'], UUID(constants.host_01_uuid))
         self.assertEqual(systems[0]['insights_id'], UUID(constants.host_01_inid))
         self.assertEqual(systems[0]['display_name'], constants.host_01_name)
-        self.assertEqual(systems[1]['id'], UUID(constants.host_11_uuid))
+        self.assertEqual(systems[1]['inventory_id'], UUID(constants.host_11_uuid))
         self.assertEqual(systems[1]['insights_id'], UUID(constants.host_11_inid))
         self.assertEqual(systems[1]['display_name'], constants.host_11_name)
 
@@ -1149,7 +1150,7 @@ class SystemDupInsightsIDViewTestCase(TestCase):
 class SystemV1ViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data',
+        'basic_test_data', 'advisor_inventory_host_test_data',
     ]
 
     @classmethod

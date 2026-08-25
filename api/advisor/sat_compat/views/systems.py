@@ -39,7 +39,7 @@ from api.filters import (
     OpenApiParameter,
 )
 from api.models import (
-    CurrentReport, Host, InventoryHost, Playbook,
+    AdvisorInventoryHost, CurrentReport, Host, Playbook,
     Resolution, Rule, convert_to_count_query, get_reports_subquery
 )
 from api.permissions import (
@@ -78,10 +78,9 @@ sort_fields = [
     'toString', 'system_id', 'display_name', 'hostname', 'last_check_in',
     'report_count', 'created_at',
 ]
-# Fields based on InventoryHost
 sort_map = {
     'toString': 'display_name',
-    'system_id': 'id',
+    'system_id': 'inventory_id',
     'display_name': 'display_name',
     'hostname': 'display_name',
     'last_check_in': 'last_check_in',
@@ -129,7 +128,7 @@ def isCheckingIn_case(relation=''):
     i.e. is it not stale yet?
 
     The relation field, if set, defines the relation leading to the
-    InventoryHost model.
+    inventory host model.
     """
     field_comp = (relation + '__' if relation else '') + 'per_reporter_staleness__puptoo__stale_timestamp__gt'
     return Case(
@@ -159,7 +158,7 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
 
     param: uuid: The Insights UUID of a host to retrieve.
     """
-    queryset = InventoryHost.objects.all()
+    queryset = AdvisorInventoryHost.objects.all()
     # lookup_field not used as we override the views with code
     lookup_url_kwarg = 'uuid'
     pagination_class = ClassicPageNumberPagination
@@ -167,19 +166,15 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
 
     def get_queryset(self):
         report_count_query = convert_to_count_query(get_reports_subquery(
-            self.request, host_id=OuterRef('id'),
+            self.request, host_id=OuterRef('inventory_id'),
         ))
 
-        return InventoryHost.objects.for_account(
+        return AdvisorInventoryHost.objects.for_account(
             self.request
         ).filter(
             host__upload__current=True, host__upload__source_id=1,
         ).annotate(
             isCheckingIn=isCheckingIn_case(),
-            # We tried making this dependent on the culled_timestamp, but it
-            # makes no sense as we never show hosts that are culled or in
-            # stale-hide mode.  Until there's a better definition, we're just
-            # going to not give an unregistered_at time here.
             unregistered_at=Value(None, output_field=DateTimeField(null=True)),
             system_type_id=F('host__upload__system_type_id'),
             product_code=F('host__upload__system_type__product_code'),
@@ -189,7 +184,7 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
             ),
             remote_branch=F('host__branch_id'),
             remote_leaf=F('host__satellite_id'),
-        ).select_related('host')
+        ).prefetch_related('host')
 
     @extend_schema(
         parameters=[
@@ -216,7 +211,7 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
                 report_count_filter(request),
                 filter_on_rule_id(request),
             )
-            .order_by(sort_field, 'id')
+            .order_by(sort_field, 'inventory_id')
         )
         return self._paginated_response(systems)
 
@@ -290,10 +285,13 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         # The easiest way to do this is with `values()` - which means we're
         # duplicating the list of fields needed in the serializer.  Caveat.
 
+        host = system.host.first()
+        if not host:
+            raise NotFound(f"System with insights_id {uuid} not found")
         system.reports = get_reports_subquery(
-            request, host=system.host,
+            request, host=host,
         ).annotate(
-            insights_id=F('host__inventory__insights_id'),
+            insights_id=F('host__advisor_inventory__insights_id'),
             checked_on=F('upload__checked_on'),
         ).select_related('upload',).values(
             'details', 'id', 'rule_id', 'host_id', 'account', 'org_id', 'insights_id',
@@ -348,10 +346,10 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         ).prefetch_related(Prefetch(
             'host', queryset=Host.objects.filter(
                 upload__current=True
-            ).select_related('inventory').annotate(
-                display_name=F('inventory__display_name'),
-                isCheckingIn=isCheckingIn_case('inventory'),
-                system_type_id=F('upload__system_type_id'),  # see filter above
+            ).annotate(
+                display_name=F('advisor_inventory__display_name'),
+                isCheckingIn=isCheckingIn_case('advisor_inventory'),
+                system_type_id=F('upload__system_type_id'),
             )
         ))
         # Map the rule onto each report, and get the Dot field outputs
@@ -387,28 +385,25 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         system = get_system_or_404(
             self.get_queryset(), uuid, org_id
         )
-        profile = system.system_profile
-        virtual_machine = (profile.get('infrastructure_type', 'real') == 'virtual')
-        # Nice lookups
+        virtual_machine = (system.infrastructure_type == 'virtual')
         releases = {6: 'Santiago', 7: 'Maipo', 8: 'Ootpa', 9: 'Plow'}
-        if 'release' in profile:
-            os_release = profile['release']
+        if system.release:
+            os_release = system.release
         else:
             os_release = "Red Hat Enterprise Linux"
-        if 'operating_system' in profile and 'major' in profile['operating_system']:
+        if system.os_major is not None:
             os_release_suffix = " release {ver} ({release})".format(
                 ver=system.rhel_version, release=releases.get(
-                    profile['operating_system']['major'],
-                    profile['operating_system']['major']
+                    system.os_major, system.os_major
                 )
             )
         else:
             os_release_suffix = ''
 
         metadata = {
-            'bios_release_date': profile.get('bios_release_date'),
-            'bios_vendor': profile.get('bios_vendor'),
-            'bios_version': profile.get('bios_version'),
+            'bios_release_date': system.bios_release_date,
+            'bios_vendor': system.bios_vendor,
+            'bios_version': system.bios_version,
             'release': os_release + os_release_suffix,
             'rhel_version': system.rhel_version,
             'system_family': os_release,
@@ -434,7 +429,7 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         get_system_or_404(
             self.get_queryset(), uuid, org_id
         )
-        return self._paginated_response(InventoryHost.objects.none())
+        return self._paginated_response(AdvisorInventoryHost.objects.none())
 
     def destroy(self, request, uuid, format=None):
         """
@@ -449,11 +444,12 @@ class SystemViewSet(viewsets.ReadOnlyModelViewSet, PaginateMixin):
         system = get_system_or_404(
             self.get_queryset(), uuid, org_id
         )
+        host = system.host.first()
+        if not host:
+            raise NotFound(f"System with insights_id {uuid} not found")
         with transaction.atomic():
-            # Delete its current reports
-            system.host.currentreport_set.all().delete()
-            # Delete the previous upload
-            system.host.upload_set.filter(current=True).delete()
+            host.currentreport_set.all().delete()
+            host.upload_set.filter(current=True).delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -465,14 +461,14 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
 
     param: uuid: The Insights UUID of a host to retrieve.
     """
-    queryset = InventoryHost.objects.all()
+    queryset = AdvisorInventoryHost.objects.all()
     lookup_field = 'insights_id'
     lookup_url_kwarg = 'uuid'
     pagination_class = None
     serializer_class = SatSystemsSerializer
 
     def get_queryset(self):
-        return InventoryHost.objects.for_account(
+        return AdvisorInventoryHost.objects.for_account(
             self.request, filter_branch_id=False, require_host=False
         ).annotate(
             isCheckingIn=isCheckingIn_case(),
@@ -490,7 +486,7 @@ class V1SystemViewSet(viewsets.ReadOnlyModelViewSet):
             report_count=Value(1),
             remote_branch=F('host__branch_id'),
             remote_leaf=F('host__satellite_id'),
-        ).select_related('host')  # can't seem to prefetch acks here.
+        ).prefetch_related('host')
 
     @extend_schema(
         parameters=[branch_id_param],
