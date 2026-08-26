@@ -15,7 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import responses
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from django.conf import settings
 from tasks.management.commands.tasks_service import handle_script_job_updates
@@ -60,6 +60,7 @@ def script_worker_message():
     }
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class TaskJobUpdateScriptUploadTestCase(TestCase):
     fixtures = ['basic_task_test_data']
 
