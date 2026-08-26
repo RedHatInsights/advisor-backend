@@ -35,7 +35,19 @@ CREATE TABLE IF NOT EXISTS inventory.hosts_table (
     system_profile jsonb NOT NULL default '{}'::jsonb,
     reporter character varying(200) NOT NULL,
     per_reporter_staleness jsonb default '{}'::jsonb,
-    insights_id uuid
+    insights_id uuid,
+    inventory_id uuid,
+    os_name character varying(50),
+    os_major integer,
+    os_minor integer,
+    host_type character varying(50),
+    bootc_booted_image character varying(512),
+    bootc_booted_image_digest character varying(256),
+    rhc_client_id uuid,
+    workloads jsonb default '{}'::jsonb,
+    system_update_method character varying(50),
+    workspace_id uuid,
+    workspace_name character varying(200)
 );
 
 DROP VIEW IF EXISTS inventory.hosts;
@@ -43,12 +55,18 @@ DROP VIEW IF EXISTS inventory.hosts;
 CREATE OR REPLACE VIEW inventory.hosts (
     id, account, org_id, display_name, tags, groups, updated, created,
     last_check_in, stale_timestamp, system_profile, reporter,
-    per_reporter_staleness, insights_id
+    per_reporter_staleness, insights_id,
+    inventory_id, os_name, os_major, os_minor, host_type,
+    bootc_booted_image, bootc_booted_image_digest, rhc_client_id,
+    workloads, system_update_method, workspace_id, workspace_name
 ) AS
 SELECT
     id, account, org_id, display_name, tags, groups, updated, created,
     last_check_in, stale_timestamp, system_profile, reporter,
-    per_reporter_staleness, insights_id
+    per_reporter_staleness, insights_id,
+    inventory_id, os_name, os_major, os_minor, host_type,
+    bootc_booted_image, bootc_booted_image_digest, rhc_client_id,
+    workloads, system_update_method, workspace_id, workspace_name
 FROM inventory.hosts_table;
 """
 

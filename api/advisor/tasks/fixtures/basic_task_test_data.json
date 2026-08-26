@@ -43,7 +43,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221101"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221101",
+      "inventory_id": "00112233-4455-6677-8899-012345678901",
+      "os_name": "RHEL",
+      "os_major": 7,
+      "os_minor": 5,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC01",
+      "workloads": {"sap": {"sap_system": true, "sids": ["E01", "E02"], "instance_number": "00", "version": "2.00.122.04.1478575636"}, "crowdstrike": {"falcon_aid": "abc123def456", "falcon_backend": "bpf", "falcon_version": "7.14.0"}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "11111111-1111-1111-1111-111111111111",
+      "workspace_name": "group_1"
     }
 }, {
     "model": "tasks.Host",
@@ -88,7 +100,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221103"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221103",
+      "inventory_id": "00112233-4455-6677-8899-012345678903",
+      "os_name": "RHEL",
+      "os_major": 7,
+      "os_minor": 5,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC03",
+      "workloads": {"sap": {"sap_system": false}, "ansible": {"controller_version": "4.5.6", "hub_version": "4.5.6", "catalog_worker_version": "1.2.3", "sso_version": "7.8.9"}, "ibm_db2": {"is_running": true}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "11111111-1111-1111-1111-222222222222",
+      "workspace_name": "group_2"
     }
 }, {
     "model": "tasks.Host",
@@ -145,7 +169,19 @@
           }
       },
       "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221104"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221104",
+      "inventory_id": "00112233-4455-6677-8899-012345678904",
+      "os_name": "RHEL",
+      "os_major": 7,
+      "os_minor": 5,
+      "host_type": null,
+      "rhc_client_id": null,
+      "workloads": {"sap": {"sap_system": true, "sids": ["E02", "E04"], "instance_number": "01", "version": "2.00.122.04.1478575636"}, "mssql": {"version": "15.2.0"}, "intersystems": {"is_intersystems": true}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -195,7 +231,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221105"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221105",
+      "inventory_id": "00112233-4455-6677-8899-012345678905",
+      "os_name": "CentOS Linux",
+      "os_major": 7,
+      "os_minor": 9,
+      "host_type": null,
+      "rhc_client_id": null,
+      "workloads": {"sap": {"sap_system": true, "sids": ["E04", "E08"], "instance_number": "02", "version": "2.00.122.04.1478575636"}, "ansible": {"controller_version": "4.2.1", "hub_version": "4.2.1"}, "rhel_ai": {"variant": "RHEL AI", "rhel_ai_version_id": "v1.1.3"}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -237,7 +285,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221106"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221106",
+      "inventory_id": "00112233-4455-6677-8899-012345678906",
+      "os_name": "RHEL",
+      "os_major": 8,
+      "os_minor": 6,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC06",
+      "workloads": {"sap": {"sap_system": false}, "mssql": {"version": "14.3.0"}, "oracle_db": {"is_running": false}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -279,7 +339,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221108"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221108",
+      "inventory_id": "00112233-4455-6677-8899-012345678908",
+      "os_name": "RHEL",
+      "os_major": 7,
+      "os_minor": 5,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC08",
+      "workloads": {"sap": {"sap_system": true, "sids": ["E08", "E16"], "instance_number": "05", "version": "2.00.122.04.1478575636"}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -320,7 +392,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110A"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110A",
+      "inventory_id": "00112233-4455-6677-8899-01234567890A",
+      "os_name": "RHEL",
+      "os_major": 7,
+      "os_minor": 5,
+      "host_type": null,
+      "rhc_client_id": null,
+      "workloads": {"sap": {"sap_system": true, "sids": ["E16", "E32"], "instance_number": "06", "version": "2.00.122.04.1478575636"}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -356,7 +440,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110B"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-55443322110B",
+      "inventory_id": "00112233-4455-6677-8899-01234567890B",
+      "os_name": "CentOS",
+      "os_major": 8,
+      "os_minor": 6,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC0B",
+      "workloads": {"sap": {"sap_system": false}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -412,7 +508,19 @@
           }
       },
       "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-5544332211E1"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-5544332211E1",
+      "inventory_id": "00112233-4455-6677-8899-0123456789E1",
+      "os_name": "RHEL",
+      "os_major": 9,
+      "os_minor": 2,
+      "host_type": "edge",
+      "rhc_client_id": null,
+      "workloads": {"sap": {"sap_system": true, "sids": ["E16", "E32"], "instance_number": "04", "version": "2.00.122.04.1478575636"}, "crowdstrike": {"falcon_aid": "def456abc789", "falcon_backend": "kernel", "falcon_version": "7.15.0"}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "98765430-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -448,7 +556,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221102"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221102",
+      "inventory_id": "02468135-7902-4681-3579-024681357902",
+      "os_name": "RHEL",
+      "os_major": 6,
+      "os_minor": 8,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC04",
+      "workloads": {"sap": {"sap_system": false}},
+      "system_update_method": null,
+      "bootc_booted_image": null,
+      "bootc_booted_image_digest": null,
+      "workspace_id": "99887760-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -496,7 +616,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221107"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221107",
+      "inventory_id": "02468135-7902-4681-3579-024681357907",
+      "os_name": "RHEL",
+      "os_major": 9,
+      "os_minor": 4,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCCC07",
+      "workloads": {"sap": {"sap_system": true, "sids": ["E02", "E03"], "instance_number": "03", "version": "2.00.122.04.1478575636"}},
+      "system_update_method": null,
+      "bootc_booted_image": "192.168.124.1:5000/bootc-insights:latest",
+      "bootc_booted_image_digest": "sha256:a96d35cc9bc3152d309bd302a7f73d449630fe3b62a9c3c9295300566fcad654",
+      "workspace_id": "99887760-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
     "model": "tasks.Host",
@@ -541,7 +673,19 @@
             }
           }
       },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221914"
+      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221914",
+      "inventory_id": "02468135-7902-4681-3579-024681357914",
+      "os_name": "RHEL",
+      "os_major": 9,
+      "os_minor": 4,
+      "host_type": null,
+      "rhc_client_id": "00112233-4455-6677-8899-CCCCCCCCC914",
+      "workloads": {"sap": {"sap_system": true, "sids": [], "instance_number": "01", "version": "2.00.122.04.1478575636"}},
+      "system_update_method": null,
+      "bootc_booted_image": "registry.redhat.io/rhelai1/bootc-aws-nvidia-rhel9:1.4",
+      "bootc_booted_image_digest": "sha256:a96d35cc9bc3152d309bd302a7f73d449630fe3b62a9c3c9295300566fcad914",
+      "workspace_id": "99887760-0000-0000-0000-000000000000",
+      "workspace_name": "Ungrouped Hosts"
     }
 }, {
 

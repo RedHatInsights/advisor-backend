@@ -126,10 +126,10 @@ def satellite_id_from_tags(tags):
 def execute_playbook_dispatcher(hosts, org_id, task, user, executed_task_url):
     dispatch_body = []
     for host in hosts:
-        if host['rhc_client_id'] is None:
+        if host['effective_rhc_client_id'] is None:
             raise ValidationError({'hosts': f'host {host["id"]} does not have an associated RHC client id'})
         run = {
-            'recipient': str(host['rhc_client_id']),
+            'recipient': str(host['effective_rhc_client_id']),
             'org_id': org_id,
             'url': executed_task_url,
             'principal': user,
@@ -164,7 +164,7 @@ def execute_playbook_dispatcher(hosts, org_id, task, user, executed_task_url):
 def execute_cloud_connector(hosts, task, auth_header, executed_task_url):
     runs_created = []
     for host in hosts:
-        if host['rhc_client_id'] is None:
+        if host['effective_rhc_client_id'] is None:
             raise ValidationError({'hosts': f'host {host["id"]} does not have an associated RHC client id'})
         run_id = str(uuid.uuid4())
         run = {
@@ -178,7 +178,7 @@ def execute_cloud_connector(hosts, task, auth_header, executed_task_url):
         }
         (response, elapsed) = retry_request(
             'Cloud Connector',
-            f'http://{settings.CLOUD_CONNECTOR_HOST}:{settings.CLOUD_CONNECTOR_PORT}/api/cloud-connector/v2/connections/{host["rhc_client_id"]}/message',
+            f'http://{settings.CLOUD_CONNECTOR_HOST}:{settings.CLOUD_CONNECTOR_PORT}/api/cloud-connector/v2/connections/{host["effective_rhc_client_id"]}/message',
             max_retries=1,
             mode='POST',
             headers={http_auth_header_key: auth_header},
@@ -266,7 +266,7 @@ def create_jobs_for_executed_task(extask, hosts, runs_created, dispatcher, now):
             executed_task=extask, system_id=host['id'], updated_on=now,
             status=JobStatusChoices.RUNNING if run_id else JobStatusChoices.FAILURE,
             results={}, run_id=run_id if run_id else uuid.UUID(int=0),
-            rhc_client_id=host['rhc_client_id']
+            rhc_client_id=host['effective_rhc_client_id']
         )
         job.save()
         if run_id:
@@ -489,7 +489,7 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         ).annotate(
             satellite_instance_id=Host.tag_query('satellite_instance_id'),
             satellite_org_id=Host.tag_query('organization_id'),
-            rhc_client_id=Coalesce(
+            effective_rhc_client_id=Coalesce(
                 Cast(RawSQL("system_profile->>'rhc_client_id'", []), output_field=UUIDField()),
                 Subquery(SatelliteRhc.objects.filter(
                     instance_id=Cast(Host.tag_query('satellite_instance_id'), output_field=UUIDField())
@@ -498,7 +498,7 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         ).order_by(
             'id'  # for repeatable testing
         ).values(
-            'id', 'satellite_instance_id', 'satellite_org_id', 'rhc_client_id',
+            'id', 'satellite_instance_id', 'satellite_org_id', 'effective_rhc_client_id',
             'display_name',
         )
 
