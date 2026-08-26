@@ -44,6 +44,7 @@ RHELAI_REQ = requirements['rhelai_image']['alert']
 NOT_RHELAI_REQ = requirements['not_rhelai_image']['alert']
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class TaskViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()
@@ -634,7 +635,6 @@ class TaskViewTestCase(TestCase):
         system01.os_name = None
         system01.os_major = None
         system01.os_minor = None
-        del system01.system_profile['operating_system']
         system01.save()
         res = self.client.get(
             reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
@@ -746,6 +746,7 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(hosts[5]['connected'], False)
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class TaskInternalViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     ext_auth = auth_header_for_testing()
