@@ -22,6 +22,5 @@ from tasks import models
 
 
 admin.site.register(models.ExecutedTask)
-admin.site.register(models.Host)
 admin.site.register(models.Job)
 admin.site.register(models.Task)

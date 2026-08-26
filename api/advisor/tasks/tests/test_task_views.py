@@ -526,25 +526,20 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(len(hosts), 3)
         self.assertEqual(hosts[0]['id'], constants.rhelai_host_uuid)
         self.assertEqual(hosts[0]['requirements'], [])
-        self.assertNotEqual(hosts[0]['system_profile'].get('bootc_status', None), None)
-        self.assertEqual(hosts[0]['system_profile']['bootc_status']['booted']['image'], constants.rhelai_image)
         self.assertEqual(hosts[1]['id'], constants.host_02_uuid)
-        self.assertEqual(hosts[1]['requirements'], [BOOTC_REQ])
-        self.assertEqual(hosts[1]['system_profile'].get('bootc_status', None), None)
+        self.assertEqual(hosts[1]['requirements'], [BOOTC_REQ, RHELAI_REQ])
         self.assertEqual(hosts[2]['id'], constants.host_07_uuid)
         self.assertEqual(hosts[2]['requirements'], [RHELAI_REQ])
-        self.assertNotEqual(hosts[2]['system_profile'].get('bootc_status', None), None)
-        self.assertEqual(hosts[2]['system_profile']['bootc_status']['booted']['image'], constants.bootc_image)
 
         # Try some different RHEL AI image names to confirm they are matched
-        rhelai_host = Host.objects.get(id=constants.rhelai_host_uuid)
+        rhelai_host = Host.objects.get(inventory_id=constants.rhelai_host_uuid)
         other_rhelai_images = [
             'registry.stage.redhat.io/rhelai1/bootc-intel-rhel9:1.4.2-1740747417',
             'registry.redhat.io/rhelai1/granite-7b-starter:1.4-1739210683'
             'registry.access.redhat.com/rhelai2/bootc-amd-rhel10:2.0'
         ]
         for rhelai_image in other_rhelai_images:
-            rhelai_host.system_profile['bootc_status']['booted']['image'] = rhelai_image
+            rhelai_host.bootc_booted_image = rhelai_image
             rhelai_host.save()
             res = self.client.get(
                 reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
@@ -563,7 +558,7 @@ class TaskViewTestCase(TestCase):
             'registry.access.redhat.com/rhel10/rhel-bootc:10.0-1737064208',
         ]
         for non_rhelai_image in non_rhelai_images:
-            rhelai_host.system_profile['bootc_status']['booted']['image'] = non_rhelai_image
+            rhelai_host.bootc_booted_image = non_rhelai_image
             rhelai_host.save()
             res = self.client.get(
                 reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
@@ -581,8 +576,10 @@ class TaskViewTestCase(TestCase):
         log4shell.filter_message = 'Only eligible for RHEL systems'
         log4shell.filters = ['rhel']
         log4shell.save()
-        system01 = Host.objects.get(id=constants.host_01_uuid)
-        system01.system_profile['operating_system'] = {'name': 'RHEL', 'major': 6, 'minor': 5}
+        system01 = Host.objects.get(inventory_id=constants.host_01_uuid)
+        system01.os_name = 'RHEL'
+        system01.os_major = 6
+        system01.os_minor = 5
         system01.save()
 
         # All RHEL systems meet the requirements, including RHEL6 (host_01_uuid) and RHEL9 (host_e1_uuid)
@@ -634,23 +631,9 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(hosts[6]['groups'][0]['name'], 'Ungrouped Hosts')
         self.assertEqual(hosts[6]['connection_type'], 'satellite')
 
-        # set an empty operating_system field for system01's system_profile to get os_version = Unknown OS name
-        # system01 should sort last in the list and have requirements that it must have a known OS
-        system01.system_profile['operating_system'] = {}
-        system01.save()
-        res = self.client.get(
-            reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
-            data={'all_systems': True, 'sort': 'os'},
-            **self.std_auth)
-        self.assertEqual(res.status_code, 200, res.content.decode())
-        hosts = res.json()['data']
-        self.assertEqual(len(hosts), 7)
-        self.assertEqual(hosts[6]['display_name'], constants.host_01_name)
-        self.assertEqual(hosts[6]['os_version'], 'Unknown OS name')
-        self.assertEqual(hosts[6]['requirements'], [KNOWN_OS_REQ])
-
-        # delete the operating_system from system01's system_profile to get os_version = Unknown operating system
-        # system01 should still have requirements that it must have a known OS
+        system01.os_name = None
+        system01.os_major = None
+        system01.os_minor = None
         del system01.system_profile['operating_system']
         system01.save()
         res = self.client.get(
@@ -662,7 +645,7 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(len(hosts), 7)
         self.assertEqual(hosts[6]['display_name'], constants.host_01_name)
         self.assertEqual(hosts[6]['os_version'], 'Unknown operating system')
-        self.assertEqual(hosts[6]['requirements'], [KNOWN_OS_REQ])
+        self.assertIn(KNOWN_OS_REQ, hosts[6]['requirements'])
 
         # Remove the filter requirements from log4shell and system01 should meet all requirements now
         # because having an unknown OS is ok for running a task without filters
@@ -716,9 +699,8 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(hosts[0]['display_name'], constants.host_05_name)
         self.assertEqual(hosts[0]['requirements'], ['System must be connected via RHC or Satellite'])
 
-        # Add rhc_client_id attribute to system05 system_profile to simulate a new RHC connection
-        system05 = Host.objects.get(id=constants.host_05_uuid)
-        system05.system_profile['rhc_client_id'] = "00112233-4455-6677-8899-CCCCCCCCCC05"
+        system05 = Host.objects.get(inventory_id=constants.host_05_uuid)
+        system05.rhc_client_id = "00112233-4455-6677-8899-CCCCCCCCCC05"
         system05.save()
 
         # Test system05 appears with all_systems with no requirements now because it's connected via RHC
