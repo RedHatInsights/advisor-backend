@@ -282,11 +282,42 @@ class ExecuteTaskSerializer(serializers.Serializer):
 
 
 class HostSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source='inventory_id')
     os_version = serializers.CharField()
     connection_type = serializers.CharField()
     tags = serializers.ListField(child=serializers.DictField())
     connected = serializers.BooleanField()
     last_check_in = serializers.DateTimeField()
+    groups = serializers.SerializerMethodField()
+    system_profile = serializers.SerializerMethodField()
+
+    def get_groups(self, obj):
+        if obj.workspace_id:
+            return [{'id': str(obj.workspace_id), 'name': obj.workspace_name}]
+        return []
+
+    def get_system_profile(self, obj):
+        profile = {}
+        if obj.os_name is not None or obj.os_major is not None:
+            profile['operating_system'] = {
+                k: v for k, v in {
+                    'name': obj.os_name,
+                    'major': obj.os_major,
+                    'minor': obj.os_minor,
+                }.items() if v is not None
+            }
+        if obj.rhc_client_id:
+            profile['rhc_client_id'] = str(obj.rhc_client_id)
+        if obj.bootc_booted_image or obj.bootc_booted_image_digest:
+            profile['bootc_status'] = {'booted': {
+                k: v for k, v in {
+                    'image': obj.bootc_booted_image,
+                    'image_digest': obj.bootc_booted_image_digest,
+                }.items() if v is not None
+            }}
+        if obj.host_type:
+            profile['host_type'] = obj.host_type
+        return profile
 
     class Meta:
         model = models.Host
@@ -459,12 +490,8 @@ class TaskContentSerializer(serializers.ModelSerializer):
         # them without changing any references from ExecutedTask.
 
 
-class TaskHostSerializer(serializers.ModelSerializer):
-    os_version = serializers.CharField()
-    connection_type = serializers.CharField()
-    tags = serializers.ListField(child=serializers.DictField())
+class TaskHostSerializer(HostSerializer):
     requirements = serializers.ListField(child=serializers.CharField())
-    connected = serializers.BooleanField()
     last_check_in = serializers.DateTimeField(source='last_check_in_prs')
 
     class Meta:
