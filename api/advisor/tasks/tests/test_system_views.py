@@ -371,9 +371,8 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(res.status_code, 200, res.content.decode())
         self.assertEqual(len(res.json()['data']), 0)
 
-        # Add rhc_client_id attribute to system05 system_profile to simulate a new RHC connection
-        system05 = Host.objects.get(id=constants.host_05_uuid)
-        system05.system_profile['rhc_client_id'] = "00112233-4455-6677-8899-CCCCCCCCCC05"
+        system05 = Host.objects.get(inventory_id=constants.host_05_uuid)
+        system05.rhc_client_id = "00112233-4455-6677-8899-CCCCCCCCCC05"
         system05.save()
 
         # Match system05 now that it has an RHC connection

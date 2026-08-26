@@ -84,15 +84,15 @@ def filter_on_os_version(request, relation=None):
     if versions is None:
         return version_filter
 
-    base_parameter = 'system_profile__operating_system'
+    major_param = 'os_major'
+    minor_param = 'os_minor'
     if relation:
-        base_parameter = relation + '__' + base_parameter
+        major_param = relation + '__' + major_param
+        minor_param = relation + '__' + minor_param
     for version in versions:
-        # Assertion: our parameters always have 'major.minor', and those are
-        # always ints.
         major, minor = map(int, version.split('.'))
         version_filter |= Q(**{
-            base_parameter + '__major': major, base_parameter + '__minor': minor,
+            major_param: major, minor_param: minor,
         })
     return version_filter
 
@@ -103,7 +103,7 @@ def filter_on_os_name(request, relation=None):
     if not os_names:
         return os_name_filter
 
-    parameter = 'system_profile__operating_system__name__iexact'
+    parameter = 'os_name__iexact'
     if relation:
         parameter = relation + '__' + parameter
     for os_name in os_names:
@@ -139,14 +139,13 @@ def filter_on_os(request, relation=None):
 #######################################################
 
 
-centos_filter = Q(system_profile__operating_system__name__startswith="CentOS")
-rhel_filter = Q(system_profile__operating_system__name="RHEL")
-# known_os_filter handles both the OS name missing in the OS field, and the whole OS field itself missing
-known_os_filter = Q(system_profile__operating_system__name__isnull=False)
-os_v7_filter = Q(system_profile__operating_system__major=7)
-os_v8_filter = Q(system_profile__operating_system__major=8)
-os_v7_v8_filter = Q(system_profile__operating_system__major__in=(7, 8))
-direct_connect_filter = Q(system_profile__rhc_client_id__isnull=False)
+centos_filter = Q(os_name__startswith="CentOS")
+rhel_filter = Q(os_name="RHEL")
+known_os_filter = Q(os_name__isnull=False)
+os_v7_filter = Q(os_major=7)
+os_v8_filter = Q(os_major=8)
+os_v7_v8_filter = Q(os_major__in=(7, 8))
+direct_connect_filter = Q(rhc_client_id__isnull=False)
 satellite_rhc_filter = Exists(
     SatelliteRhc.objects.filter(
         instance_id=Cast(Host.tag_query('satellite_instance_id'), output_field=UUIDField()),
@@ -154,10 +153,8 @@ satellite_rhc_filter = Exists(
     )
 )
 system_connected_filter = Q(direct_connect_filter | satellite_rhc_filter)
-bootc_image_filter = Q(system_profile__bootc_status__booted__image_digest__isnull=False)
-# Using 'regex' instead of 'contains' because it automagically casts image to text and matches the given string,
-# whereas 'contains' is overridden when working with jsonb objects and treats image as jsonb instead of text
-rhelai_image_filter = Q(system_profile__bootc_status__booted__image__regex='/rhelai[0-9]*/')
+bootc_image_filter = Q(bootc_booted_image_digest__isnull=False)
+rhelai_image_filter = Q(bootc_booted_image__regex='/rhelai[0-9]*/')
 
 requirements = {
     'direct_connect': {

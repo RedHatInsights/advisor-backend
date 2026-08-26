@@ -51,16 +51,12 @@ from tasks.utils import (
     all_systems_query_param, playbook_dispatcher_connection_status_path,
 )
 
-# Have to have our own here because we operate on the Host model directly
-os_name = 'system_profile__operating_system__name'
-os_major = 'system_profile__operating_system__major'
-os_minor = 'system_profile__operating_system__minor'
 system_sort_field_map = {
-    'os_version': [os_major, os_minor],
-    'os_name': os_name,
-    'os': [os_name, os_major, os_minor],
+    'os_version': ['os_major', 'os_minor'],
+    'os_name': 'os_name',
+    'os': ['os_name', 'os_major', 'os_minor'],
     'last_seen': 'updated',
-    'group_name': 'groups__0__name',
+    'group_name': 'workspace_name',
 }
 
 
@@ -212,7 +208,7 @@ def annotate_rhc_status(request, systems_page):
     """
     # Expected: a list of Host objects.
     logger.info("Annotating system RHC status on systems %s", str({
-        str(system.id): system.display_name
+        str(system.inventory_id): system.display_name
         for system in systems_page
     }))
     # Waiting on RHIN-1702 for Remediations to fix the problem where they
@@ -220,17 +216,17 @@ def annotate_rhc_status(request, systems_page):
     available_systems = set()
     for batch in batched(systems_page, 50):  # list of Host objects
         available_systems |= retrieve_pd_connected_systems(
-            request, [system.id for system in batch]
+            request, [system.inventory_id for system in batch]
         )
     # available_systems = retrieve_pd_connected_systems(
-    #     request, [system.id for system in systems_page]
+    #     request, [system.inventory_id for system in systems_page]
     # )
     logger.info(
         "Playbook Dispatcher says this set of systems is available: %s",
         available_systems
     )
     for system in systems_page:
-        system.connected = (str(system.id) in available_systems)
+        system.connected = (str(system.inventory_id) in available_systems)
     return systems_page
 
 
@@ -239,7 +235,8 @@ class SystemViewSet(ReadOnlyModelViewSet, PaginateMixin):
     List the systems that can execute tasks, or the task-related details for
     a single system.
     """
-    lookup_field = 'id'
+    lookup_field = 'inventory_id'
+    lookup_url_kwarg = 'id'
     pagination_class = CustomPageNumberPagination
     permission_classes = [OrgPermission, TasksRBACPermission]
     queryset = Host.objects.all()
@@ -280,7 +277,7 @@ class SystemViewSet(ReadOnlyModelViewSet, PaginateMixin):
             value_of_param(system_sort_query_param, request),
             system_sort_field_map,
             reverse_nulls_order=True
-        )) + ['id']  # Enforce a repeatable ordering just in case
+        )) + ['inventory_id']
         systems = self.get_queryset().filter(
             filter_on_host_tags(request, field_name='id'),
             filter_on_display_name(request),
@@ -295,6 +292,6 @@ class SystemViewSet(ReadOnlyModelViewSet, PaginateMixin):
         Retrieve a single system by Inventory UUID.
         """
         host = self.get_object()
-        connection_state = retrieve_pd_connected_systems(request, [host.id])
-        host.connected = (str(host.id) in connection_state)
+        connection_state = retrieve_pd_connected_systems(request, [host.inventory_id])
+        host.connected = (str(host.inventory_id) in connection_state)
         return Response(HostSerializer(host).data)

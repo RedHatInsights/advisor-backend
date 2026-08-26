@@ -123,7 +123,7 @@ class JobViewSet(ReadOnlyModelViewSet, PaginateMixin):
         """
         job = self.get_object()  # or 404
         # the job has to be in this org due to get_queryset()
-        log = JobLog.objects.filter(job=job)
+        log = JobLog.objects.filter(job=job).order_by('created_at', 'id')
         return self._paginated_response(log, request, serializer_class=JobLogSerializer)
 
     @extend_schema(responses={(200, "text/plain"): OpenApiTypes.STR})

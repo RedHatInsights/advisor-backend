@@ -192,7 +192,7 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
             value_of_param(system_sort_query_param, request),
             system_sort_field_map,
             reverse_nulls_order=True
-        )) + ['id']  # Enforce a repeatable ordering just in case
+        )) + ['inventory_id']
         systems = Host.objects.filter(
             apply_system_connected_filter(request),
             filter_on_host_tags(request, field_name='id'),
