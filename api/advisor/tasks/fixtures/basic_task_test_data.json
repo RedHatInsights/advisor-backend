@@ -149,7 +149,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -198,7 +199,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -239,7 +241,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -280,7 +283,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -321,7 +325,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -356,7 +361,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -418,7 +424,8 @@
       },
       "system_update_method": null,
       "workspace_id": "98765430-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -453,7 +460,8 @@
       },
       "system_update_method": null,
       "workspace_id": "99887760-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -494,7 +502,8 @@
       },
       "system_update_method": null,
       "workspace_id": "99887760-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {
@@ -532,7 +541,8 @@
       },
       "system_update_method": null,
       "workspace_id": "99887760-0000-0000-0000-000000000000",
-      "workspace_name": "Ungrouped Hosts"
+      "workspace_name": "Ungrouped Hosts",
+      "workspace_ungrouped": true
     }
   },
   {

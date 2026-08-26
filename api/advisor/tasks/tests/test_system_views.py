@@ -306,6 +306,17 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(data[4]['id'], constants.host_04_uuid)
         self.assertEqual(len(data), 5)
 
+        # Nested operating_system.name remaps to the flat os_name column
+        res = self.client.get(
+            reverse('tasks-system-list'),
+            data={'filter[system_profile][operating_system][name]': 'CentOS'},
+            **self.std_auth
+        )
+        self.assertEqual(res.status_code, 200, res.content.decode())
+        data = res.json()['data']
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['id'], constants.host_0b_uuid)
+
         # OS name filtering - single value
         res = self.client.get(
             reverse('tasks-system-list'),
@@ -363,6 +374,18 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(res.status_code, 200, res.content.decode())
         data = res.json()['data']
         self.assertEqual(len(data), 0)
+
+        # Empty groups= means ungrouped hosts (workspace_ungrouped=True)
+        res = self.client.get(reverse('tasks-system-list'), data={'groups': ''}, **self.std_auth)
+        self.assertEqual(res.status_code, 200, res.content.decode())
+        data = res.json()['data']
+        returned_ids = {host['id'] for host in data}
+        self.assertEqual(returned_ids, {
+            constants.host_04_uuid, constants.host_06_uuid,
+            constants.host_0b_uuid, constants.host_e1_uuid,
+        })
+        self.assertNotIn(constants.host_01_uuid, returned_ids)
+        self.assertNotIn(constants.host_03_uuid, returned_ids)
 
     def test_system_list_filtering_new_rhc_connection(self):
         from tasks.models import Host

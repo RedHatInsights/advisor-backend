@@ -417,6 +417,21 @@ class TaskViewTestCase(TestCase):
         hosts = res.json()['data']
         self.assertEqual(len(hosts), 0)
 
+        # Empty groups= means ungrouped hosts (workspace_ungrouped=True)
+        res = self.client.get(
+            reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
+            data={'groups': ''},
+            **self.std_auth)
+        self.assertEqual(res.status_code, 200, res.content.decode())
+        hosts = res.json()['data']
+        returned_ids = {host['id'] for host in hosts}
+        self.assertEqual(returned_ids, {
+            constants.host_04_uuid, constants.host_06_uuid,
+            constants.host_0b_uuid, constants.host_e1_uuid,
+        })
+        self.assertNotIn(constants.host_01_uuid, returned_ids)
+        self.assertNotIn(constants.host_03_uuid, returned_ids)
+
     def test_task_systems_requirements_bootc_image(self):
         update_stale_dates()
         # Note, the bootc image system is in the alternate account

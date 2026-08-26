@@ -254,6 +254,8 @@ def _remap_system_profile_parts_for_local(filter_parts):
             parts = ['os_major'] + parts[2:]
         elif parts[1] == 'minor':
             parts = ['os_minor'] + parts[2:]
+        elif parts[1] == 'name':
+            parts = ['os_name'] + parts[2:]
 
     return parts
 

@@ -126,6 +126,7 @@ class Host(models.Model):
     system_update_method = models.CharField(max_length=50, null=True, blank=True)
     workspace_id = models.UUIDField(null=True)
     workspace_name = models.CharField(max_length=200, null=True, blank=True)
+    workspace_ungrouped = models.BooleanField(null=True)
 
     @property
     def os_version(self):
