@@ -33,6 +33,7 @@ from tasks.views.executed_task import extask_sort_fields
 PLAYBOOK_DISPATCHER_URL = "http://localhost/internal/v2/dispatch"
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class ExecutedTaskViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing(user_opts={'is_org_admin': True})
@@ -1033,7 +1034,6 @@ class ExecutedTaskViewTestCase(TestCase):
         original_host = Host.objects.get(inventory_id=constants.host_01_uuid)
         # clone the original system 50 times
         for i in range(system_count):
-            original_host.pk = uuid.UUID(int=i)
             original_host.inventory_id = uuid.UUID(int=i)
             original_host.save()
 

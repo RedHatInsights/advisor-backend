@@ -254,6 +254,8 @@ def _remap_system_profile_parts_for_local(filter_parts):
             parts = ['os_major'] + parts[2:]
         elif parts[1] == 'minor':
             parts = ['os_minor'] + parts[2:]
+        elif parts[1] == 'name':
+            parts = ['os_name'] + parts[2:]
 
     return parts
 
@@ -369,8 +371,10 @@ def filter_multi_param(
             elif field_name in ('ansible', 'mssql'):
                 filter_parts = [filter_prefix, 'workloads'] + filter_parts[1:]
 
+        is_local_flat_field = False
         if use_local and filter_prefix == 'system_profile':
             filter_parts = _remap_system_profile_parts_for_local(filter_parts)
+            is_local_flat_field = filter_parts[0] != 'workloads'
 
         # Keep the filter prefix here though
         operator = filter_parts[-1]
@@ -382,7 +386,7 @@ def filter_multi_param(
         elif operator == 'ne':
             filter_not_equal = True
             filter_parts.pop()  # remove 'ne'
-        if use_contains_for_eq and operator in ('eq', 'ne'):
+        if use_contains_for_eq and not is_local_flat_field and operator in ('eq', 'ne'):
             # The new filter is: contains {the last filter field: value}
             filter_contains_field = filter_parts.pop()
             filter_parts.append('contains')

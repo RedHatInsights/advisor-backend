@@ -44,6 +44,7 @@ RHELAI_REQ = requirements['rhelai_image']['alert']
 NOT_RHELAI_REQ = requirements['not_rhelai_image']['alert']
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class TaskViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()
@@ -416,6 +417,21 @@ class TaskViewTestCase(TestCase):
         hosts = res.json()['data']
         self.assertEqual(len(hosts), 0)
 
+        # Empty groups= means ungrouped hosts (workspace_ungrouped=True)
+        res = self.client.get(
+            reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
+            data={'groups': ''},
+            **self.std_auth)
+        self.assertEqual(res.status_code, 200, res.content.decode())
+        hosts = res.json()['data']
+        returned_ids = {host['id'] for host in hosts}
+        self.assertEqual(returned_ids, {
+            constants.host_04_uuid, constants.host_06_uuid,
+            constants.host_0b_uuid, constants.host_e1_uuid,
+        })
+        self.assertNotIn(constants.host_01_uuid, returned_ids)
+        self.assertNotIn(constants.host_03_uuid, returned_ids)
+
     def test_task_systems_requirements_bootc_image(self):
         update_stale_dates()
         # Note, the bootc image system is in the alternate account
@@ -634,7 +650,6 @@ class TaskViewTestCase(TestCase):
         system01.os_name = None
         system01.os_major = None
         system01.os_minor = None
-        del system01.system_profile['operating_system']
         system01.save()
         res = self.client.get(
             reverse('tasks-task-systems', kwargs={'slug': 'log4shell'}),
@@ -746,6 +761,7 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(hosts[5]['connected'], False)
 
 
+@override_settings(READ_LOCAL_INVENTORY=True)
 class TaskInternalViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     ext_auth = auth_header_for_testing()

@@ -726,6 +726,48 @@ class MultiParamParsingTestCase(TestCase):
                 msg=f'Boolean filter failed for workload: {workload}',
             )
 
+    def test_local_operating_system_field_remap(self):
+        """
+        With use_local=True, nested operating_system JSON paths remap to
+        the flat AdvisorInventoryHost / tasks.Host columns.
+        """
+        self.assertEqual(
+            filter_multi_param(
+                self._make_request_obj(
+                    'filter[system_profile][operating_system][name]', 'RHEL'
+                ),
+                'system_profile', use_local=True
+            ),
+            Q(os_name='RHEL')
+        )
+        self.assertEqual(
+            filter_multi_param(
+                self._make_request_obj(
+                    'filter[system_profile][operating_system][name][eq_i]', 'centos'
+                ),
+                'system_profile', use_local=True
+            ),
+            Q(os_name__iexact='centos')
+        )
+        self.assertEqual(
+            filter_multi_param(
+                self._make_request_obj(
+                    'filter[system_profile][operating_system][major]', '7'
+                ),
+                'system_profile', use_local=True
+            ),
+            Q(os_major='7')
+        )
+        self.assertEqual(
+            filter_multi_param(
+                self._make_request_obj(
+                    'filter[system_profile][operating_system][minor][eq]', '5'
+                ),
+                'system_profile', use_local=True
+            ),
+            Q(os_minor=5)
+        )
+
 
 class FilterOnWorkloadTestCase(TestCase):
     """

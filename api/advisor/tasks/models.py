@@ -99,40 +99,22 @@ class ExecutedTaskParameter(models.Model):
 
 class Host(models.Model):
     """
-    A view of the Inventory table embedded in the Advisor database, which
-    allows us to get direct information from Inventory without having to
-    query it.
-
-    To clarify the use of the stale dates:
-      * the `stale_timestamp` date is the date after which the host is considered
-        **stale**.  After this time a warning will be shown that this host
-        is not updating
-      * the `stale_warning_timestamp` date is the date *before* which warnings will be
-        shown, and *after* which a host will be **hidden**.  After this time
-        the host will be excluded from all listings.
-      * at some point after that we expect the Inventory to issue a DELETE
-        message for this host and all its reports to be removed.  The host
-        record is left but is excluded because it does not have any current
-        uploads.
-
-    Therefore, the `stale_at` date is always **before** the `stale_warn_at`
-    date, and passes first.
+    An unmanaged model mapping to the advisor_inventory_host table, which
+    stores host data replicated from HBI via Kafka events.
     """
-    id = models.UUIDField(primary_key=True)
+    pk = models.CompositePrimaryKey("org_id", "inventory_id")
+    inventory_id = models.UUIDField()
     account = models.CharField(max_length=10, blank=True, null=True)
     org_id = models.CharField(max_length=50)
     display_name = models.CharField(max_length=200)
     tags = models.JSONField()
-    groups = models.JSONField()
     updated = models.DateTimeField()
     created = models.DateTimeField()
     last_check_in = models.DateTimeField()
     stale_timestamp = models.DateTimeField()
-    insights_id = models.UUIDField()  # the ID that the Insights client assigns itself.
-    system_profile = models.JSONField(default=dict)
-    reporter = models.CharField(max_length=200, default="puptoo")
+    insights_id = models.UUIDField()
+    reporter = models.CharField(max_length=200, default='puptoo')
     per_reporter_staleness = models.JSONField(default=dict)
-    inventory_id = models.UUIDField(null=True)
     os_name = models.CharField(max_length=50, null=True, blank=True)
     os_major = models.IntegerField(null=True)
     os_minor = models.IntegerField(null=True)
@@ -144,45 +126,39 @@ class Host(models.Model):
     system_update_method = models.CharField(max_length=50, null=True, blank=True)
     workspace_id = models.UUIDField(null=True)
     workspace_name = models.CharField(max_length=200, null=True, blank=True)
+    workspace_ungrouped = models.BooleanField(null=True)
 
     @property
     def os_version(self):
-        "Helper to display OS version from Inventory"
-        profile = self.system_profile
-        if 'operating_system' not in profile:
-            return "Unknown operating system"
-        os_details = profile['operating_system']
-        if 'name' not in os_details:
-            return "Unknown OS name"
-        if 'major' in os_details and 'minor' in os_details:
-            return f"{os_details['name']} {os_details['major']}.{os_details['minor']}"
-        elif 'major' in os_details:
-            return f"{os_details['name']} {os_details['major']}"
+        if self.os_name and self.os_major is not None and self.os_minor is not None:
+            return f"{self.os_name} {self.os_major}.{self.os_minor}"
+        elif self.os_name and self.os_major is not None:
+            return f"{self.os_name} {self.os_major}"
+        elif self.os_name:
+            return f"Unknown {self.os_name} version"
         else:
-            return f"Unknown {os_details['name']} version"
+            return "Unknown operating system"
 
     @staticmethod
     def tag_query(tag_key):
         """
-        This returns an expression that allows you to query a tag value from a host given its key.
-        There's probably a more django way to do this without raw sql but this is much easier.
-        https://stackoverflow.com/questions/58094851/lateral-join-in-django-queryset-in-order-to-use-jsonb-to-recordset-postgresql-f
+        Returns an expression that queries a tag value from a host given its key.
         """
         raw_sql = """
         SELECT tag.val ->> 'value' AS tag_value
-        FROM inventory.hosts t
+        FROM advisor_inventory_host t
                 JOIN LATERAL JSONB_ARRAY_ELEMENTS(t.tags) tag(val)
                     ON tag.val ->> 'namespace' = 'satellite' AND tag.val ->> 'key' = %s
-        WHERE t.id = "inventory"."hosts".id
+        WHERE t.inventory_id = "advisor_inventory_host".inventory_id
         """
         return RawSQL(raw_sql, [tag_key])
 
     def __str__(self):
-        return f"{self.display_name} ({self.id})"
+        return f"{self.display_name} ({self.inventory_id})"
 
     class Meta:
         managed = False
-        db_table = '"inventory"."hosts"'
+        db_table = 'advisor_inventory_host'
 
 
 class JobManager(models.Manager):
@@ -206,7 +182,7 @@ class JobManager(models.Manager):
                     then=models.Value('none'),
                 ),
                 models.When(
-                    system__system_profile__rhc_client_id__isnull=False,
+                    system__rhc_client_id__isnull=False,
                     then=models.Value('direct'),
                 ),
                 default=models.Value('satellite'),
@@ -228,7 +204,7 @@ class Job(models.Model):
     executed_task = models.ForeignKey('ExecutedTask', on_delete=models.CASCADE)
     system_id = models.UUIDField()
     system = Relationship(
-        'Host', from_fields=['system_id'], to_fields=['id'],
+        'Host', from_fields=['system_id'], to_fields=['inventory_id'],
         related_name='jobs'
     )
     status = models.PositiveSmallIntegerField(choices=JobStatusChoices.choices)
