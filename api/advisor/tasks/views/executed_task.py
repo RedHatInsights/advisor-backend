@@ -483,7 +483,7 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         # to make sure that the recipients we send to are in the same order
         # as our query here, we don't group systems by Satellite.
         hosts = Host.objects.filter(
-            get_host_group_filter(request, use_local=True),
+            get_host_group_filter(request),
             org_id=self.request.auth['org_id'],
             inventory_id__in=validated_data['hosts'],
         ).annotate(
@@ -598,8 +598,8 @@ class ExecutedTaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
             jobs_sort_field_map
         )) + ['id']  # Enforce a repeatable ordering just in case
         jobs = Job.objects.select_related('system').filter(
-            filter_on_host_tags(request, field_name='system_id', use_local=True),
-            get_host_group_filter(request, relation='system', use_local=True),
+            filter_on_host_tags(request, field_name='system_id'),
+            get_host_group_filter(request, relation='system'),
             filter_on_display_name(request, relation='system'),
             filter_on_os_version(request, relation='system'),
             filter_on_param(

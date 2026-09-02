@@ -33,7 +33,7 @@ from api.filters import (
 from api.models import Pathway, Resolution
 from api.permissions import InsightsRBACPermission, ResourceScope
 from api.serializers import (
-    PathwaySerializer, SystemSerializer, get_system_serializer,
+    PathwaySerializer, SystemSerializer,
     RuleForAccountSerializer, RuleSystemsExportSerializer,
 )
 from api.utils import (
@@ -260,7 +260,7 @@ class PathwayViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             filter_on_text_system(request)
         ).order_by('display_name')
         return self._paginated_response(impacted_systems, request,
-                                        serializer_class=get_system_serializer())
+                                        serializer_class=SystemSerializer)
 
     @extend_schema(
         parameters=[

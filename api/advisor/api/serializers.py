@@ -21,7 +21,6 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 
 from api import models
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 
 def existing_rule_id_validator(rule_id):
@@ -30,15 +29,12 @@ def existing_rule_id_validator(rule_id):
 
 
 def existing_host_id_validator(host_id):
-    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-        if not models.AdvisorInventoryHost.objects.filter(
-            inventory_id=host_id
-        ).exists():
-            raise serializers.ValidationError(
-                f"Host with UUID '{host_id}' not found"
-            )
-    elif not models.InventoryHost.objects.filter(pk=host_id).exists():
-        raise serializers.ValidationError(f"Host with UUID '{host_id}' not found")
+    if not models.AdvisorInventoryHost.objects.filter(
+        inventory_id=host_id
+    ).exists():
+        raise serializers.ValidationError(
+            f"Host with UUID '{host_id}' not found"
+        )
 
 
 ##############################################################################
@@ -422,9 +418,7 @@ class HostAckSerializer(serializers.ModelSerializer):
     display_name = serializers.SerializerMethodField()
 
     def get_display_name(self, obj) -> str | None:
-        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-            return getattr(obj.host.advisor_inventory, 'display_name', None)
-        return getattr(obj.host.inventory, 'display_name', None)
+        return getattr(obj.host.advisor_inventory, 'display_name', None)
 
     class Meta:
         model = models.HostAck
@@ -480,14 +474,9 @@ def validate_hosts_in_org(hosts, org_id, field_name='systems'):
     Check that the hosts given exist, and they are in this org.  We need to
     not distinguish between the two to avoid leaking that a host UUID exists.
     """
-    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-        valid_hosts = set(models.AdvisorInventoryHost.objects.filter(
-            org_id=org_id, inventory_id__in=hosts
-        ).values_list('inventory_id', flat=True))
-    else:
-        valid_hosts = set(models.InventoryHost.objects.filter(
-            org_id=org_id, id__in=hosts
-        ).values_list('id', flat=True))
+    valid_hosts = set(models.AdvisorInventoryHost.objects.filter(
+        org_id=org_id, inventory_id__in=hosts
+    ).values_list('inventory_id', flat=True))
     nonexistent_hosts = {
         str(row): [f"Host with UUID '{str(system_uuid)}' not found"]
         for row, system_uuid in enumerate(hosts)
@@ -773,10 +762,7 @@ class SystemsForRuleSerializer(serializers.Serializer):
 
 
 class SystemSerializer(serializers.ModelSerializer):
-    # Fields now based on InventoryHost
-    # source='id' for compatibility with both InventoryHost (id is the UUID PK)
-    # and AdvisorInventoryHost (id is a property returning inventory_id)
-    system_uuid = serializers.UUIDField(source='id')
+    system_uuid = serializers.UUIDField(source='inventory_id')
     hits = serializers.IntegerField(read_only=True)
     last_seen = serializers.DateTimeField(read_only=True, allow_null=True)
     stale_at = serializers.DateTimeField(source='stale_timestamp', read_only=True)
@@ -787,12 +773,15 @@ class SystemSerializer(serializers.ModelSerializer):
     incident_hits = serializers.IntegerField(read_only=True)
     all_pathway_hits = serializers.IntegerField(read_only=True)
     pathway_filter_hits = serializers.IntegerField(read_only=True)
-    os_name = serializers.CharField(read_only=True)
+    os_name = serializers.SerializerMethodField()
     rhel_version = serializers.CharField(read_only=True)
     group_name = serializers.CharField(allow_null=True, read_only=True)
 
+    def get_os_name(self, obj):
+        return obj.os_name or "Unknown operating system"
+
     class Meta:
-        model = models.InventoryHost
+        model = models.AdvisorInventoryHost
         fields = (
             'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
@@ -811,38 +800,6 @@ class SystemsDetailSerializer(SystemSerializer):
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
             'os_name', 'rhel_version', 'impacted_date'
         )
-
-
-class AdvisorSystemSerializer(SystemSerializer):
-    os_name = serializers.SerializerMethodField()
-
-    def get_os_name(self, obj):
-        return obj.os_name or "Unknown operating system"
-
-    class Meta(SystemSerializer.Meta):
-        model = models.AdvisorInventoryHost
-
-
-class AdvisorSystemsDetailSerializer(SystemsDetailSerializer):
-    os_name = serializers.SerializerMethodField()
-
-    def get_os_name(self, obj):
-        return obj.os_name or "Unknown operating system"
-
-    class Meta(SystemsDetailSerializer.Meta):
-        model = models.AdvisorInventoryHost
-
-
-def get_system_serializer():
-    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-        return AdvisorSystemSerializer
-    return SystemSerializer
-
-
-def get_systems_detail_serializer():
-    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-        return AdvisorSystemsDetailSerializer
-    return SystemsDetailSerializer
 
 
 class UploadSerializer(serializers.ModelSerializer):

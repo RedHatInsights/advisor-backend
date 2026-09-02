@@ -37,10 +37,9 @@ from api.filters import (
     topic_query_param, filter_on_topic, update_method_query_param,
 )
 from api.models import (
-    AdvisorInventoryHost, InventoryHost, Playbook, Resolution, Rule, Tag,
+    AdvisorInventoryHost, Playbook, Resolution, Rule, Tag,
     Upload, get_reports_subquery,
 )
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 from api.permissions import ResourceScope
 from api.serializers import (
     ExportHitsSerializer, RuleExportSerializer, ReportExportSerializer,
@@ -249,31 +248,6 @@ hits_common_params = [
 
 def transform_hits(report):
     return {
-        'hostname': report['inventory__display_name'],
-        'rhel_version': InventoryHost.get_rhel_version(
-            report['inventory__system_profile']
-        ),
-        'uuid': str(report['host_id']),
-        'last_seen': report['last_upload'].isoformat(),
-        'title': report['rule__description'],
-        'solution_url': (
-            f"https://access.redhat.com/node/{report['rule__node_id']}"
-            if report['rule__node_id'] else ''
-        ),
-        'total_risk': report['rule__total_risk'],
-        'likelihood': report['rule__likelihood'],
-        'publish_date': report['rule__publish_date'].isoformat(),
-        'stale_at': report['inventory__per_reporter_staleness__puptoo__stale_timestamp'],
-        'results_url': "{base}/{rule_id}/{sys_id}/".format(
-            base='https://console.redhat.com/insights/advisor/recommendations',
-            rule_id=report['rule__rule_id'].replace('|', '%7C'),
-            sys_id=report['host_id']
-        )
-    }
-
-
-def transform_hits_local(report):
-    return {
         'hostname': report['advisor_inventory__display_name'],
         'rhel_version': AdvisorInventoryHost.get_rhel_version_from_flat(
             report['advisor_inventory__os_major'],
@@ -318,8 +292,7 @@ class HitsViewSet(ExportViewSet):
         the hosts. The accepted content type supplied in the request headers
         is used to determine the supplied content type.
         """
-        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
-        inv_relation = 'advisor_inventory' if use_local else 'inventory'
+        inv_relation = 'advisor_inventory'
 
         last_seen_upload_qs = Upload.objects.filter(
             host_id=OuterRef('host_id'), source_id=1, current=True
@@ -337,22 +310,14 @@ class HitsViewSet(ExportViewSet):
             'rule__category__name', 'host_id', 'last_upload',
             'rule__reboot_required',
         ]
-        if use_local:
-            inv_value_fields = [
-                f'{inv_relation}__updated',
-                f'{inv_relation}__per_reporter_staleness__puptoo__stale_timestamp',
-                f'{inv_relation}__display_name',
-                f'{inv_relation}__os_major',
-                f'{inv_relation}__os_minor',
-                f'{inv_relation}__os_name',
-            ]
-        else:
-            inv_value_fields = [
-                'inventory__updated',
-                'inventory__per_reporter_staleness__puptoo__stale_timestamp',
-                'inventory__display_name',
-                'inventory__system_profile',
-            ]
+        inv_value_fields = [
+            f'{inv_relation}__updated',
+            f'{inv_relation}__per_reporter_staleness__puptoo__stale_timestamp',
+            f'{inv_relation}__display_name',
+            f'{inv_relation}__os_major',
+            f'{inv_relation}__os_minor',
+            f'{inv_relation}__os_name',
+        ]
 
         reports = reports.values(*rule_value_fields, *inv_value_fields)
 
@@ -372,9 +337,8 @@ class HitsViewSet(ExportViewSet):
                 filter_on_topic(request, relation='rule'),
             )
 
-        hits_transformer = transform_hits_local if use_local else transform_hits
         return self.stream_response(
-            reports, 'hits', hits_transformer, format
+            reports, 'hits', transform_hits, format
         )
 
 
@@ -473,17 +437,11 @@ class SystemsViewSet(ExportViewSet):
     renderer_classes = (JSONRenderer, SystemsCSVRenderer, )
     serializer_class = SystemSerializer
 
-    def get_serializer_class(self):
-        from api.serializers import get_system_serializer
-        return get_system_serializer()
-
     @extend_schema(
         parameters=systems_common_parameters,
     )
     def list(self, request, format=None):
-        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
-        id_field = 'inventory_id' if use_local else 'id'
-        host_id_ref = OuterRef('inventory_id') if use_local else OuterRef('id')
+        host_id_ref = OuterRef('inventory_id')
 
         sort = value_of_param(systems_sort_query_param, request)
         rule_id_value = value_of_param(rule_id_query_param, request)
@@ -497,10 +455,10 @@ class SystemsViewSet(ExportViewSet):
         systems = get_systems_queryset(request).filter(
             Q(display_name__icontains=display_name_value) if display_name_value else Q(),
             Exists(reports) if rule_id_value else Q()
-        ).order_by(sort, id_field)
+        ).order_by(sort, 'inventory_id')
         return self.stream_response(
             systems, 'systems',
-            transformer=make_serializer_transform(self.get_serializer_class()),
+            transformer=make_serializer_transform(SystemSerializer),
             format=format,
         )
 

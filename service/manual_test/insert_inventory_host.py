@@ -15,7 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 """
-Utility to insert a host dict into the local inventory.hosts_table.
+Utility to upsert a host dict into AdvisorInventoryHost.
 
 Usage from another script:
     from insert_inventory_host import insert_host
@@ -38,80 +38,80 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "project_settings.settings")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'api', 'advisor'))
 django.setup()
 
-import psycopg2
-from psycopg2.extras import Json
-from django.conf import settings
+from django.utils.dateparse import parse_datetime  # noqa: E402
+from api.models import AdvisorInventoryHost  # noqa: E402
 
-_db = settings.DATABASES['default']
-DB_HOST = _db['HOST']
-DB_PORT = _db['PORT'] or '5432'
-DB_NAME = _db['NAME']
-DB_USER = _db['USER']
-DB_PASSWORD = _db['PASSWORD']
+
+def _parse_dt(value, default):
+    if value is None:
+        return default
+    if isinstance(value, datetime):
+        return value
+    parsed = parse_datetime(value)
+    return parsed if parsed is not None else default
 
 
 def insert_host(host_data):
-    """Insert or update a host in inventory.hosts_table.
+    """Insert or update a host in advisor_inventory_host.
 
     Args:
         host_data: dict with at least 'id', 'org_id', and 'display_name'.
     """
     now = datetime.now(timezone.utc)
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
-            user=DB_USER, password=DB_PASSWORD
-        )
-    except psycopg2.OperationalError as e:
-        print(f"Could not connect to database: {e}")
-        print(f"Cannot insert host {host_data['display_name']} into inventory.hosts_table and so the API can't display it.")
-        return
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO inventory.hosts_table (
-                    id, account, org_id, display_name, tags, groups,
-                    updated, created, last_check_in, stale_timestamp,
-                    system_profile, reporter, per_reporter_staleness,
-                    insights_id
-                ) VALUES (
-                    %(id)s, %(account)s, %(org_id)s, %(display_name)s,
-                    %(tags)s, %(groups)s, %(updated)s, %(created)s,
-                    %(last_check_in)s, %(stale_timestamp)s,
-                    %(system_profile)s, %(reporter)s,
-                    %(per_reporter_staleness)s, %(insights_id)s
-                )
-                ON CONFLICT (id) DO UPDATE SET
-                    display_name = EXCLUDED.display_name,
-                    tags = EXCLUDED.tags,
-                    groups = EXCLUDED.groups,
-                    updated = EXCLUDED.updated,
-                    stale_timestamp = EXCLUDED.stale_timestamp,
-                    system_profile = EXCLUDED.system_profile,
-                    reporter = EXCLUDED.reporter,
-                    per_reporter_staleness = EXCLUDED.per_reporter_staleness
-            """, {
-                'id': host_data['id'],
-                'account': host_data.get('account'),
-                'org_id': host_data['org_id'],
-                'display_name': host_data['display_name'],
-                'tags': Json(host_data.get('tags', [])),
-                'groups': Json(host_data.get('groups', [])),
-                'updated': host_data.get('updated') or now,
-                'created': host_data.get('created') or now,
-                'last_check_in': now,
-                'stale_timestamp': host_data.get('stale_timestamp') or now,
-                'system_profile': Json(host_data.get('system_profile', {})),
-                'reporter': host_data.get('reporter', 'puptoo'),
-                'per_reporter_staleness': Json(
-                    host_data.get('per_reporter_staleness', {})
-                ),
-                'insights_id': host_data.get('insights_id'),
-            })
-        conn.commit()
-        print(f"Host {host_data['id']} inserted into inventory.hosts_table")
-    finally:
-        conn.close()
+    sp = host_data.get('system_profile') or {}
+    if not isinstance(sp, dict):
+        sp = {}
+    os_info = sp.get('operating_system', {})
+    if not isinstance(os_info, dict):
+        os_info = {}
+    groups = host_data.get('groups') or []
+    g0 = groups[0] if groups else {}
+    if not isinstance(g0, dict):
+        g0 = {}
+    bootc = sp.get('bootc_status', {})
+    bootc_booted = bootc.get('booted', {}) if isinstance(bootc, dict) else {}
+    if not isinstance(bootc_booted, dict):
+        bootc_booted = {}
+    workloads = sp.get('workloads', {})
+    workloads = workloads if isinstance(workloads, dict) else {}
+
+    host_id = host_data['id']
+    org_id = host_data['org_id']
+    AdvisorInventoryHost.objects.update_or_create(
+        inventory_id=host_id,
+        org_id=org_id,
+        defaults={
+            'account': host_data.get('account'),
+            'display_name': host_data['display_name'],
+            'tags': host_data.get('tags', []),
+            'workspace_id': g0.get('id'),
+            'workspace_name': g0.get('name'),
+            'workspace_ungrouped': g0.get('ungrouped'),
+            'updated': _parse_dt(host_data.get('updated'), now),
+            'created': _parse_dt(host_data.get('created'), now),
+            'last_check_in': now,
+            'stale_timestamp': _parse_dt(host_data.get('stale_timestamp'), now),
+            'insights_id': host_data.get('insights_id'),
+            'reporter': host_data.get('reporter', 'puptoo'),
+            'per_reporter_staleness': host_data.get('per_reporter_staleness') or {},
+            'os_name': os_info.get('name'),
+            'os_major': os_info.get('major'),
+            'os_minor': os_info.get('minor'),
+            'host_type': sp.get('host_type'),
+            'bootc_booted_image': bootc_booted.get('image'),
+            'bootc_booted_image_digest': bootc_booted.get('image_digest'),
+            'owner_id': sp.get('owner_id') or None,
+            'rhc_client_id': sp.get('rhc_client_id') or None,
+            'workloads': workloads,
+            'system_update_method': sp.get('system_update_method'),
+            'infrastructure_type': sp.get('infrastructure_type'),
+            'bios_release_date': sp.get('bios_release_date'),
+            'bios_vendor': sp.get('bios_vendor'),
+            'bios_version': sp.get('bios_version'),
+            'release': sp.get('release'),
+        },
+    )
+    print(f"Host {host_id} upserted into advisor_inventory_host")
 
 
 if __name__ == '__main__':

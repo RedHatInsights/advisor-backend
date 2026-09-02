@@ -77,7 +77,7 @@ if groups:
     host_data['groups'] = groups
     print(f'Host groups: {groups}')
 
-# Insert the host into inventory.hosts_table so the API can find it
+# Insert the host into advisor_inventory_host so the API can find it
 insert_host(host_data)
 
 

@@ -459,7 +459,7 @@ def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
 
 
 class Command(BaseCommand):
-    help = "Manage InventoryHost table replication from Inventory Event messages"
+    help = "Replicate host data from Inventory events into AdvisorInventoryHost"
 
     def handle(self, *args, **options):
         """

@@ -44,7 +44,7 @@ def string_to_bool(s):
 APP_NAME = "insights-advisor-api"
 
 # Use unittest-xml-reporting for test runs
-TEST_RUNNER = 'project_settings.testrunner.CyndiTestRunner'
+TEST_RUNNER = 'xmlrunner.extra.djangotestrunner.XMLTestRunner'
 TEST_OUTPUT_DIR = './test_reports'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)

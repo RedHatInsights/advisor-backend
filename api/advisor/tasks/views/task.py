@@ -95,7 +95,8 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         playbook = yaml.safe_load(task.playbook)[0]
         playbook_content_changed = False
 
-        #  Since cyndi doesn't syndicate ansible_host and fqdn, we need to reach out to the inventory.
+        # ansible_host and fqdn are not stored on AdvisorInventoryHost, so
+        # look them up from Inventory when generating a per-host playbook.
         if inventory_id:
             (response, elapsed) = retry_request(
                 'Inventory', settings.INVENTORY_SERVER_URL + '/hosts/' + inventory_id,
@@ -195,9 +196,9 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
         )) + ['inventory_id']
         systems = Host.objects.filter(
             apply_system_connected_filter(request),
-            filter_on_host_tags(request, field_name='inventory_id', use_local=True),
-            filter_multi_param(request, 'system_profile', use_local=True),
-            get_host_group_filter(request, use_local=True),
+            filter_on_host_tags(request, field_name='inventory_id'),
+            filter_multi_param(request, 'system_profile'),
+            get_host_group_filter(request),
             system_requirements_filter(request, task),
             filter_on_display_name(request),
             filter_on_os_version(request), filter_on_os_name(request), filter_on_os(request),
