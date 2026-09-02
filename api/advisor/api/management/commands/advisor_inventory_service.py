@@ -29,9 +29,6 @@ from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 
 from advisor_logging import logger
-from feature_flags import (
-    feature_flag_is_enabled, FLAG_ENABLE_INVENTORY_REPLICATION
-)
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 
 from kafka_utils import JsonValue, KafkaDispatcher
@@ -167,13 +164,6 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
     """
     Handle a batch of inventory events.
     """
-    if not feature_flag_is_enabled(FLAG_ENABLE_INVENTORY_REPLICATION):
-        logger.info(
-            "Received %d Inventory events - feature flag not enabled, ignoring",
-            len(messages)
-        )
-        return
-
     logger.info("Processing batch of %d inventory events", len(messages))
 
     upserts: list[ParsedInventoryHost] = []

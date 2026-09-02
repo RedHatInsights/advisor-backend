@@ -131,7 +131,7 @@ def source_types_reply():
     }
 
 
-@override_settings(SOURCES_API_URL='http://localhost', READ_LOCAL_INVENTORY=True)
+@override_settings(SOURCES_API_URL='http://localhost')
 class TaskSatTrackingTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()
