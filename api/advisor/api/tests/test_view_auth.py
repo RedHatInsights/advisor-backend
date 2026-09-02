@@ -24,7 +24,7 @@ from django.urls import reverse
 from rest_framework.exceptions import AuthenticationFailed
 
 from api.kessel import add_kessel_response
-from api.models import InventoryHost
+from api.models import AdvisorInventoryHost
 
 from api.permissions import (
     AssociatePermission, BaseAssociatePermission, BaseRedHatUserPermission,
@@ -818,7 +818,7 @@ class TestInsightsRBACPermissionKessel(TestCase):
 
         # And then they would call has_object_permission, so let's exercise
         # that.
-        host = InventoryHost.objects.get(id=constants.host_01_uuid)
+        host = AdvisorInventoryHost.objects.get(inventory_id=constants.host_01_uuid)
         # If Kessel is not enabled this should always return True
         with self.settings(KESSEL_ENABLED=False):
             self.assertTrue(irbp.has_object_permission(request, view, host))
