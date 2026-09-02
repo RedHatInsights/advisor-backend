@@ -45,18 +45,13 @@ This function:
 - Create, update and delete the CurrentReports to match the incoming reports.
 - If notifications is configured, send these reports to Notifications.
 
-## Interaction with Cyndi and Kafka
+## Interaction with Inventory and Kafka
 
-In the ingress pipeline, at the point where the Host Inventory process sends a
-Kafka message that it has received an upload for a host, the Cyndi operator is
-supposed to then send a message to the Cyndi process within Advisor, which is
-then supposed to add this host to the InventoryHost database. However, in some
-instances Cyndi's processes can lag - in rare instances up to several hours.
-This may mean that the Advisor service receives engine results for a new host
-before that host's record appears in the InventoryHost table.
-
-For this reason (and other historic ones), Uploads and CurrentReports use the
-Host record, which we control directly, as a foreign key.
+The Advisor service can receive engine results for a host before that host
+has been written to `AdvisorInventoryHost` (inventory events and engine
+results arrive on different Kafka topics). For this reason (and other
+historic ones), Uploads and CurrentReports use the Host record, which we
+control directly, as a foreign key.
 
 # Set up
 

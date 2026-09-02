@@ -100,23 +100,17 @@ sending a 'delete' notification) from cluttering up the database.
 
 ## Data syndication
 
-Advisor's database does not have direct access to the Inventory database (yet).
-Instead, the 'Cyndi' process syndicates updates to the Inventory 'hosts' table
-to Advisor - this also selects the data that Advisor sees about that host.
-This data is put into a background table that Advisor cannot change directly;
-Advisor instead uses the `inventory.hosts` view to access the data.
-
-In the near future, we intend to move to our own data replication system based
-on reading the host creation and update events from Inventory directly.  This
-means that Advisor would be able to directly write to the InventoryHost model
-and its underlying table.  This gives several advantage - faster updates,
-fewer containers running, and more flexibility in how Advisor works.
+Advisor's database does not have direct access to the Inventory database.
+Instead, the `advisor_inventory_service` Kafka consumer reads host creation,
+update, and delete events from HBI (`platform.inventory.events`) and writes
+them into the local `AdvisorInventoryHost` table (`advisor_inventory_host`).
+API, service, and Tasks query that table for system data.
 
 ## Inventory Event Consumer
 
 The `advisor_inventory_service` management command (`api/advisor/api/management/commands/advisor_inventory_service.py`) runs a Kafka consumer that replicates host data from the Host-Based Inventory (HBI) service into Advisor's own `AdvisorInventoryHost` and `Host` tables. It consumes messages from the `platform.inventory.events` topic in configurable batches (controlled by the `INVENTORY_BATCH_SIZE` setting).
 
-The consumer is gated by the `advisor.enable_inventory_replication` feature flag (`FLAG_ENABLE_INVENTORY_REPLICATION`). When the flag is disabled (and the `ENABLE_INVENTORY_REPLICATION` env var fallback is also `false`), incoming events are logged and discarded.
+Incoming events are always processed.
 
 ### How it works
 
@@ -266,9 +260,9 @@ content repository's `config.yaml` file, get written into the container image.
 
 ### System data
 
-System data is primarily stored in the `InventoryHost` model using the
-'Cyndi' process mentioned above.  We also use a `Host` model to keep track of
-data that the Inventory table does not, such as Satellite IDs.
+System data is primarily stored in the `AdvisorInventoryHost` model, populated
+from HBI Kafka events as described above.  We also use a `Host` model to keep
+track of data that the Inventory table does not, such as Satellite IDs.
 
 Each time a system runs `insights-client` we store each individual result in
 the `CurrentReport` model.  Zero or more reports are grouped together into an
@@ -402,8 +396,7 @@ users can see.  For testing this is normally disabled as well.
 
 | Flag | Constant | Description |
 |------|----------|-------------|
-| `advisor.enable_inventory_replication` | `FLAG_ENABLE_INVENTORY_REPLICATION` | Gates the Kafka consumer that replicates host data from HBI into the local `AdvisorInventoryHost` table. Falls back to the `ENABLE_INVENTORY_REPLICATION` env var when Unleash is unavailable. |
-| `advisor.read_local_inventory` | `FLAG_READ_LOCAL_INVENTORY` | When enabled, the service webhook and API read paths query the local `AdvisorInventoryHost` table instead of the Cyndi `inventory.hosts` view (`InventoryHost`). |
+| `advisor.kessel_enabled` | `FLAG_ADVISOR_KESSEL_ENABLED` | When enabled, authorization checks go through Kessel (gRPC) instead of the RBAC REST service. |
 
 ## Monitoring/Observability
 
@@ -422,11 +415,6 @@ users can see.  For testing this is normally disabled as well.
 
 - `MAIL_HOST` - Default: `mail.corp.redhat.com`
 - `DEFAULT_FROM_EMAIL` - Default: `Red Hat Hybrid Cloud Console <noreply@redhat.com>`
-
-## Inventory Event Replication settings
-
-- `ENABLE_INVENTORY_REPLICATION` - Fallback for the `advisor.enable_inventory_replication`
-  Unleash feature flag when Unleash is unavailable. Default: `False`.
 
 ## Host-Based Inventory (HBI) Settings
 
@@ -491,20 +479,6 @@ These are the actual topics read and written to when we use Kafka
 - `ENABLE_AUTOSUB` - Default: `false`
 
 # Notes
-
-## Cyndi Considerations
-
-If advisor is running a real OpenShift environment, the cyndi table/view are
-expected to be created outside of advisor. If you are running advisor
-locally, you may need to mock this out. This can be accomplished with the
-following command:
-
-```
-python api/advisor/manage.py mock_cyndi_table
-```
-
-The tests automatically run this command.  It is only applicable if you are
-running advisor standalone.
 
 ## Updating Host Stale Timestamps
 
@@ -583,7 +557,6 @@ Populate the DB (if this is the first time running).
 ... or manually run the following commands (which are mostly in the container_init_localdev.sh script):
 ```bash
 python api/advisor/manage.py migrate
-python api/advisor/manage.py mock_cyndi_table
 python api/advisor/manage.py loaddata rulesets rule_categories system_types \
        upload_sources basic_test_data basic_task_test_data
 ```
@@ -700,7 +673,6 @@ The following items would improve the README documentation:
 - [X] Clarify the relationship between API and Service (when to run each, how they interact)
 - [X] Document external dependencies:
   - What is the Inventory database and where is it?
-  - What is Cyndi exactly? (service? process? library?)
   - Location of insights-content and insights-playbooks repositories
 - [X] Add production authentication/authorization flow explanation
   - This is mainly done in the API readme.

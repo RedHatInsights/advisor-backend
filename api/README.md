@@ -93,7 +93,6 @@ You can also run Advisor from the host.  Here's how ...
     ```bash
     $ api/advisor/manage.py migrate
     $ api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources
-    $ api/advisor/manage.py mock_cyndi_table
     $ api/advisor/manage.py loaddata basic_test_data
     $ api/advisor/manage.py freshen_hosts
     ```
@@ -165,7 +164,7 @@ The system's `last_seen` date is drawn from Advisor's own `Upload` model,
 which stores the `checked_on` date from when this system last actually
 performed an upload that went into Advisor.
 
-The InventoryHost model controls this using a filter applied in the
+The AdvisorInventoryHost model controls this using a filter applied in the
 `for_account` manager method.  This makes sure that hosts that are currently
 stale according to Puptoo are always filtered out.
 
@@ -360,9 +359,9 @@ section.
 
 In the case of system-specific filters, there are actually two types of
 underlying Django query that we use to display lists of systems.  The obvious
-one is via the `InventoryHost` model, where we can build queries based on
+one is via the `AdvisorInventoryHost` model, where we can build queries based on
 the system fields directly.  The queryset for these views will be based on
-either the `InventoryHost.objects.for_account(request)` manager method, which
+either the `AdvisorInventoryHost.objects.for_account(request)` manager method, which
 implements basic org_id and other filtering, or the 
 `get_systems_queryset(request)` function in `api.models`, which implements a
 lot more filtering.
@@ -374,7 +373,7 @@ function in `api.models`.  This will be important later :-)
 
 This means that it's good practice for our 'role' filter function to take a
 `relation` argument, which allows the caller to specify the relation to the
-`InventoryHost` model.  This is the purpose of the `base_parameter` variable
+`AdvisorInventoryHost` model.  This is the purpose of the `base_parameter` variable
 and the kwargs manipulation in the `Q()` object creation:
 
 ```py
@@ -1028,9 +1027,9 @@ from django.core.serializers.json import DjangoJSONEncoder
 qs = CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id', 'impacted_date')
 print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 
-# See the host with display_name from InventoryHost (via the inventory FK)
+# See the host with display_name from AdvisorInventoryHost
 from django.db.models import F
-qs = Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').annotate(display_name=F('inventory__display_name')).values()
+qs = Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').annotate(display_name=F('advisor_inventory__display_name')).values()
 print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 ```
 
