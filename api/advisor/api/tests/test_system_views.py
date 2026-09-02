@@ -23,10 +23,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from api import kessel
-from api.models import Ack, InventoryHost, Upload
+from api.models import Ack, AdvisorInventoryHost, Upload
 from api.permissions import auth_header_for_testing, make_rbac_url
-from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
-from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
+from api.tests import constants, update_stale_dates
 
 
 TEST_RBAC_URL = 'http://rbac.svc'
@@ -158,27 +157,35 @@ class SystemViewTestCase(TestCase):
         Test different failure modes in retrieving the os_name and version.
         """
         # First test the properties and static methods directly
-        # No operating_system structure at all
-        host_01 = InventoryHost.objects.get(id=constants.host_01_uuid)
-        del host_01.system_profile['operating_system']
+        # No OS fields at all
+        host_01 = AdvisorInventoryHost.objects.get(inventory_id=constants.host_01_uuid)
+        host_01.os_name = None
+        host_01.os_major = None
+        host_01.os_minor = None
         host_01.save()
-        self.assertEqual(host_01.os_name, 'Unknown operating system')
+        self.assertIsNone(host_01.os_name)
         self.assertEqual(host_01.rhel_version, 'Unknown system version')
-        # operating_system structure but with no name, no version
-        host_03 = InventoryHost.objects.get(id=constants.host_03_uuid)
-        host_03.system_profile['operating_system'] = {'foo': 'bar'}
+        # OS fields present but empty
+        host_03 = AdvisorInventoryHost.objects.get(inventory_id=constants.host_03_uuid)
+        host_03.os_name = None
+        host_03.os_major = None
+        host_03.os_minor = None
         host_03.save()
-        self.assertEqual(host_03.os_name, 'Unknown OS name')
-        self.assertEqual(host_03.rhel_version, 'Unknown OS version')
+        self.assertIsNone(host_03.os_name)
+        self.assertEqual(host_03.rhel_version, 'Unknown system version')
         # Name only
-        host_04 = InventoryHost.objects.get(id=constants.host_04_uuid)
-        host_04.system_profile['operating_system'] = {'name': 'Shark Linux'}
+        host_04 = AdvisorInventoryHost.objects.get(inventory_id=constants.host_04_uuid)
+        host_04.os_name = 'Shark Linux'
+        host_04.os_major = None
+        host_04.os_minor = None
         host_04.save()
         self.assertEqual(host_04.os_name, 'Shark Linux')
         self.assertEqual(host_04.rhel_version, 'Unknown Shark Linux version')
         # Name, major version only
-        host_05 = InventoryHost.objects.get(id=constants.host_05_uuid)
-        host_05.system_profile['operating_system'] = {'name': 'CentOS', 'major': '30'}
+        host_05 = AdvisorInventoryHost.objects.get(inventory_id=constants.host_05_uuid)
+        host_05.os_name = 'CentOS'
+        host_05.os_major = 30
+        host_05.os_minor = None
         host_05.save()
         self.assertEqual(host_05.os_name, 'CentOS')
         self.assertEqual(host_05.rhel_version, '30')
@@ -198,8 +205,8 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[constants.host_01_uuid]['os_name'], 'Unknown operating system')
         self.assertEqual(systems[constants.host_01_uuid]['rhel_version'], 'Unknown system version')
         self.assertIn(constants.host_03_uuid, systems)
-        self.assertEqual(systems[constants.host_03_uuid]['os_name'], 'Unknown OS name')
-        self.assertEqual(systems[constants.host_03_uuid]['rhel_version'], 'Unknown OS version')
+        self.assertEqual(systems[constants.host_03_uuid]['os_name'], 'Unknown operating system')
+        self.assertEqual(systems[constants.host_03_uuid]['rhel_version'], 'Unknown system version')
         self.assertIn(constants.host_04_uuid, systems)
         self.assertEqual(systems[constants.host_04_uuid]['os_name'], 'Shark Linux')
         self.assertEqual(systems[constants.host_04_uuid]['rhel_version'], 'Unknown Shark Linux version')
@@ -377,7 +384,7 @@ class SystemViewTestCase(TestCase):
         # A query that includes all systems shouldn't change the results
         response = self.client.get(
             reverse('system-list'),
-            data={'filter[system_profile][system_memory_bytes][gt]': '33554432000'},
+            data={'filter[system_profile][operating_system][name]': 'RHEL'},
             **self.std_auth_header
         )
         json = self._response_is_good(response)
@@ -618,14 +625,24 @@ class SystemViewTestCase(TestCase):
         systems = self._response_is_good(response)['data']
         self.assertEqual(len(systems), 5)
 
+    def test_list_system_update_method_ostree_filter(self):
+        """Update method ostree filter returns only ostree systems."""
+        response = self.client.get(
+            reverse('system-list'), data={'update_method': 'ostree'},
+            **self.std_auth_header
+        )
+        systems = self._response_is_good(response)['data']
+        self.assertEqual(len(systems), 1)
+        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
+
     def test_list_system_overall_staleness_up_to_date(self):
         # Update all hosts to have up-to-date host staleness
-        updated = InventoryHost.objects.update(
+        updated = AdvisorInventoryHost.objects.update(
             stale_timestamp=timezone.now(),
             updated=timezone.now(),
         )
         self.assertGreater(updated, 0)
-        stale_hide_2 = InventoryHost.objects.get(id=constants.host_0a_uuid)
+        stale_hide_2 = AdvisorInventoryHost.objects.get(inventory_id=constants.host_0a_uuid)
         self.assertGreater(stale_hide_2.updated, timezone.now() - timedelta(seconds=5))
         response = self.client.get(
             reverse('system-list'), **self.std_auth_header
@@ -1161,119 +1178,3 @@ class SystemHostTagsViewTestCase(TestCase):
         rules = self._response_is_good(response)
         self.assertIsInstance(rules, list)
         self.assertEqual(len(rules), 0)
-
-
-class AdvisorInventorySystemViewTestCase(AdvisorInventoryTestMixin, TestCase):
-    """Tests that verify API system endpoints work with AdvisorInventoryHost (flag on)."""
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_local_inventory(self):
-        """System list returns same results from AdvisorInventoryHost."""
-        response = self.client.get(
-            reverse('system-list'), **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-
-        self.assertIsInstance(systems, list)
-        self.assertEqual(len(systems), 6)
-
-        self.assertEqual(systems[0]['system_uuid'], constants.host_03_uuid)
-        self.assertEqual(systems[0]['display_name'], constants.host_03_name)
-        self.assertEqual(systems[0]['os_name'], 'RHEL')
-        self.assertEqual(systems[0]['rhel_version'], '7.5')
-        self.assertEqual(systems[0]['hits'], 2)
-        self.assertEqual(systems[0]['group_name'], 'group_2')
-
-        self.assertEqual(systems[1]['system_uuid'], constants.host_04_uuid)
-        self.assertEqual(systems[1]['hits'], 2)
-        self.assertEqual(systems[1]['group_name'], 'Ungrouped Hosts')
-
-        self.assertEqual(systems[2]['system_uuid'], constants.host_01_uuid)
-        self.assertEqual(systems[2]['hits'], 1)
-        self.assertEqual(systems[2]['group_name'], 'group_1')
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_sort_by_rhel_version(self):
-        """Sorting by rhel_version uses flat columns."""
-        response = self.client.get(
-            reverse('system-list'), data={'sort': 'rhel_version'},
-            **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-        self.assertIsInstance(systems, list)
-        self.assertTrue(len(systems) > 0)
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_sort_by_group_name(self):
-        """Sorting by group_name uses workspace_name."""
-        response = self.client.get(
-            reverse('system-list'), data={'sort': 'group_name'},
-            **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-        self.assertIsInstance(systems, list)
-        self.assertTrue(len(systems) > 0)
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_rhel_version_filter(self):
-        """RHEL version filter works with flat columns."""
-        response = self.client.get(
-            reverse('system-list'), data={'rhel_version': '7.5'},
-            **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-        for s in systems:
-            self.assertEqual(s['rhel_version'], '7.5')
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_update_method_filter(self):
-        """Update method filter works with flat columns."""
-        response = self.client.get(
-            reverse('system-list'), data={'update_method': 'dnfyum'},
-            **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-        self.assertEqual(len(systems), 5)
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_update_method_ostree_filter(self):
-        """Update method ostree filter works with flat columns."""
-        response = self.client.get(
-            reverse('system-list'), data={'update_method': 'ostree'},
-            **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-        self.assertEqual(len(systems), 1)
-        self.assertEqual(systems[0]['display_name'], constants.host_e1_name)
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_retrieve_system_reports(self):
-        """Reports endpoint works with AdvisorInventoryHost."""
-        response = self.client.get(
-            reverse('system-reports', kwargs={
-                'uuid': constants.host_01_uuid
-            }),
-            **self.std_auth_header
-        )
-        rules = self._response_is_good(response)
-        self.assertIsInstance(rules, list)
-        self.assertEqual(len(rules), 1)
-        self.assertEqual(rules[0]['rule']['rule_id'], constants.active_rule)
-
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
-    def test_list_system_display_name_filter(self):
-        """Display name filter works identically."""
-        response = self.client.get(
-            reverse('system-list'), data={'display_name': 'system01'},
-            **self.std_auth_header
-        )
-        json = self._response_is_good(response)
-        systems = json['data']
-        self.assertEqual(len(systems), 1)
-        self.assertEqual(systems[0]['display_name'], constants.host_01_name)
