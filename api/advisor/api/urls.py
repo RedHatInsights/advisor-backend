@@ -64,6 +64,7 @@ router.register(r'status', status.StatusViewSet, basename='status')
 router.register(r'system', systems.SystemViewSet, basename='system')
 router.register(r'systemtype', system_types.SystemTypeViewSet)
 router.register(r'topic', rule_topics.RuleTopicViewSet)
+router.register(r'ruletopic', rule_topics.RuleTopicAdminViewSet, basename='ruletopic-admin')
 router.register(r'user-preferences', user_preferences.PreferencesViewSet, basename='user-preferences')
 router.register(
     r'weeklyreportsubscription', weekly_report_subscriptions.WeeklyReportSubscriptionViewSet,

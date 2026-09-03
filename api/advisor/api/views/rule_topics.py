@@ -21,7 +21,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 
 from api.filters import (
     value_of_param, host_tags_query_param,
@@ -35,7 +35,8 @@ from api.models import (
     convert_to_count_query, get_reports_subquery, get_reporting_system_ids_queryset,
 )
 from api.permissions import (
-    ResourceScope, TurnpikeIdentityAuthentication, AssociatePermission
+    ResourceScope, TurnpikeIdentityAuthentication, AssociatePermission,
+    IsRedHatInternalUser,
 )
 from api.serializers import (
     RuleSerializer, SystemsForRuleSerializer, TopicSerializer, TopicEditSerializer
@@ -178,5 +179,24 @@ class InternalRuleTopicViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
     pagination_class = CustomPageNumberPagination
     permission_classes = [AssociatePermission]
+    queryset = RuleTopic.objects.all()
+    serializer_class = TopicEditSerializer
+
+
+@extend_schema_view(
+    list=extend_schema(exclude=True),
+    create=extend_schema(exclude=True),
+    retrieve=extend_schema(exclude=True),
+    update=extend_schema(exclude=True),
+    partial_update=extend_schema(exclude=True),
+    destroy=extend_schema(exclude=True),
+)
+class RuleTopicAdminViewSet(viewsets.ModelViewSet):
+    """
+    Topic management for Red Hat internal users via console.redhat.com.
+    """
+    lookup_field = 'slug'
+    pagination_class = CustomPageNumberPagination
+    permission_classes = [IsRedHatInternalUser]
     queryset = RuleTopic.objects.all()
     serializer_class = TopicEditSerializer
