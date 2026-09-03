@@ -371,6 +371,53 @@ class RuleTopicViewsTestCase(TestCase):
         self.assertEqual(rule_list[2]['rule_id'], constants.high_sev_rule)
         self.assertEqual(rule_list[3]['rule_id'], constants.second_rule)
 
+    def test_admin_topic_create_update_destroy(self):
+        # Non-internal user should be denied access to admin endpoint
+        response = self.client.post(
+            reverse('ruletopic-admin-list'), data={
+                'name': 'Admin topic',
+                'slug': 'Admin',
+                'description': 'A new topic created through the admin API',
+                'enabled': True,
+                'tag': 'testing',
+            },
+            **self.std_auth
+        )
+        self.assertEqual(response.status_code, 403)
+
+        # Internal user should be allowed to create a topic
+        response = self.client.post(
+            reverse('ruletopic-admin-list'), data={
+                'name': 'Admin topic',
+                'slug': 'Admin',
+                'description': 'A new topic created through the admin API',
+                'enabled': True,
+                'tag': 'testing',
+            },
+            **self.is_internal_auth
+        )
+        new_topic = self._response_is_good(response, 201)
+        self.assertEqual(new_topic['name'], 'Admin topic')
+        self.assertEqual(new_topic['slug'], 'Admin')
+
+        # Internal user should be allowed to update the topic
+        response = self.client.patch(
+            reverse('ruletopic-admin-detail', kwargs={'slug': 'Admin'}), data={
+                'description': 'Updated description',
+            },
+            content_type=constants.json_mime,
+            **self.is_internal_auth
+        )
+        upd_topic = self._response_is_good(response)
+        self.assertEqual(upd_topic['description'], 'Updated description')
+
+        # Internal user should be allowed to delete the topic
+        response = self.client.delete(
+            reverse('ruletopic-admin-detail', kwargs={'slug': 'Admin'}),
+            **self.is_internal_auth
+        )
+        self.assertEqual(response.status_code, 204)
+
 
 class RuleTopicHostTagsViewsTestCase(TestCase):
     fixtures = [
