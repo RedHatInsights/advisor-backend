@@ -39,7 +39,6 @@ from api.filters import (
 )
 
 from advisor_logging import logger
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 
 ##############################################################################
@@ -261,11 +260,9 @@ def get_systems_queryset(request):
     A common queryset for both the systems list view, the rule systems view,
     and the exported systems list.
     """
-    use_local = True
-
     # We don't need to filter out stale systems etc because that's
     # done at the host model level.
-    host_id_ref = OuterRef('inventory_id') if use_local else OuterRef('id')
+    host_id_ref = OuterRef('inventory_id')
     reports_q = get_reports_subquery(
         request, exclude_ineligible_hosts=False, host=host_id_ref,
     )
@@ -283,10 +280,7 @@ def get_systems_queryset(request):
         host_id=host_id_ref, source_id=1, current=True
     ).order_by().values('checked_on')
 
-    if use_local:
-        base_qs = AdvisorInventoryHost.objects.for_account(request)
-    else:
-        base_qs = InventoryHost.objects.for_account(request)
+    base_qs = AdvisorInventoryHost.objects.for_account(request)
 
     systems = base_qs.annotate(
         hits=Subquery(report_counts),
@@ -304,14 +298,14 @@ def get_systems_queryset(request):
     if pathway_slug:
         systems = systems.filter(pathway_filter_hits__isnull=False, pathway_filter_hits__gt=0)
 
-    rhel_version_filter = filter_on_rhel_version(request, use_local=use_local)
+    rhel_version_filter = filter_on_rhel_version(request, use_local=True)
 
     return systems.filter(
         filter_on_display_name(request),
         filter_on_hits(request),
         filter_on_incident(request),
         rhel_version_filter,
-        filter_on_has_disabled_recommendation(request, use_local=use_local)
+        filter_on_has_disabled_recommendation(request, use_local=True)
     )
 
 
@@ -424,19 +418,14 @@ def get_reports_subquery(
     if not org_id:
         return CurrentReport.objects.none()
 
-    use_local = True
-    if use_local:
-        inv_relation = 'advisor_inventory'
-        inv_model = AdvisorInventoryHost
-    else:
-        inv_relation = 'inventory'
-        inv_model = InventoryHost
+    inv_relation = 'advisor_inventory'
+    inv_model = AdvisorInventoryHost
 
-    host_tags_q = filter_on_host_tags(request, use_local=use_local)
-    system_type_q = filter_on_system_type(request, relation=inv_relation, use_local=use_local)
+    host_tags_q = filter_on_host_tags(request, use_local=True)
+    system_type_q = filter_on_system_type(request, relation=inv_relation, use_local=True)
 
     system_profile_filter = filter_multi_param(
-        request, 'system_profile', field_prefix=inv_relation, use_local=use_local
+        request, 'system_profile', field_prefix=inv_relation, use_local=True
     )
 
     category_filter = Q()
@@ -460,32 +449,18 @@ def get_reports_subquery(
                 ))
 
     if use_joins:
-        if use_local:
-            stale_systems_filter = Q(
-                Exists(AdvisorInventoryHost.objects.annotate(
-                    puptoo_stale_timestamp=Cast(Cast(
-                        'per_reporter_staleness__puptoo__stale_warning_timestamp',
-                        output_field=models.CharField()
-                    ), output_field=models.DateTimeField())
-                ).filter(
-                    inventory_id=OuterRef('host'),
-                    org_id=OuterRef('org_id'),
-                    puptoo_stale_timestamp__gt=timezone.now()
-                ))
-            )
-        else:
-            stale_systems_filter = Q(
-                Exists(InventoryHost.objects.annotate(
-                    puptoo_stale_timestamp=Cast(Cast(
-                        'per_reporter_staleness__puptoo__stale_warning_timestamp',
-                        output_field=models.CharField()
-                    ), output_field=models.DateTimeField())
-                ).filter(
-                    id=OuterRef('host'),
-                    org_id=org_id,
-                    puptoo_stale_timestamp__gt=timezone.now()
-                ))
-            )
+        stale_systems_filter = Q(
+            Exists(AdvisorInventoryHost.objects.annotate(
+                puptoo_stale_timestamp=Cast(Cast(
+                    'per_reporter_staleness__puptoo__stale_warning_timestamp',
+                    output_field=models.CharField()
+                ), output_field=models.DateTimeField())
+            ).filter(
+                inventory_id=OuterRef('host'),
+                org_id=OuterRef('org_id'),
+                puptoo_stale_timestamp__gt=timezone.now()
+            ))
+        )
     else:
         stale_systems_filter = Q(
             stale_systems_q(org_id, model_class=inv_model), org_id=org_id
@@ -495,11 +470,11 @@ def get_reports_subquery(
         Q(
             host_tags_q, system_type_q, system_profile_filter,
             category_filter,
-            cert_auth_q(request, relation=inv_relation, use_local=use_local),
+            cert_auth_q(request, relation=inv_relation, use_local=True),
             branch_id_filter,
-            filter_on_update_method(request, relation=inv_relation, use_local=use_local),
-            filter_on_workload(request, relation=inv_relation, use_local=use_local),
-            get_host_group_filter(request, relation=inv_relation, use_local=use_local),
+            filter_on_update_method(request, relation=inv_relation, use_local=True),
+            filter_on_workload(request, relation=inv_relation, use_local=True),
+            get_host_group_filter(request, relation=inv_relation, use_local=True),
             stale_systems_filter,
         ) if exclude_ineligible_hosts else Q(),
         org_id=org_id,
@@ -956,16 +931,13 @@ class Host(ExportModelOperationsMixin('host'), TimestampedModel):
 
     @property
     def rhel_version(self):
-        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-            try:
-                inv = self.advisor_inventory
-                return AdvisorInventoryHost.get_rhel_version_from_flat(
-                    inv.os_major, inv.os_minor, inv.os_name
-                )
-            except AdvisorInventoryHost.DoesNotExist:
-                return "Unknown system version"
-        else:
-            return self.inventory.rhel_version
+        try:
+            inv = self.advisor_inventory
+            return AdvisorInventoryHost.get_rhel_version_from_flat(
+                inv.os_major, inv.os_minor, inv.os_name
+            )
+        except AdvisorInventoryHost.DoesNotExist:
+            return "Unknown system version"
 
     def __str__(self):
         return str(self.inventory_id)
@@ -1289,7 +1261,6 @@ class RuleManager(models.Manager):
         # filter everything by matching org_id.  At some point we can do the
         # semantic name change to `for_org()`.
         username = request_to_username(request)
-        use_local = True
 
         report_query = get_reports_subquery(
             request, exclude_ineligible_rules=False, rule_id=OuterRef('id'),
@@ -1304,31 +1275,18 @@ class RuleManager(models.Manager):
             resolution__rule=models.OuterRef('id')
         ).order_by()
 
-        if use_local:
-            system_profile_filter = filter_multi_param(
-                request, 'system_profile', field_prefix='host__advisor_inventory',
-                use_local=True
-            )
-            hosts_acked_for_rule = HostAck.objects.filter(
-                filter_on_host_tags(request, field_name='host_id', use_local=True),
-                system_profile_filter,
-                stale_systems_q(org_id, field='host_id', model_class=AdvisorInventoryHost),
-                org_id=org_id, rule=models.OuterRef('id'),
-            ).annotate(
-                hosts_acked=models.Count('id')
-            ).values('hosts_acked').order_by()
-        else:
-            system_profile_filter = filter_multi_param(
-                request, 'system_profile', field_prefix='host__inventory'
-            )
-            hosts_acked_for_rule = HostAck.objects.filter(
-                filter_on_host_tags(request, field_name='host_id'),
-                system_profile_filter,
-                stale_systems_q(org_id, field='host_id'),
-                org_id=org_id, rule=models.OuterRef('id'),
-            ).annotate(
-                hosts_acked=models.Count('id')
-            ).values('hosts_acked').order_by()
+        system_profile_filter = filter_multi_param(
+            request, 'system_profile', field_prefix='host__advisor_inventory',
+            use_local=True
+        )
+        hosts_acked_for_rule = HostAck.objects.filter(
+            filter_on_host_tags(request, field_name='host_id', use_local=True),
+            system_profile_filter,
+            stale_systems_q(org_id, field='host_id', model_class=AdvisorInventoryHost),
+            org_id=org_id, rule=models.OuterRef('id'),
+        ).annotate(
+            hosts_acked=models.Count('id')
+        ).values('hosts_acked').order_by()
         hosts_acked_for_rule.query.group_by = []  # Otherwise it groups by host_id
 
         return self.get_queryset().filter(
