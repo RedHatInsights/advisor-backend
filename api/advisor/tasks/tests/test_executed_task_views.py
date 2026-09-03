@@ -682,10 +682,10 @@ class ExecutedTaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json(),
-            {'parameters': [{
+            {'parameters': {'0': {
                 'key': ['This field is required.'],
                 'value': ['This field is required.']
-            }]}
+            }}}
         )
         # Value not supplied
         res = self.client.post(
@@ -700,9 +700,9 @@ class ExecutedTaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json(),
-            {'parameters': [{
+            {'parameters': {'0': {
                 'value': ['This field is required.']
-            }]}
+            }}}
         )
 
         # Value not in list
