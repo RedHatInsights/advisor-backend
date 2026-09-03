@@ -143,13 +143,18 @@ class Host(models.Model):
     def tag_query(tag_key):
         """
         Returns an expression that queries a tag value from a host given its key.
+
+        This reads directly from the outer row's own `tags` column instead of
+        self-joining back to `advisor_inventory_host`.  That self-join was only
+        correlated on `inventory_id`, which defeats partition pruning on this
+        (org_id-hash-partitioned) table and forces a scan across all partitions
+        for every candidate row - catastrophic when used inside an EXISTS/filter
+        on a large queryset.
         """
         raw_sql = """
         SELECT tag.val ->> 'value' AS tag_value
-        FROM advisor_inventory_host t
-                JOIN LATERAL JSONB_ARRAY_ELEMENTS(t.tags) tag(val)
-                    ON tag.val ->> 'namespace' = 'satellite' AND tag.val ->> 'key' = %s
-        WHERE t.inventory_id = "advisor_inventory_host".inventory_id
+        FROM JSONB_ARRAY_ELEMENTS("advisor_inventory_host".tags) tag(val)
+        WHERE tag.val ->> 'namespace' = 'satellite' AND tag.val ->> 'key' = %s
         """
         return RawSQL(raw_sql, [tag_key])
 

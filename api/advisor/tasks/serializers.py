@@ -15,6 +15,8 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from rest_framework import serializers
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 
 from api.serializers import validate_hosts_in_org
 from tasks import models
@@ -291,11 +293,13 @@ class HostSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     system_profile = serializers.SerializerMethodField()
 
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_groups(self, obj):
         if obj.workspace_id:
             return [{'id': str(obj.workspace_id), 'name': obj.workspace_name}]
         return []
 
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_system_profile(self, obj):
         profile = {}
         if obj.os_name is not None or obj.os_major is not None:
