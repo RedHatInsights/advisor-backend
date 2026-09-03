@@ -21,7 +21,6 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from api.models import Host
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 
 class Command(BaseCommand):
@@ -39,29 +38,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         stale_cull_date = timezone.now() - timedelta(days=options['days'])
-        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
 
-        if use_local:
-            raw_hosts = Host.objects.raw(
-                """
-                SELECT h.system_uuid
-                FROM api_host h
-                LEFT OUTER JOIN advisor_inventory_host aih
-                  ON aih.inventory_id = h.system_uuid AND aih.org_id = h.org_id
-                WHERE updated_at < %s AND aih.inventory_id IS NULL
-                """,
-                [stale_cull_date]
-            )
-        else:
-            raw_hosts = Host.objects.raw(
-                """
-                SELECT h.system_uuid
-                FROM api_host h
-                LEFT OUTER JOIN inventory.hosts ih ON ih.id = h.system_uuid
-                WHERE updated_at < %s AND ih.id IS NULL
-                """,
-                [stale_cull_date]
-            )
+        raw_hosts = Host.objects.raw(
+            """
+            SELECT h.system_uuid
+            FROM api_host h
+            LEFT OUTER JOIN advisor_inventory_host aih
+              ON aih.inventory_id = h.system_uuid AND aih.org_id = h.org_id
+            WHERE updated_at < %s AND aih.inventory_id IS NULL
+            """,
+            [stale_cull_date]
+        )
 
         # Host has no FK or Relationship to AdvisorInventoryHost that
         # supports isnull lookups, and Host.inventory (OneToOneField to

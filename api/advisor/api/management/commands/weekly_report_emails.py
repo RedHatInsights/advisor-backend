@@ -27,10 +27,9 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from api.models import (
-    AdvisorInventoryHost, CurrentReport, Host, InventoryHost,
+    AdvisorInventoryHost, CurrentReport, Host,
     WeeklyReportSubscription, stale_systems_q, Ack,
 )
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 from api.permissions import (
     RHIdentityAuthentication, has_rbac_permission, request_object_for_testing,
     get_workspace_id,
@@ -159,10 +158,7 @@ def get_account_orgs(org_filter, latest_email_time):
 
 
 def get_rhdisabled_rules_systems(org_id):
-    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-        stale_filter = stale_systems_q(org_id=org_id, model_class=AdvisorInventoryHost)
-    else:
-        stale_filter = stale_systems_q(org_id=org_id)
+    stale_filter = stale_systems_q(org_id=org_id, model_class=AdvisorInventoryHost)
     return CurrentReport.objects.filter(
         stale_filter,
         Exists(Ack.objects.filter(
@@ -179,14 +175,11 @@ def get_rhdisabled_rules_systems(org_id):
 
 
 def get_inventory_hosts_stats(org_id):
-    if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-        hosts_qs = AdvisorInventoryHost.objects.filter(
-            org_id=org_id,
-        ).filter(
-            Exists(Host.objects.filter(inventory_id=OuterRef('inventory_id')))
-        )
-    else:
-        hosts_qs = InventoryHost.objects.filter(org_id=org_id, host__isnull=False)
+    hosts_qs = AdvisorInventoryHost.objects.filter(
+        org_id=org_id,
+    ).filter(
+        Exists(Host.objects.filter(inventory_id=OuterRef('inventory_id')))
+    )
     return {
         'total': hosts_qs.count(),
         'stale': hosts_qs.filter(
