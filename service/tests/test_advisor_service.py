@@ -37,7 +37,6 @@ service_file = "service/service.py" if os.path.exists("service/service.py") else
 
 import reports
 from api.models import AdvisorInventoryHost
-from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 from service import db as models  # avoid clash with 'db' fixture from pytest-django
 from settings import AUTOACK
 
@@ -1244,10 +1243,9 @@ def test_advisor_inventory_host_rhel_version_unknown(db):
 def test_handle_engine_results_feature_flag_switches_to_advisor_inventory_host(
     db, service, sample_engine_results, mock_request_post_return_200, mocker
 ):
-    """With the flag on, handle_engine_results reads from AdvisorInventoryHost for webhooks."""
+    """handle_engine_results reads from AdvisorInventoryHost for webhooks."""
     mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
-    with set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True):
-        service.handle_engine_results(sample_engine_results)
+    service.handle_engine_results(sample_engine_results)
 
     assert mocked_webhook_func.called
     webhook_msg = mocked_webhook_func.call_args_list[0][0][0]
@@ -1319,34 +1317,18 @@ def test_generate_webhook_msgs_new_report_with_advisor_inventory_host(db, mocker
     assert resolved == 0
     assert remediations == 1
 
-@pytest.mark.django_db(transaction=True)
-def test_handle_engine_results_flag_off_uses_cyndi(
-    db, service, sample_engine_results, mock_request_post_return_200, mocker
-):
-    """When the feature flag is off, webhooks should read from InventoryHost (Cyndi) as before."""
-    mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
-    with set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, False):
-        service.handle_engine_results(sample_engine_results)
-
-    assert mocked_webhook_func.called
-    webhook_msg = mocked_webhook_func.call_args_list[0][0][0]
-    context = json.loads(webhook_msg['context'])
-    assert context['display_name'] == "RHIQE.d60db782-8462-410e-b0fc-f4ee97d985cb.test"
-    assert context['inventory_id'] == "57c4c38b-a8c6-4289-9897-223681fd804d"
-
 
 @pytest.mark.django_db(transaction=True)
 def test_handle_engine_results_flag_on_advisor_host_not_found(
     db, service, sample_engine_results, mock_request_post_return_200, mocker
 ):
-    """With the flag on and no AdvisorInventoryHost record, the warning is logged and no webhook fires."""
+    """With no AdvisorInventoryHost record, the warning is logged and no webhook fires."""
     AdvisorInventoryHost.objects.filter(inventory_id="57c4c38b-a8c6-4289-9897-223681fd804d").delete()
 
     mocked_webhook_func = mocker.patch.object(service.report_hooks, "send_webhook_event")
     mock_logger = mocker.patch("service.logger")
 
-    with set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True):
-        service.handle_engine_results(sample_engine_results)
+    service.handle_engine_results(sample_engine_results)
 
     assert not mocked_webhook_func.called
     mock_logger.warning.assert_any_call(

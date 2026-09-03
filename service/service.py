@@ -46,7 +46,6 @@ from django.db import OperationalError, InterfaceError, transaction
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 django.setup()
 import api.models as db  # noqa
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 # Import Kafka settings
 from project_settings.settings import (
@@ -483,12 +482,8 @@ def create_db_reports(
             # figure out which reports are NEW
             # figure out which reports are resolved
             if WEBHOOKS_TOPIC or REMEDIATIONS_HOOK_TOPIC:
-                if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-                    inventory_table = db.AdvisorInventoryHost
-                    host_lookup = {'inventory_id': host_obj.inventory_id, 'org_id': org_id}
-                else:
-                    inventory_table = db.InventoryHost
-                    host_lookup = {'id': host_obj.inventory_id, 'org_id': org_id}
+                inventory_table = db.AdvisorInventoryHost
+                host_lookup = {'inventory_id': host_obj.inventory_id, 'org_id': org_id}
                 try:
                     inventory_host = inventory_table.objects.get(**host_lookup)
                     report_hooks.trigger_report_hooks(
