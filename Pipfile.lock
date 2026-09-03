@@ -1384,8 +1384,8 @@
         },
         "unleashclient": {
             "hashes": [
-                "sha256:24517e2c19e2e03f9f7a30e2a2a69eb8dc4f498312c9bfcd4e7e54a5e71e5819",
-                "sha256:c70c486b5adf4970af1fd85854a741e3b33b1c077d4c8cfda4f79b97dde3e55b"
+                "sha256:7300efe706233670618f945765f5687c815f0a0a9999c63a9b258cc7a6151ceb",
+                "sha256:a4698b746fe76fc8be32bba4c1e5c3a3022275cb4e31f6ef1dcfda268a6f2a3f"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
