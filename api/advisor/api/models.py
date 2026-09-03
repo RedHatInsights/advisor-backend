@@ -261,7 +261,7 @@ def get_systems_queryset(request):
     A common queryset for both the systems list view, the rule systems view,
     and the exported systems list.
     """
-    use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+    use_local = True
 
     # We don't need to filter out stale systems etc because that's
     # done at the host model level.
@@ -424,7 +424,7 @@ def get_reports_subquery(
     if not org_id:
         return CurrentReport.objects.none()
 
-    use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+    use_local = True
     if use_local:
         inv_relation = 'advisor_inventory'
         inv_model = AdvisorInventoryHost
@@ -1263,20 +1263,10 @@ class Pathway(ExportModelOperationsMixin('pathway'), models.Model):
         if self.impacted_systems_count:
             report_query = self.get_reports(request)
             system_query = get_systems_queryset(request)
-            use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
-            if use_local:
-                filtered_systems_queryset = system_query.filter(
-                    inventory_id__in=report_query.values('host_id')
-                )
-            else:
-                filtered_systems_queryset = system_query.filter(
-                    id__in=report_query.values('host__inventory')
-                )
-            return filtered_systems_queryset
-        else:
-            if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-                return AdvisorInventoryHost.objects.none()
-            return InventoryHost.objects.none()
+            return system_query.filter(
+                inventory_id__in=report_query.values('host_id')
+            )
+        return AdvisorInventoryHost.objects.none()
 
     def __str__(self):
         return self.name
@@ -1299,7 +1289,7 @@ class RuleManager(models.Manager):
         # filter everything by matching org_id.  At some point we can do the
         # semantic name change to `for_org()`.
         username = request_to_username(request)
-        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
+        use_local = True
 
         report_query = get_reports_subquery(
             request, exclude_ineligible_rules=False, rule_id=OuterRef('id'),

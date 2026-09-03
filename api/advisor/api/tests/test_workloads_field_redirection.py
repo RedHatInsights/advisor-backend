@@ -156,8 +156,8 @@ class WorkloadsFieldRedirectionTestCase(TestCase):
         response = self.client.get(
             reverse('system-list'),
             data={
-                'filter[system_profile][arch][eq]': 'x86_64',
-                'filter[system_profile][system_memory_bytes][gt]': '10000'
+                'filter[system_profile][operating_system][name]': 'RHEL',
+                'filter[system_profile][operating_system][major][gte]': '0'
             },
             **auth_header_for_testing()
         )

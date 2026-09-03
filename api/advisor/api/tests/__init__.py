@@ -407,7 +407,12 @@ def update_stale_dates(valid_days: float = 3.0):
     giving newer stale times than the host's last upload.  On the other hand,
     there's nothing else in the code that enforces a relationship between
     the host's staleness dates and its uploads' dates.
+
+    Also copies InventoryHost rows into AdvisorInventoryHost so API views
+    that always read the local table have data in tests.
     """
+    replicate_to_advisor_inventory()
+
     now = timezone.now()
     full_valid = now + timedelta(days=valid_days)
     all_valid = now + timedelta(days=1)

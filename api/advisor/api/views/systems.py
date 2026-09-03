@@ -33,28 +33,20 @@ from api.filters import (
     update_method_query_param, has_disabled_recommendation_query_param,
 )
 from api.models import (
-    InventoryHost,
+    AdvisorInventoryHost,
     get_systems_queryset, get_reports_subquery
 )
 from api.permissions import ResourceScope
-from api.serializers import ReportSerializer, SystemSerializer, get_system_serializer
+from api.serializers import ReportSerializer, SystemSerializer
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin,
 )
-from feature_flags import feature_flag_is_enabled, FLAG_READ_LOCAL_INVENTORY
 
 sort_fields = [
     'hits', 'last_seen', 'display_name', 'rhel_version', 'group_name',
     'critical_hits', 'important_hits', 'moderate_hits', 'low_hits'
 ]
 sort_field_map = {
-    'rhel_version': [
-        'system_profile__operating_system__major',
-        'system_profile__operating_system__minor'
-    ],
-    'group_name': 'groups__0__name',
-}
-sort_field_map_local = {
     'rhel_version': ['os_major', 'os_minor'],
     'group_name': 'workspace_name',
 }
@@ -81,21 +73,13 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     param: uuid: The system's Host ID in the Inventory
     param: uuid type: STRING
     """
-    lookup_field = 'id'
+    lookup_field = 'inventory_id'
     lookup_url_kwarg = 'uuid'
     pagination_class = CustomPageNumberPagination
-    queryset = InventoryHost.objects.all()  # overridden by get_queryset()
+    queryset = AdvisorInventoryHost.objects.all()  # overridden by get_queryset()
     resource_name = 'recommendation-results'
     resource_scope = ResourceScope.WORKSPACE
     serializer_class = SystemSerializer
-
-    def get_serializer_class(self):
-        return get_system_serializer()
-
-    def get_object(self):
-        if feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY):
-            self.lookup_field = 'inventory_id'
-        return super().get_object()
 
     def get_queryset(self):
         return get_systems_queryset(self.request)
@@ -118,16 +102,13 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
         Results can be sorted and systems can be filtered by display name and hits
         """
-        use_local = feature_flag_is_enabled(FLAG_READ_LOCAL_INVENTORY)
-        active_sort_map = sort_field_map_local if use_local else sort_field_map
-        id_field = 'inventory_id' if use_local else 'id'
         sort_fields = sort_params_to_fields(
             value_of_param(sort_query_param, request),
-            active_sort_map
+            sort_field_map
         )
-        systems = self.get_queryset().order_by(*sort_fields, id_field)
+        systems = self.get_queryset().order_by(*sort_fields, 'inventory_id')
 
-        return self._paginated_response(systems, request, serializer_class=self.get_serializer_class())
+        return self._paginated_response(systems, request, serializer_class=SystemSerializer)
 
     @extend_schema(
         parameters=[
