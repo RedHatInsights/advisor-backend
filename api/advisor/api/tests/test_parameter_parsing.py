@@ -371,27 +371,27 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][start]', 'ok'
             ), 'system_profile'),
-            Q(system_profile__start='ok')
+            Q(start='ok')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][service_status][chrony]', 'started'
             ), 'system_profile'),
-            Q(system_profile__service_status__chrony='started')
+            Q(service_status__chrony='started')
         )
         # Values don't have to be words...
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][installed_packages][contains]', "python3-libs-0:3.6.8-23.el8.x86_64"
             ), 'system_profile'),
-            Q(system_profile__installed_packages__contains="python3-libs-0:3.6.8-23.el8.x86_64")
+            Q(installed_packages__contains="python3-libs-0:3.6.8-23.el8.x86_64")
         )
         # No conversion on numbers not given 'eq' as operator
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][account]', '1234567'
             ), 'system_profile'),
-            Q(system_profile__account='1234567')
+            Q(account='1234567')
         )
 
     def test_value_conversion(self):
@@ -400,50 +400,50 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][started]', 'true'
             ), 'system_profile'),
-            Q(system_profile__started=True)
+            Q(started=True)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][started]', 'True'
             ), 'system_profile'),
-            Q(system_profile__started=True)
+            Q(started=True)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][started]', 'false'
             ), 'system_profile'),
-            Q(system_profile__started=False)
+            Q(started=False)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][started]', 'False'
             ), 'system_profile'),
-            Q(system_profile__started=False)
+            Q(started=False)
         )
         # Numeric conversions - parameter as string as if from query string
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][gt]', '2'
             ), 'system_profile'),
-            Q(system_profile__num_cpus__gt=2)
+            Q(num_cpus__gt=2)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][gte]', '2'
             ), 'system_profile'),
-            Q(system_profile__num_cpus__gte=2)
+            Q(num_cpus__gte=2)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][lt]', '2'
             ), 'system_profile'),
-            Q(system_profile__num_cpus__lt=2)
+            Q(num_cpus__lt=2)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][lte]', '2'
             ), 'system_profile'),
-            Q(system_profile__num_cpus__lte=2)
+            Q(num_cpus__lte=2)
         )
         # 'eq' operator forces numeric conversion
         # Old eq method
@@ -451,14 +451,14 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][eq]', '2'
             ), 'system_profile', use_contains_for_eq=False),
-            Q(system_profile__num_cpus=2)
+            Q(num_cpus=2)
         )
         # New eq-as-contains method
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][eq]', '2'
             ), 'system_profile'),
-            Q(system_profile__contains={'num_cpus': 2})
+            Q(num_cpus=2)
         )
         # Numeric conversions - parameter must be an integer
         with self.assertRaises(ValidationError):
@@ -486,20 +486,20 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][arch][eq]', 'x86_64'
             ), 'system_profile'),
-            Q(system_profile__contains={'arch': 'x86_64'})
+            Q(arch='x86_64')
         )
         # Old eq method
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][arch][eq]', 'x86_64'
             ), 'system_profile', use_contains_for_eq=False),
-            Q(system_profile__arch='x86_64')
+            Q(arch='x86_64')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][installed_services][contains]', 'microcode'
             ), 'system_profile'),
-            Q(system_profile__installed_services__contains='microcode')
+            Q(installed_services__contains='microcode')
         )
 
     def test_multi_contains_operators(self):
@@ -510,7 +510,7 @@ class MultiParamParsingTestCase(TestCase):
         rq.query_params.appendlist('filter[system_profile][cpu_flags][contains][]', 'mtrr')
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__cpu_flags__contains='fpu') & Q(system_profile__cpu_flags__contains='mtrr')
+            Q(cpu_flags__contains='fpu') & Q(cpu_flags__contains='mtrr')
         )
         # Also support without final empty brackets
         rq = self._make_request_obj(
@@ -519,7 +519,7 @@ class MultiParamParsingTestCase(TestCase):
         rq.query_params.appendlist('filter[system_profile][sap_sids][contains]', 'E04')
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__workloads__sap__sids__contains='E24') & Q(system_profile__workloads__sap__sids__contains='E04')
+            Q(workloads__sap__sids__contains='E24') & Q(workloads__sap__sids__contains='E04')
         )
 
     def test_multi_in_operators(self):
@@ -528,12 +528,12 @@ class MultiParamParsingTestCase(TestCase):
         )
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__system_update_method__in=['dnf'])
+            Q(system_update_method__in=['dnf'])
         )
         rq.query_params.appendlist('filter[system_profile][system_update_method][in]', 'yum')
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__system_update_method__in=['dnf', 'yum'])
+            Q(system_update_method__in=['dnf', 'yum'])
         )
         # Comma separated works as well
         rq = self._make_request_obj(
@@ -541,7 +541,7 @@ class MultiParamParsingTestCase(TestCase):
         )
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__system_update_method__in=['yum', 'dnf'])
+            Q(system_update_method__in=['yum', 'dnf'])
         )
 
     def test_comparator_conversion(self):
@@ -551,65 +551,65 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][ne]', '8'
             ), 'system_profile', use_contains_for_eq=False),
-            ~Q(system_profile__num_cpus=8)
+            ~Q(num_cpus=8)
         )
         # New style eq=contains comparison
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][num_cpus][ne]', '8'
             ), 'system_profile'),
-            ~Q(system_profile__contains={'num_cpus': 8})
+            ~Q(num_cpus=8)
         )
         # Old style eq comparison
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][arch][ne]', 'ppc64le'
             ), 'system_profile', use_contains_for_eq=False),
-            ~Q(system_profile__arch='ppc64le')
+            ~Q(arch='ppc64le')
         )
         # New style eq=contains comparison
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][arch][ne]', 'ppc64le'
             ), 'system_profile'),
-            ~Q(system_profile__contains={'arch': 'ppc64le'})
+            ~Q(arch='ppc64le')
         )
         # 'starts_with', 'ends_with', and the case insensitive comparators
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][arch][starts_with]', 'ppc'
             ), 'system_profile'),
-            Q(system_profile__arch__startswith='ppc')
+            Q(arch__startswith='ppc')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][arch][ends_with]', '64'
             ), 'system_profile'),
-            Q(system_profile__arch__endswith='64')
+            Q(arch__endswith='64')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][infrastructure_vendor][eq_i]', 'KVM'
             ), 'system_profile'),
-            Q(system_profile__infrastructure_vendor__iexact='KVM')
+            Q(infrastructure_vendor__iexact='KVM')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][contains_i]', 'ABI'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__icontains='ABI')
+            Q(bios_vendor__icontains='ABI')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][starts_with_i]', 'SEA'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__istartswith='SEA')
+            Q(bios_vendor__istartswith='SEA')
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][ends_with_i]', 'BIOS'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__iendswith='BIOS')
+            Q(bios_vendor__iendswith='BIOS')
         )
 
     def test_nil_not_nil(self):
@@ -618,45 +618,45 @@ class MultiParamParsingTestCase(TestCase):
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][nil]',
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=True)
+            Q(bios_vendor__isnull=True)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][not_nil]',
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=False)
+            Q(bios_vendor__isnull=False)
         )
         # we also accept 'true', 'True', 'false' and 'False'.
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][nil]', 'true'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=True)
+            Q(bios_vendor__isnull=True)
         )
         # Any other string is treated as True
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][nil]', 'very yes'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=True)
+            Q(bios_vendor__isnull=True)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][nil]', 'False'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=False)
+            Q(bios_vendor__isnull=False)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][not_nil]', 'True'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=False)
+            Q(bios_vendor__isnull=False)
         )
         self.assertEqual(
             filter_multi_param(self._make_request_obj(
                 'filter[system_profile][bios_vendor][not_nil]', 'false'
             ), 'system_profile'),
-            Q(system_profile__bios_vendor__isnull=True)
+            Q(bios_vendor__isnull=True)
         )
 
     def test_field_prefix(self):
@@ -666,7 +666,7 @@ class MultiParamParsingTestCase(TestCase):
                     'filter[system_profile][bios_vendor][nil]', 'true'
                 ),
                 'system_profile', field_prefix='inventory_host'
-            ), Q(inventory_host__system_profile__bios_vendor__isnull=True)
+            ), Q(inventory_host__bios_vendor__isnull=True)
         )
         # Old ne method
         self.assertEqual(
@@ -676,7 +676,7 @@ class MultiParamParsingTestCase(TestCase):
                 ),
                 'system_profile', field_prefix='inventory_host',
                 use_contains_for_eq=False
-            ), ~Q(inventory_host__system_profile__num_cpus=8)
+            ), ~Q(inventory_host__num_cpus=8)
         )
         # New ne-as-contains method
         self.assertEqual(
@@ -685,7 +685,7 @@ class MultiParamParsingTestCase(TestCase):
                     'filter[system_profile][num_cpus][ne]', '8'
                 ),
                 'system_profile', field_prefix='inventory_host'
-            ), ~Q(inventory_host__system_profile__contains={'num_cpus': 8})
+            ), ~Q(inventory_host__num_cpus=8)
         )
 
     def test_multiple_parameters(self):
@@ -695,7 +695,7 @@ class MultiParamParsingTestCase(TestCase):
         # Note that AND comparisons on Q objects are order dependent.
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__workloads__sap__sap_system=True) & Q(system_profile__bios_vendor__isnull=True)
+            Q(workloads__sap__sap_system=True) & Q(bios_vendor__isnull=True)
         )
         # One parameter doesn't match the filter prefix, the other does
         rq = self._make_request_obj('filter[system_profile][sap_system]', 'true')
@@ -703,7 +703,7 @@ class MultiParamParsingTestCase(TestCase):
         # Note that AND comparisons on Q objects are order dependent.
         self.assertEqual(
             filter_multi_param(rq, 'system_profile'),
-            Q(system_profile__workloads__sap__sap_system=True)
+            Q(workloads__sap__sap_system=True)
         )
 
     _NEW_WORKLOADS = ('crowdstrike', 'ibm_db2', 'intersystems', 'oracle_db', 'rhel_ai', 'satellite')
@@ -713,7 +713,7 @@ class MultiParamParsingTestCase(TestCase):
             rq = self._make_request_obj(f'filter[system_profile][workloads][{workload}][not_nil]', 'true')
             self.assertEqual(
                 filter_multi_param(rq, 'system_profile'),
-                Q(**{f'system_profile__workloads__{workload}__isnull': False}),
+                Q(**{f'workloads__{workload}__isnull': False}),
                 msg=f'Canonical path failed for workload: {workload}',
             )
 
@@ -722,21 +722,21 @@ class MultiParamParsingTestCase(TestCase):
             rq = self._make_request_obj(f'filter[system_profile][workloads][{workload}]', 'true')
             self.assertEqual(
                 filter_multi_param(rq, 'system_profile'),
-                Q(**{f'system_profile__workloads__{workload}': True}),
+                Q(**{f'workloads__{workload}': True}),
                 msg=f'Boolean filter failed for workload: {workload}',
             )
 
     def test_local_operating_system_field_remap(self):
         """
-        With use_local=True, nested operating_system JSON paths remap to
-        the flat AdvisorInventoryHost / tasks.Host columns.
+        Nested operating_system JSON paths remap to the flat
+        AdvisorInventoryHost / tasks.Host columns.
         """
         self.assertEqual(
             filter_multi_param(
                 self._make_request_obj(
                     'filter[system_profile][operating_system][name]', 'RHEL'
                 ),
-                'system_profile', use_local=True
+                'system_profile'
             ),
             Q(os_name='RHEL')
         )
@@ -745,7 +745,7 @@ class MultiParamParsingTestCase(TestCase):
                 self._make_request_obj(
                     'filter[system_profile][operating_system][name][eq_i]', 'centos'
                 ),
-                'system_profile', use_local=True
+                'system_profile'
             ),
             Q(os_name__iexact='centos')
         )
@@ -754,7 +754,7 @@ class MultiParamParsingTestCase(TestCase):
                 self._make_request_obj(
                     'filter[system_profile][operating_system][major]', '7'
                 ),
-                'system_profile', use_local=True
+                'system_profile'
             ),
             Q(os_major='7')
         )
@@ -763,7 +763,7 @@ class MultiParamParsingTestCase(TestCase):
                 self._make_request_obj(
                     'filter[system_profile][operating_system][minor][eq]', '5'
                 ),
-                'system_profile', use_local=True
+                'system_profile'
             ),
             Q(os_minor=5)
         )
@@ -791,7 +791,7 @@ class FilterOnWorkloadTestCase(TestCase):
         rq = self._make_request('sap')
         self.assertEqual(
             filter_on_workload(rq),
-            Q(system_profile__workloads__sap__sap_system=True)
+            Q(workloads__sap__sap_system=True)
         )
 
     def test_non_sap_uses_isnull_false(self):
@@ -802,15 +802,15 @@ class FilterOnWorkloadTestCase(TestCase):
                 rq = self._make_request(workload)
                 self.assertEqual(
                     filter_on_workload(rq),
-                    Q(**{f'system_profile__workloads__{workload}__isnull': False})
+                    Q(**{f'workloads__{workload}__isnull': False})
                 )
 
     def test_multiple_workloads_ored(self):
         """Multiple workloads produce an OR'd Q object."""
         rq = self._make_request('sap,mssql')
         expected = (
-            Q(system_profile__workloads__sap__sap_system=True)
-            | Q(system_profile__workloads__mssql__isnull=False)
+            Q(workloads__sap__sap_system=True)
+            | Q(workloads__mssql__isnull=False)
         )
         self.assertEqual(filter_on_workload(rq), expected)
 
@@ -819,10 +819,10 @@ class FilterOnWorkloadTestCase(TestCase):
         rq = self._make_request('ansible')
         self.assertEqual(
             filter_on_workload(rq, relation='inventory'),
-            Q(inventory__system_profile__workloads__ansible__isnull=False)
+            Q(inventory__workloads__ansible__isnull=False)
         )
         rq = self._make_request('sap')
         self.assertEqual(
             filter_on_workload(rq, relation='inventory'),
-            Q(inventory__system_profile__workloads__sap__sap_system=True)
+            Q(inventory__workloads__sap__sap_system=True)
         )

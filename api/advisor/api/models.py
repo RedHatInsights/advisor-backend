@@ -176,7 +176,7 @@ def calculate_rec_level(percentage_of_systems, has_incidents, max_risk):
     return base
 
 
-def get_host_group_filter(request, relation=None, use_local=False):
+def get_host_group_filter(request, relation=None):
     """
     If the request has any host groups attached to it during the authentication
     process, then create a filter searching for a host with an ID being one
@@ -200,35 +200,7 @@ def get_host_group_filter(request, relation=None, use_local=False):
     if not (host_groups or host_groups_param):
         return Q()
 
-    if use_local:
-        return _get_host_group_filter_local(host_groups, host_groups_param, relation)
-
-    group_clause = 'groups'
-    if relation:
-        group_clause = relation + '__' + group_clause
-    group_contains_clause = group_clause + '__contains'
-    # Add group names if set
-    host_group_name_filter = Q()
-    if host_groups_param:
-        for group_name in host_groups_param:
-            if group_name == '':
-                # Empty string means "ungrouped hosts" and matches hosts in a group marked as ungrouped
-                host_group_name_filter |= Q(**{group_contains_clause: [{'ungrouped': True}]})
-            else:
-                host_group_name_filter |= Q(**{group_contains_clause: [{'name': group_name}]})
-    # Add RBAC group IDs
-    host_group_rbac_filter = Q()
-    assert isinstance(host_groups, list)
-    for group in host_groups:
-        if group is None:
-            group_value = []
-            clause_used = group_clause
-        else:
-            group_value = [{'id': group}]
-            clause_used = group_contains_clause
-        host_group_rbac_filter |= Q(**{clause_used: group_value})
-    # Users can only see groups in both filters.
-    return Q(host_group_rbac_filter & host_group_name_filter)
+    return _get_host_group_filter_local(host_groups, host_groups_param, relation)
 
 
 def _get_host_group_filter_local(host_groups, host_groups_param, relation=None):
@@ -298,14 +270,14 @@ def get_systems_queryset(request):
     if pathway_slug:
         systems = systems.filter(pathway_filter_hits__isnull=False, pathway_filter_hits__gt=0)
 
-    rhel_version_filter = filter_on_rhel_version(request, use_local=True)
+    rhel_version_filter = filter_on_rhel_version(request)
 
     return systems.filter(
         filter_on_display_name(request),
         filter_on_hits(request),
         filter_on_incident(request),
         rhel_version_filter,
-        filter_on_has_disabled_recommendation(request, use_local=True)
+        filter_on_has_disabled_recommendation(request)
     )
 
 
@@ -345,7 +317,7 @@ def stale_systems_q(org_id, field='host_id', model_class=None):
     )})
 
 
-def cert_auth_q(request, relation='', use_local=False):
+def cert_auth_q(request, relation=''):
     """
     Returns a Q object that filters InventoryHost on the system's certificate
     if Certificate Authentication is used, or an empty Q object otherwise.
@@ -360,10 +332,7 @@ def cert_auth_q(request, relation='', use_local=False):
     # Satellite will have this owner_id; if this is a system then it gets
     # its own ID as the owner_id - i.e. it's 'self-owned'.  So this always
     # works :-)
-    if use_local:
-        relation_field = relation + 'owner_id'
-    else:
-        relation_field = relation + 'system_profile__owner_id'
+    relation_field = relation + 'owner_id'
 
     return models.Q(**{relation_field: cert_auth_owner})
 
@@ -421,11 +390,11 @@ def get_reports_subquery(
     inv_relation = 'advisor_inventory'
     inv_model = AdvisorInventoryHost
 
-    host_tags_q = filter_on_host_tags(request, use_local=True)
-    system_type_q = filter_on_system_type(request, relation=inv_relation, use_local=True)
+    host_tags_q = filter_on_host_tags(request)
+    system_type_q = filter_on_system_type(request, relation=inv_relation)
 
     system_profile_filter = filter_multi_param(
-        request, 'system_profile', field_prefix=inv_relation, use_local=True
+        request, 'system_profile', field_prefix=inv_relation
     )
 
     category_filter = Q()
@@ -470,11 +439,11 @@ def get_reports_subquery(
         Q(
             host_tags_q, system_type_q, system_profile_filter,
             category_filter,
-            cert_auth_q(request, relation=inv_relation, use_local=True),
+            cert_auth_q(request, relation=inv_relation),
             branch_id_filter,
-            filter_on_update_method(request, relation=inv_relation, use_local=True),
-            filter_on_workload(request, relation=inv_relation, use_local=True),
-            get_host_group_filter(request, relation=inv_relation, use_local=True),
+            filter_on_update_method(request, relation=inv_relation),
+            filter_on_workload(request, relation=inv_relation),
+            get_host_group_filter(request, relation=inv_relation),
             stale_systems_filter,
         ) if exclude_ineligible_hosts else Q(),
         org_id=org_id,
@@ -800,9 +769,9 @@ class AdvisorInventoryHostManager(models.Manager):
         if not org_id:
             return AdvisorInventoryHost.objects.none()
 
-        host_tags_q = filter_on_host_tags(request, field_name='inventory_id', use_local=True)
-        system_type_q = filter_on_system_type(request, use_local=True)
-        system_profile_filter = filter_multi_param(request, 'system_profile', use_local=True)
+        host_tags_q = filter_on_host_tags(request, field_name='inventory_id')
+        system_type_q = filter_on_system_type(request)
+        system_profile_filter = filter_multi_param(request, 'system_profile')
         staleness_filter = Q()
         if filter_stale:
             staleness_filter = Q(puptoo_stale_timestamp__gt=timezone.now())
@@ -816,7 +785,7 @@ class AdvisorInventoryHostManager(models.Manager):
             require_host_filter = Q(Exists(
                 HostModel.objects.filter(inventory_id=OuterRef('inventory_id'))
             ))
-        host_group_filter = get_host_group_filter(request, use_local=True)
+        host_group_filter = get_host_group_filter(request)
 
         return AdvisorInventoryHost.objects.annotate(
             puptoo_stale_timestamp=Cast(Cast(
@@ -825,10 +794,10 @@ class AdvisorInventoryHostManager(models.Manager):
             ), output_field=models.DateTimeField())
         ).filter(
             host_tags_q, system_type_q, system_profile_filter,
-            cert_auth_q(request, use_local=True), branch_id_filter,
+            cert_auth_q(request), branch_id_filter,
             staleness_filter,
-            filter_on_update_method(request, use_local=True),
-            filter_on_workload(request, use_local=True),
+            filter_on_update_method(request),
+            filter_on_workload(request),
             require_host_filter, host_group_filter,
             org_id=org_id
         )
@@ -1276,11 +1245,10 @@ class RuleManager(models.Manager):
         ).order_by()
 
         system_profile_filter = filter_multi_param(
-            request, 'system_profile', field_prefix='host__advisor_inventory',
-            use_local=True
+            request, 'system_profile', field_prefix='host__advisor_inventory'
         )
         hosts_acked_for_rule = HostAck.objects.filter(
-            filter_on_host_tags(request, field_name='host_id', use_local=True),
+            filter_on_host_tags(request, field_name='host_id'),
             system_profile_filter,
             stale_systems_q(org_id, field='host_id', model_class=AdvisorInventoryHost),
             org_id=org_id, rule=models.OuterRef('id'),
