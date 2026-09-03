@@ -558,11 +558,11 @@ class MaintenanceTestCase(TestCase):
             **auth_header_for_testing()
         )
         self.assertEqual(response.status_code, 400, f"Response: {response.status_code} - {response.content.decode()}")
-        self.assertEqual(response.json(), {'add': [
-            {'rule_id': ['This field is required.']},
-            {'rule_id': ["Rule with ID 'unknown rule' does not exist"]},
-            {'system_id': ["Must be a valid UUID."]},
-        ]})
+        self.assertEqual(response.json(), {'add': {
+            '0': {'rule_id': ['This field is required.']},
+            '1': {'rule_id': ["Rule with ID 'unknown rule' does not exist"]},
+            '2': {'system_id': ["Must be a valid UUID."]},
+        }})
 
     def test_maintenance_update_simple(self):
         # No branch ID, no update.

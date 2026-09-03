@@ -57,6 +57,8 @@ rpds-py = "==0.23.1"
 jsonschema = "==4.24.0"
 confluent-kafka = "==2.10.1"
 urllib3 = ">=2.7.0"
+sqlparse = "==0.6.0"
+pyasn1 = "==0.6.4"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"
