@@ -22,7 +22,6 @@ from django.test import TestCase  # , override_settings
 from django.utils import timezone
 
 import inventory_prometheus_metrics as prometheus
-from feature_flags import set_unleash_flag, FLAG_ENABLE_INVENTORY_REPLICATION
 from django.core.signals import request_started, request_finished
 from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
@@ -194,7 +193,6 @@ class TestAdvisorInventoryServer(TestCase):
                 }
             )
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_message_dispatch(self):
         """
         Test that the handle_inventory_event function dispatches messages
@@ -219,7 +217,6 @@ class TestAdvisorInventoryServer(TestCase):
             )
         # Test the actual calls to create and delete in their own test methods.
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_created_message_success(self):
         """
         Test successful creation and updating of hosts.
@@ -290,7 +287,6 @@ class TestAdvisorInventoryServer(TestCase):
             new_host = Host.objects.get(inventory_id=new_host_id)
             self.assertEqual(str(new_host.satellite_id).upper(), new_host_satid)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_created_message_fail_missing_key(self):
         """
         Test all the missing keys being detected in the create message
@@ -363,7 +359,6 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertIsNotNone(result)
             self.assertIsNone(result.satellite_id)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     @patch.object(prometheus.INVENTORY_EVENT_MALFORMED, 'inc')
     @patch.object(prometheus.INVENTORY_EVENT_INSIGHTS_ONLY_FILTERED, 'inc')
     def test_created_message_filtered_nil_insights_id(
@@ -392,13 +387,11 @@ class TestAdvisorInventoryServer(TestCase):
         mock_filtered_inc.assert_called_once()
         mock_malformed_inc.assert_not_called()
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_parse_created_event_returns_sentinel_for_nil_insights_id(self):
         modified_msg = deepcopy(create_new_host_msg)
         modified_msg['host']['insights_id'] = NIL_UUID
         self.assertIs(parse_created_event(modified_msg), INSIGHTS_ONLY_FILTERED)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_updated_message_success(self):
         """
         Test successful updating of existing host.
@@ -429,7 +422,6 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertEqual(inv_host.os_major, 7)
             self.assertEqual(inv_host.os_minor, 5)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_deleted_message_success(self):
         """
         Test successful deletion of existing host.
@@ -487,7 +479,6 @@ class TestAdvisorInventoryServer(TestCase):
             0
         )
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_deleted_message_fail_missing_key(self):
         """
         Test all the missing keys being detected in the delete message
@@ -520,7 +511,6 @@ class TestAdvisorInventoryServer(TestCase):
                 self.assertEqual(len(log_lines), 2)
                 self.assertIsNone(result)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_created_nullable_fields(self):
         """
         Test that the handler works when optional system_profile fields are missing.
@@ -544,7 +534,6 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertEqual(inv_host.workloads, {})
         self.assertIsNone(inv_host.system_update_method)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_batch_created_and_updated(self):
         """Test that handle_inventory_event processes a batch of create and update messages."""
         batch = [create_new_host_msg, update_host_msg]
@@ -565,7 +554,6 @@ class TestAdvisorInventoryServer(TestCase):
         )
         self.assertEqual(inv_host.display_name, constants.host_01_name)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_batch_deleted(self):
         """Test that handle_inventory_event processes a batch of delete messages."""
         # First create the host so we can delete it
@@ -589,30 +577,6 @@ class TestAdvisorInventoryServer(TestCase):
             ).exists()
         )
 
-    def test_batch_ignored_when_flag_disabled(self):
-        """
-        Test that batched messages are ignored when ENABLE_INVENTORY_REPLICATION
-        is disabled (env + feature flag), and that no DB changes occur.
-        """
-        batch = [create_new_host_msg]
-
-        with self.assertLogs(logger='advisor-log') as logs:
-            handle_inventory_event('topic', batch)
-
-        self.assertTrue(
-            any("feature flag not enabled, ignoring" in line for line in logs.output),
-            msg="Expected 'feature flag not enabled, ignoring' log message",
-        )
-        self.assertFalse(
-            AdvisorInventoryHost.objects.filter(
-                inventory_id=new_host_id, org_id=constants.standard_org
-            ).exists()
-        )
-        self.assertFalse(
-            Host.objects.filter(inventory_id=new_host_id).exists()
-        )
-
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_batch_skips_invalid_messages(self):
         """Test that invalid messages in a batch are skipped while valid ones proceed."""
         invalid_msg_no_type = {'key': 'value'}
@@ -632,7 +596,6 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertTrue(any("no 'type' field" in line for line in logs.output))
         self.assertTrue(any("Unknown message type: foo" in line for line in logs.output))
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_malformed_host_payload_does_not_abort_batch(self):
         """Test that a message with wrong shape (e.g. host as string) is skipped."""
         malformed_msg = deepcopy(create_new_host_msg)
@@ -652,7 +615,6 @@ class TestAdvisorInventoryServer(TestCase):
             ).exists()
         )
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_stale_event_does_not_overwrite_newer_data(self):
         """Test that an event with an older 'updated' timestamp is filtered out."""
         newer_ts = "2026-06-01T12:00:00Z"
@@ -678,7 +640,6 @@ class TestAdvisorInventoryServer(TestCase):
         inv_host.refresh_from_db()
         self.assertEqual(inv_host.display_name, original_display_name)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_newer_event_overwrites_older_data(self):
         """Test that an event with a newer 'updated' timestamp updates the record."""
         older_ts = "2025-01-01T00:00:00Z"
@@ -701,7 +662,6 @@ class TestAdvisorInventoryServer(TestCase):
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
         self.assertEqual(inv_host.display_name, 'updated-name')
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_batch_dedup_keeps_latest_event(self):
         """Test that duplicate host events in a batch keep the one with latest 'updated'."""
         older_msg = deepcopy(create_new_host_msg)
@@ -729,7 +689,6 @@ class TestAdvisorInventoryServer(TestCase):
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
         self.assertEqual(inv_host.display_name, 'new-name')
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_group_change_event_updates_workspace(self):
         """Test that a group-change event (same last_check_in, newer updated) is not filtered out."""
         initial_ts = "2025-11-28T03:53:20Z"
@@ -759,7 +718,6 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertEqual(inv_host.workspace_name, "test-group")
         self.assertEqual(str(inv_host.workspace_id), "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     @patch.object(prometheus.INVENTORY_EVENT_MALFORMED, 'inc')
     def test_malformed_messages_increment_prometheus_counter(self, mock_malformed_inc):
         """Malformed messages increment INVENTORY_EVENT_MALFORMED once per skipped message."""
@@ -778,7 +736,6 @@ class TestAdvisorInventoryServer(TestCase):
 
         self.assertEqual(mock_malformed_inc.call_count, 4)
 
-    @set_unleash_flag(FLAG_ENABLE_INVENTORY_REPLICATION, True)
     def test_delete_failure_prevents_batch_ack(self):
         """A failed delete commit must fail the batch so offsets are not committed."""
         from django.db import close_old_connections
