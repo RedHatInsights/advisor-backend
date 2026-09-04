@@ -62,7 +62,6 @@ certifi = "*"
 [scripts]
 migratedb = "api/advisor/manage.py migrate"
 makemigrations = "api/advisor/manage.py makemigrations"
-mockcyndi = "api/advisor/manage.py mock_cyndi_table"
 loaddata = "api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources resolution_risks pathways"
 loadtestdata = "api/advisor/manage.py loaddata basic_test_data"
 linter = "flake8 ./api/advisor ./service --tee --output-file lint-results.txt"
