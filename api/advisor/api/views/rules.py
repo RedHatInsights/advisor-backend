@@ -52,6 +52,7 @@ from api.permissions import (
     TurnpikeIdentityAuthentication,
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
     AssociatePermission, request_to_username, set_resource, ResourceScope,
+    host_group_attr,
 )
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin, store_post_data,
@@ -226,6 +227,14 @@ def filter_on_impacting(request):
         return Q()
 
 
+def filter_on_groups(request):
+    host_groups_param = value_of_param(host_group_name_query_param, request)
+    host_groups = getattr(request, host_group_attr, [])
+    if host_groups_param or host_groups:
+        return Q(has_reports=True)
+    return Q()
+
+
 def filter_on_incident(request):
     # Filter for just a specific 'incident' tag (or absence thereof)
     incident_param = value_of_param(incident_query_param, request)
@@ -372,6 +381,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             acct_rules = acct_rules.filter(
                 filter_on_param('pathway__slug', pathway_query_param, request),
                 filter_on_param('category_id', category_query_param, request),
+                filter_on_groups(request),
                 filter_on_param('tags__name', has_tag_query_param, request),
                 filter_on_param('impact__impact', impact_query_param, request),
                 # We don't really need to look up the impact object, because

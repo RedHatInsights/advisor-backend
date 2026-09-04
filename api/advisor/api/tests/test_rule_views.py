@@ -1822,6 +1822,61 @@ class RuleTestCase(TestCase):
         ).json()
         self.assertFalse('pathway' in second_rule.keys())
 
+    def test_rule_list_filter_groups_group_1(self):
+        response = self.client.get(reverse('rule-list'), data={
+            'groups': constants.host_group_1_name,
+        }, **self.default_header)
+        rules = self._response_is_good(response)
+        # group_1 has host_01 with: Active_rule, Acked_rule
+        # Second_rule has a host ack on host_01 so has_reports=False → excluded
+        # high_sev_rule has no reports in group_1 → excluded
+        self.assertEqual(len(rules), 2)
+        self.assertIn(constants.active_rule, rules)
+        self.assertIn(constants.acked_rule, rules)
+        self.assertNotIn(constants.second_rule, rules)
+        self.assertNotIn(constants.high_sev_rule, rules)
+        self.assertEqual(rules[constants.active_rule]['impacted_systems_count'], 1)
+        self.assertEqual(rules[constants.acked_rule]['impacted_systems_count'], 1)
+
+    def test_rule_list_filter_groups_group_2(self):
+        response = self.client.get(reverse('rule-list'), data={
+            'groups': 'group_2',
+        }, **self.default_header)
+        rules = self._response_is_good(response)
+        # group_2 has host_03 with: Active_rule, Second_rule
+        # Acked_rule has no reports in group_2 → excluded
+        self.assertEqual(len(rules), 2)
+        self.assertIn(constants.active_rule, rules)
+        self.assertIn(constants.second_rule, rules)
+        self.assertNotIn(constants.acked_rule, rules)
+        self.assertEqual(rules[constants.active_rule]['impacted_systems_count'], 1)
+        self.assertEqual(rules[constants.second_rule]['impacted_systems_count'], 1)
+
+    def test_rule_list_filter_groups_ungrouped(self):
+        response = self.client.get(reverse('rule-list'), data={
+            'groups': '',
+        }, **self.default_header)
+        rules = self._response_is_good(response)
+        # Ungrouped non-stale hosts: host_04 (Active, Second), host_06 (Active)
+        # Acked_rule has no ungrouped hosts → excluded
+        self.assertEqual(len(rules), 2)
+        self.assertIn(constants.active_rule, rules)
+        self.assertIn(constants.second_rule, rules)
+        self.assertNotIn(constants.acked_rule, rules)
+        self.assertEqual(rules[constants.active_rule]['impacted_systems_count'], 2)
+        self.assertEqual(rules[constants.second_rule]['impacted_systems_count'], 1)
+
+    def test_rule_list_filter_groups_no_param(self):
+        response = self.client.get(reverse('rule-list'), **self.default_header)
+        rules = self._response_is_good(response)
+        # Without groups filter, all active rules returned including those
+        # with zero impacted systems
+        self.assertEqual(len(rules), 4)
+        self.assertIn(constants.active_rule, rules)
+        self.assertIn(constants.acked_rule, rules)
+        self.assertIn(constants.second_rule, rules)
+        self.assertIn(constants.high_sev_rule, rules)
+
 
 class InternalRuleTestCase(TestCase):
     fixtures = [
