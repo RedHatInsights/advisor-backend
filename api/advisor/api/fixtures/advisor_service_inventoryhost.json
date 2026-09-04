@@ -34,4 +34,39 @@
         "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
         "insights_id": "8da8bea4-964a-99f4-6e28bd13aaec5423"
     }
+}, {
+    "model": "api.advisorinventoryhost",
+    "pk": ["9876543", "2db7adeb-e3e8-4d40-bf68-bd00064e252b"],
+    "fields": {
+        "inventory_id": "2db7adeb-e3e8-4d40-bf68-bd00064e252b",
+        "account": "123456",
+        "org_id": "9876543",
+        "display_name": "unknown",
+        "tags": [],
+        "workspace_id": null,
+        "workspace_name": null,
+        "workspace_ungrouped": null,
+        "updated": "2020-02-21T23:59:59Z",
+        "created": "2020-02-21T23:59:59Z",
+        "last_check_in": "2020-02-28T23:59:59Z",
+        "stale_timestamp": "2020-02-28T23:59:59Z",
+        "insights_id": "8da8bea4-964a-99f4-6e28-bd13aaec5423",
+        "reporter": "puptoo",
+        "per_reporter_staleness": {"puptoo": {"stale_timestamp": "2020-01-01T06:00:00Z"}},
+        "os_name": null,
+        "os_major": null,
+        "os_minor": null,
+        "host_type": null,
+        "bootc_booted_image": null,
+        "bootc_booted_image_digest": null,
+        "owner_id": null,
+        "rhc_client_id": null,
+        "workloads": {},
+        "system_update_method": null,
+        "infrastructure_type": null,
+        "bios_release_date": null,
+        "bios_vendor": null,
+        "bios_version": null,
+        "release": null
+    }
 }]
