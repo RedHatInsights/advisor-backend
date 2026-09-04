@@ -28,9 +28,7 @@ from api.filters import (
     workload_query_param,
     host_group_name_query_param, filter_on_host_tags
 )
-from api.models import (
-    AdvisorInventoryHost, HostAck, stale_systems_q
-)
+from api.models import HostAck, stale_systems_q
 from api.permissions import (
     request_to_username, InsightsRBACPermission, CertAuthPermission,
     request_to_org, IsRedHatInternalUser, ResourceScope,
@@ -94,9 +92,7 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         # its primary key.  This is the least-pain defence against that.
         swagger_fake_view = getattr(self, 'swagger_fake_view', False)
         org_id = request_to_org(self.request) if not swagger_fake_view else None
-        stale_filter = stale_systems_q(
-            org_id, field='host_id', model_class=AdvisorInventoryHost
-        )
+        stale_filter = stale_systems_q(org_id, field='host_id')
         return self.queryset.filter(
             stale_filter,
             org_id=org_id
