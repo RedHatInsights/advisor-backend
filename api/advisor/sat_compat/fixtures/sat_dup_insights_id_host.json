@@ -9,6 +9,7 @@
         "tags": [],
         "workspace_id": null,
         "workspace_name": null,
+        "workspace_ungrouped": null,
         "updated": "2022-01-11T06:15:38Z",
         "created": "2022-01-11T06:00:00Z",
         "last_check_in": "2022-01-12T06:00:00Z",
@@ -31,32 +32,6 @@
         "bios_vendor": "Dell Inc.",
         "bios_version": "2.8.0",
         "release": null
-    }
-},{
-    "model": "api.InventoryHost",
-    "pk": "00112233-4455-6677-8899-012345678911",
-    "fields": {
-      "account": "1234567",
-      "org_id": "9876543",
-      "display_name": "system11.example.com",
-      "tags": [],
-      "groups": [],
-      "created": "2022-01-11T06:00:00Z",
-      "updated": "2022-01-11T06:15:38Z",
-      "last_check_in": "2022-01-12T06:00:00Z",
-      "stale_timestamp": "2022-01-12T06:00:00Z",
-      "system_profile": {
-          "arch": "x86_64", "bios_vendor": "Dell Inc.", "bios_version": "2.8.0",
-          "bios_release_date": "13/06/2017", "cores_per_socket": 8,
-          "number_of_sockets": 2, "infrastructure_type": "physical",
-          "system_memory_bytes": 134927265792, "satellite_managed":true,
-          "insights_egg_version": "3.0.182-1", "sap_system": true,
-          "insights_client_version":"3.0.14", "sap_sids": ["E01", "E02"],
-          "os_release": "Red Hat Enterprise Linux Server",
-          "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
-          "operating_system": {"name": "RHEL", "major": 7, "minor": 5}
-      },
-      "insights_id": "FFEEDDCC-BBAA-9988-7766-554433221101"
     }
 },{
     "model": "api.host",

@@ -211,8 +211,10 @@ def test_autoacks_for_new_account(db, service, sample_engine_results, mock_reque
     assert models.Upload.objects.filter(account=account, org_id=org_id).exists() is False
     assert models.Host.objects.filter(account=account, org_id=org_id).exists() is False
     assert models.Ack.objects.filter(account=account, org_id=org_id).exists() is False
-    # But we must have both InventoryHost objects...
-    assert models.InventoryHost.objects.filter(account=account).count() == 2
+    # But we must have both inventory host objects...
+    assert models.AdvisorInventoryHost.objects.filter(
+        account=account, org_id=org_id
+    ).count() == 2
 
     # Push an upload for new account 477931 org_id 5882103 that hits other_linux_system
     # Expect an autoack to be created
@@ -442,7 +444,9 @@ def test_generate_webhook_msgs_new_report(db, mocker, service, sample_report_dat
                 has_incident=models.Exists(models.Rule.objects.filter(id=models.OuterRef('rule'), tags__name='incident'))
             )
     cur_reports = [report_models.first()]
-    host_obj = models.InventoryHost.objects.get(id=inventory_uuid)
+    host_obj = models.AdvisorInventoryHost.objects.get(
+        inventory_id=inventory_uuid, org_id='9876543'
+    )
 
     service.report_hooks.trigger_report_hooks(host_obj, new_report_rules, cur_reports)
 
@@ -533,7 +537,9 @@ def test_generate_webhook_msgs_resolved_report(db, mocker, service, sample_repor
             'has_incident': acked_rule.has_incident,
         },
     ]
-    host_obj = models.InventoryHost.objects.get(id=inventory_uuid)
+    host_obj = models.AdvisorInventoryHost.objects.get(
+        inventory_id=inventory_uuid, org_id='9876543'
+    )
 
     service.report_hooks.trigger_report_hooks(host_obj, new_rule_objs, cur_reports)
 
