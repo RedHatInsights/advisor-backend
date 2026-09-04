@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Insights Advisor Backend is a Django 5.2 / Python 3.12+ application for Red Hat's Hybrid Cloud Console. It consists of two main systems:
+Insights Advisor Backend is a Django 5.2 / Python 3.12+ application for Red Hat's Hybrid Cloud Console. It consists of three main processes:
 - **API** (`api/`): Django REST Framework API serving recommendation data to users
 - **Service** (`service/`): Kafka consumer that receives rule processing results and records them in the database
+- **Inventory event consumer** (`advisor_inventory_service`): Kafka consumer that stores HBI host lifecycle events in Advisor's database
 
 ## Common Commands
 
@@ -18,7 +19,6 @@ pipenv install && pipenv install --dev
 export ADVISOR_DB_HOST=localhost
 podman-compose up -d advisor-db
 python api/advisor/manage.py migrate
-python api/advisor/manage.py mock_cyndi_table
 python api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources basic_test_data
 python api/advisor/manage.py freshen_hosts
 ```
@@ -28,6 +28,7 @@ python api/advisor/manage.py freshen_hosts
 pipenv run runapi                    # Start API server (Django runserver on :8000)
 pipenv run runservice                # Start Kafka service consumer
 pipenv run runtasks                  # Start Tasks service consumer
+python api/advisor/manage.py advisor_inventory_service  # Start inventory event consumer
 ```
 
 ### Testing
@@ -48,7 +49,6 @@ python api/advisor/manage.py test api/advisor/api/tests/test_rule_views.RuleView
 ```bash
 pipenv run migratedb                 # Run migrations
 pipenv run makemigrations            # Create new migrations
-pipenv run mockcyndi                 # Create mock Cyndi table
 pipenv run loaddata                  # Load production fixtures
 pipenv run loadtestdata              # Load test fixtures
 pipenv run apicovhtml                # Generate HTML coverage report
@@ -67,7 +67,7 @@ The Django project (`api/advisor/project_settings/`) serves three APIs with sepa
 ### Key data models (`api/advisor/api/models.py`)
 
 - **Rule**, **RuleImpact**, **Resolution**, **Playbook** — Rule content imported from external repos via `import_content` command
-- **InventoryHost** — Syndicated from HBI (Host-Based Inventory) via Cyndi; read-only in production. Uses `for_account(request)` manager method to scope queries by org_id and staleness
+- **AdvisorInventoryHost** — Advisor-owned, hash-partitioned host data populated from HBI Kafka events. Uses the `for_account(request)` manager method to scope queries by org_id and staleness
 - **Host** — Advisor's own host tracking (Satellite IDs, etc.), used as FK for uploads/reports
 - **CurrentReport** — Active rule hits per host. Central to most queries
 - **Upload** — Groups reports from a single system check-in; tracks `checked_on` date
@@ -78,7 +78,7 @@ The Django project (`api/advisor/project_settings/`) serves three APIs with sepa
 
 System-scoped filters follow a consistent pattern:
 1. Define an `OpenApiParameter` in `filters.py`
-2. Create a filter function returning a `Q()` object, accepting an optional `relation` parameter for use in both `InventoryHost` and `CurrentReport` queries
+2. Create a filter function returning a `Q()` object, accepting an optional `relation` parameter; use unprefixed fields for `AdvisorInventoryHost` queries and the `advisor_inventory` relation for `CurrentReport` queries
 3. Apply via `get_systems_queryset()` (for system queries) and `get_reports_subquery()` (for report-count queries)
 4. Advertise in `@extend_schema(parameters=[...])` on view methods
 
@@ -97,12 +97,12 @@ Kafka consumer processing `platform.engine.results` messages. Receives rule hit 
 
 ### Testing conventions
 
-- Tests use Django's `TestCase` with fixtures from `api/advisor/*/fixtures/`
+- Tests use Django's `TestCase` with fixtures from `api/advisor/*/fixtures/`; host fixtures use the `api.advisorinventoryhost` model
 - Test constants are centralized in `api/advisor/api/tests/__init__.py` (`from api.tests import constants`) — use these instead of hardcoded strings
 - Call `update_stale_dates()` before tests involving systems to ensure hosts aren't filtered out by staleness
 - External API calls use the `responses` library (not `unittest.mock`)
 - Kafka mocking uses `DummyMessage`, `DummyConsumer`, `DummyProducer` from `api/advisor/kafka_utils.py`
-- Custom test runner (`CyndiTestRunner`) automatically creates mock Cyndi table before tests
+- The standard XML test runner applies migrations, which create the local `advisor_inventory_host` table before fixtures are loaded
 - API tests require the database: `podman-compose up -d advisor-db` with `ADVISOR_DB_HOST=localhost`
 
 ### Content import

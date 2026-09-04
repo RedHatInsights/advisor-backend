@@ -93,7 +93,6 @@ You can also run Advisor from the host.  Here's how ...
     ```bash
     $ api/advisor/manage.py migrate
     $ api/advisor/manage.py loaddata rulesets rule_categories system_types upload_sources
-    $ api/advisor/manage.py mock_cyndi_table
     $ api/advisor/manage.py loaddata basic_test_data
     $ api/advisor/manage.py freshen_hosts
     ```
@@ -165,7 +164,7 @@ The system's `last_seen` date is drawn from Advisor's own `Upload` model,
 which stores the `checked_on` date from when this system last actually
 performed an upload that went into Advisor.
 
-The InventoryHost model controls this using a filter applied in the
+The `AdvisorInventoryHost` model controls this using a filter applied in the
 `for_account` manager method.  This makes sure that hosts that are currently
 stale according to Puptoo are always filtered out.
 
@@ -360,9 +359,9 @@ section.
 
 In the case of system-specific filters, there are actually two types of
 underlying Django query that we use to display lists of systems.  The obvious
-one is via the `InventoryHost` model, where we can build queries based on
+one is via the `AdvisorInventoryHost` model, where we can build queries based on
 the system fields directly.  The queryset for these views will be based on
-either the `InventoryHost.objects.for_account(request)` manager method, which
+either the `AdvisorInventoryHost.objects.for_account(request)` manager method, which
 implements basic org_id and other filtering, or the 
 `get_systems_queryset(request)` function in `api.models`, which implements a
 lot more filtering.
@@ -374,7 +373,8 @@ function in `api.models`.  This will be important later :-)
 
 This means that it's good practice for our 'role' filter function to take a
 `relation` argument, which allows the caller to specify the relation to the
-`InventoryHost` model.  This is the purpose of the `base_parameter` variable
+`AdvisorInventoryHost` model.  `CurrentReport` exposes that relation as
+`advisor_inventory`.  This is the purpose of the `base_parameter` variable
 and the kwargs manipulation in the `Q()` object creation:
 
 ```py
@@ -451,11 +451,11 @@ return CurrentReport.objects.filter(
     Q(
         host_tags_q, system_type_q, system_profile_filter,
         category_filter,
-        cert_auth_q(request, relation='inventory'),
+        cert_auth_q(request, relation='advisor_inventory'),
         branch_id_filter,
-        filter_on_update_method(request, relation='inventory'),
-        get_host_group_filter(request, relation='inventory'),
-        filter_on_system_role(request, relation='inventory'),
+        filter_on_update_method(request, relation='advisor_inventory'),
+        get_host_group_filter(request, relation='advisor_inventory'),
+        filter_on_system_role(request, relation='advisor_inventory'),
         stale_systems_filter,
     ) if exclude_ineligible_hosts else Q(),
     **outer_table_join
@@ -603,6 +603,10 @@ These can also be run via
 ```sh
 $ pipenv run testapi
 ```
+
+The configured XML test runner applies migrations before loading fixtures, so
+the local `advisor_inventory_host` table is created by the normal test database
+setup. Host fixture entries use the `api.advisorinventoryhost` model.
 
 ### Code coverage and test writing
 
@@ -987,9 +991,15 @@ so that has to be imported into the database for results to appear in these quer
 
 Then in the shell:
 ```python
-from api.models import Host, Upload, CurrentReport
+from api.models import AdvisorInventoryHost, Host, Upload, CurrentReport
 
-# See the host
+# See the host data ingested from HBI
+AdvisorInventoryHost.objects.filter(
+    org_id='9876543',
+    inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d',
+).values()
+
+# See Advisor's Host record
 Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').values()
 
 # See uploads for this host
@@ -1028,9 +1038,12 @@ from django.core.serializers.json import DjangoJSONEncoder
 qs = CurrentReport.objects.filter(host_id='57c4c38b-a8c6-4289-9897-223681fd804d').values('rule__rule_id', 'org_id', 'impacted_date')
 print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 
-# See the host with display_name from InventoryHost (via the inventory FK)
+# See the Host with display_name from AdvisorInventoryHost
 from django.db.models import F
-qs = Host.objects.filter(inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d').annotate(display_name=F('inventory__display_name')).values()
+qs = Host.objects.filter(
+    org_id='9876543',
+    inventory_id='57c4c38b-a8c6-4289-9897-223681fd804d',
+).annotate(display_name=F('advisor_inventory__display_name')).values()
 print(json.dumps(list(qs), indent=2, cls=DjangoJSONEncoder))
 ```
 
@@ -1048,7 +1061,12 @@ has to be imported into the database for results to appear in these queries.
 
 Then in psql:
 ```sql
--- See the host (table: api_host, PK column: system_uuid)
+-- See the host data ingested from HBI
+SELECT * FROM advisor_inventory_host
+WHERE org_id = '9876543'
+  AND inventory_id = '57c4c38b-a8c6-4289-9897-223681fd804d';
+
+-- See Advisor's Host record (table: api_host, PK column: system_uuid)
 SELECT * FROM api_host
 WHERE system_uuid = '57c4c38b-a8c6-4289-9897-223681fd804d';
 

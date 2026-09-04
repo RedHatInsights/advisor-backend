@@ -1032,7 +1032,7 @@ class InsightsRBACPermission(BasePermission):
 
         permission = f'{self.app}:{resource}:{action}'
 
-        # This is assumed to be used on a view that gets InventoryHost objects.
+        # This is assumed to be used on a view that gets AdvisorInventoryHost objects.
         if not hasattr(obj, "id"):
             return set_rbac_failure(
                 request, "Permission scope is 'Host' but object has no 'id' attribute"

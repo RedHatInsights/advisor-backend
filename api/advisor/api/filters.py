@@ -892,7 +892,7 @@ def sort_params_to_fields(param_value, field_map={}, reverse_nulls_order=False):
 
     `field_map` is a dictionary keyed on the sort field value with the value
     of the actual field in the model's relationships being sorted on.  This
-    allows you to sort on related fields (e.g. `inventory__display_name`)
+    allows you to sort on related fields (e.g. `advisor_inventory__display_name`)
     without using long names or giving away the table structure.  If the
     sort field is not in the field map, then the sort field value is used -
     which means the field map only needs to be the 'exceptions'.

@@ -1,9 +1,9 @@
 # Insights Advisor Backend
 
-This is the Insights Advisor Backend repository. This repository
-hosts both the Advisor API and the Advisor Service. This is the top-level README
-for both services. To see more detailed information about the API or the
-Service look at their respective READMEs in "api" or "service" directories.
+This is the Insights Advisor Backend repository. It hosts the Advisor API, the
+Advisor Service, and the inventory event consumer. This is the top-level README
+for those processes. To see more detailed information about the API or Service,
+look at their respective READMEs in the `api` or `service` directories.
 
 # Background
 
@@ -12,11 +12,11 @@ for hosts to upload a 'snapshot' of their state as it related to Red Hat
 components, and for reports of Insights rules to be recorded and shown for
 that system.
 
-Advisor is essentially two systems.  One, the 'service', receives messages
-via Kafka about the results of processing the Insights rules on a system and
-records these results in the database.  The other, the 'API', displays these
-results to the user.  These two systems are in the `service` and `api`
-directories respectively.
+Advisor has three main processes.  The 'service' receives Kafka messages with
+the results of processing Insights rules on a system and records them in the
+database.  The inventory event consumer stores HBI host lifecycle events in
+Advisor's database.  The 'API' displays this data to the user.  The service is
+in `service/`; the API and inventory event consumer are in `api/`.
 
 # The Insights platform
 
@@ -93,19 +93,24 @@ information to display to the user.
 Systems normally upload each day, and there are several types of upload -
 `subscription-manager` and `insights-client` are the two most common.  If a
 system hasn't uploaded in fourteen days, it is considered stale, and after
-twenty-one days it is hidden from display.  After twenty-eight days the
-Inventory database deletes the system - this prevents 'ephemeral' systems
+twenty-one days it is hidden from display.  After twenty-eight days HBI
+deletes the system - this prevents 'ephemeral' systems
 which are brought up, run for a limited time, and then shut down (without
 sending a 'delete' notification) from cluttering up the database.
 
-## Data syndication
+## Inventory data ingestion
 
 Advisor consumes host creation, update, and deletion events from Inventory and
 stores the required host data in its local `AdvisorInventoryHost` table.
 
 ## Inventory Event Consumer
 
-The `advisor_inventory_service` management command (`api/advisor/api/management/commands/advisor_inventory_service.py`) runs a Kafka consumer that replicates host data from the Host-Based Inventory (HBI) service into Advisor's own `AdvisorInventoryHost` and `Host` tables. It consumes messages from the `platform.inventory.events` topic in configurable batches (controlled by the `INVENTORY_BATCH_SIZE` setting).
+The `advisor_inventory_service` management command
+(`api/advisor/api/management/commands/advisor_inventory_service.py`) runs a
+Kafka consumer that stores host data from HBI in Advisor's own
+`AdvisorInventoryHost` and `Host` tables. It consumes messages from the
+`platform.inventory.events` topic in configurable batches controlled by the
+`INVENTORY_BATCH_SIZE` setting.
 
 ### How it works
 
@@ -206,9 +211,9 @@ empty values gracefully.  Only the first entry in `groups` is used to populate
 }
 ```
 
-Deleting a host cascades through `Host` (which cascades to `Upload`,
-`CurrentReport`, and `HostAck`) and then removes the `AdvisorInventoryHost`
-record.
+Delete events remove the matching `AdvisorInventoryHost` and `Host` records,
+along with dependent `Upload`, `CurrentReport`, and `HostAck` records, in one
+database transaction.
 
 ## Content load and import
 
@@ -255,9 +260,10 @@ content repository's `config.yaml` file, get written into the container image.
 
 ### System data
 
-System data is primarily stored in the `InventoryHost` model using the
-'Cyndi' process mentioned above.  We also use a `Host` model to keep track of
-data that the Inventory table does not, such as Satellite IDs.
+System data is primarily stored in the `AdvisorInventoryHost` model by the
+inventory event consumer described above.  We also use a `Host` model to keep
+track of Advisor-specific data, such as Satellite IDs, and as the foreign key
+target for uploads and reports.
 
 Each time a system runs `insights-client` we store each individual result in
 the `CurrentReport` model.  Zero or more reports are grouped together into an
@@ -326,6 +332,9 @@ These control how what URL paths we accept.
 - `ADVISOR_DB_READONLY_HOST` - If set, this allows use of a read-only replica of the database.
 - `ADVISOR_DB_SSL_MODE` - added optionally if present
 - `ADVISOR_DB_SSL_CA` - added optionally if present
+- `ADVISOR_INVENTORY_HOST_NUM_PARTITIONS` - Default: `1`. Sets the number of
+  hash partitions created for `advisor_inventory_host` by its initial migration
+  and used by the partitioned-index helper. Set it before applying that migration.
 
 ## RBAC/Authentication
 
@@ -405,17 +414,6 @@ users can see.  For testing this is normally disabled as well.
 - `MAIL_HOST` - Default: `mail.corp.redhat.com`
 - `DEFAULT_FROM_EMAIL` - Default: `Red Hat Hybrid Cloud Console <noreply@redhat.com>`
 
-## Host-Based Inventory (HBI) Settings
-
-This relates to the Logical Replication idea.  These are no longer in use and should be removed.
-
-- `HBI_PUBLICATION` - Default: `hbi_hosts_pub_v1_0_2`
-- `HBI_SUBSCRIPTION` - Default: `advisor_hosts_sub_v1_0_2`
-- `HBI_DROP_SUBSCRIPTION` - Default: `` (empty)
-- `HBI_DROP_TABLES` - Default: `false`
-- `HBI_SSL_MODE` - Default: `` (empty)
-- `HBI_TABLES_NUM_PARTITIONS` - Default: `1`
-
 ## Kafka Configuration
 
 - `BOOTSTRAP_SERVERS` - Needed for connecting to Kafka
@@ -445,6 +443,8 @@ These are the actual topics read and written to when we use Kafka
 - `LOG_LEVEL` - Default: `INFO`
 - `DB_RETRY_CONSTANT` - Default: `3`
 - `THREAD_POOL_SIZE` - Default: `30`
+- `INVENTORY_BATCH_SIZE` - Default: `50`. Number of HBI events handled in one
+  batch by the inventory event consumer.
 - `DISABLE_PROMETHEUS` - Default: `false`
 - `FILTER_OUT_NON_RHEL` - Default: `true`
 - `FILTER_OUT_NON_RHEL_RULE_ID` - Default: `other_linux_system|OTHER_LINUX_SYSTEM,other_linux_system|OTHER_LINUX_SYSTEM_V2,other_linux_system|CONVERT2RHEL_SUPPORTED`
@@ -468,20 +468,6 @@ These are the actual topics read and written to when we use Kafka
 - `ENABLE_AUTOSUB` - Default: `false`
 
 # Notes
-
-## Cyndi Considerations
-
-If advisor is running a real OpenShift environment, the cyndi table/view are
-expected to be created outside of advisor. If you are running advisor
-locally, you may need to mock this out. This can be accomplished with the
-following command:
-
-```
-python api/advisor/manage.py mock_cyndi_table
-```
-
-The tests automatically run this command.  It is only applicable if you are
-running advisor standalone.
 
 ## Updating Host Stale Timestamps
 
@@ -526,6 +512,15 @@ python service/manual_test/send_fake_engine_results.py
 python api/advisor/manage.py freshen_hosts
 ```
 
+## Running the Inventory Event Consumer manually
+
+With the database and Kafka running, start the consumer in a separate shell:
+
+```bash
+BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8002 \
+python api/advisor/manage.py advisor_inventory_service
+```
+
 ## Running the API with podman-compose
 
 Start the API
@@ -560,7 +555,6 @@ Populate the DB (if this is the first time running).
 ... or manually run the following commands (which are mostly in the container_init_localdev.sh script):
 ```bash
 python api/advisor/manage.py migrate
-python api/advisor/manage.py mock_cyndi_table
 python api/advisor/manage.py loaddata rulesets rule_categories system_types \
        upload_sources basic_test_data basic_task_test_data
 ```
@@ -636,6 +630,10 @@ To run API Tests
 ```
 pipenv run testapi
 ```
+To run Tasks API Tests
+```
+pipenv run testtasks
+```
 
 ## Prometheus and Grafana
 
@@ -676,8 +674,6 @@ The following items would improve the README documentation:
 - [X] Explain what Clowder is and how it's used
 - [X] Clarify the relationship between API and Service (when to run each, how they interact)
 - [X] Document external dependencies:
-  - What is the Inventory database and where is it?
-  - What is Cyndi exactly? (service? process? library?)
   - Location of insights-content and insights-playbooks repositories
 - [X] Add production authentication/authorization flow explanation
   - This is mainly done in the API readme.
