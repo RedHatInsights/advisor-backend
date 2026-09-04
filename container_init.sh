@@ -53,12 +53,6 @@ if [ "${ADVISOR_ENV}" != 'dev' ]; then
     pipenv run python api/advisor/manage.py loaddata --verbosity=3 production_tasks pathways_prod
 fi
 
-# Idempotent due to use of `CREATE IF NOT EXISTS` and `CREATE OR REPLACE`.
-if [ "${ADVISOR_ENV}" == 'dev' ]; then
-    echo "Creating mocked inventory table for the dev environment ..."
-    pipenv run python api/advisor/manage.py mock_cyndi_table
-fi
-
 # Register notify hooks for new/resolved reports
 # cd api/advisor
 pipenv run python api/advisor/api/scripts/register_hooks.py
