@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from rest_framework.serializers import CharField
 
-from api.models import AdvisorInventoryHost, Host, InventoryHost
+from api.models import AdvisorInventoryHost, Host
 from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing
 from sat_compat.serializers import LabelSerializer
@@ -37,7 +37,7 @@ non_interp_warning = "Warning: this content is not able to be interpolated"
 class SystemViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'advisor_inventory_host_test_data',
+        'basic_test_data',
     ]
     systems_data = [{
         'toString': constants.host_01_name,
@@ -1031,7 +1031,7 @@ class SystemViewTestCase(TestCase):
 class SystemDupInsightsIDViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'advisor_inventory_host_test_data',
+        'basic_test_data',
         'sat_dup_insights_id_host',
     ]
 
@@ -1150,7 +1150,7 @@ class SystemDupInsightsIDViewTestCase(TestCase):
 class SystemV1ViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'advisor_inventory_host_test_data',
+        'basic_test_data',
     ]
 
     @classmethod

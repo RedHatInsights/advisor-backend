@@ -35,7 +35,7 @@ PLAYBOOK_URL = REMEDIATIONS_URL + '/api/remediations/v1/playbook'
 class MaintenanceTestCase(TestCase):
     fixtures = [
         'rule_categories', 'rulesets', 'system_types', 'upload_sources',
-        'basic_test_data', 'advisor_inventory_host_test_data',
+        'basic_test_data',
         'high_severity_rule', 'sat_maintenance',
     ]
 

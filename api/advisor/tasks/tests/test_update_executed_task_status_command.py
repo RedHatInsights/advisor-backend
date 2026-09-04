@@ -15,13 +15,12 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from tasks.models import ExecutedTask, ExecutedTaskStatusChoices, JobStatusChoices
 from tasks.tests import constants
 
 
-@override_settings(READ_LOCAL_INVENTORY=True)
 class UpdateExecutedTaskStatusTestCase(TestCase):
     fixtures = ['basic_task_test_data']
 

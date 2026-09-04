@@ -15,7 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.db.models import Count, Q
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from tasks.models import (
     ExecutedTask, ExecutedTaskStatusChoices, Job, JobStatusChoices,
@@ -23,7 +23,6 @@ from tasks.models import (
 )
 
 
-@override_settings(READ_LOCAL_INVENTORY=True)
 class TestDataTestCase(TestCase):
     fixtures = ['basic_task_test_data']
 

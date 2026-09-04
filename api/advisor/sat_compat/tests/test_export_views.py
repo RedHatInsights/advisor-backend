@@ -36,7 +36,7 @@ systems_header = [
 class SatExportViewTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'advisor_inventory_host_test_data',
+        'basic_test_data',
         'sat_maintenance'
     ]
 
