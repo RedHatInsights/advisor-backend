@@ -29,9 +29,6 @@ from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 
 from advisor_logging import logger
-from feature_flags import (
-    feature_flag_is_enabled, FLAG_ENABLE_INVENTORY_REPLICATION
-)
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 
 from kafka_utils import JsonValue, KafkaDispatcher
@@ -167,13 +164,6 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
     """
     Handle a batch of inventory events.
     """
-    if not feature_flag_is_enabled(FLAG_ENABLE_INVENTORY_REPLICATION):
-        logger.info(
-            "Received %d Inventory events - feature flag not enabled, ignoring",
-            len(messages)
-        )
-        return
-
     logger.info("Processing batch of %d inventory events", len(messages))
 
     upserts: list[ParsedInventoryHost] = []
@@ -422,6 +412,7 @@ def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
 
         prometheus.INVENTORY_HOST_UPSERTED.inc(advisor_inv_upserted)
 
+
 def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
     """Bulk delete AdvisorInventoryHost and Host records, including FK-dependent data."""
     requested = len(deletes)
@@ -459,7 +450,7 @@ def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:
 
 
 class Command(BaseCommand):
-    help = "Manage InventoryHost table replication from Inventory Event messages"
+    help = "Manage AdvisorInventoryHost data from Inventory event messages"
 
     def handle(self, *args, **options):
         """

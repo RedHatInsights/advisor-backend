@@ -20,18 +20,21 @@ import uuid
 import pytz
 from django.test import TestCase
 
-from api.models import InventoryHost
+from api.models import AdvisorInventoryHost
 from api.tests import constants
 
 
-class InventoryHostTestCase(TestCase):
+class AdvisorInventoryHostTestCase(TestCase):
     fixtures = [
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data', 'host_tag_test_data',
     ]
 
     def test_host_properties(self):
-        host = InventoryHost.objects.get(id=constants.host_01_uuid)
+        host = AdvisorInventoryHost.objects.get(
+            inventory_id=constants.host_01_uuid,
+            org_id=constants.standard_org,
+        )
         self.assertEqual(str(host), "{dn} ({id})".format(
             dn=constants.host_01_name, id=constants.host_01_uuid))
         self.assertEqual(host.id, uuid.UUID(constants.host_01_uuid))
@@ -41,56 +44,45 @@ class InventoryHostTestCase(TestCase):
         self.assertEqual(host.updated, datetime.datetime(2018, 12, 4, 5, 15, 38, tzinfo=pytz.UTC))
         self.assertEqual(host.created, datetime.datetime(2020, 1, 1, 6, 0, tzinfo=pytz.UTC))
         self.assertEqual(host.stale_timestamp, datetime.datetime(2020, 1, 1, 6, 0, tzinfo=pytz.UTC))
-        self.assertEqual(host.system_profile, {
-            'arch': 'x86_64', 'bios_vendor': 'Dell Inc.', 'bios_version':
-            '2.8.0', 'bios_release_date': '13/06/2017', 'cores_per_socket':
-            8, 'infrastructure_type': 'physical', 'insights_client_version':
-            '3.0.14', 'insights_egg_version': '3.0.182-1',
-            'number_of_sockets': 2, 'os_release': constants.rhel_release,
-            'operating_system': {'major': 7, 'minor': 5, 'name': 'RHEL'},
-            'sap_system': True, 'satellite_managed': True,
-            'owner_id': '55df28a7-d7ef-48c5-bc57-8967025399b1',
-            'system_memory_bytes': 134927265792, 'sap_sids': ['E01', 'E02'],
-            'system_update_method': 'dnf',
-            'workloads': {
-                'sap': {
-                    'sap_system': True,
-                    'sids': [
-                        'E01',
-                        'E02'
-                    ],
-                    'instance_number': '00',
-                    'version': '2.00.122.04.1478575636'
-                },
-                'crowdstrike': {
-                    'falcon_aid': 'abc123def456',
-                    'falcon_backend': 'bpf',
-                    'falcon_version': '7.14.0'
-                },
-                'satellite': {
-                    'type': 'server',
-                    'version': '6.17.6.1'
-                }
-            }
-        })
+        self.assertEqual(host.workspace_name, constants.host_group_1_name)
+        self.assertEqual(str(host.workspace_id), constants.host_group_1_id)
+        self.assertIsNone(host.workspace_ungrouped)
+        self.assertEqual(host.os_name, 'RHEL')
+        self.assertEqual(host.os_major, 7)
+        self.assertEqual(host.os_minor, 5)
+        self.assertEqual(host.infrastructure_type, 'physical')
+        self.assertEqual(host.bios_release_date, '13/06/2017')
+        self.assertEqual(host.bios_vendor, 'Dell Inc.')
+        self.assertEqual(host.bios_version, '2.8.0')
+        self.assertEqual(
+            host.owner_id,
+            uuid.UUID('55df28a7-d7ef-48c5-bc57-8967025399b1')
+        )
+        self.assertEqual(host.system_update_method, 'dnf')
+        self.assertEqual(host.workloads['sap']['sids'], ['E01', 'E02'])
+        self.assertEqual(host.workloads['crowdstrike']['falcon_backend'], 'bpf')
+        self.assertEqual(host.workloads['satellite']['type'], 'server')
+        # The source fixture used the obsolete os_release key, not release.
+        self.assertIsNone(host.release)
 
     def test_rhel_version(self):
-        # Muck about with the system profile's operating system value to
-        # test various permutations
-        host = InventoryHost.objects.get(id=constants.host_01_uuid)
-        del host.system_profile['operating_system']
+        host = AdvisorInventoryHost.objects.get(
+            inventory_id=constants.host_01_uuid,
+            org_id=constants.standard_org,
+        )
+        host.os_name = None
+        host.os_major = None
+        host.os_minor = None
         self.assertEqual(host.rhel_version, 'Unknown system version')
-        host.system_profile['operating_system'] = {}
-        self.assertEqual(host.rhel_version, 'Unknown OS version')
-        host.system_profile['operating_system']['name'] = 'RHEL'
+        host.os_name = 'RHEL'
         self.assertEqual(host.rhel_version, 'Unknown RHEL version')
-        host.system_profile['operating_system']['major'] = 8
+        host.os_major = 8
         self.assertEqual(host.rhel_version, '8')
-        host.system_profile['operating_system']['minor'] = 2
+        host.os_minor = 2
         self.assertEqual(host.rhel_version, '8.2')
 
     def test_host_tag_filter(self):
-        hosts = InventoryHost.objects.filter(
+        hosts = AdvisorInventoryHost.objects.filter(
             tags__contains=[{"key": "location", "value": "SLC", "namespace": "AWS"}]
         )
         self.assertIn(constants.host_ht_01_uuid, [str(host.id) for host in hosts])

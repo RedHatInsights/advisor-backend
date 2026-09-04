@@ -46,13 +46,10 @@ def db(request, django_db_setup, django_db_blocker):
     """
     Load DB fixtures for any test using this pytest fixture.
     """
-    with django_db_blocker.unblock():
-        call_command('mock_cyndi_table')
     fixtures = (
         'advisor_service_inventoryhost',
         'service_test_data',
         'basic_test_data',
-        'advisor_inventory_host_test_data',
         'rulesets',
         'rule_categories',
         'system_types',

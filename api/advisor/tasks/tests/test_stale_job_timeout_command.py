@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.contrib.postgres.aggregates import ArrayAgg
 
 from tasks.management.commands.stale_job_timeout import check_stale_jobs_for
@@ -22,7 +22,6 @@ from tasks.models import Job, JobStatusChoices, ExecutedTaskStatusChoices, Task
 from tasks.tests import constants
 
 
-@override_settings(READ_LOCAL_INVENTORY=True)
 class StaleJobTimeoutCommandTestCase(TestCase):
     fixtures = ['basic_task_test_data']
 

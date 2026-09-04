@@ -99,8 +99,8 @@ class ExecutedTaskParameter(models.Model):
 
 class Host(models.Model):
     """
-    An unmanaged model mapping to the advisor_inventory_host table, which
-    stores host data replicated from HBI via Kafka events.
+    An unmanaged Tasks model mapping to the concrete advisor_inventory_host
+    table owned by api.AdvisorInventoryHost and populated from HBI Kafka events.
     """
     pk = models.CompositePrimaryKey("org_id", "inventory_id")
     inventory_id = models.UUIDField()

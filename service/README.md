@@ -9,7 +9,7 @@ instances.
 The service operates as part of the data ingress pipeline for Advisor and
 Insights:
 
-![Ingress Pipeline](./ingress-pipeline.png)
+![Ingress Pipeline](../ingress-pipeline.png)
 
 The main code of the service is in `service.py`.  It uses a thread executor
 to process messages asynchronously from receiving them.
@@ -45,18 +45,23 @@ This function:
 - Create, update and delete the CurrentReports to match the incoming reports.
 - If notifications is configured, send these reports to Notifications.
 
-## Interaction with Cyndi and Kafka
+## Interaction with Host Inventory and Kafka
 
-In the ingress pipeline, at the point where the Host Inventory process sends a
-Kafka message that it has received an upload for a host, the Cyndi operator is
-supposed to then send a message to the Cyndi process within Advisor, which is
-then supposed to add this host to the InventoryHost database. However, in some
-instances Cyndi's processes can lag - in rare instances up to several hours.
-This may mean that the Advisor service receives engine results for a new host
-before that host's record appears in the InventoryHost table.
+HBI publishes host creation, update, and deletion events to the
+`platform.inventory.events` topic.  The dedicated `advisor_inventory_service`
+consumer handles those events and maintains Advisor's `AdvisorInventoryHost`
+and `Host` records.  Inventory events and rule-engine results travel through
+separate Kafka consumers, so the Advisor service can receive engine results
+for a new host before its `AdvisorInventoryHost` record is available.
 
 For this reason (and other historic ones), Uploads and CurrentReports use the
 Host record, which we control directly, as a foreign key.
+
+The legacy `service.py` process also remains subscribed to
+`platform.inventory.events`.  Its `handle_inventory_event()` function handles
+delete events only, removing current `Upload`, `CurrentReport`, and `HostAck`
+records.  It does not maintain `AdvisorInventoryHost` rows, and non-delete
+inventory events are ignored by this legacy path.
 
 # Set up
 
@@ -94,7 +99,7 @@ service and begin engine results analysis.
 
 NOTE: all the following commands assume you have activated the pipenv shell and run `export ADVISOR_DB_HOST=localhost`
 ```
-podman-compose up -d advisor-api
+podman-compose up -d advisor-api advisor-inventory-service
 BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8001 LOG_LEVEL=DEBUG python service/service.py
 ... or ...
 podman-compose up advisor-service
@@ -146,14 +151,17 @@ features or changes, and pass all testing above.
 
 ## Overview
 
-The Service (`service/service.py`) is a **multi-threaded Kafka consumer** that processes incoming system analysis results and inventory lifecycle events, persisting them to the database. It runs as a standalone process separate from the Django API.
+The Service (`service/service.py`) is a **multi-threaded Kafka consumer** that
+processes incoming system analysis results and retains a legacy inventory-delete
+cleanup path. It runs as a standalone process separate from the Django API and
+the dedicated inventory event consumer.
 
 ## Startup (`start()`, line 737)
 
 1. Initializes logging, Prometheus metrics, and a **BoundedExecutor** thread pool (default 30 threads)
 2. Subscribes to **three Kafka topics**:
    - `platform.engine.results` — rule engine analysis results
-   - `platform.inventory.events` — inventory events, esp host delete notifications
+   - `platform.inventory.events` — host delete notifications for the legacy cleanup path
    - `platform.insights.rule-hits` — third-party rule hit submissions
 3. Enters a polling loop (`c.poll(1.0)`) that dispatches messages to handler functions via the thread pool
 4. Handles `SIGTERM` gracefully — finishes current work, flushes Kafka, then shuts down
@@ -193,20 +201,21 @@ This is the most complex function, running inside a **database transaction with 
 
 Similar to engine results but with a simpler payload format. Validates required keys (`org_id`, `source`, `host_product`, `host_role`, `inventory_id`, `hits`), resolves the system type, then delegates to the same `create_db_reports()` function.
 
-### 4. `handle_inventory_event()` — Host deletion
+### 4. `handle_inventory_event()` — Legacy host deletion cleanup
 
 Handles `delete` events from HBI. When a host is deleted from inventory:
-- Deletes the `Upload` records for that host (with DB retry logic, up to 3 attempts)
+- Deletes current `Upload` records for that host (with DB retry logic, up to 3 attempts)
 - Deletes all `CurrentReport` records for that host
 - Deletes all `HostAck` records for that host
 - Each step retries independently on `OperationalError`/`InterfaceError`, closing stale DB connections between attempts
+- Leaves `Host` and `AdvisorInventoryHost` lifecycle management to the dedicated inventory event consumer
 
 ## Supporting Infrastructure
 
 - **`payload_tracker.py`**: Produces status messages to a Kafka topic for payload lifecycle tracking (received → processing → success/error)
 - **`reports.py`**: Produces webhook and remediations events to Kafka when recommendations change
 - **`thread_storage.py`**: Thread-local storage for request context (request_id, inventory_id, org_id, timing metrics) used by logging and payload tracker
-- **`inventory_prometheus_metrics.py`**: Prometheus metrics for the inventory service — hosts inserted and deleted, error counters
+- **`prometheus.py`**: Prometheus metrics for engine results and the legacy inventory-delete path
 - **`settings.py`**: Configuration via environment variables with Clowder integration for OpenShift deployments
 
 ## Error Handling
@@ -228,7 +237,7 @@ This starts PostgreSQL and Kafka and creates the required topics (including `pla
 ## Step 2: Set up the database and start the service
 
 ```bash
-podman-compose up advisor-api
+podman-compose up -d advisor-api advisor-inventory-service
 pipenv shell
 BOOTSTRAP_SERVERS=localhost:9092 PROMETHEUS_PORT=8001 LOG_LEVEL=DEBUG python service/service.py
 ... or ...
@@ -237,7 +246,7 @@ podman-compose up advisor-service
 
 With `LOG_LEVEL=DEBUG` you'll see it log subscription to topics and every poll cycle.
 
-## Step 4: Send fake messages
+## Step 3: Send fake messages
 
 In a second terminal, use the pre-built scripts in `service/manual_test/`:
 
