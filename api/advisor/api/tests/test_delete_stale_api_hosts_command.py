@@ -20,9 +20,8 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
-from api.models import AdvisorInventoryHost, Host, InventoryHost
+from api.models import AdvisorInventoryHost, Host
 from api.tests import constants, replicate_to_advisor_inventory
-from feature_flags import set_unleash_flag, FLAG_READ_LOCAL_INVENTORY
 
 
 class ImportContentTestCase(TestCase):
@@ -31,45 +30,34 @@ class ImportContentTestCase(TestCase):
         'upload_sources', 'basic_test_data'
     ]
 
+    def setUp(self):
+        super().setUp()
+        replicate_to_advisor_inventory()
+
     def test_delete_hosts_command(self):
         orig_full_host_count = Host.objects.count()
         self.assertEqual(orig_full_host_count, 11)
-        orig_ihost_count = InventoryHost.objects.count()
-        self.assertEqual(orig_ihost_count, 10)
-        # We should not just have the same counts, but the same hosts - test
-        # via explicit inner join
-        orig_match_host_count = Host.objects.exclude(inventory__display_name=None).count()
-        self.assertEqual(
-            orig_match_host_count, 10,
-            Host.objects.exclude(inventory_id__in=InventoryHost.objects.values_list('id'))
-        )
+        orig_aih_count = AdvisorInventoryHost.objects.count()
+        self.assertEqual(orig_aih_count, 10)
 
-        # Because we haven't done a staleness update here, all Inventory
-        # hosts will be stale.  But this should not delete any Host objects,
-        # because they still have an equivalent InventoryHost object.
+        # Because we haven't done a staleness update here, all hosts
+        # will be stale.  But this should not delete any Host objects,
+        # because they still have an equivalent AdvisorInventoryHost object.
         call_command('delete_stale_api_hosts')
 
-        # Now, the orphaned host 09 should be deleted.
-        self.assertEqual(Host.objects.count(), orig_match_host_count)
-        self.assertEqual(InventoryHost.objects.count(), orig_ihost_count)
+        # Now, the orphaned host 09 (no matching AdvisorInventoryHost) should be deleted.
+        self.assertEqual(Host.objects.count(), 10)
+        self.assertEqual(AdvisorInventoryHost.objects.count(), orig_aih_count)
 
-        # Simulate Inventory hosts being culled - just in one account so
-        # some remain.
+        # Simulate AdvisorInventoryHost records being culled
         stale_cull_date = timezone.now() - timedelta(days=28)
-        result = InventoryHost.objects.filter(
-            org_id='9876543', updated__lt=stale_cull_date,
-        ).delete()
-        # We should have actually deleted something here...
-        self.assertEqual(result, (8, {'api.InventoryHost': 8}))
-        # Note, however, that we've based our deletion on the updated date in
-        # the InventoryHost table, not the Host table.
+        deleted_count = AdvisorInventoryHost.objects.filter(
+            org_id=constants.standard_org, updated__lt=stale_cull_date,
+        ).delete()[0]
+        self.assertGreater(deleted_count, 0)
 
-        # Note that update_stale_dates() does not delete...
-
-        update_ihost_count = InventoryHost.objects.count()
-        self.assertLess(update_ihost_count, orig_ihost_count)
-        self.assertGreater(update_ihost_count, 0)
-        self.assertEqual(Host.objects.count(), orig_match_host_count)
+        update_aih_count = AdvisorInventoryHost.objects.count()
+        self.assertLess(update_aih_count, orig_aih_count)
 
         # Now call the command again...
         call_command('delete_stale_api_hosts')
@@ -77,12 +65,7 @@ class ImportContentTestCase(TestCase):
         # And hosts should have been deleted as well
         update_host_count = Host.objects.count()
         self.assertLess(update_host_count, orig_full_host_count)
-        self.assertEqual(
-            update_host_count, update_ihost_count,
-            Host.objects.exclude(
-                inventory_id__in=InventoryHost.objects.values_list('id', flat=True)
-            )
-        )
+        self.assertEqual(update_host_count, update_aih_count)
 
 
 class AdvisorInventoryDeleteStaleTestCase(TestCase):
@@ -96,7 +79,6 @@ class AdvisorInventoryDeleteStaleTestCase(TestCase):
         super().setUp()
         replicate_to_advisor_inventory()
 
-    @set_unleash_flag(FLAG_READ_LOCAL_INVENTORY, True)
     def test_delete_hosts_command_local(self):
         """Orphaned hosts are deleted using advisor_inventory_host join."""
         orig_host_count = Host.objects.count()
