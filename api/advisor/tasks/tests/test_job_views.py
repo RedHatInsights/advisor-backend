@@ -47,7 +47,6 @@ def json_playbook_dispatcher_partial_reply():
     return {"data": [{"stdout": job_stdout}]}
 
 
-@override_settings(READ_LOCAL_INVENTORY=True)
 class JobViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()

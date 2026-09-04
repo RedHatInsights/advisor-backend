@@ -44,7 +44,7 @@ def string_to_bool(s):
 APP_NAME = "insights-advisor-api"
 
 # Use unittest-xml-reporting for test runs
-TEST_RUNNER = 'project_settings.testrunner.CyndiTestRunner'
+TEST_RUNNER = 'xmlrunner.extra.djangotestrunner.XMLTestRunner'
 TEST_OUTPUT_DIR = './test_reports'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -459,9 +459,6 @@ UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
 UNLEASH_REFRESH_INTERVAL = int(os.getenv("UNLEASH_REFRESH_INTERVAL", 5))
 UNLEASH_METRICS_INTERVAL = int(os.getenv("UNLEASH_METRICS_INTERVAL", 10))
 UNLEASH_FAKE_INITIALIZE = string_to_bool(os.getenv("UNLEASH_FAKE_INITIALIZE", "true"))
-
-# Inventory Event replication settings
-ENABLE_INVENTORY_REPLICATION = string_to_bool(os.getenv("ENABLE_INVENTORY_REPLICATION", "false"))
 
 # Old settings for Logical replication system - will be removed in future.
 HBI_PUBLICATION = os.getenv("HBI_PUBLICATION", "hbi_hosts_pub_v1_0_2")
