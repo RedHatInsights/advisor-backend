@@ -50,10 +50,10 @@ class Command(BaseCommand):
             [stale_cull_date]
         )
 
-        # Host has no FK or Relationship to AdvisorInventoryHost that
-        # supports isnull lookups, and Host.inventory (OneToOneField to
-        # InventoryHost) uses on_delete=DO_NOTHING with db_constraint=False
-        # — no cascade either way.  Raw SQL identifies orphans; Django
-        # handles deletion following all the foreign keys.
+        # Host has no database FK to AdvisorInventoryHost that supports
+        # isnull lookups. Raw SQL identifies orphans; Django handles deletion
+        # following all the foreign keys.
         for host_batch in batched(raw_hosts, options['batch']):
-            Host.objects.filter(inventory__in=host_batch).delete()
+            Host.objects.filter(
+                inventory_id__in=[host.inventory_id for host in host_batch]
+            ).delete()

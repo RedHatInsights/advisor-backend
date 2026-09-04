@@ -158,7 +158,7 @@ def get_account_orgs(org_filter, latest_email_time):
 
 
 def get_rhdisabled_rules_systems(org_id):
-    stale_filter = stale_systems_q(org_id=org_id, model_class=AdvisorInventoryHost)
+    stale_filter = stale_systems_q(org_id=org_id)
     return CurrentReport.objects.filter(
         stale_filter,
         Exists(Ack.objects.filter(
