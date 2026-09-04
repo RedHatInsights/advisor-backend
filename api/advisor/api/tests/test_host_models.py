@@ -17,7 +17,7 @@
 from django.test import TestCase
 
 from api.models import Host
-from api.tests import constants, replicate_to_advisor_inventory
+from api.tests import constants
 
 
 class HostModelTestCase(TestCase):
@@ -25,10 +25,6 @@ class HostModelTestCase(TestCase):
         'rulesets', 'system_types', 'rule_categories', 'upload_sources',
         'basic_test_data', 'host_tag_test_data'
     ]
-
-    def setUp(self):
-        super().setUp()
-        replicate_to_advisor_inventory()
 
     def test_host_properties(self):
         h = Host.objects.get(inventory_id=constants.host_03_uuid)

@@ -28,9 +28,9 @@ from django.utils import timezone, dateformat
 
 from api.management.commands.weekly_report_emails import get_rhdisabled_rules_systems
 from project_settings import settings
-from api.models import WeeklyReportSubscription, Rule, Tag, InventoryHost, AdvisorInventoryHost, Ack
+from api.models import WeeklyReportSubscription, Rule, Tag, AdvisorInventoryHost, Ack
 from api.permissions import has_rbac_permission, http_auth_header_key, make_rbac_url
-from api.tests import constants, update_stale_dates, AdvisorInventoryTestMixin
+from api.tests import constants, update_stale_dates
 
 test_middleware_url = 'https://middleware.svc/'
 
@@ -261,7 +261,6 @@ class WeeklyReportEmailTest(TestCase):
             self.assertIn('Configurations affecting your systems</a>', body)
 
             # Delete the stale-hide* hosts so there is only 1 stale system
-            InventoryHost.objects.filter(display_name__startswith="stale-hide").delete()
             AdvisorInventoryHost.objects.filter(display_name__startswith="stale-hide").delete()
             mail.outbox = []
             reset_last_email_at()
@@ -273,7 +272,6 @@ class WeeklyReportEmailTest(TestCase):
             self.assertIn('<a href="https://console.redhat.com/insights/inventory/?status=stale&status=stale_warning&source=puptoo" style="-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; text-decoration: none !important; color: #0066cc;">Check for stale systems</a>', body)
 
             # Delete the stale-warn host so there are no stale systems
-            InventoryHost.objects.filter(display_name__startswith="stale-warn").delete()
             AdvisorInventoryHost.objects.filter(display_name__startswith="stale-warn").delete()
             mail.outbox = []
             reset_last_email_at()
@@ -544,8 +542,16 @@ class KesselWeeklyReportTest(TestCase):
         self.assertIsNone(result)
 
 
-class AdvisorInventoryWeeklyReportTestCase(AdvisorInventoryTestMixin, TestCase):
-    """Tests that weekly report stats work with AdvisorInventoryHost."""
+class AdvisorInventoryWeeklyReportTestCase(TestCase):
+    fixtures = [
+        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'basic_test_data', 'high_severity_rule',
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        update_stale_dates()
 
     def test_get_inventory_hosts_stats_local(self):
         """get_inventory_hosts_stats returns correct counts from AdvisorInventoryHost."""

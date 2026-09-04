@@ -76,7 +76,6 @@ def pd_connection_status_response(request):
     ]))
 
 
-@override_settings(READ_LOCAL_INVENTORY=True)
 class SystemViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()
