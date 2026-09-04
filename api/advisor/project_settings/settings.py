@@ -131,7 +131,7 @@ CLOUD_CONNECTOR_PORT = os.getenv('CLOUD_CONNECTOR_PORT')
 # Batch size when starting or cancelling jobs on hosts in Tasks.
 TASKS_API_BATCH_SIZE = int(os.getenv('TASKS_BATCH_SIZE', '50'))
 
-# Batch size when consuming Kafka messages in the Inventory replication service.
+# Batch size when consuming Kafka messages in the inventory event consumer.
 INVENTORY_BATCH_SIZE = int(os.getenv('INVENTORY_BATCH_SIZE', '50'))
 
 # Rewrite URL links in internal tasks HTML documents - temporary(?) workaround hack for RHINENG-7966
