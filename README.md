@@ -403,7 +403,6 @@ users can see.  For testing this is normally disabled as well.
 | Flag | Constant | Description |
 |------|----------|-------------|
 | `advisor.enable_inventory_replication` | `FLAG_ENABLE_INVENTORY_REPLICATION` | Gates the Kafka consumer that replicates host data from HBI into the local `AdvisorInventoryHost` table. Falls back to the `ENABLE_INVENTORY_REPLICATION` env var when Unleash is unavailable. |
-| `advisor.read_local_inventory` | `FLAG_READ_LOCAL_INVENTORY` | When enabled, the service webhook and API read paths query the local `AdvisorInventoryHost` table instead of the Cyndi `inventory.hosts` view (`InventoryHost`). |
 
 ## Monitoring/Observability
 

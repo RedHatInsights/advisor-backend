@@ -604,7 +604,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
                     param=systems_detail_name_query_param
                 ),
                 filter_on_rhel_version(
-                    request, relation='advisor_inventory', use_local=True
+                    request, relation='advisor_inventory'
                 ),
             )
             .order_by(*sort_fields, 'host_id')
@@ -652,7 +652,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
                 filter_on_display_name(
                     request, param=systems_detail_name_query_param,
                 ),
-                filter_on_rhel_version(request, use_local=True),
+                filter_on_rhel_version(request),
                 Exists(reports)
             )
             .annotate(impacted_date=Subquery(reports.values('impacted_date')))

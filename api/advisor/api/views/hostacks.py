@@ -119,11 +119,10 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         """
         system_profile_filter = filter_multi_param(
             request, 'system_profile', field_prefix='host__advisor_inventory',
-            use_local=True,
         )
         qs = self.get_queryset().filter(
             filter_on_param('rule__rule_id', rule_id_param, request),
-            filter_on_host_tags(request, field_name='host_id', use_local=True),
+            filter_on_host_tags(request, field_name='host_id'),
             system_profile_filter,
         )
         return self._paginated_response(qs, request)

@@ -262,7 +262,7 @@ def _remap_system_profile_parts_for_local(filter_parts):
 
 def filter_multi_param(
     request, filter_prefix, param_name='filter', field_prefix=None,
-    use_contains_for_eq=True, use_local=False
+    use_contains_for_eq=True
 ):
     """
     Find a parameter starting with the given param_name (= 'filter') and
@@ -372,7 +372,7 @@ def filter_multi_param(
                 filter_parts = [filter_prefix, 'workloads'] + filter_parts[1:]
 
         is_local_flat_field = False
-        if use_local and filter_prefix == 'system_profile':
+        if filter_prefix == 'system_profile':
             filter_parts = _remap_system_profile_parts_for_local(filter_parts)
             is_local_flat_field = filter_parts[0] != 'workloads'
 
@@ -644,7 +644,7 @@ def filter_on_display_name(request, relation='', param=display_name_query_param)
     return Q(**{relation + 'display_name__icontains': display_name})
 
 
-def filter_on_has_disabled_recommendation(request, param=has_disabled_recommendation_query_param, use_local=False):
+def filter_on_has_disabled_recommendation(request, param=has_disabled_recommendation_query_param):
     """
     Filter systems which has at least one disabled recommendation.
     """
@@ -659,20 +659,14 @@ def filter_on_has_disabled_recommendation(request, param=has_disabled_recommenda
     CurrentReport = apps.get_model('api', 'CurrentReport')
     org_id = request_to_org(request)
 
-    if use_local:
-        outer_host_ref = OuterRef('inventory_id')
-        hostacks = HostAck.objects.filter(
-            host__advisor_inventory__inventory_id=outer_host_ref,
-            host__advisor_inventory__org_id=OuterRef('org_id'),
-        )
-        acks = CurrentReport.objects.filter(
-            advisor_inventory__inventory_id=outer_host_ref, rule__ack__org_id=org_id
-        )
-    else:
-        hostacks = HostAck.objects.filter(host__inventory=OuterRef('pk'))
-        acks = CurrentReport.objects.filter(
-            inventory=OuterRef('pk'), rule__ack__org_id=org_id
-        )
+    outer_host_ref = OuterRef('inventory_id')
+    hostacks = HostAck.objects.filter(
+        host__advisor_inventory__inventory_id=outer_host_ref,
+        host__advisor_inventory__org_id=OuterRef('org_id'),
+    )
+    acks = CurrentReport.objects.filter(
+        advisor_inventory__inventory_id=outer_host_ref, rule__ack__org_id=org_id
+    )
 
     condition = Q(Exists(hostacks) | Exists(acks))
     return condition if param_value else ~condition
@@ -726,7 +720,7 @@ def filter_on_host_id(request, relation='', param=host_id_query_param):
     return Q(**{relation + 'host': host_id})
 
 
-def filter_on_host_tags(request, field_name='host_id', use_local=False):
+def filter_on_host_tags(request, field_name='host_id'):
     host_tags = value_of_param(host_tags_query_param, request)
 
     if not host_tags:
@@ -759,39 +753,26 @@ def filter_on_host_tags(request, field_name='host_id', use_local=False):
     if org_id:
         tag_query &= Q(org_id=org_id)
 
-    if use_local:
-        AdvisorInventoryHost = apps.get_model('api', 'AdvisorInventoryHost')
-        return Q(**{field_name + '__in': Subquery(
-            AdvisorInventoryHost.objects.filter(tag_query).values('inventory_id')
-        )})
-
-    InventoryHost = apps.get_model('api', 'InventoryHost')
+    AdvisorInventoryHost = apps.get_model('api', 'AdvisorInventoryHost')
     return Q(**{field_name + '__in': Subquery(
-         InventoryHost.objects.filter(tag_query).values('id')
+        AdvisorInventoryHost.objects.filter(tag_query).values('inventory_id')
     )})
 
 
-def filter_on_system_type(request, relation: Optional[str] = None, use_local=False):
+def filter_on_system_type(request, relation: Optional[str] = None):
     """
     Filter on the host_type field (currently within system_profile).
     """
     system_type = value_of_param(system_type_query_param, request)
-    if use_local:
-        base_parameter = ''
-        if relation:
-            base_parameter = f"{relation}__"
-    else:
-        base_parameter = 'system_profile__'
-        if relation:
-            base_parameter = f"{relation}__{base_parameter}"
+    base_parameter = ''
+    if relation:
+        base_parameter = f"{relation}__"
     if system_type is None or system_type == 'all':
         return Q()
     elif system_type == 'edge':
         return Q(**{f"{base_parameter}host_type": 'edge'})
     elif system_type == 'bootc':
-        if use_local:
-            return Q(**{f"{base_parameter}bootc_booted_image__isnull": False})
-        return Q(**{f"{base_parameter}bootc_status__isnull": False})
+        return Q(**{f"{base_parameter}bootc_booted_image__isnull": False})
     elif system_type == 'conventional':
         return Q(**{f"{base_parameter}host_type__isnull": True})
 
@@ -807,32 +788,19 @@ def filter_on_incident(request):
         return Q(incident_hits=0)
 
 
-def filter_on_rhel_version(request, relation: Optional[str] = None, use_local=False):
+def filter_on_rhel_version(request, relation: Optional[str] = None):
     versions = value_of_param(rhel_version_query_param, request)
     version_filter = Q()
     if versions is None:
         return version_filter
 
-    if use_local:
-        prefix = ''
-        if relation:
-            prefix = f"{relation}__"
-        for version in versions:
-            major, minor = map(int, version.split('.'))
-            version_filter |= Q(**{
-                f"{prefix}os_major": major, f"{prefix}os_minor": minor,
-            })
-        return version_filter
-
-    base_parameter = 'system_profile__operating_system'
+    prefix = ''
     if relation:
-        base_parameter = f"{relation}__{base_parameter}"
+        prefix = f"{relation}__"
     for version in versions:
         major, minor = map(int, version.split('.'))
-        major_param = f"{base_parameter}__major"
-        minor_param = f"{base_parameter}__minor"
         version_filter |= Q(**{
-            major_param: major, minor_param: minor,
+            f"{prefix}os_major": major, f"{prefix}os_minor": minor,
         })
     return version_filter
 
@@ -850,21 +818,18 @@ def filter_on_topic(request, relation: Optional[str] = None):
         return Q()
 
 
-def filter_on_workload(request, relation: Optional[str] = None, use_local=False):
+def filter_on_workload(request, relation: Optional[str] = None):
     """
     Filter systems by workload type.  Multiple workloads are OR'd together,
     following the same pattern as get_host_group_filter.
 
-    For 'sap', checks system_profile__workloads__sap__sap_system=True.
-    For all others, checks system_profile__workloads__<workload>__isnull=False.
+    For 'sap', checks workloads__sap__sap_system=True.
+    For all others, checks workloads__<workload>__isnull=False.
     """
     workloads = value_of_param(workload_query_param, request)
     if not workloads:
         return Q()
-    if use_local:
-        base = 'workloads'
-    else:
-        base = 'system_profile__workloads'
+    base = 'workloads'
     if relation:
         base = f"{relation}__{base}"
     workload_filter = Q()
@@ -876,7 +841,7 @@ def filter_on_workload(request, relation: Optional[str] = None, use_local=False)
     return workload_filter
 
 
-def filter_on_update_method(request, relation: Optional[str] = None, use_local=False):
+def filter_on_update_method(request, relation: Optional[str] = None):
     update_methods = value_of_param(update_method_query_param, request)
     if not update_methods:
         return Q()
@@ -884,10 +849,7 @@ def filter_on_update_method(request, relation: Optional[str] = None, use_local=F
     if all(value in update_methods for value in update_method_query_param.enum):
         return Q()
     update_method_filter = Q()
-    if use_local:
-        base_parameter = 'system_update_method'
-    else:
-        base_parameter = 'system_profile__system_update_method'
+    base_parameter = 'system_update_method'
     if relation:
         base_parameter = f"{relation}__{base_parameter}"
     if 'ostree' in update_methods:

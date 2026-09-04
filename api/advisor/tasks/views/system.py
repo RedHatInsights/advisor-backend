@@ -249,9 +249,9 @@ class SystemViewSet(ReadOnlyModelViewSet, PaginateMixin):
             org_id=self.request.auth['org_id']
         ).filter(
             apply_system_connected_filter(self.request),
-            filter_on_host_tags(self.request, field_name='inventory_id', use_local=True),
-            filter_multi_param(self.request, 'system_profile', use_local=True),
-            get_host_group_filter(self.request, use_local=True),
+            filter_on_host_tags(self.request, field_name='inventory_id'),
+            filter_multi_param(self.request, 'system_profile'),
+            get_host_group_filter(self.request),
             per_reporter_staleness__puptoo__stale_warning_timestamp__gt=str(timezone.now()),
         ).annotate(
             connection_type=Case(
@@ -279,7 +279,7 @@ class SystemViewSet(ReadOnlyModelViewSet, PaginateMixin):
             reverse_nulls_order=True
         )) + ['inventory_id']
         systems = self.get_queryset().filter(
-            filter_on_host_tags(request, field_name='inventory_id', use_local=True),
+            filter_on_host_tags(request, field_name='inventory_id'),
             filter_on_display_name(request),
             filter_on_os_version(request), filter_on_os_name(request), filter_on_os(request)
         ).order_by(*sort_fields)
