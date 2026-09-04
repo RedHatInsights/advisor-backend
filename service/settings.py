@@ -24,7 +24,7 @@ from os.path import dirname, abspath
 PARENT = dirname(dirname(abspath(__file__)))
 sys.path.append(os.path.join(PARENT, 'api', 'advisor'))
 
-TEST_RUNNER = 'project_settings.testrunner.CyndiTestRunner'
+TEST_RUNNER = 'xmlrunner.extra.djangotestrunner.XMLTestRunner'
 
 def get_namespace():
     try:
