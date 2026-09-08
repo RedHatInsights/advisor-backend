@@ -100,23 +100,12 @@ sending a 'delete' notification) from cluttering up the database.
 
 ## Data syndication
 
-Advisor's database does not have direct access to the Inventory database (yet).
-Instead, the 'Cyndi' process syndicates updates to the Inventory 'hosts' table
-to Advisor - this also selects the data that Advisor sees about that host.
-This data is put into a background table that Advisor cannot change directly;
-Advisor instead uses the `inventory.hosts` view to access the data.
-
-In the near future, we intend to move to our own data replication system based
-on reading the host creation and update events from Inventory directly.  This
-means that Advisor would be able to directly write to the InventoryHost model
-and its underlying table.  This gives several advantage - faster updates,
-fewer containers running, and more flexibility in how Advisor works.
+Advisor consumes host creation, update, and deletion events from Inventory and
+stores the required host data in its local `AdvisorInventoryHost` table.
 
 ## Inventory Event Consumer
 
 The `advisor_inventory_service` management command (`api/advisor/api/management/commands/advisor_inventory_service.py`) runs a Kafka consumer that replicates host data from the Host-Based Inventory (HBI) service into Advisor's own `AdvisorInventoryHost` and `Host` tables. It consumes messages from the `platform.inventory.events` topic in configurable batches (controlled by the `INVENTORY_BATCH_SIZE` setting).
-
-The consumer is gated by the `advisor.enable_inventory_replication` feature flag (`FLAG_ENABLE_INVENTORY_REPLICATION`). When the flag is disabled (and the `ENABLE_INVENTORY_REPLICATION` env var fallback is also `false`), incoming events are logged and discarded.
 
 ### How it works
 
@@ -398,12 +387,6 @@ users can see.  For testing this is normally disabled as well.
 - `UNLEASH_BOOTSTRAP_FILE` - A JSON file with feature flags set, in the
   same format as the Unleash API returns.  Defaults to no file.
 
-### Active feature flags
-
-| Flag | Constant | Description |
-|------|----------|-------------|
-| `advisor.enable_inventory_replication` | `FLAG_ENABLE_INVENTORY_REPLICATION` | Gates the Kafka consumer that replicates host data from HBI into the local `AdvisorInventoryHost` table. Falls back to the `ENABLE_INVENTORY_REPLICATION` env var when Unleash is unavailable. |
-
 ## Monitoring/Observability
 
 - `PROMETHEUS_PATH` - Default: `metrics` (or from Clowder config)
@@ -421,11 +404,6 @@ users can see.  For testing this is normally disabled as well.
 
 - `MAIL_HOST` - Default: `mail.corp.redhat.com`
 - `DEFAULT_FROM_EMAIL` - Default: `Red Hat Hybrid Cloud Console <noreply@redhat.com>`
-
-## Inventory Event Replication settings
-
-- `ENABLE_INVENTORY_REPLICATION` - Fallback for the `advisor.enable_inventory_replication`
-  Unleash feature flag when Unleash is unavailable. Default: `False`.
 
 ## Host-Based Inventory (HBI) Settings
 
