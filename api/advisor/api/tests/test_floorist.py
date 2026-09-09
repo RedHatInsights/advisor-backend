@@ -23,11 +23,6 @@ from api.utils import resolve_path
 
 
 class FlooristQueryTest(TestCase):
-    fixtures = [
-        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
-        'basic_test_data', 'basic_task_test_data'
-    ]
-
     def test_floorist_queries_run(self):
         """
         Simple test that runs the floorist queries to ensure each query is valid SQL.

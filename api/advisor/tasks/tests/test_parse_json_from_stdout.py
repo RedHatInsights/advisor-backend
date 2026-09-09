@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from tasks.management.commands.tasks_service import parse_json_from_stdout
 from tasks.models import Job, JobStatusChoices, TaskTypeChoices
@@ -25,7 +25,6 @@ def make_playbook_stdout(separator):
     return '{"task_results": {\n    "foo": "bar"\n}\n}' + separator + 'PLAY RECAP *********'
 
 
-@override_settings(READ_LOCAL_INVENTORY=True)
 class TaskJobUpdateTestCase(TestCase):
     fixtures = ['basic_task_test_data']
 

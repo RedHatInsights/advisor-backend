@@ -29,7 +29,7 @@ from api.management.commands.advisor_inventory_service import (
     handle_inventory_event, parse_created_event, parse_deleted_event, NIL_UUID,
     INSIGHTS_ONLY_FILTERED,
 )
-from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, InventoryHost, Upload
+from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 from api.tests import constants
 
 #############################################################################
@@ -39,7 +39,7 @@ new_host_id: str = "00112233-4455-6677-8899-012345678920"
 new_host_name: str = "new_host_20.example.org"
 new_host_satid: str = "AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE20"
 # Note that we want to make sure that we use current timestamps so this
-# data appears in current InventoryHost searches.
+# data appears in current inventory searches.
 now: datetime = timezone.now()
 plus7days: timedelta = timedelta(days=7)
 stale_time: str = (now + plus7days * 1).isoformat()
@@ -174,25 +174,6 @@ class TestAdvisorInventoryServer(TestCase):
         'basic_test_data'
     ]
 
-    def setUp(self):
-        for inv_host in InventoryHost.objects.all():
-            AdvisorInventoryHost.objects.update_or_create(
-                inventory_id=inv_host.id,
-                org_id=inv_host.org_id,
-                defaults={
-                    'account': inv_host.account,
-                    'display_name': inv_host.display_name,
-                    'tags': inv_host.tags,
-                    'updated': inv_host.updated,
-                    'created': inv_host.created,
-                    'last_check_in': inv_host.last_check_in,
-                    'stale_timestamp': inv_host.stale_timestamp,
-                    'insights_id': inv_host.insights_id,
-                    'reporter': inv_host.reporter,
-                    'per_reporter_staleness': inv_host.per_reporter_staleness,
-                }
-            )
-
     def test_message_dispatch(self):
         """
         Test that the handle_inventory_event function dispatches messages
@@ -224,10 +205,7 @@ class TestAdvisorInventoryServer(TestCase):
         # Start by processing the create message using handle_inventory_event
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             handle_inventory_event('topic', [create_new_host_msg])
-            # We aim to remove this debug log soon but in the meantime
-            log_lines: list[str] = list(filter(
-                lambda line: 'Using Cyndi replication view' not in line, logs.output
-            ))
+            log_lines = logs.output
             self.assertEqual(
                 "INFO:advisor-log:Processing batch of 1 inventory events",
                 log_lines[0]
@@ -307,10 +285,7 @@ class TestAdvisorInventoryServer(TestCase):
                     case host_field:  # everything else inside host
                         del modified_msg['host'][host_field]
                 result = parse_created_event(modified_msg)
-                # We aim to remove this debug log soon but in the meantime
-                log_lines: list[str] = list(filter(
-                    lambda line: 'Using Cyndi replication view' not in line, logs.output
-                ))
+                log_lines = logs.output
                 self.assertTrue(
                     any("Handling 'created' event" in line for line in log_lines),
                     "Should log handling of created event"
@@ -336,9 +311,7 @@ class TestAdvisorInventoryServer(TestCase):
             modified_msg = deepcopy(create_new_host_msg)
             del modified_msg['host']['account']
             result = parse_created_event(modified_msg)
-            log_lines: list[str] = list(filter(
-                lambda line: 'Using Cyndi replication view' not in line, logs.output
-            ))
+            log_lines = logs.output
             self.assertTrue(
                 any("Handling 'created' event" in line for line in log_lines),
                 "Should log handling of created event"
@@ -349,9 +322,7 @@ class TestAdvisorInventoryServer(TestCase):
             modified_msg = deepcopy(create_new_host_msg)
             del modified_msg['host']['satellite_id']
             result = parse_created_event(modified_msg)
-            log_lines: list[str] = list(filter(
-                lambda line: 'Using Cyndi replication view' not in line, logs.output
-            ))
+            log_lines = logs.output
             self.assertTrue(
                 any("Handling 'created' event" in line for line in log_lines),
                 "Should log handling of created event"
@@ -372,7 +343,7 @@ class TestAdvisorInventoryServer(TestCase):
 
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             handle_inventory_event('topic', [modified_msg])
-            log_lines = [line for line in logs.output if 'Using Cyndi replication view' not in line]
+            log_lines = logs.output
             self.assertTrue(
                 any("has nil insights_id" in line for line in log_lines),
                 "Should log that nil insights_id was filtered"
@@ -400,10 +371,7 @@ class TestAdvisorInventoryServer(TestCase):
             # Call via handle_inventory_event to exercise update handling
             handle_inventory_event('topic', [update_host_msg])
             # Now check the logs
-            # We aim to remove this debug log soon but in the meantime
-            log_lines: list[str] = list(filter(
-                lambda line: 'Using Cyndi replication view' not in line, logs.output
-            ))
+            log_lines = logs.output
             self.assertEqual(
                 "INFO:advisor-log:Processing batch of 1 inventory events",
                 log_lines[0]
@@ -430,10 +398,7 @@ class TestAdvisorInventoryServer(TestCase):
         with self.assertLogs(logger='advisor-log', level='DEBUG') as logs:
             handle_inventory_event('topic', [delete_host_msg])
             # Now check the logs
-            # We aim to remove this debug log soon but in the meantime
-            log_lines: list[str] = list(filter(
-                lambda line: 'Using Cyndi replication view' not in line, logs.output
-            ))
+            log_lines = logs.output
             self.assertEqual(
                 "INFO:advisor-log:Processing batch of 1 inventory events",
                 log_lines[0]
@@ -489,10 +454,7 @@ class TestAdvisorInventoryServer(TestCase):
                 modified_msg: dict[str, JsonValue] = deepcopy(delete_host_msg)
                 del modified_msg[missing_field]
                 result = parse_deleted_event(modified_msg)
-                # We aim to remove this debug log soon but in the meantime
-                log_lines: list[str] = list(filter(
-                    lambda line: 'Using Cyndi replication view' not in line, logs.output
-                ))
+                log_lines = logs.output
                 self.assertEqual(
                     "INFO:advisor-log:Handling 'deleted' event",
                     log_lines[0]
