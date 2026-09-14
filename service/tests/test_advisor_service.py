@@ -354,9 +354,16 @@ def test_handle_engine_results_two_sources(db, service, sample_engine_results, s
     # We should be able to handle an upload on the same system from different
     # sources.  The engine results always has the source 'insights-client',
     # the rule hits sample is set to source 'aiops'.  So we need to make sure
-    # that the aiops sample is on the same system as the insights-client sample.
+    # that the aiops sample is on the same system AND the same org as the
+    # insights-client sample - otherwise the report reconciliation (which is
+    # scoped by host + org_id) never overlaps and the test proves nothing.
+    host_id = sample_engine_results['input']['host']['id']
+    org_id = sample_engine_results['input']['platform_metadata']['org_id']
+    account = sample_engine_results['input']['host']['account']
     service.handle_engine_results(sample_engine_results)
-    sample_rule_hits['inventory_id'] = sample_engine_results['input']['host']['id']
+    sample_rule_hits['inventory_id'] = host_id
+    sample_rule_hits['org_id'] = org_id
+    sample_rule_hits['account'] = account
     service.handle_rule_hits(sample_rule_hits)
 
     _check_host_integrity(sample_engine_results, service)
@@ -365,13 +372,81 @@ def test_handle_engine_results_two_sources(db, service, sample_engine_results, s
     host = models.Host.objects.get(inventory_id=sample_rule_hits['inventory_id'])
     assert host.satellite_id is None
     assert host.branch_id is None
-    # We should have two upload objects - one for each source.
-    client_upload = models.Upload.objects.get(source__name='insights-client', host_id=sample_rule_hits['inventory_id'])
+    # We should have two upload objects - one for each source, and each should
+    # retain its own reports (the engine sample hits 1 rule, the aiops sample
+    # hits 2 rules).  Note: '==' equality, not the previous 'assert x, N'
+    # comma form which was an assertion *message* and always passed.
+    client_upload = models.Upload.objects.get(source__name='insights-client', host_id=host_id, org_id=org_id)
     assert client_upload.current
-    assert client_upload.currentreport_set.count(), 4
-    aiops_upload = models.Upload.objects.get(source__name='aiops', host_id=sample_rule_hits['inventory_id'])
+    assert client_upload.currentreport_set.count() == 1
+    aiops_upload = models.Upload.objects.get(source__name='aiops', host_id=host_id, org_id=org_id)
     assert aiops_upload.current
-    assert aiops_upload.currentreport_set.count(), 1
+    assert aiops_upload.currentreport_set.count() == 2
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_sources_reconcile_independently(
+    db, service, sample_engine_results, sample_rule_hits, mock_request_post_return_200
+):
+    # Regression for source-scoped report reconciliation.
+    # Same org + same host, reported by two different sources:
+    #   - the CCX engine (source 'insights-client', via platform.engine.results)
+    #   - a third-party producer (source 'aiops', via platform.insights.rule-hits).
+    # Each source must reconcile ONLY its own CurrentReports.  Before the fix the
+    # reconcile query was scoped by host + org_id only, so the second source to
+    # report deleted the first source's reports host-wide.
+    host_id = sample_engine_results['input']['host']['id']
+    org_id = sample_engine_results['input']['platform_metadata']['org_id']
+    account = sample_engine_results['input']['host']['account']
+    engine_rule_id = 'other_linux_system|OTHER_LINUX_SYSTEM'
+
+    # 1. Engine source reports its rule.
+    service.handle_engine_results(sample_engine_results)
+    engine_upload = models.Upload.objects.get(
+        source__name='insights-client', host_id=host_id, org_id=org_id
+    )
+    assert engine_upload.currentreport_set.count() == 1
+    assert models.CurrentReport.objects.filter(
+        host_id=host_id, org_id=org_id, rule__rule_id=engine_rule_id
+    ).exists()
+
+    # 2. Third-party rule-hits source reports on the SAME host + SAME org.
+    sample_rule_hits['inventory_id'] = host_id
+    sample_rule_hits['org_id'] = org_id
+    sample_rule_hits['account'] = account
+    service.handle_rule_hits(sample_rule_hits)
+
+    # Both sources' CurrentReports must coexist - neither deletes the other.
+    # (Pre-fix, the aiops reconcile deleted the engine report host-wide, so this
+    # assertion failed with engine_upload.currentreport_set.count() == 0.)
+    engine_upload.refresh_from_db()
+    assert engine_upload.current
+    assert engine_upload.currentreport_set.count() == 1
+    assert models.CurrentReport.objects.filter(
+        host_id=host_id, org_id=org_id, rule__rule_id=engine_rule_id
+    ).exists()
+    aiops_upload = models.Upload.objects.get(
+        source__name='aiops', host_id=host_id, org_id=org_id
+    )
+    assert aiops_upload.current
+    assert aiops_upload.currentreport_set.count() == 2
+    assert models.CurrentReport.objects.filter(
+        host_id=host_id, org_id=org_id, rule__rule_id='aiops_rule_1'
+    ).exists()
+
+    # 3. Re-report within a SINGLE source (engine) with its rule now gone: the
+    #    engine's own stale report must reconcile away, while the aiops source's
+    #    reports are left untouched.
+    resolved_engine = copy.deepcopy(sample_engine_results)
+    resolved_engine['results']['reports'] = []
+    service.handle_engine_results(resolved_engine)
+
+    assert not models.CurrentReport.objects.filter(
+        host_id=host_id, org_id=org_id, rule__rule_id=engine_rule_id
+    ).exists()
+    aiops_upload.refresh_from_db()
+    assert aiops_upload.current
+    assert aiops_upload.currentreport_set.count() == 2
 
 
 @pytest.mark.django_db(transaction=True)
