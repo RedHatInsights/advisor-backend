@@ -26,6 +26,12 @@ from django.conf import settings
 from django.core.signals import request_started, request_finished
 import telemetry
 
+try:
+    from opentelemetry.trace import Status, StatusCode
+except ImportError:
+    Status = None
+    StatusCode = None
+
 cfg = app_common_python.LoadedConfig
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
@@ -397,12 +403,15 @@ class KafkaDispatcher(object):
             )
             return
 
-        with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka"):
+        with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka") as span:
             request_started.send(sender=self.__class__)
             try:
                 handler = handler_entry['handler']
                 handler(topic, body)
             except Exception as e:
+                if span and span.is_recording() and Status and StatusCode:
+                    span.record_exception(e)
+                    span.set_status(Status(StatusCode.ERROR, str(e)))
                 logger.exception(
                     "Error processing kafka message",
                     extra={
@@ -438,12 +447,15 @@ class KafkaDispatcher(object):
             if handler_entry['batch']:
                 bodies = [b for b, _ in items]
                 headers_list = [h for _, h in items]
-                with telemetry.kafka_batch_consumer_span(topic, headers_list=headers_list, message_count=len(bodies), tracer_name="advisor-kafka"):
+                with telemetry.kafka_batch_consumer_span(topic, headers_list=headers_list, message_count=len(bodies), tracer_name="advisor-kafka") as span:
                     request_started.send(sender=self.__class__)
                     try:
                         handler(topic, bodies)
                     except Exception as e:
                         batch_success = False
+                        if span and span.is_recording() and Status and StatusCode:
+                            span.record_exception(e)
+                            span.set_status(Status(StatusCode.ERROR, str(e)))
                         logger.exception(
                             "Error processing kafka message",
                             extra={
@@ -454,12 +466,15 @@ class KafkaDispatcher(object):
                     request_finished.send(sender=self.__class__)
             else:
                 for payload, headers in items:
-                    with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka"):
+                    with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka") as span:
                         request_started.send(sender=self.__class__)
                         try:
                             handler(topic, payload)
                         except Exception as e:
                             batch_success = False
+                            if span and span.is_recording() and Status and StatusCode:
+                                span.record_exception(e)
+                                span.set_status(Status(StatusCode.ERROR, str(e)))
                             logger.exception(
                                 "Error processing kafka message",
                                 extra={

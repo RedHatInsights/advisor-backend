@@ -425,6 +425,116 @@ class TestKafkaUtils(TestCase):
         linked_traces = {format(link.context.trace_id, "032x") for link in batch_span.links}
         self.assertEqual(linked_traces, {trace_1, trace_2})
 
+    def test_handle_message_records_exception_and_error_status(self):
+        """Test that _handle_message records exception and sets StatusCode.ERROR on span when handler fails."""
+        try:
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+            from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+            from opentelemetry.trace import StatusCode
+            from unittest.mock import patch
+        except ImportError:
+            self.skipTest("OpenTelemetry dependencies not installed yet")
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer("advisor-kafka")
+
+        def failing_handler(topic, payload):
+            raise ValueError("Simulated handler crash")
+
+        dispatcher = KafkaDispatcher(DummyConsumer())
+        dispatcher.register_handler('error_topic', failing_handler)
+        msg = DummyMessage('error_topic', b'{"data": "test"}')
+
+        with patch("telemetry.get_tracer", return_value=tracer):
+            dispatcher._handle_message(msg)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.status.description, "Simulated handler crash")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertEqual(span.events[0].attributes["exception.type"], "ValueError")
+        self.assertEqual(span.events[0].attributes["exception.message"], "Simulated handler crash")
+
+    def test_handle_batch_messages_records_exception_and_error_status(self):
+        """Test that _handle_batch_messages records exception and sets StatusCode.ERROR on batch span when batch handler fails."""
+        try:
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+            from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+            from opentelemetry.trace import StatusCode
+            from unittest.mock import patch
+        except ImportError:
+            self.skipTest("OpenTelemetry dependencies not installed yet")
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer("advisor-kafka")
+
+        def failing_batch_handler(topic, bodies):
+            raise RuntimeError("Batch processing error")
+
+        dispatcher = KafkaDispatcher(DummyConsumer())
+        dispatcher.register_handler('error_batch_topic', failing_batch_handler, batch=True)
+        msg1 = DummyMessage('error_batch_topic', b'{"id": 1}')
+        msg2 = DummyMessage('error_batch_topic', b'{"id": 2}')
+
+        with patch("telemetry.get_tracer", return_value=tracer):
+            result = dispatcher._handle_batch_messages([msg1, msg2])
+
+        self.assertFalse(result)
+        spans = exporter.get_finished_spans()
+        batch_span = next((s for s in spans if "batch process" in s.name), None)
+        self.assertIsNotNone(batch_span)
+        self.assertEqual(batch_span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(batch_span.status.description, "Batch processing error")
+        self.assertEqual(len(batch_span.events), 1)
+        self.assertEqual(batch_span.events[0].name, "exception")
+        self.assertEqual(batch_span.events[0].attributes["exception.type"], "RuntimeError")
+        self.assertEqual(batch_span.events[0].attributes["exception.message"], "Batch processing error")
+
+    def test_handle_batch_messages_non_batch_records_exception_and_error_status(self):
+        """Test that _handle_batch_messages records exception and sets StatusCode.ERROR on per-item span when non-batch handler fails."""
+        try:
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+            from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+            from opentelemetry.trace import StatusCode
+            from unittest.mock import patch
+        except ImportError:
+            self.skipTest("OpenTelemetry dependencies not installed yet")
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer("advisor-kafka")
+
+        def failing_item_handler(topic, payload):
+            raise KeyError("Missing field in payload")
+
+        dispatcher = KafkaDispatcher(DummyConsumer())
+        dispatcher.register_handler('error_item_topic', failing_item_handler, batch=False)
+        msg = DummyMessage('error_item_topic', b'{"id": 100}')
+
+        with patch("telemetry.get_tracer", return_value=tracer):
+            result = dispatcher._handle_batch_messages([msg])
+
+        self.assertFalse(result)
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.status.description, "'Missing field in payload'")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertEqual(span.events[0].attributes["exception.type"], "KeyError")
+
     def test_prepare_message_throughput_benchmark(self):
         """Verifies that _prepare_message executes in < 10 microseconds per message over 10,000 calls."""
         import time

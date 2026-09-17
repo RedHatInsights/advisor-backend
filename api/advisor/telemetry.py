@@ -24,19 +24,21 @@ _IS_INITIALIZED = False
 
 
 try:
-    from opentelemetry import trace, baggage
+    from opentelemetry import trace, baggage, propagate
     from opentelemetry.sdk.trace import SpanProcessor, ReadableSpan
+    from opentelemetry.trace import SpanKind
+    OTEL_AVAILABLE = True
 
     class RHAttributeSpanProcessor(SpanProcessor):
         """
         SpanProcessor following HBI / Puptoo pattern:
-        - Sets 'rh.service' = 'advisor' (or configured service_name) on all spans.
+        - Sets 'rh.service' = 'advisor' on all spans.
         - Propagates 'rh.org_id' and 'rh.request_id' onto child spans,
           falling back to thread_storage context (and Django request META).
         """
 
-        def __init__(self, service_name: str = "advisor"):
-            self.service_name = service_name
+        def __init__(self):
+            pass
 
         def on_start(self, span, parent_context: Optional[trace.Context] = None) -> None:
             if not span.is_recording():
@@ -82,9 +84,11 @@ try:
             return True
 
 except ImportError:
+    OTEL_AVAILABLE = False
+
     class RHAttributeSpanProcessor:  # type: ignore[no-redef]
-        def __init__(self, service_name: str = "advisor"):
-            self.service_name = service_name
+        def __init__(self):
+            pass
 
 
 class OTelContextualFilter(logging.Filter):
@@ -257,21 +261,19 @@ def init_telemetry(
 
 def get_tracer(name: str = "advisor"):
     """Return tracer only if OpenTelemetry is initialized and enabled."""
-    if not _IS_INITIALIZED:
+    if not _IS_INITIALIZED or not OTEL_AVAILABLE:
         return None
     try:
-        from opentelemetry import trace
         return trace.get_tracer(name)
-    except ImportError:
+    except Exception:
         return None
 
 
 def extract_kafka_headers_to_context(headers: Optional[list[tuple[str, bytes]]]):
     """Extract W3C trace context from Kafka message headers. Returns None if headers are absent."""
-    if not headers:
+    if not headers or not OTEL_AVAILABLE:
         return None
     try:
-        from opentelemetry import propagate
         carrier = {}
         for key, val in headers:
             if isinstance(val, bytes):
@@ -281,6 +283,23 @@ def extract_kafka_headers_to_context(headers: Optional[list[tuple[str, bytes]]])
         return propagate.extract(carrier)
     except Exception:
         return None
+
+
+def _enrich_span_from_thread_storage(span):
+    """
+    Enrich a span with rh.org_id and rh.request_id from thread_storage.
+    Called after the handler body has run.
+    This ensures root consumer spans carry tenant attributes even though
+    thread_storage is only populated mid-handler (after payload parsing).
+    """
+    if not span or not span.is_recording():
+        return
+    org_id = thread_storage.get_value("org_id")
+    if org_id:
+        span.set_attribute("rh.org_id", str(org_id))
+    request_id = thread_storage.get_value("request_id")
+    if request_id:
+        span.set_attribute("rh.request_id", str(request_id))
 
 
 @contextmanager
@@ -296,7 +315,6 @@ def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advi
         return
 
     try:
-        from opentelemetry.trace import SpanKind
         extracted_ctx = extract_kafka_headers_to_context(kafka_headers)
     except Exception:
         yield None
@@ -314,7 +332,10 @@ def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advi
         kind=SpanKind.CONSUMER,
         attributes=attributes,
     ) as span:
-        yield span
+        try:
+            yield span
+        finally:
+            _enrich_span_from_thread_storage(span)
 
 
 @contextmanager
@@ -329,20 +350,17 @@ def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int 
         return
 
     links = []
-    try:
-        from opentelemetry import trace
-        from opentelemetry.trace import SpanKind
-        if headers_list:
-            for h in headers_list:
-                if h:
+    if headers_list:
+        for h in headers_list:
+            if h:
+                try:
                     ctx = extract_kafka_headers_to_context(h)
                     if ctx:
                         span_ctx = trace.get_current_span(ctx).get_span_context()
                         if span_ctx.is_valid:
                             links.append(trace.Link(span_ctx))
-    except Exception:
-        yield None
-        return
+                except Exception:
+                    logger.debug("Failed to extract trace link from Kafka header, skipping", exc_info=True)
 
     span_name = f"{topic} batch process"
     attributes = {
@@ -357,7 +375,10 @@ def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int 
         links=links,
         attributes=attributes,
     ) as span:
-        yield span
+        try:
+            yield span
+        finally:
+            _enrich_span_from_thread_storage(span)
 
 
 def shutdown_telemetry(timeout_millis: int = 5000) -> None:
@@ -366,10 +387,9 @@ def shutdown_telemetry(timeout_millis: int = 5000) -> None:
     Ensures queued spans in BatchSpanProcessor are exported prior to process exit.
     """
     global _IS_INITIALIZED, _INITIALIZED_PID
-    if not _IS_INITIALIZED:
+    if not _IS_INITIALIZED or not OTEL_AVAILABLE:
         return
     try:
-        from opentelemetry import trace
         provider = trace.get_tracer_provider()
         if hasattr(provider, "force_flush"):
             provider.force_flush(timeout_millis=timeout_millis)

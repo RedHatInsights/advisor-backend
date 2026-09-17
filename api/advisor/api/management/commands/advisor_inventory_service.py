@@ -34,6 +34,7 @@ from feature_flags import (
 )
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 
+import telemetry
 from kafka_utils import JsonValue, KafkaDispatcher
 
 NIL_UUID = '00000000-0000-0000-0000-000000000000'
@@ -482,9 +483,9 @@ class Command(BaseCommand):
 
         _ = signal.signal(signal.SIGTERM, terminate)
         _ = signal.signal(signal.SIGINT, terminate)
+        telemetry.init_telemetry(service_name="insights-advisor-inventory-service")
         receiver.receive(batch_size=settings.INVENTORY_BATCH_SIZE)
         try:
-            import telemetry
             telemetry.shutdown_telemetry()
         except Exception:
             pass

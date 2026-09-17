@@ -130,7 +130,7 @@ class TestRHAttributeSpanProcessor(SimpleTestCase):
             self.skipTest("OpenTelemetry packages not installed yet")
         self.exporter = InMemorySpanExporter()
         self.provider = TracerProvider()
-        self.processor = telemetry.RHAttributeSpanProcessor(service_name="advisor")
+        self.processor = telemetry.RHAttributeSpanProcessor()
         self.provider.add_span_processor(self.processor)
         self.provider.add_span_processor(SimpleSpanProcessor(self.exporter))
         self.tracer = self.provider.get_tracer("test-processor")
@@ -266,6 +266,14 @@ class TestOTelLoggingCorrelation(SimpleTestCase):
 
             self.assertEqual(payload.get("trace_id"), format(span_context.trace_id, "032x"))
             self.assertEqual(payload.get("span_id"), format(span_context.span_id, "016x"))
+
+    def test_advisor_stream_handler_filter_registration_not_duplicated(self):
+        """Verifies that AdvisorStreamHandler leaves filter attachment to logging_conf.py without duplicate internal filters."""
+        from advisor_logging import AdvisorStreamHandler
+
+        handler = AdvisorStreamHandler()
+        # Filters are configured in logging_conf.py, so handler.__init__ must not attach duplicate internal filters
+        self.assertEqual(len(handler.filters), 0)
 
 
 class TestOutboundAndDatabaseInstrumentation(SimpleTestCase):
@@ -404,6 +412,41 @@ class TestDjangoAndGunicornInstrumentation(SimpleTestCase):
                 importlib.reload(wsgi_mod)
                 mock_init_telemetry.assert_called_once_with(service_name="insights-advisor-api")
 
+    def test_tasks_service_initializes_and_shuts_down_telemetry(self):
+        """Verifies that tasks_service command initializes telemetry on startup and flushes on exit."""
+        from unittest.mock import patch, MagicMock
+        from tasks.management.commands.tasks_service import Command
+
+        cmd = Command()
+        with patch("tasks.management.commands.tasks_service.KafkaDispatcher") as mock_dispatcher_cls, \
+             patch("telemetry.init_telemetry") as mock_init, \
+             patch("telemetry.shutdown_telemetry") as mock_shutdown:
+            mock_dispatcher = MagicMock()
+            mock_dispatcher_cls.return_value = mock_dispatcher
+            cmd.handle()
+
+            mock_init.assert_called_once_with(service_name="insights-advisor-tasks-service")
+            mock_dispatcher.receive.assert_called_once()
+            mock_shutdown.assert_called_once()
+
+    def test_advisor_inventory_service_initializes_and_shuts_down_telemetry(self):
+        """Verifies that advisor_inventory_service command initializes telemetry on startup and flushes on exit."""
+        from unittest.mock import patch, MagicMock
+        from api.management.commands.advisor_inventory_service import Command
+
+        cmd = Command()
+        with patch("api.management.commands.advisor_inventory_service.KafkaDispatcher") as mock_dispatcher_cls, \
+             patch("api.management.commands.advisor_inventory_service.start_http_server"), \
+             patch("telemetry.init_telemetry") as mock_init, \
+             patch("telemetry.shutdown_telemetry") as mock_shutdown:
+            mock_dispatcher = MagicMock()
+            mock_dispatcher_cls.return_value = mock_dispatcher
+            cmd.handle()
+
+            mock_init.assert_called_once_with(service_name="insights-advisor-inventory-service")
+            mock_dispatcher.receive.assert_called_once()
+            mock_shutdown.assert_called_once()
+
 
 class TestTelemetryPerformanceAndOptimization(SimpleTestCase):
     """
@@ -435,7 +478,7 @@ class TestTelemetryPerformanceAndOptimization(SimpleTestCase):
         if not OTEL_AVAILABLE:
             self.skipTest("OpenTelemetry packages not installed yet")
 
-        processor = telemetry.RHAttributeSpanProcessor(service_name="advisor")
+        processor = telemetry.RHAttributeSpanProcessor()
         mock_span = type("MockSpan", (), {
             "is_recording": lambda self: True,
             "set_attribute": lambda self, k, v: None,
@@ -615,6 +658,129 @@ class TestKafkaConsumerSpanContextManagers(SimpleTestCase):
         self.assertEqual(len(span.links), 1)
         self.assertEqual(format(span.links[0].context.trace_id, "032x"), trace_id)
         self.assertEqual(format(span.links[0].context.span_id, "016x"), span_id)
+
+    def test_kafka_batch_consumer_span_fault_tolerance_with_corrupt_header(self):
+        """
+        Verifies that if one message in a batch has a corrupted/failing header,
+        the error is caught and skipped, the batch span is still created, and valid links are preserved.
+        """
+        from unittest.mock import patch
+        from opentelemetry.trace import SpanKind
+
+        trace_id_1 = "4bf92f3577b34da6a3ce929d0e0e4736"
+        trace_id_3 = "6cf92f3577b34da6a3ce929d0e0e4799"
+
+        # 1 valid header, 1 malformed header, 1 valid header
+        headers_list = [
+            [("traceparent", f"00-{trace_id_1}-00f067aa0ba902b7-01".encode())],
+            [("traceparent", b"INVALID_CORRUPT_BYTES_\xff\xfe_NON_W3C_DATA")],
+            [("traceparent", f"00-{trace_id_3}-00f067aa0ba902c8-01".encode())],
+        ]
+
+        tracer = self.provider.get_tracer("advisor-kafka")
+        with patch("telemetry.get_tracer", return_value=tracer):
+            with telemetry.kafka_batch_consumer_span("platform.inventory.events", headers_list=headers_list, message_count=3) as span:
+                self.assertIsNotNone(span)
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        batch_span = spans[0]
+
+        # 1. Batch span was created successfully despite the corrupted second message
+        self.assertEqual(batch_span.name, "platform.inventory.events batch process")
+        self.assertEqual(batch_span.kind, SpanKind.CONSUMER)
+        self.assertEqual(batch_span.attributes.get("messaging.batch.message_count"), 3)
+
+        # 2. Links list contains exactly the 2 valid traces (corrupted message was safely skipped)
+        self.assertEqual(len(batch_span.links), 2)
+        linked_traces = {format(link.context.trace_id, "032x") for link in batch_span.links}
+        self.assertEqual(linked_traces, {trace_id_1, trace_id_3})
+
+    def test_enrich_span_from_thread_storage_helper(self):
+        """Verifies _enrich_span_from_thread_storage sets org_id and request_id and handles edge cases."""
+        thread_storage.set_value("org_id", "112233")
+        thread_storage.set_value("request_id", "req-enrich-test")
+
+        mock_span = type("MockSpan", (), {
+            "attributes": {},
+            "is_recording": lambda self: True,
+            "set_attribute": lambda self, k, v: self.attributes.update({k: v}),
+        })()
+
+        telemetry._enrich_span_from_thread_storage(mock_span)
+        self.assertEqual(mock_span.attributes.get("rh.org_id"), "112233")
+        self.assertEqual(mock_span.attributes.get("rh.request_id"), "req-enrich-test")
+
+        # Edge cases: None span or non-recording span must not raise
+        telemetry._enrich_span_from_thread_storage(None)
+        non_recording = type("NonRecSpan", (), {"is_recording": lambda self: False})()
+        telemetry._enrich_span_from_thread_storage(non_recording)
+
+        thread_storage.set_value("org_id", None)
+        thread_storage.set_value("request_id", None)
+
+    def test_kafka_consumer_span_enriches_from_thread_storage_after_execution(self):
+        """Verifies kafka_consumer_span enriches the outer span with thread_storage set during handler execution."""
+        from unittest.mock import patch
+
+        tracer = self.provider.get_tracer("advisor-service")
+        with patch("telemetry.get_tracer", return_value=tracer):
+            with telemetry.kafka_consumer_span("platform.engine.results", None) as span:
+                self.assertIsNotNone(span)
+                # Mid-handler execution populates thread_storage
+                thread_storage.set_value("org_id", "998877")
+                thread_storage.set_value("request_id", "req-mid-handler-01")
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        finished_span = spans[0]
+        self.assertEqual(finished_span.attributes.get("rh.org_id"), "998877")
+        self.assertEqual(finished_span.attributes.get("rh.request_id"), "req-mid-handler-01")
+
+        thread_storage.set_value("org_id", None)
+        thread_storage.set_value("request_id", None)
+
+    def test_kafka_batch_consumer_span_enriches_from_thread_storage_after_execution(self):
+        """Verifies kafka_batch_consumer_span enriches the outer span with thread_storage set during handler execution."""
+        from unittest.mock import patch
+
+        tracer = self.provider.get_tracer("advisor-kafka")
+        with patch("telemetry.get_tracer", return_value=tracer):
+            with telemetry.kafka_batch_consumer_span("platform.inventory.events", None, message_count=1) as span:
+                self.assertIsNotNone(span)
+                thread_storage.set_value("org_id", "445566")
+                thread_storage.set_value("request_id", "req-batch-handler-02")
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        finished_span = spans[0]
+        self.assertEqual(finished_span.attributes.get("rh.org_id"), "445566")
+        self.assertEqual(finished_span.attributes.get("rh.request_id"), "req-batch-handler-02")
+
+        thread_storage.set_value("org_id", None)
+        thread_storage.set_value("request_id", None)
+
+    def test_kafka_consumer_span_enriches_even_on_exception(self):
+        """Verifies that if an exception occurs mid-handler, finally block still enriches the span."""
+        from unittest.mock import patch
+
+        tracer = self.provider.get_tracer("advisor-service")
+        with patch("telemetry.get_tracer", return_value=tracer):
+            with self.assertRaises(ValueError):
+                with telemetry.kafka_consumer_span("platform.engine.results", None) as span:
+                    self.assertIsNotNone(span)
+                    thread_storage.set_value("org_id", "777888")
+                    thread_storage.set_value("request_id", "req-error-handler-03")
+                    raise ValueError("Simulated handler failure")
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        finished_span = spans[0]
+        self.assertEqual(finished_span.attributes.get("rh.org_id"), "777888")
+        self.assertEqual(finished_span.attributes.get("rh.request_id"), "req-error-handler-03")
+
+        thread_storage.set_value("org_id", None)
+        thread_storage.set_value("request_id", None)
 
 
 class TestReviewCommentsIssues(SimpleTestCase):
