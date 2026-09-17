@@ -2,9 +2,10 @@
 # This file is part of the Insights Advisor project.
 
 import concurrent.futures
-import pytest
-from os.path import dirname, abspath
+from os.path import abspath, dirname
 import sys
+
+import pytest
 
 SERVICE_DIR = dirname(dirname(abspath(__file__)))
 PARENT = dirname(SERVICE_DIR)
@@ -20,23 +21,21 @@ try:
 except ImportError:
     OTEL_AVAILABLE = False
 
+import service as advisor_service
 from service import handle_engine_results, handle_inventory_event
 
 
 @pytest.fixture
-def in_memory_tracer():
+def in_memory_tracer(mocker):
     if not OTEL_AVAILABLE:
         pytest.skip("OpenTelemetry packages not installed yet")
     import telemetry
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    if hasattr(trace, "_TRACER_PROVIDER_SET_ONCE"):
-        trace._TRACER_PROVIDER_SET_ONCE._done = False
-    trace.set_tracer_provider(provider)
-    telemetry._IS_INITIALIZED = True
+    mocker.patch("telemetry.get_tracer", return_value=provider.get_tracer("advisor-service"))
     yield exporter
-    telemetry._IS_INITIALIZED = False
+    provider.shutdown()
 
 
 def test_engine_results_trace_continuity_in_thread_pool(mocker, in_memory_tracer, sample_engine_results):
@@ -61,7 +60,7 @@ def test_engine_results_trace_continuity_in_thread_pool(mocker, in_memory_tracer
 
     assert result is True
     spans = exporter.get_finished_spans()
-    consumer_span = next((s for s in spans if s.name == "platform.engine.results process"), None)
+    consumer_span = next((s for s in spans if s.name == "process platform.engine.results"), None)
     assert consumer_span is not None
 
     # Verify trace continuity across the thread pool boundary
@@ -89,6 +88,17 @@ def test_shutdown_telemetry_flushes_spans(mocker):
     mock_provider.shutdown.assert_called_once()
     assert telemetry._IS_INITIALIZED is False
     assert telemetry._INITIALIZED_PID is None
+
+
+def test_service_shutdown_runs_when_main_loop_fails(mocker):
+    mocker.patch.object(advisor_service.telemetry, "init_telemetry")
+    mocker.patch.object(advisor_service, "_run_service", side_effect=RuntimeError("consumer failed"))
+    shutdown = mocker.patch.object(advisor_service.telemetry, "shutdown_telemetry")
+
+    with pytest.raises(RuntimeError, match="consumer failed"):
+        advisor_service.start()
+
+    shutdown.assert_called_once_with()
 
 
 def test_handle_engine_results_throughput_benchmark(mocker, in_memory_tracer, sample_engine_results):

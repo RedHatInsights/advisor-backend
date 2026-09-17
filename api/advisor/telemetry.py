@@ -2,10 +2,7 @@
 # This file is part of the Insights Advisor project.
 
 """
-api/advisor/telemetry.py
-
 Centralized OpenTelemetry configuration and instrumentation module for Insights Advisor.
-Follows HBI and Puptoo architecture adapted for Django and Confluent Kafka.
 """
 
 import os
@@ -83,11 +80,39 @@ try:
         def force_flush(self, timeout_millis: int = 30000) -> bool:
             return True
 
+    class FilteringSpanProcessor(SpanProcessor):
+        """Forwards spans to a wrapped processor only when predicate returns True."""
+
+        def __init__(self, wrapped: SpanProcessor, predicate=None):
+            self._wrapped = wrapped
+            self._predicate = predicate or _should_export_span
+
+        def on_start(self, span, parent_context: Optional[trace.Context] = None) -> None:
+            self._wrapped.on_start(span, parent_context)
+
+        def on_end(self, span: ReadableSpan) -> None:
+            try:
+                if not self._predicate(span):
+                    return
+            except Exception:
+                logger.debug("Span export predicate failed; exporting span anyway", exc_info=True)
+            self._wrapped.on_end(span)
+
+        def shutdown(self) -> None:
+            self._wrapped.shutdown()
+
+        def force_flush(self, timeout_millis: int = 30000) -> bool:
+            return self._wrapped.force_flush(timeout_millis)
+
 except ImportError:
     OTEL_AVAILABLE = False
 
     class RHAttributeSpanProcessor:  # type: ignore[no-redef]
         def __init__(self):
+            pass
+
+    class FilteringSpanProcessor:  # type: ignore[no-redef]
+        def __init__(self, wrapped, predicate=None):
             pass
 
 
@@ -141,6 +166,62 @@ def _django_response_hook(span, request, response):
         span.set_attribute("rh.account", str(account))
 
 
+def _reload_django_wsgi_middleware():
+    """
+    DjangoInstrumentor only inserts its middleware into settings.MIDDLEWARE.
+
+    Under gunicorn --preload, get_wsgi_application() already ran in the master
+    process, so the live WSGIHandler middleware chain is frozen *without* the
+    OTel SERVER span.
+
+    Reload the already-constructed handler from settings. Use sys.modules so
+    this is a no-op while wsgi.py is still importing (application not bound yet);
+    that path calls get_wsgi_application() afterwards and picks up the middleware
+    naturally.
+    """
+    try:
+        import sys
+
+        wsgi_mod = sys.modules.get("project_settings.wsgi")
+        if wsgi_mod is None:
+            return
+        app = getattr(wsgi_mod, "application", None)
+        if app is not None and hasattr(app, "load_middleware"):
+            app.load_middleware()
+            logger.info("Reloaded Django WSGI middleware after OpenTelemetry instrumentation")
+    except Exception as e:
+        logger.warning("Failed to reload Django WSGI middleware after OTel instrumentation: %s", e)
+
+
+def _normalize_db_statement(statement: Optional[str]) -> str:
+    if not statement:
+        return ""
+    return " ".join(str(statement).strip().rstrip(";").lower().split())
+
+
+def _is_db_probe_span(span) -> bool:
+    """True for connection pings such as Django's `SELECT 1;` health check."""
+    attrs = getattr(span, "attributes", None) or {}
+    statement = attrs.get("db.statement") or attrs.get("db.query.text") or ""
+    return _normalize_db_statement(statement) == "select 1"
+
+
+def _should_export_span(span) -> bool:
+    """
+    Drop liveness/readiness DB pings and unparented SQL."""
+    if _is_db_probe_span(span):
+        return False
+    if not OTEL_AVAILABLE:
+        return True
+    attrs = getattr(span, "attributes", None) or {}
+    is_db = any(key in attrs for key in ("db.system", "db.statement", "db.query.text"))
+    parent = getattr(span, "parent", None)
+    kind = getattr(span, "kind", None)
+    if is_db and parent is None and kind == SpanKind.CLIENT:
+        return False
+    return True
+
+
 def init_telemetry(
     service_name: str = "advisor",
     excluded_urls: str = "metrics,healthz,health,status",
@@ -153,7 +234,12 @@ def init_telemetry(
     global _IS_INITIALIZED, _INITIALIZED_PID
     current_pid = os.getpid()
 
-    if _IS_INITIALIZED and _INITIALIZED_PID == current_pid and not force_reinit:
+    # OpenTelemetry's global provider cannot be replaced in-process. A changed
+    # PID is sufficient to detect the fork; retain force_reinit for caller
+    # compatibility, but never leak a second provider in the same process.
+    if _IS_INITIALIZED and _INITIALIZED_PID == current_pid:
+        if force_reinit:
+            logger.debug("Ignoring same-process OpenTelemetry reinitialization request")
         return
 
     otel_enabled = string_to_bool(os.getenv("OTEL_ENABLED", "false"))
@@ -227,12 +313,13 @@ def init_telemetry(
         max_export_batch_size=int(os.getenv("OTEL_BSP_MAX_EXPORT_BATCH_SIZE", "256")),
         export_timeout_millis=int(os.getenv("OTEL_BSP_EXPORT_TIMEOUT", "10000")),
     )
-    provider.add_span_processor(bsp)
+    provider.add_span_processor(FilteringSpanProcessor(bsp))
     trace.set_tracer_provider(provider)
 
     try:
         from opentelemetry.instrumentation.django import DjangoInstrumentor
         DjangoInstrumentor().instrument(excluded_urls=excluded_urls, response_hook=_django_response_hook)
+        _reload_django_wsgi_middleware()
     except Exception as e:
         logger.warning("Django instrumentation failed or skipped: %s", e)
 
@@ -259,9 +346,14 @@ def init_telemetry(
     logger.info("OpenTelemetry initialized for %s (PID %s, sampler=%s)", resolved_service_name, current_pid, sampler)
 
 
+def is_enabled() -> bool:
+    """Return whether telemetry is initialized and available in this process."""
+    return _IS_INITIALIZED and OTEL_AVAILABLE
+
+
 def get_tracer(name: str = "advisor"):
     """Return tracer only if OpenTelemetry is initialized and enabled."""
-    if not _IS_INITIALIZED or not OTEL_AVAILABLE:
+    if not is_enabled():
         return None
     try:
         return trace.get_tracer(name)
@@ -283,6 +375,78 @@ def extract_kafka_headers_to_context(headers: Optional[list[tuple[str, bytes]]])
         return propagate.extract(carrier)
     except Exception:
         return None
+
+
+def trace_id_from_kafka_headers(headers: Optional[list[tuple[str, bytes]]]):
+    """Return the W3C trace id from Kafka headers, or None if absent/invalid."""
+    ctx = extract_kafka_headers_to_context(headers)
+    if not ctx or not OTEL_AVAILABLE:
+        return None
+    try:
+        span_ctx = trace.get_current_span(ctx).get_span_context()
+        if span_ctx.is_valid:
+            return span_ctx.trace_id
+    except Exception:
+        return None
+    return None
+
+
+def inject_trace_context_to_kafka_headers(headers: Optional[list[tuple[str, bytes]]] = None):
+    """
+    Copy W3C trace context from the current span into Kafka headers.
+    Downstream consumers can extract this with extract_kafka_headers_to_context.
+    """
+    existing = list(headers) if headers else []
+    if not OTEL_AVAILABLE or not _IS_INITIALIZED:
+        return existing
+    try:
+        carrier = {}
+        propagate.inject(carrier)
+        injected_keys = set(carrier.keys())
+        merged = [(k, v) for k, v in existing if k not in injected_keys]
+        for key, val in carrier.items():
+            if isinstance(val, bytes):
+                merged.append((key, val))
+            else:
+                merged.append((key, str(val).encode("utf-8")))
+        return merged
+    except Exception:
+        logger.debug("Failed to inject trace context into Kafka headers", exc_info=True)
+        return existing
+
+
+@contextmanager
+def kafka_producer_span(topic: str, tracer_name: str = "advisor-service"):
+    """Messaging PRODUCER span for an outbound Kafka send."""
+    tracer = get_tracer(tracer_name)
+    if not tracer:
+        yield None
+        return
+
+    span_name = f"{topic} send"
+    attributes = {
+        "messaging.system": "kafka",
+        "messaging.destination.name": topic,
+        "messaging.operation.name": "send",
+    }
+    with tracer.start_as_current_span(
+        span_name,
+        kind=SpanKind.PRODUCER,
+        attributes=attributes,
+    ) as span:
+        try:
+            yield span
+        except Exception as e:
+            if span and span.is_recording():
+                try:
+                    from opentelemetry.trace import Status, StatusCode
+                    span.record_exception(e)
+                    span.set_status(Status(StatusCode.ERROR, str(e)))
+                except Exception:
+                    pass
+            raise
+        finally:
+            _enrich_span_from_thread_storage(span)
 
 
 def _enrich_span_from_thread_storage(span):
@@ -320,11 +484,11 @@ def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advi
         yield None
         return
 
-    span_name = f"{topic} process"
+    span_name = f"process {topic}"
     attributes = {
         "messaging.system": "kafka",
         "messaging.destination.name": topic,
-        "messaging.operation": "process",
+        "messaging.operation.name": "process",
     }
     with tracer.start_as_current_span(
         span_name,
@@ -341,36 +505,50 @@ def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advi
 @contextmanager
 def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int = 0, tracer_name: str = "advisor-kafka"):
     """
-    Standard OpenTelemetry Messaging CONSUMER span wrapper for Kafka batch message processing.
-    Creates trace links to each message's upstream trace context according to OTel batch specs.
+    CONSUMER span for a Kafka batch.
+
+    Parent the span on the first valid W3C context so Tempo nests it under the
+    upstream producer (ingress → … → inventory.events), matching
+    kafka_consumer_span and HBI. Extra messages from *other* traces are attached
+    as SpanLinks (a span can have only one parent).
     """
     tracer = get_tracer(tracer_name)
     if not tracer:
         yield None
         return
 
+    extracted_ctx = None
+    parent_trace_id = None
     links = []
     if headers_list:
         for h in headers_list:
-            if h:
-                try:
-                    ctx = extract_kafka_headers_to_context(h)
-                    if ctx:
-                        span_ctx = trace.get_current_span(ctx).get_span_context()
-                        if span_ctx.is_valid:
-                            links.append(trace.Link(span_ctx))
-                except Exception:
-                    logger.debug("Failed to extract trace link from Kafka header, skipping", exc_info=True)
+            if not h:
+                continue
+            try:
+                ctx = extract_kafka_headers_to_context(h)
+                if not ctx:
+                    continue
+                span_ctx = trace.get_current_span(ctx).get_span_context()
+                if not span_ctx.is_valid:
+                    continue
+                if extracted_ctx is None:
+                    extracted_ctx = ctx
+                    parent_trace_id = span_ctx.trace_id
+                elif span_ctx.trace_id != parent_trace_id:
+                    links.append(trace.Link(span_ctx))
+            except Exception:
+                logger.debug("Failed to extract trace context from Kafka header, skipping", exc_info=True)
 
-    span_name = f"{topic} batch process"
+    span_name = f"process {topic} batch"
     attributes = {
         "messaging.system": "kafka",
         "messaging.destination.name": topic,
-        "messaging.operation": "process",
+        "messaging.operation.name": "process",
         "messaging.batch.message_count": message_count,
     }
     with tracer.start_as_current_span(
         span_name,
+        context=extracted_ctx,
         kind=SpanKind.CONSUMER,
         links=links,
         attributes=attributes,

@@ -75,6 +75,7 @@ class TestTelemetryBase(SimpleTestCase):
         os.environ["OTEL_ENABLED"] = "false"
         telemetry.init_telemetry(service_name="test-advisor")
         self.assertFalse(telemetry._IS_INITIALIZED)
+        self.assertFalse(telemetry.is_enabled())
 
     def test_init_telemetry_enabled(self):
         if not OTEL_AVAILABLE:
@@ -91,6 +92,62 @@ class TestTelemetryBase(SimpleTestCase):
             self.skipTest("OpenTelemetry packages not installed yet")
         telemetry._IS_INITIALIZED = True
         telemetry.shutdown_telemetry()
+
+
+class TestSpanExportFiltering(SimpleTestCase):
+    def _span(self, statement=None, parent=None, kind=None, extra=None):
+        from opentelemetry.trace import SpanKind as SK
+        attrs = {}
+        if statement is not None:
+            attrs["db.statement"] = statement
+            attrs["db.system"] = "postgresql"
+        if extra:
+            attrs.update(extra)
+        return type("Span", (), {
+            "attributes": attrs,
+            "parent": parent,
+            "kind": SK.CLIENT if kind is None else kind,
+        })()
+
+    def test_drops_select_1_probe_variants(self):
+        if not OTEL_AVAILABLE:
+            self.skipTest("OpenTelemetry packages not installed yet")
+        for statement in ("SELECT 1;", "SELECT 1", "  select 1 ;  "):
+            self.assertFalse(
+                telemetry._should_export_span(self._span(statement, parent=object())),
+                msg=statement,
+            )
+
+    def test_keeps_real_select_under_parent(self):
+        if not OTEL_AVAILABLE:
+            self.skipTest("OpenTelemetry packages not installed yet")
+        span = self._span("SELECT * FROM api_rule WHERE id = 1", parent=object())
+        self.assertTrue(telemetry._should_export_span(span))
+
+    def test_drops_orphan_sql_client_span(self):
+        if not OTEL_AVAILABLE:
+            self.skipTest("OpenTelemetry packages not installed yet")
+        span = self._span("SELECT * FROM api_rule", parent=None)
+        self.assertFalse(telemetry._should_export_span(span))
+
+    def test_keeps_http_server_root(self):
+        if not OTEL_AVAILABLE:
+            self.skipTest("OpenTelemetry packages not installed yet")
+        from opentelemetry.trace import SpanKind
+        span = self._span(statement=None, parent=None, kind=SpanKind.SERVER, extra={"http.method": "GET"})
+        self.assertTrue(telemetry._should_export_span(span))
+
+    def test_filtering_processor_skips_wrapped_on_end_for_probes(self):
+        if not OTEL_AVAILABLE:
+            self.skipTest("OpenTelemetry packages not installed yet")
+        from unittest.mock import MagicMock
+        wrapped = MagicMock()
+        processor = telemetry.FilteringSpanProcessor(wrapped)
+        processor.on_end(self._span("SELECT 1;"))
+        wrapped.on_end.assert_not_called()
+        real = self._span("SELECT id FROM api_rule", parent=object())
+        processor.on_end(real)
+        wrapped.on_end.assert_called_once_with(real)
 
 
 class TestTelemetrySpanEnrichment(SimpleTestCase):
@@ -359,6 +416,46 @@ class TestDjangoAndGunicornInstrumentation(SimpleTestCase):
         except ImportError:
             self.skipTest("DjangoInstrumentor not installed yet")
 
+    def test_reload_django_wsgi_middleware_rebuilds_preloaded_handler(self):
+        """gunicorn --preload freezes WSGIHandler before DjangoInstrumentor runs.
+
+        Reloading the already-constructed handler is what turns HTTP requests
+        into SERVER root spans instead of orphan SQL SELECTs.
+        """
+        import sys
+        import types
+        from unittest.mock import MagicMock
+
+        fake_app = MagicMock()
+        fake_wsgi = types.ModuleType("project_settings.wsgi")
+        fake_wsgi.application = fake_app
+        previous = sys.modules.get("project_settings.wsgi")
+        try:
+            sys.modules["project_settings.wsgi"] = fake_wsgi
+            telemetry._reload_django_wsgi_middleware()
+            fake_app.load_middleware.assert_called_once_with()
+        finally:
+            if previous is None:
+                sys.modules.pop("project_settings.wsgi", None)
+            else:
+                sys.modules["project_settings.wsgi"] = previous
+
+    def test_reload_django_wsgi_middleware_noop_before_application_exists(self):
+        """wsgi.py calls init_telemetry before get_wsgi_application(); skip reload."""
+        import sys
+        import types
+
+        fake_wsgi = types.ModuleType("project_settings.wsgi")
+        previous = sys.modules.get("project_settings.wsgi")
+        try:
+            sys.modules["project_settings.wsgi"] = fake_wsgi
+            telemetry._reload_django_wsgi_middleware()
+        finally:
+            if previous is None:
+                sys.modules.pop("project_settings.wsgi", None)
+            else:
+                sys.modules["project_settings.wsgi"] = previous
+
     def test_gunicorn_post_fork_and_child_exit_hooks(self):
         """Verifies that gunicorn post_fork and child_exit execute cleanly."""
         from unittest.mock import MagicMock, patch
@@ -446,6 +543,39 @@ class TestDjangoAndGunicornInstrumentation(SimpleTestCase):
             mock_init.assert_called_once_with(service_name="insights-advisor-inventory-service")
             mock_dispatcher.receive.assert_called_once()
             mock_shutdown.assert_called_once()
+
+    def test_tasks_service_shuts_down_telemetry_when_receive_fails(self):
+        """The tasks consumer flushes telemetry when its receive loop raises."""
+        from unittest.mock import MagicMock, patch
+        from tasks.management.commands.tasks_service import Command
+
+        with patch("tasks.management.commands.tasks_service.KafkaDispatcher") as dispatcher_cls, \
+             patch("telemetry.init_telemetry"), \
+             patch("telemetry.shutdown_telemetry") as shutdown:
+            dispatcher_cls.return_value = MagicMock()
+            dispatcher_cls.return_value.receive.side_effect = RuntimeError("consumer failed")
+
+            with self.assertRaisesRegex(RuntimeError, "consumer failed"):
+                Command().handle()
+
+            shutdown.assert_called_once_with()
+
+    def test_inventory_service_shuts_down_telemetry_when_receive_fails(self):
+        """The inventory consumer flushes telemetry when its receive loop raises."""
+        from unittest.mock import MagicMock, patch
+        from api.management.commands.advisor_inventory_service import Command
+
+        with patch("api.management.commands.advisor_inventory_service.KafkaDispatcher") as dispatcher_cls, \
+             patch("api.management.commands.advisor_inventory_service.start_http_server"), \
+             patch("telemetry.init_telemetry"), \
+             patch("telemetry.shutdown_telemetry") as shutdown:
+            dispatcher_cls.return_value = MagicMock()
+            dispatcher_cls.return_value.receive.side_effect = RuntimeError("consumer failed")
+
+            with self.assertRaisesRegex(RuntimeError, "consumer failed"):
+                Command().handle()
+
+            shutdown.assert_called_once_with()
 
 
 class TestTelemetryPerformanceAndOptimization(SimpleTestCase):
@@ -616,13 +746,58 @@ class TestKafkaConsumerSpanContextManagers(SimpleTestCase):
         spans = self.exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "platform.engine.results process")
+        self.assertEqual(span.name, "process platform.engine.results")
         self.assertEqual(span.kind, SpanKind.CONSUMER)
         self.assertEqual(span.attributes.get("messaging.system"), "kafka")
         self.assertEqual(span.attributes.get("messaging.destination.name"), "platform.engine.results")
-        self.assertEqual(span.attributes.get("messaging.operation"), "process")
+        self.assertEqual(span.attributes.get("messaging.operation.name"), "process")
         self.assertEqual(format(span.context.trace_id, "032x"), trace_id)
         self.assertEqual(format(span.parent.span_id, "016x"), span_id)
+
+    def test_kafka_producer_span_when_disabled(self):
+        telemetry._IS_INITIALIZED = False
+        executed = False
+        with telemetry.kafka_producer_span("platform.notifications.ingress") as span:
+            executed = True
+            self.assertIsNone(span)
+            headers = telemetry.inject_trace_context_to_kafka_headers(
+                [("application", b"advisor")]
+            )
+            self.assertEqual(headers, [("application", b"advisor")])
+        self.assertTrue(executed)
+
+    def test_kafka_producer_span_nests_and_injects_traceparent(self):
+        from unittest.mock import patch
+        from opentelemetry.trace import SpanKind
+
+        telemetry._IS_INITIALIZED = True
+        tracer = self.provider.get_tracer("advisor-service")
+        with patch("telemetry.get_tracer", return_value=tracer):
+            with tracer.start_as_current_span("process platform.engine.results") as parent:
+                parent_span_id = format(parent.get_span_context().span_id, "016x")
+                parent_trace_id = format(parent.get_span_context().trace_id, "032x")
+                with telemetry.kafka_producer_span("platform.notifications.ingress") as span:
+                    self.assertIsNotNone(span)
+                    headers = telemetry.inject_trace_context_to_kafka_headers(
+                        [("application", b"advisor")]
+                    )
+
+        keys = {k: v for k, v in headers}
+        self.assertIn("application", keys)
+        self.assertIn("traceparent", keys)
+        self.assertTrue(keys["traceparent"].decode().startswith(f"00-{parent_trace_id}-"))
+
+        spans = self.exporter.get_finished_spans()
+        producer = next(s for s in spans if s.kind == SpanKind.PRODUCER)
+        self.assertEqual(producer.name, "platform.notifications.ingress send")
+        self.assertEqual(producer.attributes.get("messaging.system"), "kafka")
+        self.assertEqual(
+            producer.attributes.get("messaging.destination.name"),
+            "platform.notifications.ingress",
+        )
+        self.assertEqual(producer.attributes.get("messaging.operation.name"), "send")
+        self.assertEqual(format(producer.context.trace_id, "032x"), parent_trace_id)
+        self.assertEqual(format(producer.parent.span_id, "016x"), parent_span_id)
 
     def test_kafka_batch_consumer_span_when_disabled(self):
         """Verifies that when telemetry is uninitialized, kafka_batch_consumer_span yields None and executes body."""
@@ -634,7 +809,7 @@ class TestKafkaConsumerSpanContextManagers(SimpleTestCase):
         self.assertTrue(executed)
 
     def test_kafka_batch_consumer_span_when_enabled(self):
-        """Verifies that kafka_batch_consumer_span creates a batch span with trace links and message count."""
+        """Verifies the batch span is parented on the first valid traceparent (nested under ingress)."""
         from unittest.mock import patch
         from opentelemetry.trace import SpanKind
 
@@ -650,14 +825,40 @@ class TestKafkaConsumerSpanContextManagers(SimpleTestCase):
         spans = self.exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "platform.inventory.events batch process")
+        self.assertEqual(span.name, "process platform.inventory.events batch")
         self.assertEqual(span.kind, SpanKind.CONSUMER)
         self.assertEqual(span.attributes.get("messaging.system"), "kafka")
         self.assertEqual(span.attributes.get("messaging.destination.name"), "platform.inventory.events")
         self.assertEqual(span.attributes.get("messaging.batch.message_count"), 2)
+        self.assertEqual(format(span.context.trace_id, "032x"), trace_id)
+        self.assertEqual(format(span.parent.span_id, "016x"), span_id)
+        self.assertEqual(len(span.links), 0)
+
+    def test_kafka_batch_consumer_span_links_additional_traces(self):
+        """Messages from a second trace cannot share a parent; they are SpanLinks."""
+        from unittest.mock import patch
+
+        trace_id_1 = "4bf92f3577b34da6a3ce929d0e0e4736"
+        span_id_1 = "00f067aa0ba902b7"
+        trace_id_2 = "6cf92f3577b34da6a3ce929d0e0e4799"
+        span_id_2 = "00f067aa0ba902c8"
+        headers_list = [
+            [("traceparent", f"00-{trace_id_1}-{span_id_1}-01".encode())],
+            [("traceparent", f"00-{trace_id_2}-{span_id_2}-01".encode())],
+        ]
+
+        tracer = self.provider.get_tracer("advisor-kafka")
+        with patch("telemetry.get_tracer", return_value=tracer):
+            with telemetry.kafka_batch_consumer_span(
+                "platform.inventory.events", headers_list=headers_list, message_count=2
+            ):
+                pass
+
+        span = self.exporter.get_finished_spans()[0]
+        self.assertEqual(format(span.context.trace_id, "032x"), trace_id_1)
+        self.assertEqual(format(span.parent.span_id, "016x"), span_id_1)
         self.assertEqual(len(span.links), 1)
-        self.assertEqual(format(span.links[0].context.trace_id, "032x"), trace_id)
-        self.assertEqual(format(span.links[0].context.span_id, "016x"), span_id)
+        self.assertEqual(format(span.links[0].context.trace_id, "032x"), trace_id_2)
 
     def test_kafka_batch_consumer_span_fault_tolerance_with_corrupt_header(self):
         """
@@ -687,14 +888,14 @@ class TestKafkaConsumerSpanContextManagers(SimpleTestCase):
         batch_span = spans[0]
 
         # 1. Batch span was created successfully despite the corrupted second message
-        self.assertEqual(batch_span.name, "platform.inventory.events batch process")
+        self.assertEqual(batch_span.name, "process platform.inventory.events batch")
         self.assertEqual(batch_span.kind, SpanKind.CONSUMER)
         self.assertEqual(batch_span.attributes.get("messaging.batch.message_count"), 3)
 
-        # 2. Links list contains exactly the 2 valid traces (corrupted message was safely skipped)
-        self.assertEqual(len(batch_span.links), 2)
-        linked_traces = {format(link.context.trace_id, "032x") for link in batch_span.links}
-        self.assertEqual(linked_traces, {trace_id_1, trace_id_3})
+        # 2. Nested under the first valid trace; the other valid trace is a SpanLink
+        self.assertEqual(format(batch_span.context.trace_id, "032x"), trace_id_1)
+        self.assertEqual(len(batch_span.links), 1)
+        self.assertEqual(format(batch_span.links[0].context.trace_id, "032x"), trace_id_3)
 
     def test_enrich_span_from_thread_storage_helper(self):
         """Verifies _enrich_span_from_thread_storage sets org_id and request_id and handles edge cases."""
@@ -846,6 +1047,7 @@ class TestReviewCommentsIssues(SimpleTestCase):
         preventing dormant no-op tracing overhead in message handlers.
         """
         telemetry._IS_INITIALIZED = False
+        self.assertFalse(telemetry.is_enabled())
         tracer = telemetry.get_tracer("advisor-kafka")
 
         # Must return None so callers like kafka_utils skip tracing overhead entirely

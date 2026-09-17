@@ -113,14 +113,21 @@ class DummyProducer:
     def poll(self, _time: int):
         self.poll_calls += 1
 
-    def produce(self, topic: str, message: bytes, callback: Callable | None = None):
+    def produce(
+        self,
+        topic: str,
+        message: bytes,
+        callback: Callable | None = None,
+        headers: list[tuple[str, bytes]] | None = None,
+    ):
         self.produce_calls.append({
             'topic': topic,
             'message': message,
             'callback': callback.__name__ if callback else None,
+            'headers': headers,
         })
         if callback:
-            dummy_message = DummyMessage(topic, message, headers=None)
+            dummy_message = DummyMessage(topic, message, headers=headers)
             callback(err=None, msg=dummy_message)
 
     def flush(self):
@@ -275,8 +282,14 @@ def send_kafka_message(topic: str, message: JsonValue):
         return
     producer.poll(0)
     encoded_message = json.dumps(message).encode('utf8')
-    producer.produce(topic, encoded_message, callback=report_delivery_callback)
-    producer.flush()
+    with telemetry.kafka_producer_span(topic, tracer_name="advisor-kafka"):
+        producer.produce(
+            topic,
+            encoded_message,
+            callback=report_delivery_callback,
+            headers=telemetry.inject_trace_context_to_kafka_headers(),
+        )
+        producer.flush()
 
 
 def send_webhook_event(event_msg: JsonValue):
@@ -422,6 +435,25 @@ class KafkaDispatcher(object):
                 )
             request_finished.send(sender=self.__class__)
 
+    def _group_items_by_trace(self, items: list[tuple[JsonValue, list[tuple[str, bytes]]]]):
+        """Split a topic batch so each upstream trace gets its own CONSUMER span.
+
+        A span can have only one parent. Mixing two ingress uploads in one
+        batch nested the work under the first trace and hid it from the second.
+        """
+        if not telemetry.is_enabled():
+            return [items]
+
+        groups: dict = {}
+        order: list = []
+        for body, headers in items:
+            key = telemetry.trace_id_from_kafka_headers(headers)
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append((body, headers))
+        return [groups[k] for k in order]
+
     def _handle_batch_messages(self, messages: list[confluent_kafka.Message | DummyMessage]) -> bool:
         """
         Handle a batch of messages: group by topic, call each handler once
@@ -445,25 +477,26 @@ class KafkaDispatcher(object):
             handler = handler_entry['handler']
 
             if handler_entry['batch']:
-                bodies = [b for b, _ in items]
-                headers_list = [h for _, h in items]
-                with telemetry.kafka_batch_consumer_span(topic, headers_list=headers_list, message_count=len(bodies), tracer_name="advisor-kafka") as span:
-                    request_started.send(sender=self.__class__)
-                    try:
-                        handler(topic, bodies)
-                    except Exception as e:
-                        batch_success = False
-                        if span and span.is_recording() and Status and StatusCode:
-                            span.record_exception(e)
-                            span.set_status(Status(StatusCode.ERROR, str(e)))
-                        logger.exception(
-                            "Error processing kafka message",
-                            extra={
-                                'topic': topic,
-                                'error': str(e)
-                            }
-                        )
-                    request_finished.send(sender=self.__class__)
+                for group in self._group_items_by_trace(items):
+                    bodies = [b for b, _ in group]
+                    headers_list = [h for _, h in group]
+                    with telemetry.kafka_batch_consumer_span(topic, headers_list=headers_list, message_count=len(bodies), tracer_name="advisor-kafka") as span:
+                        request_started.send(sender=self.__class__)
+                        try:
+                            handler(topic, bodies)
+                        except Exception as e:
+                            batch_success = False
+                            if span and span.is_recording() and Status and StatusCode:
+                                span.record_exception(e)
+                                span.set_status(Status(StatusCode.ERROR, str(e)))
+                            logger.exception(
+                                "Error processing kafka message",
+                                extra={
+                                    'topic': topic,
+                                    'error': str(e)
+                                }
+                            )
+                        request_finished.send(sender=self.__class__)
             else:
                 for payload, headers in items:
                     with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka") as span:

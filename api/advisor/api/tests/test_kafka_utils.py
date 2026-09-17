@@ -122,6 +122,9 @@ class TestKafkaUtils(TestCase):
             )
 
     def test_send_kafka_message(self):
+        from contextlib import nullcontext
+        from unittest.mock import patch
+
         import kafka_utils
         current_producer = kafka_utils.producer
 
@@ -136,8 +139,18 @@ class TestKafkaUtils(TestCase):
         current_producer.reset_calls()
 
         # Now test that we actually did something with our producer
-        with self.assertLogs(logger='advisor-log') as logs:
+        trace_headers = [('traceparent', b'test-trace-context')]
+        with (
+            patch('kafka_utils.telemetry.kafka_producer_span', return_value=nullcontext()) as span,
+            patch(
+                'kafka_utils.telemetry.inject_trace_context_to_kafka_headers',
+                return_value=trace_headers,
+            ) as inject,
+            self.assertLogs(logger='advisor-log') as logs,
+        ):
             send_kafka_message('test_topic', {'data': 'test_data'})
+            span.assert_called_once_with('test_topic', tracer_name='advisor-kafka')
+            inject.assert_called_once_with()
             self.assertEqual(current_producer.poll_calls, 1)
             self.assertEqual(
                 current_producer.produce_calls[0]['topic'], 'test_topic'
@@ -148,6 +161,7 @@ class TestKafkaUtils(TestCase):
             self.assertEqual(
                 current_producer.produce_calls[0]['callback'], 'report_delivery_callback'
             )
+            self.assertEqual(current_producer.produce_calls[0]['headers'], trace_headers)
             self.assertEqual(current_producer.flush_calls, 1)
             # The report_delivery_callback function should have logged
             # delivery of the message.
@@ -357,21 +371,18 @@ class TestKafkaUtils(TestCase):
     def test_handle_message_trace_propagation(self):
         """Test that _handle_message creates a CONSUMER span inheriting parent trace context."""
         try:
-            from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import SimpleSpanProcessor
             from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-            import telemetry
+            from unittest.mock import patch
         except ImportError:
             self.skipTest("OpenTelemetry dependencies not installed yet")
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
-        if hasattr(trace, "_TRACER_PROVIDER_SET_ONCE"):
-            trace._TRACER_PROVIDER_SET_ONCE._done = False
-        trace.set_tracer_provider(provider)
-        telemetry._IS_INITIALIZED = True
+        self.addCleanup(provider.shutdown)
+        tracer = provider.get_tracer("advisor-kafka")
 
         trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
         span_id = "00f067aa0ba902b7"
@@ -381,7 +392,8 @@ class TestKafkaUtils(TestCase):
         handler = DummyHandler('test_handler')
         dispatcher = KafkaDispatcher(DummyConsumer())
         dispatcher.register_handler('test_topic', handler)
-        dispatcher._handle_message(msg)
+        with patch("telemetry.get_tracer", return_value=tracer):
+            dispatcher._handle_message(msg)
 
         self.assertEqual(len(handler.handled['test_topic']), 1)
         spans = exporter.get_finished_spans()
@@ -390,40 +402,46 @@ class TestKafkaUtils(TestCase):
         self.assertEqual(format(spans[0].parent.span_id, "016x"), span_id)
 
     def test_handle_batch_messages_span_links(self):
-        """Test that _handle_batch_messages creates a batch span with Links to each message's trace."""
+        """Messages from different traces get their own nested batch spans, not one mixed-parent span."""
         try:
-            from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import SimpleSpanProcessor
             from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-            import telemetry
+            from unittest.mock import patch
         except ImportError:
             self.skipTest("OpenTelemetry dependencies not installed yet")
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
-        if hasattr(trace, "_TRACER_PROVIDER_SET_ONCE"):
-            trace._TRACER_PROVIDER_SET_ONCE._done = False
-        trace.set_tracer_provider(provider)
-        telemetry._IS_INITIALIZED = True
+        self.addCleanup(provider.shutdown)
+        tracer = provider.get_tracer("advisor-kafka")
 
         trace_1 = "4bf92f3577b34da6a3ce929d0e0e4736"
+        span_1 = "00f067aa0ba902b7"
         trace_2 = "6cf92f3577b34da6a3ce929d0e0e4799"
-        msg1 = DummyMessage('batch_topic', b'{"id": 1}', headers=[('traceparent', f"00-{trace_1}-00f067aa0ba902b7-01".encode())])
-        msg2 = DummyMessage('batch_topic', b'{"id": 2}', headers=[('traceparent', f"00-{trace_2}-00f067aa0ba902c8-01".encode())])
+        span_2 = "00f067aa0ba902c8"
+        msg1 = DummyMessage('batch_topic', b'{"id": 1}', headers=[('traceparent', f"00-{trace_1}-{span_1}-01".encode())])
+        msg2 = DummyMessage('batch_topic', b'{"id": 2}', headers=[('traceparent', f"00-{trace_2}-{span_2}-01".encode())])
 
         batch_handler = DummyBatchHandler('batch_handler')
         dispatcher = KafkaDispatcher(DummyConsumer())
         dispatcher.register_handler('batch_topic', batch_handler, batch=True)
-        dispatcher._handle_batch_messages([msg1, msg2])
+        with (
+            patch("telemetry.is_enabled", return_value=True),
+            patch("telemetry.get_tracer", return_value=tracer),
+        ):
+            dispatcher._handle_batch_messages([msg1, msg2])
 
-        spans = exporter.get_finished_spans()
-        batch_span = next((s for s in spans if "batch process" in s.name), None)
-        self.assertIsNotNone(batch_span)
-        self.assertEqual(len(batch_span.links), 2)
-        linked_traces = {format(link.context.trace_id, "032x") for link in batch_span.links}
-        self.assertEqual(linked_traces, {trace_1, trace_2})
+        self.assertEqual(len(batch_handler.handled['batch_topic']), 2)
+        spans = [s for s in exporter.get_finished_spans() if s.name == "process batch_topic batch"]
+        self.assertEqual(len(spans), 2)
+        by_trace = {format(s.context.trace_id, "032x"): s for s in spans}
+        self.assertEqual(set(by_trace), {trace_1, trace_2})
+        self.assertEqual(format(by_trace[trace_1].parent.span_id, "016x"), span_1)
+        self.assertEqual(format(by_trace[trace_2].parent.span_id, "016x"), span_2)
+        self.assertEqual(len(by_trace[trace_1].links), 0)
+        self.assertEqual(len(by_trace[trace_2].links), 0)
 
     def test_handle_message_records_exception_and_error_status(self):
         """Test that _handle_message records exception and sets StatusCode.ERROR on span when handler fails."""
@@ -490,7 +508,7 @@ class TestKafkaUtils(TestCase):
 
         self.assertFalse(result)
         spans = exporter.get_finished_spans()
-        batch_span = next((s for s in spans if "batch process" in s.name), None)
+        batch_span = next((s for s in spans if s.name == "process error_batch_topic batch"), None)
         self.assertIsNotNone(batch_span)
         self.assertEqual(batch_span.status.status_code, StatusCode.ERROR)
         self.assertEqual(batch_span.status.description, "Batch processing error")
@@ -599,17 +617,21 @@ class TestKafkaUtils(TestCase):
 
         handled_batch = []
         dispatcher.register_handler('test_batch_topic', lambda t, b: handled_batch.append(b), batch=True)
-        batch_msg = DummyMessage('test_batch_topic', b'{"id": 2}', headers=[('traceparent', b'00-6cf92f3577b34da6a3ce929d0e0e4799-00f067aa0ba902c8-01')])
+        batch_messages = [
+            DummyMessage('test_batch_topic', b'{"id": 2}', headers=[('traceparent', b'00-6cf92f3577b34da6a3ce929d0e0e4799-00f067aa0ba902c8-01')]),
+            DummyMessage('test_batch_topic', b'{"id": 3}', headers=[('traceparent', b'00-7df92f3577b34da6a3ce929d0e0e4800-00f067aa0ba902c9-01')]),
+        ]
 
         with patch("telemetry.extract_kafka_headers_to_context") as mock_extract:
             # Single message dispatch
             dispatcher._handle_message(msg)
             # Batch message dispatch
-            dispatcher._handle_batch_messages([batch_msg])
+            dispatcher._handle_batch_messages(batch_messages)
 
             # Handlers must execute successfully
             self.assertEqual(len(handled_single), 1)
             self.assertEqual(len(handled_batch), 1)
+            self.assertEqual(handled_batch[0], [{'id': 2}, {'id': 3}])
 
             # Header extraction MUST NOT be called when disabled
             mock_extract.assert_not_called()

@@ -777,6 +777,13 @@ def start():
     except Exception as e:
         logger.warning("Error initializing telemetry in service: %s", e)
 
+    try:
+        _run_service()
+    finally:
+        telemetry.shutdown_telemetry()
+
+
+def _run_service():
     # Log the startup settings
     logger.debug("Starting Advisor Service using the following settings:")
     for key in dir(settings):
@@ -893,10 +900,6 @@ def start():
     executor.shutdown()
     # Close consumer connection
     c.close()
-    try:
-        telemetry.shutdown_telemetry()
-    except Exception:
-        pass
 
 
 def submit_to_executor(executor, fn, *args, **kwargs):
