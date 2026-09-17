@@ -28,6 +28,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 import os
 import importlib
+import importlib.util
 import sys
 
 from prometheus_client import Info
@@ -36,7 +37,7 @@ from app_common_python import LoadedConfig, KafkaTopics, KafkaServers
 
 
 def string_to_bool(s):
-    return s.lower() in ("yes", "true", "t", "1")
+    return bool(s) and str(s).strip().lower() in ("yes", "true", "t", "1")
 
 
 # Define the APP_NAME
@@ -536,3 +537,9 @@ if KAFKA_SSL_CERT:
     KAFKA_SETTINGS.update({
         'ssl.ca.location': KAFKA_SSL_CERT,
     })
+
+# OpenTelemetry Configuration
+OTEL_ENABLED = os.getenv('OTEL_ENABLED', 'false').lower() in ('true', '1', 'yes', 't')
+OTEL_SERVICE_NAME = os.getenv('OTEL_SERVICE_NAME', 'insights-advisor-api')
+OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')
+OTEL_SAMPLING_RATE = float(os.getenv('OTEL_SAMPLING_RATE', '0.05'))

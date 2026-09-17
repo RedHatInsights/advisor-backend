@@ -29,6 +29,7 @@ from kafka_utils import KafkaDispatcher, send_kafka_message
 from advisor_logging import logger
 from api.permissions import auth_header_for_testing
 from api.utils import retry_request
+import telemetry
 from tasks.kafka_utils import send_event_message
 from tasks.models import (
     ExecutedTask, ExecutedTaskStatusChoices, Host, Job, JobStatusChoices,
@@ -626,5 +627,9 @@ class Command(BaseCommand):
 
         # Loops until receiver.quit is set
         logger.info("Starting tasks service loop ...")
-        receiver.receive()
-        logger.info('Tasks service shutting down ...')
+        try:
+            telemetry.init_telemetry(service_name="insights-advisor-tasks-service")
+            receiver.receive()
+        finally:
+            telemetry.shutdown_telemetry()
+            logger.info('Tasks service shutting down ...')

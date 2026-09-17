@@ -21,6 +21,7 @@ import logging
 import datetime
 
 import settings
+import telemetry
 from confluent_kafka import Producer
 
 from project_settings.settings import INVENTORY_VIEW_TOPIC, KAFKA_SETTINGS
@@ -84,13 +85,14 @@ def send_inventory_view_event(event_data):
         payload_str = json.dumps(payload).encode("utf-8")
         logger.debug("Sending inventory view message: %s", payload_str)
         p.poll(0)
-        p.produce(
-            topic=INVENTORY_VIEW_TOPIC,
-            value=payload_str,
-            headers=headers,
-            callback=inventory_view_delivery_report,
-        )
-        p.flush()
+        with telemetry.kafka_producer_span(INVENTORY_VIEW_TOPIC):
+            p.produce(
+                topic=INVENTORY_VIEW_TOPIC,
+                value=payload_str,
+                headers=telemetry.inject_trace_context_to_kafka_headers(headers),
+                callback=inventory_view_delivery_report,
+            )
+            p.flush()
     except Exception:
         logger.exception("Hit exception sending inventory view event.")
 

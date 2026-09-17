@@ -622,6 +622,9 @@ def test_executor_unhandled_exception(mocker, service, monkeypatch, env, sample_
         def value(self):
             return json.dumps(sample_engine_results).encode('utf-8')
 
+        def headers(self):
+            return None
+
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
         return MockMsg()
@@ -647,6 +650,9 @@ def test_consume_upload(mocker, service, sample_engine_results, monkeypatch, env
         def value(self):
             return json.dumps(sample_engine_results).encode('utf-8')
 
+        def headers(self):
+            return None
+
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
         return MockMsg()
@@ -654,7 +660,7 @@ def test_consume_upload(mocker, service, sample_engine_results, monkeypatch, env
     monkeypatch.setattr(service.c, "poll", mock_poll)
     handle_engine_results = mocker.patch.object(service, "handle_engine_results")
     service.start()
-    handle_engine_results.assert_called_once_with(sample_engine_results)
+    handle_engine_results.assert_called_once_with(sample_engine_results, kafka_headers=None)
 
 
 def test_consume_exception_in_process_archive(mocker, service, sample_engine_results,
@@ -670,6 +676,9 @@ def test_consume_exception_in_process_archive(mocker, service, sample_engine_res
         def value(self):
             return json.dumps(sample_engine_results).encode('utf-8')
 
+        def headers(self):
+            return None
+
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
         return MockMsg()
@@ -680,7 +689,7 @@ def test_consume_exception_in_process_archive(mocker, service, sample_engine_res
     monkeypatch.setattr(service.c, "poll", mock_poll)
     request_engine = mocker.patch.object(service, "handle_engine_results", side_effect=_raise_error)
     service.start()
-    request_engine.assert_called_once_with(sample_engine_results)
+    request_engine.assert_called_once_with(sample_engine_results, kafka_headers=None)
 
 
 def test_consume_error(mocker, service, monkeypatch):
@@ -695,6 +704,9 @@ def test_consume_error(mocker, service, monkeypatch):
     class MockMsg(object):
         def error(self):
             return MockError
+
+        def headers(self):
+            return None
 
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
@@ -718,6 +730,9 @@ def test_consume_partition_eof_error(mocker, service, monkeypatch):
     class MockMsg(object):
         def error(self):
             return MockError
+
+        def headers(self):
+            return None
 
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
@@ -803,6 +818,9 @@ def test_handle_rule_hits_path(mocker, service, monkeypatch, env):
         def value(self):
             return json.dumps(payload).encode("utf-8")
 
+        def headers(self):
+            return None
+
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
         return MockMsg()
@@ -810,7 +828,7 @@ def test_handle_rule_hits_path(mocker, service, monkeypatch, env):
     monkeypatch.setattr(service.c, "poll", mock_poll)
     request_rule_hits = mocker.patch.object(service, "handle_rule_hits")
     service.start()
-    request_rule_hits.assert_called_once_with(payload)
+    request_rule_hits.assert_called_once_with(payload, kafka_headers=None)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -985,6 +1003,9 @@ def test_prometheus(service, mocker, env, sample_engine_results, monkeypatch):
         def value(self):
             return sample_engine_results
 
+        def headers(self):
+            return None
+
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
         return MockMsg()
@@ -1012,6 +1033,9 @@ def test_handle_inventory_event_path(mocker, service, monkeypatch, env):
             mock_msg = json.dumps(mock_json)
             return mock_msg.encode("utf-8")
 
+        def headers(self):
+            return None
+
     def mock_poll(timeout):
         monkeypatch.setattr(service, "_sigterm_received", True)
         return MockMsg()
@@ -1019,7 +1043,7 @@ def test_handle_inventory_event_path(mocker, service, monkeypatch, env):
     monkeypatch.setattr(service.c, "poll", mock_poll)
     request_inventory_event = mocker.patch.object(service, "handle_inventory_event")
     service.start()
-    request_inventory_event.assert_called_once_with(mock_json)
+    request_inventory_event.assert_called_once_with(mock_json, kafka_headers=None)
 
 
 def test_handle_inventory_event_missing_type(service):

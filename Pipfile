@@ -58,6 +58,13 @@ rpds-py = "==0.30.0"
 jsonschema = "==4.24.0"
 confluent-kafka = "==2.10.1"
 certifi = "*"
+opentelemetry-api = "*"
+opentelemetry-sdk = "*"
+opentelemetry-exporter-otlp-proto-http = "*"
+opentelemetry-instrumentation-psycopg2 = "*"
+opentelemetry-instrumentation-requests = "*"
+opentelemetry-instrumentation-django = "*"
+opentelemetry-instrumentation-confluent-kafka = "*"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"

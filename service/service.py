@@ -38,6 +38,7 @@ import prometheus
 import reports as report_hooks
 import utils
 import build_info
+import telemetry
 
 # Setup Django database models
 import django
@@ -87,134 +88,135 @@ def print_assignment(consumer, partitions):
 
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_HANDLE_ENGINE_RESULTS.time()
-def handle_engine_results(engine_results):
+def handle_engine_results(engine_results, kafka_headers=None):
     """
     Handle all engine results received from the shared engine instance
     This comes in on platform.engine.results
     """
-    # Clean threading cruft and start function metrics
-    utils.clean_threading_cruft()
-    engine_results_started = time.time()
-    thread_storage.set_value('engine_results_started', engine_results_started)
-    thread_storage.set_value('engine_results_error', 0)
-    logger.debug("Handling engine results %s", engine_results)
+    with telemetry.kafka_consumer_span(ENGINE_RESULTS_TOPIC, kafka_headers):
+        # Clean threading cruft and start function metrics
+        utils.clean_threading_cruft()
+        engine_results_started = time.time()
+        thread_storage.set_value('engine_results_started', engine_results_started)
+        thread_storage.set_value('engine_results_error', 0)
+        logger.debug("Handling engine results %s", engine_results)
 
-    # Required engine results keys
-    # Account number has been removed as it is no longer required, only optional
-    key_paths = {
-        "engine_reports": ["results", "reports"],
-        "system_data": ["results", "system"],
-        "platform_data": ["input", "platform_metadata"],
-        "request_id": ["input", "platform_metadata", "request_id"],
-        "inventory_uuid": ["input", "host", "id"],
-        "org_id": ["input", "platform_metadata", "org_id"]
-    }
+        # Required engine results keys
+        # Account number has been removed as it is no longer required, only optional
+        key_paths = {
+            "engine_reports": ["results", "reports"],
+            "system_data": ["results", "system"],
+            "platform_data": ["input", "platform_metadata"],
+            "request_id": ["input", "platform_metadata", "request_id"],
+            "inventory_uuid": ["input", "host", "id"],
+            "org_id": ["input", "platform_metadata", "org_id"]
+        }
 
-    def bad_payload(data, null_keys):
-        payload_info = {'source': 'insights-client',
-                        'request_id': data.get('request_id'),
-                        'account': utils.traverse_keys(engine_results, ["input", "host", "account"]),  # This should be None if not present (aka optional)
-                        'org_id': data.get('org_id'),
-                        'inventory_id': data.get('inventory_uuid')}
-        payload_tracker.bad_payload('insights-client', payload_info)
-        missing_paths = ["/".join(key_paths[key]) for key in null_keys]
-        logger.error("Key paths not found/null in engine results at paths: %s",
-                     ",".join(missing_paths))
-        return False
+        def bad_payload(data, null_keys):
+            payload_info = {'source': 'insights-client',
+                            'request_id': data.get('request_id'),
+                            'account': utils.traverse_keys(engine_results, ["input", "host", "account"]),  # This should be None if not present (aka optional)
+                            'org_id': data.get('org_id'),
+                            'inventory_id': data.get('inventory_uuid')}
+            payload_tracker.bad_payload('insights-client', payload_info)
+            missing_paths = ["/".join(key_paths[key]) for key in null_keys]
+            logger.error("Key paths not found/null in engine results at paths: %s",
+                         ",".join(missing_paths))
+            return False
 
-    data = {key: utils.traverse_keys(engine_results, key_path)
-                 for key, key_path in key_paths.items()}
-    null_keys = [key for key, val in data.items() if val is None]
-    if len(null_keys):
-        return bad_payload(data, null_keys)
+        data = {key: utils.traverse_keys(engine_results, key_path)
+                     for key, key_path in key_paths.items()}
+        null_keys = [key for key, val in data.items() if val is None]
+        if len(null_keys):
+            return bad_payload(data, null_keys)
 
-    # get host and platform data
-    try:
-        engine_reports = data.get('engine_reports')
-        system_data = data.get('system_data')
-        platform_data = data.get('platform_data')
-        request_id = data.get('request_id')
-        inventory_uuid = data.get('inventory_uuid')
-        account = utils.traverse_keys(engine_results, ["input", "host", "account"])  # This should be None if not present (aka optional) and will not throw an exception
-        org_id = data.get('org_id')
-    except Exception:
-        return bad_payload(data, null_keys)
+        # get host and platform data
+        try:
+            engine_reports = data.get('engine_reports')
+            system_data = data.get('system_data')
+            platform_data = data.get('platform_data')
+            request_id = data.get('request_id')
+            inventory_uuid = data.get('inventory_uuid')
+            account = utils.traverse_keys(engine_results, ["input", "host", "account"])  # This should be None if not present (aka optional) and will not throw an exception
+            org_id = data.get('org_id')
+        except Exception:
+            return bad_payload(data, null_keys)
 
-    # attempt to get the system ID for easy debugging/lookup
-    # this is not necessarily guaranteed or required
-    # so we dont include it in the above "key_paths"
-    system_id = system_data.get('system_id')
-    if system_id:
-        thread_storage.set_value('system_id', system_id)
+        # attempt to get the system ID for easy debugging/lookup
+        # this is not necessarily guaranteed or required
+        # so we dont include it in the above "key_paths"
+        system_id = system_data.get('system_id')
+        if system_id:
+            thread_storage.set_value('system_id', system_id)
 
-    # send processing metrics
-    thread_storage.set_value('request_id', request_id)
-    thread_storage.set_value('inventory_id', inventory_uuid)
-    thread_storage.set_value('source', 'insights-client')
-    thread_storage.set_value('account', account)
-    thread_storage.set_value('org_id', org_id)
-    payload_tracker.payload_status('received', 'Processing engine results')
-    logger.info("Processing engine results for Inventory ID %s on account %s and org_id %s",
-                inventory_uuid, account, org_id)
+        # send processing metrics
+        thread_storage.set_value('request_id', request_id)
+        thread_storage.set_value('inventory_id', inventory_uuid)
+        thread_storage.set_value('source', 'insights-client')
+        thread_storage.set_value('account', account)
+        thread_storage.set_value('org_id', org_id)
+        payload_tracker.payload_status('received', 'Processing engine results')
+        logger.info("Processing engine results for Inventory ID %s on account %s and org_id %s",
+                    inventory_uuid, account, org_id)
 
-    # system type and produce code information
-    system_type = system_data.get('type')
-    system_product = system_data.get('product')
-    try:
-        db_system_type = db.SystemType.objects.filter(
-            role=system_type,
-            product_code=system_product
-        ).first()
-    except (OperationalError, InterfaceError):
-        logger.error("Hit DB error fetching system type - will flush connections and retry")
-        django.db.close_old_connections()
-        db_system_type = db.SystemType.objects.filter(
-            role=system_type,
-            product_code=system_product
-        ).first()
+        # system type and produce code information
+        system_type = system_data.get('type')
+        system_product = system_data.get('product')
+        try:
+            db_system_type = db.SystemType.objects.filter(
+                role=system_type,
+                product_code=system_product
+            ).first()
+        except (OperationalError, InterfaceError):
+            logger.error("Hit DB error fetching system type - will flush connections and retry")
+            django.db.close_old_connections()
+            db_system_type = db.SystemType.objects.filter(
+                role=system_type,
+                product_code=system_product
+            ).first()
 
-    if not db_system_type:
-        thread_storage.set_value('engine_results_error', 1)
-        thread_storage.set_value('engine_results_error_msg', 'missing system_type')
-        engine_results_finished = time.time()
-        engine_results_elapsed = engine_results_finished - engine_results_started
-        thread_storage.set_value('engine_results_finished', engine_results_finished)
-        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
-        logger.error(
-            f"Unable to get system type {system_product} / "
-            f"{system_type} from DB - load fixtures!"
-        )
-        payload_tracker.payload_status('invalid', 'Invalid system type.')
-        return False
+        if not db_system_type:
+            thread_storage.set_value('engine_results_error', 1)
+            thread_storage.set_value('engine_results_error_msg', 'missing system_type')
+            engine_results_finished = time.time()
+            engine_results_elapsed = engine_results_finished - engine_results_started
+            thread_storage.set_value('engine_results_finished', engine_results_finished)
+            thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+            logger.error(
+                f"Unable to get system type {system_product} / "
+                f"{system_type} from DB - load fixtures!"
+            )
+            payload_tracker.payload_status('invalid', 'Invalid system type.')
+            return False
 
-    # add reports to the database
-    satellite_managed = platform_data.get('satellite_managed', False)
-    satellite_id = system_data.get('remote_leaf', None)
-    if satellite_id == -1:
-        satellite_id = None
-    branch_id = system_data.get('remote_branch', None)
-    if branch_id == -1:
-        branch_id = None
+        # add reports to the database
+        satellite_managed = platform_data.get('satellite_managed', False)
+        satellite_id = system_data.get('remote_leaf', None)
+        if satellite_id == -1:
+            satellite_id = None
+        branch_id = system_data.get('remote_branch', None)
+        if branch_id == -1:
+            branch_id = None
 
-    if create_db_reports(
-        engine_reports, inventory_uuid, account, org_id, db_system_type, 'insights-client',
-        satellite_managed, satellite_id, branch_id,
-    ):
-        engine_results_finished = time.time()
-        engine_results_elapsed = engine_results_finished - engine_results_started
-        thread_storage.set_value('engine_results_finished', engine_results_finished)
-        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
-        return True
-    else:
-        engine_results_finished = time.time()
-        engine_results_elapsed = engine_results_finished - engine_results_started
-        thread_storage.set_value('engine_results_error', 1)
-        thread_storage.set_value('engine_results_error_msg', 'Failure processing engine results.')
-        thread_storage.set_value('engine_results_finished', engine_results_finished)
-        thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
-        payload_tracker.payload_status('error', 'Failure processing engine results.')
-        logger.error('Failure processing engine results.')
-        return False
+        if create_db_reports(
+            engine_reports, inventory_uuid, account, org_id, db_system_type, 'insights-client',
+            satellite_managed, satellite_id, branch_id,
+        ):
+            engine_results_finished = time.time()
+            engine_results_elapsed = engine_results_finished - engine_results_started
+            thread_storage.set_value('engine_results_finished', engine_results_finished)
+            thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+            return True
+        else:
+            engine_results_finished = time.time()
+            engine_results_elapsed = engine_results_finished - engine_results_started
+            thread_storage.set_value('engine_results_error', 1)
+            thread_storage.set_value('engine_results_error_msg', 'Failure processing engine results.')
+            thread_storage.set_value('engine_results_finished', engine_results_finished)
+            thread_storage.set_value('engine_results_elapsed', engine_results_elapsed)
+            payload_tracker.payload_status('error', 'Failure processing engine results.')
+            logger.error('Failure processing engine results.')
+            return False
 
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_DB_ELAPSED.time()
@@ -535,227 +537,229 @@ def create_db_reports(
 
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_RULE_HITS_ELAPSED.time()
-def handle_rule_hits(rule_hits_json):
-    utils.clean_threading_cruft()
+def handle_rule_hits(rule_hits_json, kafka_headers=None):
+    with telemetry.kafka_consumer_span(RULE_HITS_TOPIC, kafka_headers):
+        utils.clean_threading_cruft()
 
-    rule_hits_started = time.time()
-    thread_storage.set_value('rule_hits_started', rule_hits_started)
-    thread_storage.set_value('rule_hits_error', 0)
+        rule_hits_started = time.time()
+        thread_storage.set_value('rule_hits_started', rule_hits_started)
+        thread_storage.set_value('rule_hits_error', 0)
 
-    required_keys = ['org_id', 'source', 'host_product', 'host_role', 'inventory_id', 'hits']
-    missing_keys = [key for key in required_keys if key not in rule_hits_json]
-    if missing_keys:
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
-        thread_storage.set_value('rule_hits_error', 1)
-        thread_storage.set_value('rule_hits_error_msg', 'missing_keys')
-        prometheus.THIRD_PARTY_RULE_HIT_MISSING_KEYS.inc()
-        payload_info = {'request_id': 'third-party'}
-        for key in required_keys:
-            if key in rule_hits_json:
-                payload_info[key] = rule_hits_json[key]
-        payload_tracker.payload_status('invalid',
-                       f"Third party rule hits did not contain valid keys {required_keys}",
-                       payload_info)
-        logger.error(f"Third party rule hits did not contain valid keys {required_keys}")
-        return False
+        required_keys = ['org_id', 'source', 'host_product', 'host_role', 'inventory_id', 'hits']
+        missing_keys = [key for key in required_keys if key not in rule_hits_json]
+        if missing_keys:
+            rule_hits_finished = time.time()
+            thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+            thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+            thread_storage.set_value('rule_hits_error', 1)
+            thread_storage.set_value('rule_hits_error_msg', 'missing_keys')
+            prometheus.THIRD_PARTY_RULE_HIT_MISSING_KEYS.inc()
+            payload_info = {'request_id': 'third-party'}
+            for key in required_keys:
+                if key in rule_hits_json:
+                    payload_info[key] = rule_hits_json[key]
+            payload_tracker.payload_status('invalid',
+                           f"Third party rule hits did not contain valid keys {required_keys}",
+                           payload_info)
+            logger.error(f"Third party rule hits did not contain valid keys {required_keys}")
+            return False
 
-    thread_storage.set_value('request_id', 'third-party')
-    thread_storage.set_value('inventory_id', rule_hits_json['inventory_id'])
-    thread_storage.set_value('source', rule_hits_json['source'])
-    thread_storage.set_value('account', rule_hits_json.get('account'))
-    thread_storage.set_value('org_id', rule_hits_json['org_id'])
-    payload_tracker.payload_status('processing', 'Beginning rule hit analysis.')
+        thread_storage.set_value('request_id', 'third-party')
+        thread_storage.set_value('inventory_id', rule_hits_json['inventory_id'])
+        thread_storage.set_value('source', rule_hits_json['source'])
+        thread_storage.set_value('account', rule_hits_json.get('account'))
+        thread_storage.set_value('org_id', rule_hits_json['org_id'])
+        payload_tracker.payload_status('processing', 'Beginning rule hit analysis.')
 
-    system_type = None
-    rule_hits_json['host_role'] = rule_hits_json['host_role'].lower()
-    rule_hits_json['host_product'] = rule_hits_json['host_product'].lower()
-    try:
-        system_type = db.SystemType.objects.filter(
-            role=rule_hits_json['host_role'],
-            product_code=rule_hits_json['host_product']
-        ).first()
-    except (OperationalError, InterfaceError):
-        logger.error("Hit DB error fetching system type - will flush connections and retry")
-        django.db.close_old_connections()
-        system_type = db.SystemType.objects.filter(
-            role=rule_hits_json['host_role'],
-            product_code=rule_hits_json['host_product']
-        ).first()
+        system_type = None
+        rule_hits_json['host_role'] = rule_hits_json['host_role'].lower()
+        rule_hits_json['host_product'] = rule_hits_json['host_product'].lower()
+        try:
+            system_type = db.SystemType.objects.filter(
+                role=rule_hits_json['host_role'],
+                product_code=rule_hits_json['host_product']
+            ).first()
+        except (OperationalError, InterfaceError):
+            logger.error("Hit DB error fetching system type - will flush connections and retry")
+            django.db.close_old_connections()
+            system_type = db.SystemType.objects.filter(
+                role=rule_hits_json['host_role'],
+                product_code=rule_hits_json['host_product']
+            ).first()
 
-    if not system_type:
-        thread_storage.set_value('rule_hits_error', 1)
-        thread_storage.set_value('rule_hits_error_msg', 'missing system_type')
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
-        logger.error(
-            f"Unable to get system type {rule_hits_json['host_product']} / "
-            f"{rule_hits_json['host_role']} from DB - load fixtures!"
-        )
-        payload_tracker.payload_status('invalid', 'Invalid system type.')
-        return False
-    else:
-        logger.debug("Valid system type found for system type:%s, system product:%s.",
-            rule_hits_json['host_product'],
-            rule_hits_json['host_role'])
+        if not system_type:
+            thread_storage.set_value('rule_hits_error', 1)
+            thread_storage.set_value('rule_hits_error_msg', 'missing system_type')
+            rule_hits_finished = time.time()
+            thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+            thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+            logger.error(
+                f"Unable to get system type {rule_hits_json['host_product']} / "
+                f"{rule_hits_json['host_role']} from DB - load fixtures!"
+            )
+            payload_tracker.payload_status('invalid', 'Invalid system type.')
+            return False
+        else:
+            logger.debug("Valid system type found for system type:%s, system product:%s.",
+                rule_hits_json['host_product'],
+                rule_hits_json['host_role'])
 
-    logger.debug("Generating reports for Inventory ID:%s, Account:%s, Org ID: %s.",
-                rule_hits_json['inventory_id'], rule_hits_json.get('account'), rule_hits_json['org_id'])
-    payload_tracker.payload_status('processing', 'Creating reports.')
-    if create_db_reports(rule_hits_json['hits'], rule_hits_json['inventory_id'],
-                      rule_hits_json.get('account'), rule_hits_json['org_id'],
-                      system_type, rule_hits_json['source']):
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
-    else:
-        rule_hits_finished = time.time()
-        thread_storage.set_value('rule_hits_finished', rule_hits_finished)
-        thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
-        thread_storage.set_value('rule_hits_error', 1)
-        thread_storage.set_value('rule_hits_error_msg', "Error processing third party rule hits.")
-        extra_info = {}
-        for key in required_keys:
-            if key in rule_hits_json:
-                extra_info[key] = rule_hits_json[key]
-        logger.error("Error processing third party rule hits.", extra=extra_info)
-    return True
+        logger.debug("Generating reports for Inventory ID:%s, Account:%s, Org ID: %s.",
+                    rule_hits_json['inventory_id'], rule_hits_json.get('account'), rule_hits_json['org_id'])
+        payload_tracker.payload_status('processing', 'Creating reports.')
+        if create_db_reports(rule_hits_json['hits'], rule_hits_json['inventory_id'],
+                          rule_hits_json.get('account'), rule_hits_json['org_id'],
+                          system_type, rule_hits_json['source']):
+            rule_hits_finished = time.time()
+            thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+            thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+        else:
+            rule_hits_finished = time.time()
+            thread_storage.set_value('rule_hits_finished', rule_hits_finished)
+            thread_storage.set_value('rule_hits_elapsed', rule_hits_finished - rule_hits_started)
+            thread_storage.set_value('rule_hits_error', 1)
+            thread_storage.set_value('rule_hits_error_msg', "Error processing third party rule hits.")
+            extra_info = {}
+            for key in required_keys:
+                if key in rule_hits_json:
+                    extra_info[key] = rule_hits_json[key]
+            logger.error("Error processing third party rule hits.", extra=extra_info)
+        return True
 
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_INVENTORY_EVENTS_ELAPSED.time()
-def handle_inventory_event(inventory_json_msg):
-    # clean any old thread cruft and start the timer
-    utils.clean_threading_cruft()
-    inventory_event_started = time.time()
-    thread_storage.set_value('inventory_event_started', inventory_event_started)
-    thread_storage.set_value('inventory_event_error', 0)
+def handle_inventory_event(inventory_json_msg, kafka_headers=None):
+    with telemetry.kafka_consumer_span(INVENTORY_EVENTS_TOPIC, kafka_headers):
+        # clean any old thread cruft and start the timer
+        utils.clean_threading_cruft()
+        inventory_event_started = time.time()
+        thread_storage.set_value('inventory_event_started', inventory_event_started)
+        thread_storage.set_value('inventory_event_error', 0)
 
-    def inventory_event_finished(error=None, log_db=False):
-        inventory_event_finished = time.time()
-        thread_storage.set_value('inventory_event_finished', inventory_event_finished)
-        inventory_event_elapsed = inventory_event_finished - inventory_event_started
-        thread_storage.set_value('inventory_event_elapsed', inventory_event_elapsed)
-        if error:
-            thread_storage.set_value('inventory_event_error', 1)
-            thread_storage.set_value('inventory_event_error_msg', error)
-        if log_db:
-            inventory_json_msg['db_duration'] = inventory_event_elapsed
+        def inventory_event_finished(error=None, log_db=False):
+            inventory_event_finished = time.time()
+            thread_storage.set_value('inventory_event_finished', inventory_event_finished)
+            inventory_event_elapsed = inventory_event_finished - inventory_event_started
+            thread_storage.set_value('inventory_event_elapsed', inventory_event_elapsed)
+            if error:
+                thread_storage.set_value('inventory_event_error', 1)
+                thread_storage.set_value('inventory_event_error_msg', error)
+            if log_db:
+                inventory_json_msg['db_duration'] = inventory_event_elapsed
 
-    def inventory_event_success(success_msg, payload_info):
-        inventory_event_finished(None, True)
-        logger.info(success_msg, extra=payload_info)
-        payload_tracker.payload_status('success', success_msg, payload_info)
+        def inventory_event_success(success_msg, payload_info):
+            inventory_event_finished(None, True)
+            logger.info(success_msg, extra=payload_info)
+            payload_tracker.payload_status('success', success_msg, payload_info)
 
-    def check_for_keys(required_keys):
-        missing_keys = [key for key in required_keys if key not in inventory_json_msg]
-        if missing_keys:
-            inventory_event_finished('missing_keys')
-            prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
-            logger.error(f"Inventory event did not contain valid keys {required_keys}",
-                         extra=inventory_json_msg)
-            payload_tracker.bad_payload('inventory', inventory_json_msg,
-                                        'Inventory event missing keys.')
-            raise ValueError(f'Invalid keys. Required: {required_keys}')
-
-    def inventory_event_error(payload_info, error_msg, last_error, last_error_msg):
-        inventory_event_finished(last_error_msg)
-        logger.error(error_msg, extra=inventory_json_msg)
-        payload_tracker.payload_status('error', error_msg, payload_info)
-        prometheus.INVENTORY_EVENT_ERROR.inc()
-        raise last_error
-
-    # determine the inventory event type
-    event_type = inventory_json_msg.get('type')
-    if not event_type:
-        raise ValueError('Inventory event does not contain event type.')
-
-    # handle delete events
-    if event_type == 'delete':
-
-        # check for missing payload keys and reject
-        required_keys = ['id', 'org_id', 'request_id', 'type', 'timestamp']
-        check_for_keys(required_keys)
-
-        # get event information
-        inventory_id = inventory_json_msg['id']
-        account = inventory_json_msg.get('account')
-        org_id = inventory_json_msg['org_id']
-        request_id = inventory_json_msg['request_id']
-        payload_info = {'request_id': request_id,
-                        'inventory_id': inventory_id,
-                        'account': account,
-                        'org_id': org_id,
-                        'source': 'inventory'}
-
-        payload_tracker.payload_status('received',
-                                       'Received DELETE event from Inventory.',
-                                       payload_info)
-        logger.info("Received DELETE event from Inventory.",
-                    extra=payload_info)
-
-        # Delete UPLOAD records for inventory ID
-        last_error = None
-        last_error_msg = None
-        for _ in range(0, settings.DB_RETRY_CONSTANT):
-            try:
-                logger.debug(f"Setting uploads for {inventory_id} as non-current",
+        def check_for_keys(required_keys):
+            missing_keys = [key for key in required_keys if key not in inventory_json_msg]
+            if missing_keys:
+                inventory_event_finished('missing_keys')
+                prometheus.INVENTORY_EVENT_MISSING_KEYS.inc()
+                logger.error(f"Inventory event did not contain valid keys {required_keys}",
                              extra=inventory_json_msg)
-                db.Upload.objects.filter(host_id=inventory_id,
-                                         org_id=org_id, current=True).delete()
-                break
-            except (OperationalError, InterfaceError) as e:
-                last_error = e
-                last_error_msg = traceback.format_exc()
-                logger.error("Hit DB error setting upload to non-current - "
-                             "will flush connections and retry", extra=inventory_json_msg)
-                django.db.close_old_connections()
-        else:
-            error_msg = f"Error setting uploads to non-current for {inventory_id}: {last_error_msg}"
-            inventory_event_error(payload_info, error_msg, last_error, last_error_msg)
+                payload_tracker.bad_payload('inventory', inventory_json_msg,
+                                            'Inventory event missing keys.')
+                raise ValueError(f'Invalid keys. Required: {required_keys}')
 
-        # current reports are deleted
-        last_error = None
-        last_error_msg = None
-        for _ in range(0, settings.DB_RETRY_CONSTANT):
-            try:
-                logger.debug(f"Deleting current reports for {inventory_id}",
-                             extra=inventory_json_msg)
-                db.CurrentReport.objects.filter(host=inventory_id, org_id=org_id).delete()
-                break
-            except (OperationalError, InterfaceError) as e:
-                last_error = e
-                last_error_msg = traceback.format_exc()
-                logger.error("Hit DB error deleting current reports - "
-                             "will flush connections and retry", extra=inventory_json_msg)
-                django.db.close_old_connections()
-        else:
-            error_msg = f"Error deleting current reports for {inventory_id}: {last_error_msg}"
-            inventory_event_error(payload_info, error_msg, last_error, last_error_msg)
+        def inventory_event_error(payload_info, error_msg, last_error, last_error_msg):
+            inventory_event_finished(last_error_msg)
+            logger.error(error_msg, extra=inventory_json_msg)
+            payload_tracker.payload_status('error', error_msg, payload_info)
+            prometheus.INVENTORY_EVENT_ERROR.inc()
+            raise last_error
 
-        # host acks are deleted
-        last_error = None
-        last_error_msg = None
-        for _ in range(0, settings.DB_RETRY_CONSTANT):
-            try:
-                logger.debug(f"Deleting Host Acks for {inventory_id}",
-                             extra=inventory_json_msg)
-                db.HostAck.objects.filter(host_id=inventory_id, org_id=org_id).delete()
-                break
-            except (OperationalError, InterfaceError) as e:
-                last_error = e
-                last_error_msg = traceback.format_exc()
-                logger.error("Hit DB error deleting host acks - "
-                             "will flush connections and retry", extra=inventory_json_msg)
-                django.db.close_old_connections()
-        else:
-            error_msg = f"Error deleting host acks for {inventory_id}: {last_error_msg}"
-            inventory_event_error(payload_info, error_msg, last_error, last_error_msg)
+        # determine the inventory event type
+        event_type = inventory_json_msg.get('type')
+        if not event_type:
+            raise ValueError('Inventory event does not contain event type.')
 
-        # Set finished metrics
-        success_msg = f"Succesfully DELETED records for {inventory_id} in account {account} org_id {org_id}."
-        inventory_event_success(success_msg, payload_info)
+        # handle delete events
+        if event_type == 'delete':
+
+            # check for missing payload keys and reject
+            required_keys = ['id', 'org_id', 'request_id', 'type', 'timestamp']
+            check_for_keys(required_keys)
+
+            # get event information
+            inventory_id = inventory_json_msg['id']
+            account = inventory_json_msg.get('account')
+            org_id = inventory_json_msg['org_id']
+            request_id = inventory_json_msg['request_id']
+            payload_info = {'request_id': request_id,
+                            'inventory_id': inventory_id,
+                            'account': account,
+                            'org_id': org_id,
+                            'source': 'inventory'}
+
+            payload_tracker.payload_status('received',
+                                           'Received DELETE event from Inventory.',
+                                           payload_info)
+            logger.info("Received DELETE event from Inventory.",
+                        extra=payload_info)
+
+            # Delete UPLOAD records for inventory ID
+            last_error = None
+            last_error_msg = None
+            for _ in range(0, settings.DB_RETRY_CONSTANT):
+                try:
+                    logger.debug(f"Setting uploads for {inventory_id} as non-current",
+                                 extra=inventory_json_msg)
+                    db.Upload.objects.filter(host_id=inventory_id,
+                                             org_id=org_id, current=True).delete()
+                    break
+                except (OperationalError, InterfaceError) as e:
+                    last_error = e
+                    last_error_msg = traceback.format_exc()
+                    logger.error("Hit DB error setting upload to non-current - "
+                                 "will flush connections and retry", extra=inventory_json_msg)
+                    django.db.close_old_connections()
+            else:
+                error_msg = f"Error setting uploads to non-current for {inventory_id}: {last_error_msg}"
+                inventory_event_error(payload_info, error_msg, last_error, last_error_msg)
+
+            # current reports are deleted
+            last_error = None
+            last_error_msg = None
+            for _ in range(0, settings.DB_RETRY_CONSTANT):
+                try:
+                    logger.debug(f"Deleting current reports for {inventory_id}",
+                                 extra=inventory_json_msg)
+                    db.CurrentReport.objects.filter(host=inventory_id, org_id=org_id).delete()
+                    break
+                except (OperationalError, InterfaceError) as e:
+                    last_error = e
+                    last_error_msg = traceback.format_exc()
+                    logger.error("Hit DB error deleting current reports - "
+                                 "will flush connections and retry", extra=inventory_json_msg)
+                    django.db.close_old_connections()
+            else:
+                error_msg = f"Error deleting current reports for {inventory_id}: {last_error_msg}"
+                inventory_event_error(payload_info, error_msg, last_error, last_error_msg)
+
+            # host acks are deleted
+            last_error = None
+            last_error_msg = None
+            for _ in range(0, settings.DB_RETRY_CONSTANT):
+                try:
+                    logger.debug(f"Deleting Host Acks for {inventory_id}",
+                                 extra=inventory_json_msg)
+                    db.HostAck.objects.filter(host_id=inventory_id, org_id=org_id).delete()
+                    break
+                except (OperationalError, InterfaceError) as e:
+                    last_error = e
+                    last_error_msg = traceback.format_exc()
+                    logger.error("Hit DB error deleting host acks - "
+                                 "will flush connections and retry", extra=inventory_json_msg)
+                    django.db.close_old_connections()
+            else:
+                error_msg = f"Error deleting host acks for {inventory_id}: {last_error_msg}"
+                inventory_event_error(payload_info, error_msg, last_error, last_error_msg)
+
+            # Set finished metrics
+            success_msg = f"Succesfully DELETED records for {inventory_id} in account {account} org_id {org_id}."
+            inventory_event_success(success_msg, payload_info)
 
     # We currently do nothing for updated events
     # Leaving as a placeholder so we know 'updated' events do still come in
@@ -763,6 +767,18 @@ def handle_inventory_event(inventory_json_msg):
 
 
 def start():
+    try:
+        telemetry.init_telemetry(service_name="insights-advisor-service")
+    except Exception as e:
+        logger.warning("Error initializing telemetry in service: %s", e)
+
+    try:
+        _run_service()
+    finally:
+        telemetry.shutdown_telemetry()
+
+
+def _run_service():
     # Log the startup settings
     logger.debug("Starting Advisor Service using the following settings:")
     for key in dir(settings):
@@ -831,7 +847,7 @@ def start():
                 continue
 
             if json_msg:
-                submit_to_executor(executor, handle_engine_results, json_msg)
+                submit_to_executor(executor, handle_engine_results, json_msg, kafka_headers=msg.headers())
 
         # Request third party rule hit
         if msg.topic() == RULE_HITS_TOPIC:
@@ -853,7 +869,7 @@ def start():
                 payload_tracker.payload_status('processing',
                                'Submitting to pool for rule hit analysis.',
                                payload_info)
-                submit_to_executor(executor, handle_rule_hits, json_msg)
+                submit_to_executor(executor, handle_rule_hits, json_msg, kafka_headers=msg.headers())
 
         # Listen to inventory events
         # DELETE any associated records for a system
@@ -869,7 +885,7 @@ def start():
                 logger.exception("Malformed JSON error for inventory event.")
 
             if json_msg:
-                submit_to_executor(executor, handle_inventory_event, json_msg)
+                submit_to_executor(executor, handle_inventory_event, json_msg, kafka_headers=msg.headers())
 
     # Set some Prometheus stats
     prometheus.INSIGHTS_ADVISOR_UP.set(0)

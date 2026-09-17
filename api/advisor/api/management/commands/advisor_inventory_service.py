@@ -31,6 +31,7 @@ from django.utils.dateparse import parse_datetime
 from advisor_logging import logger
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 
+import telemetry
 from kafka_utils import JsonValue, KafkaDispatcher
 
 NIL_UUID = '00000000-0000-0000-0000-000000000000'
@@ -473,5 +474,9 @@ class Command(BaseCommand):
 
         _ = signal.signal(signal.SIGTERM, terminate)
         _ = signal.signal(signal.SIGINT, terminate)
-        receiver.receive(batch_size=settings.INVENTORY_BATCH_SIZE)
-        logger.info('Advisor Inventory replication service shutting down')
+        try:
+            telemetry.init_telemetry(service_name="insights-advisor-inventory-service")
+            receiver.receive(batch_size=settings.INVENTORY_BATCH_SIZE)
+        finally:
+            telemetry.shutdown_telemetry()
+            logger.info('Advisor Inventory replication service shutting down')

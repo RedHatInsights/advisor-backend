@@ -76,6 +76,7 @@ def post_fork(server, worker):
     import feature_flags
     from feature_flags import Client
     from prometheus_client import values
+    import telemetry
 
     server.log.info(f"Worker {worker.pid}: Creating new UnleashClient...")
     feature_flags._client = Client().connect()
@@ -83,8 +84,18 @@ def post_fork(server, worker):
     server.log.info("Resetting prometheus state so each worker writes to its own .db file...")
     values.ValueClass = values.MultiProcessValue()
 
+    server.log.info(f"Worker {worker.pid}: Initializing OpenTelemetry...")
+    telemetry.init_telemetry(service_name="insights-advisor-api", force_reinit=True)
+
 
 def child_exit(server, worker):
+    # Flush buffered OpenTelemetry spans before worker terminates
+    try:
+        import telemetry
+        telemetry.shutdown_telemetry()
+    except Exception as e:
+        server.log.warning(f"Worker {worker.pid}: Error shutting down OpenTelemetry: {e}")
+
     # Clean up dead worker .db files from /tmp
     from prometheus_client import multiprocess
     multiprocess.mark_process_dead(worker.pid)

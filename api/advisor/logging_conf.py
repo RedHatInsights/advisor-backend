@@ -55,7 +55,7 @@ LOGGING = {
             'level': LOG_LEVEL,
             'class': 'logging.StreamHandler' if ENVIRONMENT == 'dev' else 'advisor_logging.AdvisorStreamHandler',
             'formatter': 'dev' if ENVIRONMENT == 'dev' else 'json',
-            'filters': ['hide_metrics']
+            'filters': ['hide_metrics', 'otel_context']
         },
     },
     'formatters': {
@@ -115,7 +115,10 @@ LOGGING = {
         'hide_metrics': {
             '()': 'django.utils.log.CallbackFilter',
             'callback': hide_metrics
-        }
+        },
+        'otel_context': {
+            '()': 'telemetry.OTelContextualFilter',
+        },
     },
 }
 
@@ -154,7 +157,7 @@ def load_cloudwatch_logging():
             'stream_name': str(CW_LOG_STREAM),
             'formatter': 'json',
             'create_log_group': CW_CREATE_LOG_GROUP,
-            'filters': ['hide_metrics']
+            'filters': ['hide_metrics', 'otel_context']
         }
         for logger in LOGGING['loggers']:
             LOGGING['loggers'][logger]['handlers'].append('cloudwatch')

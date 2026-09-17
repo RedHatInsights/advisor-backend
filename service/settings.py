@@ -197,3 +197,9 @@ UNLEASH_CACHE_DIRECTORY = os.getenv("UNLEASH_CACHE_DIR", "/tmp/unleashcache")
 UNLEASH_REFRESH_INTERVAL = int(os.getenv("UNLEASH_REFRESH_INTERVAL", 5))
 UNLEASH_METRICS_INTERVAL = int(os.getenv("UNLEASH_METRICS_INTERVAL", 10))
 UNLEASH_FAKE_INITIALIZE = os.getenv("UNLEASH_FAKE_INITIALIZE", "true").lower() == "true"
+
+# OpenTelemetry Configuration
+OTEL_ENABLED = os.getenv('OTEL_ENABLED', 'false').lower() in ('true', '1', 'yes', 't')
+OTEL_SERVICE_NAME = os.getenv('OTEL_SERVICE_NAME', 'insights-advisor-service')
+OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')
+OTEL_SAMPLING_RATE = float(os.getenv('OTEL_SAMPLING_RATE', '0.05'))

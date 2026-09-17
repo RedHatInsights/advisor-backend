@@ -36,6 +36,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 django.setup()
 import api.models as db  # noqa
+import telemetry  # noqa
 
 NEW_REPORT_EVENT = "new-recommendation"
 RESOLVED_REPORT_EVENT = "resolved-recommendation"
@@ -68,8 +69,14 @@ def send_webhook_event(event_msg):
         p.poll(0)
         logger.debug("Producing webhook event msg: %s", event_msg)
         send_msg = json.dumps(event_msg).encode('utf-8')
-        p.produce(WEBHOOKS_TOPIC, send_msg, callback=report_delivery_callback)
-        p.flush()
+        with telemetry.kafka_producer_span(WEBHOOKS_TOPIC):
+            p.produce(
+                WEBHOOKS_TOPIC,
+                send_msg,
+                headers=telemetry.inject_trace_context_to_kafka_headers(),
+                callback=report_delivery_callback,
+            )
+            p.flush()
 
 
 def send_remediations_event(event_key, event_value):
@@ -77,9 +84,15 @@ def send_remediations_event(event_key, event_value):
         p.poll(0)
         logger.debug("Producing remediations event msg key %s and value %s", event_key, event_value)
         send_value = json.dumps(event_value).encode('utf-8')
-        p.produce(REMEDIATIONS_HOOK_TOPIC, key=event_key, value=send_value,
-                  callback=report_delivery_callback)
-        p.flush()
+        with telemetry.kafka_producer_span(REMEDIATIONS_HOOK_TOPIC):
+            p.produce(
+                REMEDIATIONS_HOOK_TOPIC,
+                key=event_key,
+                value=send_value,
+                headers=telemetry.inject_trace_context_to_kafka_headers(),
+                callback=report_delivery_callback,
+            )
+            p.flush()
 
 
 def new_webhook_message(host_obj, event_type):

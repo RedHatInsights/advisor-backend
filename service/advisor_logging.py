@@ -31,29 +31,32 @@ class AdvisorStreamHandler(logging.StreamHandler):
         self.setFormatter(
             OurFormatter(fmt=json.dumps({"extra": {"component": settings.APP_NAME}}))
         )
+        try:
+            import telemetry
+            self.addFilter(telemetry.OTelContextualFilter())
+        except Exception:
+            pass
 
 
 class OurFormatter(LogstashFormatterV1):
 
     def format(self, record):
-        # for debugging, store all processing statistics
-        results_process = {}
-        for results_process_key in ('engine_results_error', 'engine_results_error_msg',
-                                    'engine_results_started', 'engine_results_finished',
-                                    'engine_results_elapsed', 'report_started', 'report_finished',
-                                    'report_elapsed', 'report_error', 'report_error_msg',
-                                    'db_started', 'db_finished', 'db_elapsed', 'db_error',
-                                    'db_error_msg', 'total_elapsed', 'rule_hits_started',
-                                    'rule_hits_finished', 'rule_hits_elapsed',
-                                    'rule_hits_error', 'rule_hits_error_msg',
-                                    'inventory_event_started', 'inventory_event_finished',
-                                    'inventory_event_error', 'inventory_event_error_msg'):
-            thread_storage_value = thread_storage.get_value(results_process_key)
-            if thread_storage_value:
-                results_process[results_process_key] = thread_storage_value
-
-        # if we are debugging, add stats to the logged object
+        # if we are debugging, store and add stats to the logged object
         if settings.LOG_LEVEL == 'DEBUG':
+            results_process = {}
+            for results_process_key in ('engine_results_error', 'engine_results_error_msg',
+                                        'engine_results_started', 'engine_results_finished',
+                                        'engine_results_elapsed', 'report_started', 'report_finished',
+                                        'report_elapsed', 'report_error', 'report_error_msg',
+                                        'db_started', 'db_finished', 'db_elapsed', 'db_error',
+                                        'db_error_msg', 'total_elapsed', 'rule_hits_started',
+                                        'rule_hits_finished', 'rule_hits_elapsed',
+                                        'rule_hits_error', 'rule_hits_error_msg',
+                                        'inventory_event_started', 'inventory_event_finished',
+                                        'inventory_event_error', 'inventory_event_error_msg'):
+                thread_storage_value = thread_storage.get_value(results_process_key)
+                if thread_storage_value:
+                    results_process[results_process_key] = thread_storage_value
             setattr(record, "results_process", results_process)
 
         # add request id and system id for tracking in kibana
