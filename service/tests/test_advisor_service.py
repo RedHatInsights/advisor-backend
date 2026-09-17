@@ -469,7 +469,10 @@ def test_generate_webhook_msgs_new_report(db, mocker, service, sample_report_dat
                 context = json.loads(msg_obj['context'])
                 assert isinstance(context, dict)
                 assert 'tags' in context
-                assert context['tags'] == []
+                assert context['tags'] == [
+                    {'namespace': 'insights-client', 'key': 'env', 'value': 'production'},
+                    {'namespace': 'insights-client', 'key': 'os', 'value': 'rhel'},
+                ]
                 assert 'events' in msg_obj
                 assert isinstance(msg_obj['events'], list)
                 assert isinstance(msg_obj['events'][0], dict)
@@ -563,7 +566,10 @@ def test_generate_webhook_msgs_resolved_report(db, mocker, service, sample_repor
                 context = json.loads(msg_obj['context'])
                 assert isinstance(context, dict)
                 assert 'tags' in context
-                assert context['tags'] == []
+                assert context['tags'] == [
+                    {'namespace': 'insights-client', 'key': 'env', 'value': 'production'},
+                    {'namespace': 'insights-client', 'key': 'os', 'value': 'rhel'},
+                ]
                 assert 'events' in msg_obj
                 assert isinstance(msg_obj['events'], list)
                 assert isinstance(msg_obj['events'][0], dict)
@@ -1325,7 +1331,10 @@ def test_generate_webhook_msgs_new_report_with_advisor_inventory_host(db, mocker
                 context = json.loads(msg_obj['context'])
                 assert isinstance(context, dict)
                 assert 'tags' in context
-                assert context['tags'] == []
+                assert context['tags'] == [
+                    {'namespace': 'insights-client', 'key': 'env', 'value': 'production'},
+                    {'namespace': 'insights-client', 'key': 'os', 'value': 'rhel'},
+                ]
                 assert context['rhel_version'] == '7.5'
                 assert context['display_name'] == 'system01.example.com'
                 assert context['inventory_id'] == inventory_uuid

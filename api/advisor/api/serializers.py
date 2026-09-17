@@ -761,7 +761,23 @@ class SystemsForRuleSerializer(serializers.Serializer):
     host_ids = serializers.ListField(child=serializers.UUIDField())
 
 
+class WorkspaceSerializer(serializers.Serializer):
+    id = serializers.UUIDField(source='workspace_id', allow_null=True)
+    name = serializers.CharField(source='workspace_name', allow_null=True)
+
+
+class OperatingSystemSerializer(serializers.Serializer):
+    major = serializers.IntegerField(source='os_major', allow_null=True)
+    minor = serializers.IntegerField(source='os_minor', allow_null=True)
+    name = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_name(self, obj):
+        return obj.os_name or "Unknown operating system"
+
+
 class SystemSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source='inventory_id', read_only=True)
     system_uuid = serializers.UUIDField(source='inventory_id')
     hits = serializers.IntegerField(read_only=True)
     last_seen = serializers.DateTimeField(read_only=True, allow_null=True)
@@ -773,19 +789,30 @@ class SystemSerializer(serializers.ModelSerializer):
     incident_hits = serializers.IntegerField(read_only=True)
     all_pathway_hits = serializers.IntegerField(read_only=True)
     pathway_filter_hits = serializers.IntegerField(read_only=True)
+    tags = serializers.JSONField(read_only=True)
+    workspaces = serializers.SerializerMethodField()
+    operating_system = OperatingSystemSerializer(source='*', read_only=True)
     os_name = serializers.SerializerMethodField()
     rhel_version = serializers.CharField(read_only=True)
     group_name = serializers.CharField(allow_null=True, read_only=True)
 
+    @extend_schema_field(WorkspaceSerializer(many=True))
+    def get_workspaces(self, obj):
+        if obj.workspace_id is None:
+            return []
+        return [WorkspaceSerializer(obj).data]
+
+    @extend_schema_field(OpenApiTypes.STR)
     def get_os_name(self, obj):
         return obj.os_name or "Unknown operating system"
 
     class Meta:
         model = models.AdvisorInventoryHost
         fields = (
-            'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
+            'id', 'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
+            'tags', 'workspaces', 'operating_system',
             'os_name', 'rhel_version', 'group_name'
         )
 

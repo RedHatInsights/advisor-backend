@@ -421,7 +421,7 @@
       "account": "1234567",
       "org_id": "9876543",
       "display_name": "system01.example.com",
-      "tags": [],
+      "tags": [{"namespace": "insights-client", "key": "env", "value": "production"}, {"namespace": "insights-client", "key": "os", "value": "rhel"}],
       "workspace_id": "11111111-1111-1111-1111-111111111111",
       "workspace_name": "group_1",
       "workspace_ungrouped": null,

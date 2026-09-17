@@ -66,11 +66,19 @@ class SystemViewTestCase(TestCase):
         self.assertIsInstance(systems, list)
 
         # Systems are by default sorted by number of hits, then name
+        self.assertEqual(systems[0]['id'], constants.host_03_uuid)
         self.assertEqual(systems[0]['system_uuid'], constants.host_03_uuid)
         self.assertEqual(systems[0]['display_name'], constants.host_03_name)
         self.assertEqual(systems[0]['last_seen'], '2018-09-22T02:00:51Z')
         self.assertEqual(systems[0]['os_name'], 'RHEL')
         self.assertEqual(systems[0]['rhel_version'], '7.5')
+        self.assertEqual(systems[0]['tags'], [])
+        self.assertEqual(systems[0]['workspaces'], [
+            {'id': '11111111-1111-1111-1111-222222222222', 'name': 'group_2'}
+        ])
+        self.assertEqual(systems[0]['operating_system'], {
+            'major': 7, 'minor': 5, 'name': 'RHEL'
+        })
         self.assertEqual(systems[0]['hits'], 2)
         self.assertEqual(systems[0]['critical_hits'], 0)
         self.assertEqual(systems[0]['important_hits'], 0)
@@ -103,6 +111,10 @@ class SystemViewTestCase(TestCase):
         self.assertEqual(systems[2]['system_uuid'], constants.host_01_uuid)
         self.assertEqual(systems[2]['display_name'], constants.host_01_name)
         self.assertEqual(systems[2]['last_seen'], '2018-12-04T05:10:36Z')
+        self.assertEqual(systems[2]['tags'], [
+            {'namespace': 'insights-client', 'key': 'env', 'value': 'production'},
+            {'namespace': 'insights-client', 'key': 'os', 'value': 'rhel'},
+        ])
         self.assertEqual(systems[2]['hits'], 1)
         self.assertEqual(systems[2]['critical_hits'], 0)
         self.assertEqual(systems[2]['important_hits'], 0)
