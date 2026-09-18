@@ -822,10 +822,11 @@ class SystemsDetailSerializer(SystemSerializer):
 
     class Meta(SystemSerializer.Meta):
         fields = (
-            'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
+            'id', 'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
-            'os_name', 'rhel_version', 'impacted_date'
+            'tags', 'workspaces', 'operating_system',
+            'os_name', 'rhel_version', 'group_name', 'impacted_date'
         )
 
 
