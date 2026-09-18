@@ -1352,7 +1352,8 @@ class RuleTestCase(TestCase):
         self.assertIn('data', page)
         hosts = page['data']
         self.assertIsInstance(hosts, list)
-        for prop in ('system_uuid', 'display_name', 'last_seen', 'stale_at'):
+        for prop in ('id', 'system_uuid', 'display_name', 'last_seen', 'stale_at',
+                     'tags', 'workspaces', 'operating_system', 'group_name'):
             self.assertTrue(all(prop in host for host in hosts))
 
         # Four systems impacted - 01, 03, 04 and 06.  System 05 is no longer impacted.
@@ -2301,10 +2302,11 @@ class RuleHostTagsTestCase(TestCase):
         hosts = response.json()
         self.assertIsInstance(hosts, dict)
         self.assertEqual(sorted(hosts['data'][0].keys()), sorted([
-            'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
+            'id', 'system_uuid', 'display_name', 'last_seen', 'stale_at', 'hits',
             'critical_hits', 'important_hits', 'moderate_hits', 'low_hits',
             'incident_hits', 'all_pathway_hits', 'pathway_filter_hits',
-            'os_name', 'rhel_version', 'impacted_date'
+            'tags', 'workspaces', 'operating_system',
+            'os_name', 'rhel_version', 'group_name', 'impacted_date'
         ]))
         self.assertEqual(hosts['meta']['count'], 4)
         self.assertEqual(list(map(lambda h: h['display_name'], hosts['data'])), [
