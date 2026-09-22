@@ -1884,11 +1884,9 @@ class RuleTestCase(TestCase):
             'impacting': 'false',
         }, **self.default_header)
         rules = self._response_is_good(response)
-        # Explicit impacting=false with group_1 returns rules with 0 impacted systems in group_1
-        self.assertIn(constants.second_rule, rules)
-        self.assertIn(constants.high_sev_rule, rules)
-        self.assertNotIn(constants.active_rule, rules)
-        self.assertNotIn(constants.acked_rule, rules)
+        # Explicit impacting=false with group_1 returns only rules with 0 impacted systems in group_1
+        self.assertEqual(len(rules), 2)
+        self.assertEqual(set(rules), {constants.second_rule, constants.high_sev_rule})
         self.assertEqual(rules[constants.second_rule]['impacted_systems_count'], 0)
         self.assertEqual(rules[constants.high_sev_rule]['impacted_systems_count'], 0)
 

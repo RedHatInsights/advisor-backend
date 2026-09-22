@@ -363,6 +363,15 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         """
         List all active rules for this account.
 
+        If 'impacting' is True, only rules currently impacting systems will
+        be returned. If 'impacting' is False, only rules with no impacted systems
+        will be returned.
+
+        When workspace filtering is applied (via the 'groups' query parameter or
+        RBAC workspace permissions) without an explicit 'impacting' parameter,
+        the list defaults to showing only rules impacting systems in the
+        specified workspace(s).
+
         If 'acked' is False or not given, then only rules that are not acked
         will be shown.  If acked is set and 'true' as a string or evaluates
         to a true value, then all rules including those that are acked will
