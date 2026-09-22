@@ -52,6 +52,7 @@ from api.permissions import (
     TurnpikeIdentityAuthentication,
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
     AssociatePermission, request_to_username, set_resource, ResourceScope,
+    host_group_attr,
 )
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin, store_post_data,
@@ -222,8 +223,15 @@ def filter_on_impacting(request):
     impacting = value_of_param(impacting_query_param, request)
     if impacting is not None:
         return Q(has_reports=impacting)
-    else:
-        return Q()
+
+    # When workspace scoping is requested without explicit impacting parameter,
+    # show only rules that impact systems in the selected workspace(s).
+    host_groups_param = value_of_param(host_group_name_query_param, request)
+    host_groups = getattr(request, host_group_attr, [])
+    if host_groups_param or host_groups:
+        return Q(has_reports=True)
+
+    return Q()
 
 
 def filter_on_incident(request):
