@@ -765,6 +765,18 @@ curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/s
 curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/ | python -m json.tool
 ```
 
+**List rules filtered by workspace (host groups) or impacting status:**
+```bash
+# Returns only rules impacting systems in workspace 'group_1' (defaults to impacting=true when workspace is scoped)
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/?groups=group_1 | python -m json.tool
+
+# Returns rules not impacting systems in workspace 'group_1'
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/?groups=group_1&impacting=false | python -m json.tool
+
+# Global rules impacting 1 or more systems organization-wide
+curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/?impacting=true | python -m json.tool
+```
+
 **Get a specific rule and its systems:**
 ```bash
 curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/test%7CActive_rule/ | python -m json.tool

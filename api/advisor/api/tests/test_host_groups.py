@@ -407,18 +407,16 @@ class HostGroupsTestCase(TestCase):
         self.assertEqual(page['meta']['count'], 1)  # one system
         self.assertEqual(len(page['data']), 1)
         self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
-        # Rules list - systems counts will change
+        # Rules list - rules with no impacted systems in group are excluded
         page = self._get_view(
             'rule-list', data={'groups': constants.host_group_1_name}
         )
-        self.assertEqual(page['meta']['count'], 3)
-        self.assertEqual(len(page['data']), 3)
+        self.assertEqual(page['meta']['count'], 2)
+        self.assertEqual(len(page['data']), 2)
         self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
         self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
         self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
         self.assertEqual(page['data'][1]['impacted_systems_count'], 1)
-        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
-        self.assertEqual(page['data'][2]['impacted_systems_count'], 0)
         # Systems list
         page = self._get_view(
             'system-list', data={'groups': constants.host_group_1_name}

@@ -52,6 +52,7 @@ from api.permissions import (
     TurnpikeIdentityAuthentication,
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
     AssociatePermission, request_to_username, set_resource, ResourceScope,
+    host_group_attr,
 )
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin, store_post_data,
@@ -222,8 +223,15 @@ def filter_on_impacting(request):
     impacting = value_of_param(impacting_query_param, request)
     if impacting is not None:
         return Q(has_reports=impacting)
-    else:
-        return Q()
+
+    # When workspace scoping is requested without explicit impacting parameter,
+    # show only rules that impact systems in the selected workspace(s).
+    host_groups_param = value_of_param(host_group_name_query_param, request)
+    host_groups = getattr(request, host_group_attr, [])
+    if host_groups_param or host_groups:
+        return Q(has_reports=True)
+
+    return Q()
 
 
 def filter_on_incident(request):
@@ -354,6 +362,15 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     def list(self, request, format=None):
         """
         List all active rules for this account.
+
+        If 'impacting' is True, only rules currently impacting systems will
+        be returned. If 'impacting' is False, only rules with no impacted systems
+        will be returned.
+
+        When workspace filtering is applied (via the 'groups' query parameter or
+        RBAC workspace permissions) without an explicit 'impacting' parameter,
+        the list defaults to showing only rules impacting systems in the
+        specified workspace(s).
 
         If 'acked' is False or not given, then only rules that are not acked
         will be shown.  If acked is set and 'true' as a string or evaluates
