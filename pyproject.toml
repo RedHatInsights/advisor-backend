@@ -1,20 +1,3 @@
-[tool.pytest.ini_options]
-minversion = "7.0"
-addopts = "--reuse-db -p no:warnings"
-django_settings_module = "settings"
-pythonpath = [
-    ".",
-    "scripts",
-    "api/advisor",
-    "api/advisor/project_settings",
-    "service"
-]
-python_files = ["tests.py", "test_*.py", "*_tests.py"]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning"
-]
-
 [tool.mutmut]
 source_paths = [
     "api/advisor/api/",

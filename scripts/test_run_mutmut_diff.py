@@ -187,8 +187,11 @@ class HelperClass:
 class TestSurvivorPartitioning:
     """Tests for distinguishing PR survivors from legacy survivors."""
 
-    @patch("run_mutmut_diff.subprocess.run")
-    def test_collect_survivor_info_partitions_pr_and_legacy(self, mock_subprocess, tmp_path, monkeypatch):
+    @patch("run_mutmut_diff.get_diff_for_mutant")
+    @patch("run_mutmut_diff.SourceFileMutationData")
+    def test_collect_survivor_info_partitions_pr_and_legacy(
+        self, mock_mutation_data_cls, mock_get_diff, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         sample_code = """\
 def target_func():
@@ -200,11 +203,15 @@ def target_func():
         test_file = service_dir / "service.py"
         test_file.write_text(sample_code)
 
-        results_output = """\
-    service.service.x_target_func__mutmut_1: survived
-    service.service.x_target_func__mutmut_2: survived
-    service.service.x_target_func__mutmut_3: killed
-"""
+        mock_data = MagicMock()
+        # Mutmut status codes: 0 = survived (tests passed with mutant), 1 = killed (tests failed)
+        mock_data.exit_code_by_key = {
+            "service.service.x_target_func__mutmut_1": 0,  # survived
+            "service.service.x_target_func__mutmut_2": 0,  # survived
+            "service.service.x_target_func__mutmut_3": 1,  # killed
+        }
+        mock_mutation_data_cls.return_value = mock_data
+
         diff_mutant_1 = """\
 # service.service.x_target_func__mutmut_1: survived
 --- service/service.py
@@ -224,19 +231,18 @@ def target_func():
 -    return val
 +    return None
 """
-        def mock_run_side_effect(cmd, *args, **kwargs):
-            mutant_id = cmd[4] if len(cmd) > 4 else ""
+        def mock_diff_side_effect(mutant_id, path):
             if "mutmut_1" in mutant_id:
-                return MagicMock(returncode=0, stdout=diff_mutant_1)
+                return diff_mutant_1
             elif "mutmut_2" in mutant_id:
-                return MagicMock(returncode=0, stdout=diff_mutant_2)
-            return MagicMock(returncode=0, stdout="")
+                return diff_mutant_2
+            return ""
 
-        mock_subprocess.side_effect = mock_run_side_effect
+        mock_get_diff.side_effect = mock_diff_side_effect
 
         targets = {"service/service.py": {2}}
 
-        pr_survivors, legacy_survivors = _collect_survivor_info(results_output, targets)
+        pr_survivors, legacy_survivors = _collect_survivor_info(targets)
 
         assert len(pr_survivors) == 1
         assert pr_survivors[0]["name"] == "service.service.x_target_func__mutmut_1"
@@ -245,22 +251,6 @@ def target_func():
         assert len(legacy_survivors) == 1
         assert legacy_survivors[0]["name"] == "service.service.x_target_func__mutmut_2"
         assert legacy_survivors[0]["line"] == 3
-
-
-class TestSurvivorFailureModes:
-    """Tests for fail-safe handling of unmapped or failed mutant queries."""
-
-    @patch("run_mutmut_diff.subprocess.run")
-    def test_collect_survivor_info_handles_failed_show_as_pr_survivor(self, mock_subprocess):
-        mock_subprocess.return_value = MagicMock(returncode=1, stdout="")
-
-        results_output = "service.service.x_failed__mutmut_1: survived\n"
-        targets = {"service/service.py": {10}}
-
-        pr_survivors, legacy_survivors = _collect_survivor_info(results_output, targets)
-        assert len(pr_survivors) == 1
-        assert pr_survivors[0]["name"] == "service.service.x_failed__mutmut_1"
-        assert len(legacy_survivors) == 0
 
 
 class TestGitHubSummaryGeneration:
@@ -307,7 +297,7 @@ class TestSubprocessExecution:
     def test_run_mutation_on_targets_pr_survivor_returns_1(
         self, mock_run, mock_summary, mock_collect
     ):
-        mock_run.return_value = MagicMock(returncode=0, stdout="results")
+        mock_run.return_value = MagicMock(returncode=0)
         mock_collect.return_value = ([{"name": "pr_mut"}], [])
 
         targets = {"service/service.py": {10}}
@@ -322,7 +312,7 @@ class TestSubprocessExecution:
     def test_run_mutation_on_targets_clean_or_legacy_returns_0(
         self, mock_run, mock_summary, mock_collect
     ):
-        mock_run.return_value = MagicMock(returncode=0, stdout="results")
+        mock_run.return_value = MagicMock(returncode=0)
         mock_collect.return_value = ([], [{"name": "legacy_mut"}])
 
         targets = {"service/service.py": {10}}
@@ -336,13 +326,3 @@ class TestSubprocessExecution:
         targets = {"service/service.py": {10}}
         exit_code = run_mutation_on_targets(targets)
         assert exit_code == 2
-
-    @patch("run_mutmut_diff.subprocess.run")
-    def test_run_mutation_on_targets_fails_when_mutmut_results_errors(self, mock_run):
-        mock_run.side_effect = [
-            MagicMock(returncode=0),  # mutmut run
-            MagicMock(returncode=1, stderr="Results error"),  # mutmut results
-        ]
-        targets = {"service/service.py": {10}}
-        exit_code = run_mutation_on_targets(targets)
-        assert exit_code == 1

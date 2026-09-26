@@ -10,17 +10,28 @@ import subprocess
 import sys
 from pathlib import Path
 
+from mutmut.mutation.data import SourceFileMutationData
+from mutmut.mutation.diff_apply import get_diff_for_mutant
+from mutmut.stats import status_by_exit_code
 
 def _get_git_diff_output(base_branch: str) -> str:
     """Retrieves unified diff output with zero context lines."""
     if not re.match(r"^[a-zA-Z0-9_\-./]+$", base_branch):
         raise ValueError(f"Invalid git base branch or reference: {base_branch!r}")
 
-    cmd = ["git", "diff", "-U0", "--diff-filter=d", f"{base_branch}...HEAD", "--"]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        ["git", "diff", "-U0", "--diff-filter=d", f"{base_branch}...HEAD", "--"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if result.returncode != 0:
-        cmd = ["git", "diff", "-U0", "--diff-filter=d", "HEAD", "--"]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["git", "diff", "-U0", "--diff-filter=d", "HEAD", "--"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
     return result.stdout
 
 
@@ -135,55 +146,41 @@ def parse_mutant_relative_line(diff_text: str) -> int:
     return 1
 
 
-def _collect_survivor_info(results_output: str, targets: dict[str, set[int]]) -> tuple[list[dict], list[dict]]:
-    """Parses mutmut results and partitions survivors into PR vs Legacy."""
+def _collect_survivor_info(targets: dict[str, set[int]]) -> tuple[list[dict], list[dict]]:
+    """Reads Mutmut results and diffs in-memory and partitions survivors into PR vs Legacy."""
     pr_survivors = []
     legacy_survivors = []
 
-    for line in results_output.splitlines():
-        if not ("survived" in line.lower() or "suspicious" in line.lower()):
-            continue
-        parts = line.split()
-        if not parts:
-            continue
+    for file_path, changed_lines in targets.items():
+        mutation_data = SourceFileMutationData(path=file_path)
+        mutation_data.load()
 
-        mutant_name = parts[0].strip(":")
-        diff_res = subprocess.run(["pipenv", "run", "mutmut", "show", mutant_name], capture_output=True, text=True)
+        for mutant_name, exit_code in mutation_data.exit_code_by_key.items():
+            status = status_by_exit_code.get(exit_code, "")
+            if status not in ("survived", "suspicious", "bad_survived"):
+                continue
 
-        if diff_res.returncode != 0 or not diff_res.stdout:
-            # Unresolvable survivor must fail-safe and be classified as PR survivor
-            pr_survivors.append({
+            try:
+                diff_text = get_diff_for_mutant(mutant_name, path=file_path)
+            except Exception:
+                diff_text = f"Unable to generate diff for mutant {mutant_name}"
+
+            rel_line = parse_mutant_relative_line(diff_text)
+            func_name, class_name = parse_function_and_class_from_mutant_name(mutant_name)
+            func_start = get_function_start_line(file_path, func_name, class_name)
+            actual_line = func_start + rel_line - 1
+
+            mutant_info = {
                 "name": mutant_name,
-                "file": "unknown",
-                "line": 1,
-                "diff": f"Failed to retrieve diff via 'mutmut show {mutant_name}'",
-            })
-            continue
-
-        diff_text = diff_res.stdout
-        rel_line = parse_mutant_relative_line(diff_text)
-        matched_file = next((f for f in targets if f in diff_text), None)
-
-        if not matched_file:
-            # Unmatched survivor file must fail-safe and be classified as PR survivor
-            pr_survivors.append({
-                "name": mutant_name,
-                "file": "unknown",
-                "line": 1,
+                "file": file_path,
+                "line": actual_line,
                 "diff": diff_text,
-            })
-            continue
+            }
 
-        func_name, class_name = parse_function_and_class_from_mutant_name(mutant_name)
-        func_start = get_function_start_line(matched_file, func_name, class_name)
-        actual_line = func_start + rel_line - 1
-
-        mutant_info = {"name": mutant_name, "file": matched_file, "line": actual_line, "diff": diff_text}
-
-        if actual_line in targets[matched_file]:
-            pr_survivors.append(mutant_info)
-        else:
-            legacy_survivors.append(mutant_info)
+            if actual_line in changed_lines:
+                pr_survivors.append(mutant_info)
+            else:
+                legacy_survivors.append(mutant_info)
 
     return pr_survivors, legacy_survivors
 
@@ -223,20 +220,12 @@ def run_mutation_on_targets(targets: dict[str, set[int]]) -> int:
 
     for file_path in targets:
         print(f"\n🚀 Running Mutmut on: {file_path}")
-        run_res = subprocess.run(["pipenv", "run", "mutmut", "run", file_path])
+        run_res = subprocess.run([sys.executable, "-m", "mutmut", "run", file_path])
         if run_res.returncode not in (0, 1):
             print(f"\n❌ ERROR: 'mutmut run {file_path}' exited with unexpected status {run_res.returncode}")
             return run_res.returncode
 
-    res_proc = subprocess.run(["pipenv", "run", "mutmut", "results"], capture_output=True, text=True)
-    if res_proc.returncode != 0:
-        print(f"\n❌ ERROR: 'mutmut results' failed with status {res_proc.returncode}:\n{res_proc.stderr}")
-        return res_proc.returncode
-    results_output = res_proc.stdout
-
-    print("\n📊 Raw Mutation Results:\n" + results_output)
-
-    pr_survivors, legacy_survivors = _collect_survivor_info(results_output, targets)
+    pr_survivors, legacy_survivors = _collect_survivor_info(targets)
     write_github_summary(pr_survivors, legacy_survivors, targets)
 
     if pr_survivors:
