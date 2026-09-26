@@ -10,9 +10,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from mutmut.__main__ import _run as run_mutmut
 from mutmut.mutation.data import SourceFileMutationData
 from mutmut.mutation.diff_apply import get_diff_for_mutant
 from mutmut.stats import status_by_exit_code
+
 
 def _get_git_diff_output(base_branch: str) -> str:
     """Retrieves unified diff output with zero context lines."""
@@ -27,10 +29,14 @@ def _get_git_diff_output(base_branch: str) -> str:
     )
     if result.returncode != 0:
         result = subprocess.run(
-            ["git", "diff", "-U0", "--diff-filter=d", "HEAD", "--"],
+            ["git", "diff", "-U0", "--diff-filter=d", base_branch, "--"],
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
+        )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Failed to compute git diff against {base_branch!r}:\n{result.stderr.strip()}"
         )
     return result.stdout
 
@@ -209,6 +215,22 @@ def write_github_summary(pr_survivors: list[dict], legacy_survivors: list[dict],
             f.write("\n```\n</details>\n\n")
 
 
+def _run_mutmut_on_file(file_path: str) -> int | None:
+    """Executes Mutmut on a single target file and returns error code if failed."""
+    print(f"\n🚀 Running Mutmut on: {file_path}")
+    try:
+        run_mutmut([file_path], max_children=None)
+        return None
+    except SystemExit as e:
+        if e.code != 0:
+            print(f"\n❌ ERROR: Mutmut execution failed with exit code {e.code}")
+            return int(e.code) if isinstance(e.code, int) else 1
+        return None
+    except Exception as e:
+        print(f"\n❌ ERROR: Mutmut execution failed: {e}")
+        return 1
+
+
 def run_mutation_on_targets(targets: dict[str, set[int]]) -> int:
     if not targets:
         print("✅ No modified business logic files to mutate.")
@@ -219,11 +241,9 @@ def run_mutation_on_targets(targets: dict[str, set[int]]) -> int:
         print(f"  - {file_path} (Modified lines: {sorted(lines)})")
 
     for file_path in targets:
-        print(f"\n🚀 Running Mutmut on: {file_path}")
-        run_res = subprocess.run([sys.executable, "-m", "mutmut", "run", file_path])
-        if run_res.returncode not in (0, 1):
-            print(f"\n❌ ERROR: 'mutmut run {file_path}' exited with unexpected status {run_res.returncode}")
-            return run_res.returncode
+        err = _run_mutmut_on_file(file_path)
+        if err is not None:
+            return err
 
     pr_survivors, legacy_survivors = _collect_survivor_info(targets)
     write_github_summary(pr_survivors, legacy_survivors, targets)

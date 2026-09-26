@@ -22,7 +22,7 @@ from run_mutmut_diff import (
 
 
 class TestGitDiffSecurity:
-    """Tests for Git diff input validation and security."""
+    """Tests for Git diff input validation, error handling, and security."""
 
     def test_rejects_invalid_branch_names(self):
         with pytest.raises(ValueError, match="Invalid git base branch"):
@@ -42,6 +42,12 @@ class TestGitDiffSecurity:
             text=True,
             check=False,
         )
+
+    @patch("run_mutmut_diff.subprocess.run")
+    def test_raises_runtime_error_when_git_fails(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=128, stderr="fatal: ambiguous argument")
+        with pytest.raises(RuntimeError, match="Failed to compute git diff against 'origin/invalid'"):
+            _get_git_diff_output("origin/invalid")
 
 
 class TestDiffHunkParsing:
@@ -283,36 +289,35 @@ class TestGitHubSummaryGeneration:
         assert not summary_file.exists()
 
 
-class TestSubprocessExecution:
-    """Tests for subprocess error handling and exit codes."""
+class TestMutmutExecution:
+    """Tests for runner orchestration and exit codes."""
 
-    @patch("run_mutmut_diff.subprocess.run")
+    @patch("run_mutmut_diff.run_mutmut")
     def test_run_mutation_on_targets_empty(self, mock_run):
         assert run_mutation_on_targets({}) == 0
         mock_run.assert_not_called()
 
     @patch("run_mutmut_diff._collect_survivor_info")
     @patch("run_mutmut_diff.write_github_summary")
-    @patch("run_mutmut_diff.subprocess.run")
+    @patch("run_mutmut_diff.run_mutmut")
     def test_run_mutation_on_targets_pr_survivor_returns_1(
         self, mock_run, mock_summary, mock_collect
     ):
-        mock_run.return_value = MagicMock(returncode=0)
         mock_collect.return_value = ([{"name": "pr_mut"}], [])
 
         targets = {"service/service.py": {10}}
         exit_code = run_mutation_on_targets(targets)
 
         assert exit_code == 1
+        mock_run.assert_called_once_with(["service/service.py"], max_children=None)
         mock_summary.assert_called_once()
 
     @patch("run_mutmut_diff._collect_survivor_info")
     @patch("run_mutmut_diff.write_github_summary")
-    @patch("run_mutmut_diff.subprocess.run")
+    @patch("run_mutmut_diff.run_mutmut")
     def test_run_mutation_on_targets_clean_or_legacy_returns_0(
         self, mock_run, mock_summary, mock_collect
     ):
-        mock_run.return_value = MagicMock(returncode=0)
         mock_collect.return_value = ([], [{"name": "legacy_mut"}])
 
         targets = {"service/service.py": {10}}
@@ -320,9 +325,9 @@ class TestSubprocessExecution:
 
         assert exit_code == 0
 
-    @patch("run_mutmut_diff.subprocess.run")
-    def test_run_mutation_on_targets_fails_when_mutmut_run_errors(self, mock_run):
-        mock_run.return_value = MagicMock(returncode=2)
+    @patch("run_mutmut_diff.run_mutmut")
+    def test_run_mutation_on_targets_fails_when_mutmut_errors(self, mock_run):
+        mock_run.side_effect = SystemExit(2)
         targets = {"service/service.py": {10}}
         exit_code = run_mutation_on_targets(targets)
         assert exit_code == 2
