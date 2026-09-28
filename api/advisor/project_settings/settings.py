@@ -33,7 +33,7 @@ import sys
 
 from prometheus_client import Info
 from logging_conf import LOGGING  # noqa
-from app_common_python import LoadedConfig, KafkaTopics, KafkaServers
+from app_common_python import LoadedConfig, KafkaTopics, KafkaServers, get_v2_dependency_endpoint
 
 
 def string_to_bool(s):
@@ -150,25 +150,34 @@ def build_endpoint_url(ep):
     return f"{protocol}://{ep.hostname}:{port}"
 
 
+def _resolve_v2_url(app_key, deployment_key, v1_endpoints, fallback_url=None):
+    """Resolve a dependency URL: V2 endpoint → V1 endpoint → fallback."""
+    v2_ep = get_v2_dependency_endpoint(app_key, deployment_key)
+    if v2_ep and v2_ep.uri:
+        return v2_ep.uri
+    v1_ep = v1_endpoints.get(app_key)
+    if v1_ep:
+        return build_endpoint_url(v1_ep)
+    return fallback_url
+
+
 # Do clowder specifics
 if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
     endpoints = {ep.app: ep for ep in LoadedConfig.endpoints}
     inv_host = endpoints['host-inventory']
     INVENTORY_SERVER_URL = f"{build_endpoint_url(inv_host)}/api/inventory/v1"
 
-    rbac_host = endpoints['rbac']
-    RBAC_URL = build_endpoint_url(rbac_host)
+    # RBAC: prefer V2 endpoint, fall back to V1 then env var
+    RBAC_URL = _resolve_v2_url('rbac', 'service', endpoints, fallback_url=os.getenv('RBAC_URL'))
 
     pd_host = endpoints.get('playbook-dispatcher')
     if pd_host:
         PLAYBOOK_DISPATCHER_URL = build_endpoint_url(pd_host)
     else:
         PLAYBOOK_DISPATCHER_URL = "http://localhost"
-    sources_host = endpoints.get('sources-api')
-    if sources_host:
-        SOURCES_API_URL = build_endpoint_url(sources_host)
-    else:
-        SOURCES_API_URL = "http://localhost"
+
+    # Sources: prefer V2 endpoint, fall back to V1 then localhost
+    SOURCES_API_URL = _resolve_v2_url('sources-api', 'svc', endpoints, fallback_url="http://localhost")
 
 else:
     INVENTORY_SERVER_URL = os.environ.get('INVENTORY_SERVER_URL')
