@@ -70,7 +70,7 @@ def _parse_diff_lines(diff_output: str) -> dict[str, set[int]]:
     return changed_lines
 
 
-def get_changed_lines_by_file(base_branch: str = "origin/master") -> dict[str, set[int]]:
+def get_changed_lines_by_file(base_branch: str = "origin/main") -> dict[str, set[int]]:
     """Extracts exact modified line numbers per python file vs base branch."""
     diff_output = _get_git_diff_output(base_branch)
     return _parse_diff_lines(diff_output)
@@ -260,7 +260,7 @@ def run_mutation_on_targets(targets: dict[str, set[int]]) -> int:
 
 
 if __name__ == "__main__":
-    base = sys.argv[1] if len(sys.argv) > 1 else "origin/master"
+    base = sys.argv[1] if len(sys.argv) > 1 else "origin/main"
     changed_lines = get_changed_lines_by_file(base)
     targets = filter_target_files(changed_lines)
     sys.exit(run_mutation_on_targets(targets))

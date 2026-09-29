@@ -26,10 +26,10 @@ class TestGitDiffSecurity:
 
     def test_rejects_invalid_branch_names(self):
         with pytest.raises(ValueError, match="Invalid git base branch"):
-            _get_git_diff_output("origin/master; rm -rf /")
+            _get_git_diff_output("origin/main; rm -rf /")
 
         with pytest.raises(ValueError, match="Invalid git base branch"):
-            _get_git_diff_output("master | cat")
+            _get_git_diff_output("main | cat")
 
     @patch("run_mutmut_diff.subprocess.run")
     def test_valid_branch_command_structure(self, mock_run):
