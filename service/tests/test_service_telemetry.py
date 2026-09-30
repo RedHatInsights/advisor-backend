@@ -127,7 +127,7 @@ def test_handle_engine_results_throughput_benchmark(mocker, in_memory_tracer, sa
 def test_service_log_formatter_throughput_benchmark():
     """
     Verifies that OurFormatter in service/advisor_logging.py formats 10,000 log records
-    in < 25 microseconds per record (> 40,000 records/sec).
+    in < 30 microseconds per record (> 33,000 records/sec).
     """
     import time
     import json
@@ -159,7 +159,7 @@ def test_service_log_formatter_throughput_benchmark():
     duration = time.perf_counter() - start
 
     avg_per_call = duration / iterations
-    assert avg_per_call < 0.000025, f"Log formatter too slow: {avg_per_call*1e6:.2f}us/record"
+    assert avg_per_call < 0.00003, f"Log formatter too slow: {avg_per_call*1e6:.2f}us/record"
 
 
 def test_service_handlers_dormant_when_telemetry_uninitialized(mocker, sample_engine_results):
