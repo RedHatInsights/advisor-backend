@@ -223,12 +223,19 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
     Make a request to the RBAC service for v1/access permission checks.
     Uses service account JWT when credentials are available (replaces PSK),
     otherwise falls back to x-rh-identity passthrough.
+
+    TLS verification uses the per-dependency CA certificate from Clowder V2
+    endpoint resolution (settings.RBAC_CA_CERT) when available, falling back
+    to system trust.
     """
     logger.debug(f"RBAC request to {rbac_url}")
     identity = request.auth
     # Do import here because of preloading of permissions classes - if
     # we do it in header then Django's test framework imports get confused.
     from api.utils import retry_request
+
+    # Use the V2/V1-resolved CA cert; fall back to system trust when absent.
+    rbac_verify = settings.RBAC_CA_CERT if settings.RBAC_CA_CERT else True
 
     creds = kessel.get_service_account_credentials()
     if creds:
@@ -242,7 +249,8 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
         rbac_url = urlunparse(urlparts._replace(query=urlencode(query_params, doseq=True)))
         return retry_request(
             'RBAC', rbac_url, headers=rbac_header,
-            auth=kessel.service_account_auth, timeout=10
+            auth=kessel.service_account_auth, timeout=10,
+            verify=rbac_verify,
         )
 
     if request and auth_header_key in request.META:
@@ -257,7 +265,8 @@ def make_rbac_request(rbac_url: str, request: Request) -> tuple[Response | None,
             },
         )
 
-    return retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10)
+    return retry_request('RBAC', rbac_url, headers=rbac_header, timeout=10,
+                         verify=rbac_verify)
 
 
 def find_host_groups(role_list: list[dict[str, str | dict[str, str]]], request):

@@ -30,10 +30,11 @@ import os
 import importlib
 import importlib.util
 import sys
+from collections import namedtuple
 
 from prometheus_client import Info
 from logging_conf import LOGGING  # noqa
-from app_common_python import LoadedConfig, KafkaTopics, KafkaServers
+from app_common_python import LoadedConfig, KafkaTopics, KafkaServers, get_v2_dependency_endpoint
 
 
 def string_to_bool(s):
@@ -105,6 +106,8 @@ if RBAC_ENABLED:
     RBAC_URL = os.getenv('RBAC_URL')
 else:
     RBAC_URL = None
+RBAC_CA_CERT = None
+RBAC_AUTHENTICATED = False
 KESSEL_ENABLED = string_to_bool(os.getenv("KESSEL_ENABLED", "false"))
 # Note: tests assume that host='device under test' mean 'use the TestZedClient'.
 KESSEL_URL = os.getenv('KESSEL_URL', 'device under test')
@@ -150,30 +153,71 @@ def build_endpoint_url(ep):
     return f"{protocol}://{ep.hostname}:{port}"
 
 
+ResolvedEndpoint = namedtuple('ResolvedEndpoint', ['url', 'ca_certificate', 'authenticated', 'source'])
+
+
+def _resolve_v2_endpoint(app_key, deployment_key, v1_endpoints, fallback_url=None):
+    """Resolve a dependency endpoint: V2 → V1 → fallback.
+
+    Returns a ResolvedEndpoint with URL, CA certificate path, authenticated
+    flag, and resolution source ('v2', 'v1', or 'fallback').  CA and auth
+    are kept consistent with the source per Clowder V2 migration rules:
+    V2 source → V2 CA/auth, V1 source → V1 CA, fallback → system trust.
+    """
+    v2_ep = get_v2_dependency_endpoint(app_key, deployment_key)
+    if v2_ep and v2_ep.uri:
+        return ResolvedEndpoint(
+            url=v2_ep.uri,
+            ca_certificate=v2_ep.ca_certificate or None,
+            authenticated=getattr(v2_ep, 'authenticated', False),
+            source='v2',
+        )
+    v1_ep = v1_endpoints.get(app_key)
+    if v1_ep:
+        return ResolvedEndpoint(
+            url=build_endpoint_url(v1_ep),
+            ca_certificate=LoadedConfig.tlsCAPath or None,
+            authenticated=False,
+            source='v1',
+        )
+    return ResolvedEndpoint(
+        url=fallback_url,
+        ca_certificate=None,
+        authenticated=False,
+        source='fallback',
+    )
+
+
 # Do clowder specifics
 if os.getenv("CLOWDER_ENABLED", "").lower() == "true":
     endpoints = {ep.app: ep for ep in LoadedConfig.endpoints}
     inv_host = endpoints['host-inventory']
     INVENTORY_SERVER_URL = f"{build_endpoint_url(inv_host)}/api/inventory/v1"
 
-    rbac_host = endpoints['rbac']
-    RBAC_URL = build_endpoint_url(rbac_host)
+    # RBAC: prefer V2 endpoint, fall back to V1 then env var
+    _rbac_ep = _resolve_v2_endpoint('rbac', 'service', endpoints, fallback_url=os.getenv('RBAC_URL'))
+    RBAC_URL = _rbac_ep.url
+    RBAC_CA_CERT = _rbac_ep.ca_certificate
+    RBAC_AUTHENTICATED = _rbac_ep.authenticated
 
     pd_host = endpoints.get('playbook-dispatcher')
     if pd_host:
         PLAYBOOK_DISPATCHER_URL = build_endpoint_url(pd_host)
     else:
         PLAYBOOK_DISPATCHER_URL = "http://localhost"
-    sources_host = endpoints.get('sources-api')
-    if sources_host:
-        SOURCES_API_URL = build_endpoint_url(sources_host)
-    else:
-        SOURCES_API_URL = "http://localhost"
+
+    # Sources: prefer V2 endpoint, fall back to V1 then localhost
+    _sources_ep = _resolve_v2_endpoint('sources-api', 'svc', endpoints, fallback_url="http://localhost")
+    SOURCES_API_URL = _sources_ep.url
+    SOURCES_CA_CERT = _sources_ep.ca_certificate
+    SOURCES_AUTHENTICATED = _sources_ep.authenticated
 
 else:
     INVENTORY_SERVER_URL = os.environ.get('INVENTORY_SERVER_URL')
     PLAYBOOK_DISPATCHER_URL = os.getenv('PLAYBOOK_DISPATCHER_URL')
     SOURCES_API_URL = os.environ.get('SOURCES_API_URL')
+    SOURCES_CA_CERT = None
+    SOURCES_AUTHENTICATED = False
 
 
 # setup kafka group id
