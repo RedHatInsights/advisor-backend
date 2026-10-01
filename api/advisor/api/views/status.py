@@ -93,8 +93,10 @@ class StatusViewSet(viewsets.ViewSet):
                     username='test', account='540155', org_id='1979710', supply_http_header=True
                 )
                 # Use a basic timeout of 5 seconds here, no retries
+                rbac_verify = settings.RBAC_CA_CERT if settings.RBAC_CA_CERT else True
                 response = requests.get(
-                    settings.RBAC_URL, headers=rbac_header, timeout=5
+                    settings.RBAC_URL, headers=rbac_header, timeout=5,
+                    verify=rbac_verify,
                 )
                 status['rbac'] = response.status_code == 200
                 if response.status_code != 200:

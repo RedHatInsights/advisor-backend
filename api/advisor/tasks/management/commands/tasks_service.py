@@ -531,10 +531,12 @@ def get_satellite_source_type_id():
         account=settings.SOURCE_API_ACCOUNT, org_id=settings.SOURCE_API_ORG,
         supply_http_header=True
     )
+    sources_verify = settings.SOURCES_CA_CERT if settings.SOURCES_CA_CERT else True
     (response, elapsed) = retry_request(
         'sources api',
         f"{settings.SOURCES_API_URL}/api/sources/v3.1/source_types?filter[name]=satellite",
-        headers=auth_header
+        headers=auth_header,
+        verify=sources_verify,
     )
     satellite_source_type_id = int(response.json()['data'][0]['id'])
     cache.set('satellite_source_type_id', satellite_source_type_id)
