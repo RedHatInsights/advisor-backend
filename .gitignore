@@ -4,3 +4,5 @@ __pycache__/
 test_reports/
 junit-service.xml
 lint-results.txt
+.mutmut-cache
+mutants/

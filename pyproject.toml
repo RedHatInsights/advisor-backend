@@ -1,0 +1,57 @@
+[tool.mutmut]
+source_paths = [
+    "api/advisor/api/",
+    "api/advisor/tasks/",
+    "api/advisor/sat_compat/",
+    "service/"
+]
+
+do_not_mutate = [
+    "*migrations*",
+    "*tests*",
+    "*fixtures*",
+    "*admin.py",
+    "*apps.py",
+    "api/advisor/project_settings/*"
+]
+
+do_not_mutate_patterns = [
+    'advisor_logger\.\w+',
+    'logger\.\w+',
+    'metrics\.\w+',
+    'PROMETHEUS_\w+',
+    'def __str__',
+    'def __repr__'
+]
+
+process_isolation = "forkserver"
+forkserver_warmup = "collect"
+mutate_only_covered_lines = true
+max_stack_depth = 8
+timeout_constant = 2.0
+timeout_multiplier = 4.0
+
+pytest_add_cli_args = [
+    "-x",
+    "--tb=no",
+    "-q",
+    "--reuse-db",
+    "-o", "DJANGO_SETTINGS_MODULE=api.advisor.project_settings.settings"
+]
+
+also_copy = [
+    "api/advisor/project_settings/",
+    "api/advisor/api/fixtures/",
+    "api/test_content/"
+]
+
+pytest_add_cli_args_test_selection = [
+    "api/advisor/api/tests/",
+    "service/tests/"
+]
+
+cache_invalidation_files = [
+    "Pipfile.lock",
+    "api/advisor/api/fixtures/*.json"
+]
+on_dependency_change = "warn"
