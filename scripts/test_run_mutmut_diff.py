@@ -12,6 +12,7 @@ from run_mutmut_diff import (
     _extract_hunk_range,
     _parse_diff_lines,
     filter_target_files,
+    file_path_to_mutant_pattern,
     parse_function_and_class_from_mutant_name,
     get_function_start_line,
     parse_mutant_relative_line,
@@ -142,6 +143,11 @@ class TestFilterTargetFiles:
 class TestMutmutKeyAndLineResolution:
     """Tests for resolving Mutmut keys to AST start lines and file line numbers."""
 
+    def test_file_path_to_mutant_pattern(self):
+        assert file_path_to_mutant_pattern("service/service.py") == "service.service.*"
+        assert file_path_to_mutant_pattern("api/advisor/api/filters.py") == "api.advisor.api.filters.*"
+        assert file_path_to_mutant_pattern("service/reports.py") == "service.reports.*"
+
     def test_parse_function_and_class_from_mutant_name(self):
         func, cls = parse_function_and_class_from_mutant_name(
             "api.advisor.api.filters.x_filter_by_staleness__mutmut_1"
@@ -163,9 +169,12 @@ def top_level_func(a, b):
     return a + b
 
 class HelperClass:
+    @property
     def method_one(self):
         return True
 
+    @decorator_a
+    @decorator_b
     async def async_method(self):
         return False
 """
@@ -173,8 +182,10 @@ class HelperClass:
         test_file.write_text(source)
 
         assert get_function_start_line(str(test_file), "top_level_func") == 3
+        # method_one starts at decorator line 7
         assert get_function_start_line(str(test_file), "method_one", "HelperClass") == 7
-        assert get_function_start_line(str(test_file), "async_method", "HelperClass") == 10
+        # async_method starts at first decorator line 11
+        assert get_function_start_line(str(test_file), "async_method", "HelperClass") == 11
         assert get_function_start_line(str(test_file), "unknown_func") == 1
 
     def test_parse_mutant_relative_line(self):
@@ -258,6 +269,34 @@ def target_func():
         assert legacy_survivors[0]["name"] == "service.service.x_target_func__mutmut_2"
         assert legacy_survivors[0]["line"] == 3
 
+    @patch("run_mutmut_diff.get_diff_for_mutant")
+    @patch("run_mutmut_diff.SourceFileMutationData")
+    def test_collect_survivor_info_handles_diff_failure_as_pr_survivor(
+        self, mock_mutation_data_cls, mock_get_diff, tmp_path, monkeypatch
+    ):
+        monkeypatch.chdir(tmp_path)
+        sample_code = "def target_func(): pass\n"
+        service_dir = tmp_path / "service"
+        service_dir.mkdir(parents=True, exist_ok=True)
+        test_file = service_dir / "service.py"
+        test_file.write_text(sample_code)
+
+        mock_data = MagicMock()
+        mock_data.exit_code_by_key = {
+            "service.service.x_target_func__mutmut_1": 0,
+        }
+        mock_mutation_data_cls.return_value = mock_data
+        mock_get_diff.side_effect = RuntimeError("Diff generation error")
+
+        targets = {"service/service.py": {1}}
+        pr_survivors, legacy_survivors = _collect_survivor_info(targets)
+
+        assert len(pr_survivors) == 1
+        assert pr_survivors[0]["name"] == "service.service.x_target_func__mutmut_1"
+        assert "Unable to generate diff" in pr_survivors[0]["diff"]
+        assert pr_survivors[0].get("error") is True
+        assert len(legacy_survivors) == 0
+
 
 class TestGitHubSummaryGeneration:
     """Tests for GITHUB_STEP_SUMMARY formatting."""
@@ -309,7 +348,7 @@ class TestMutmutExecution:
         exit_code = run_mutation_on_targets(targets)
 
         assert exit_code == 1
-        mock_run.assert_called_once_with(["service/service.py"], max_children=None)
+        mock_run.assert_called_once_with(["service.service.*"], max_children=None)
         mock_summary.assert_called_once()
 
     @patch("run_mutmut_diff._collect_survivor_info")

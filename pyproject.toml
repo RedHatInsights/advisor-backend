@@ -36,7 +36,13 @@ pytest_add_cli_args = [
     "--tb=no",
     "-q",
     "--reuse-db",
-    "-o", "django_settings_module=api.advisor.project_settings.settings"
+    "-o", "DJANGO_SETTINGS_MODULE=api.advisor.project_settings.settings"
+]
+
+also_copy = [
+    "api/advisor/project_settings/",
+    "api/advisor/api/fixtures/",
+    "api/test_content/"
 ]
 
 pytest_add_cli_args_test_selection = [

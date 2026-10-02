@@ -135,7 +135,7 @@ jobs:
           ADVISOR_DB_USER: insightsapi
           ADVISOR_DB_PASSWORD: insightsdata
         run: |
-          pipenv run mutate-diff origin/${{ github.base_ref || 'master' }}
+          pipenv run mutate-diff origin/${{ github.base_ref || 'main' }}
 
       # Optional: Publish test results or artifacts
       - name: Upload test results

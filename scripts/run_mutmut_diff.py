@@ -110,19 +110,39 @@ def parse_function_and_class_from_mutant_name(mutant_key: str) -> tuple[str, str
     return func_identifier, None
 
 
+def file_path_to_mutant_pattern(file_path: str) -> str:
+    """
+    Converts a python file path to a mutmut mutant pattern.
+    Example:
+      'service/service.py' -> 'service.service.*'
+      'api/advisor/api/filters.py' -> 'api.advisor.api.filters.*'
+    """
+    clean_path = file_path.removesuffix(".py")
+    dotted_module = clean_path.replace("/", ".").replace("\\", ".")
+    return f"{dotted_module}.*"
+
+
 def get_function_start_line(file_path: str, func_name: str, class_name: str | None = None) -> int:
-    """Finds the absolute starting line of a function/method in a file using Python AST."""
+    """
+    Finds the absolute starting line of a function/method in a file using Python AST.
+    Accounts for decorator lines so relative diff line counting aligns properly.
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=file_path)
+
+        def _get_node_start_line(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+            if node.decorator_list:
+                return min(d.lineno for d in node.decorator_list)
+            return node.lineno
 
         for node in ast.walk(tree):
             if class_name and isinstance(node, ast.ClassDef) and node.name == class_name:
                 for subnode in node.body:
                     if isinstance(subnode, (ast.FunctionDef, ast.AsyncFunctionDef)) and subnode.name == func_name:
-                        return subnode.lineno
+                        return _get_node_start_line(subnode)
             elif not class_name and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func_name:
-                return node.lineno
+                return _get_node_start_line(node)
     except (OSError, SyntaxError, UnicodeDecodeError):
         pass
     return 1
@@ -168,8 +188,18 @@ def _collect_survivor_info(targets: dict[str, set[int]]) -> tuple[list[dict], li
 
             try:
                 diff_text = get_diff_for_mutant(mutant_name, path=file_path)
-            except Exception:
-                diff_text = f"Unable to generate diff for mutant {mutant_name}"
+            except Exception as e:
+                diff_text = f"Unable to generate diff for mutant {mutant_name}: {e}"
+                # If diff generation fails, we cannot safely isolate location;
+                # mark as PR survivor to guarantee review and prevent silent passes.
+                pr_survivors.append({
+                    "name": mutant_name,
+                    "file": file_path,
+                    "line": 0,
+                    "diff": diff_text,
+                    "error": True,
+                })
+                continue
 
             rel_line = parse_mutant_relative_line(diff_text)
             func_name, class_name = parse_function_and_class_from_mutant_name(mutant_name)
@@ -216,10 +246,11 @@ def write_github_summary(pr_survivors: list[dict], legacy_survivors: list[dict],
 
 
 def _run_mutmut_on_file(file_path: str) -> int | None:
-    """Executes Mutmut on a single target file and returns error code if failed."""
-    print(f"\n🚀 Running Mutmut on: {file_path}")
+    """Executes Mutmut on a single target file using mutant pattern and returns error code if failed."""
+    pattern = file_path_to_mutant_pattern(file_path)
+    print(f"\n🚀 Running Mutmut on pattern: {pattern} ({file_path})")
     try:
-        run_mutmut([file_path], max_children=None)
+        run_mutmut([pattern], max_children=None)
         return None
     except SystemExit as e:
         if e.code != 0:
