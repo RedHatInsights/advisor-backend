@@ -17,7 +17,7 @@
 import logging
 
 from UnleashClient import UnleashClient
-from UnleashClient import _RunState
+from UnleashClient.clients.unleash_client import _RunState
 
 
 # Define actual feature flags here, to be used as module properties.
