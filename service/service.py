@@ -334,10 +334,18 @@ def create_db_reports(
             # lock on system uuid to avoid race conditions
             db.Host.objects.select_for_update().get(inventory_id=inventory_uuid)
 
-            # Get the current reports before we archive them
-            # so that we can filter for webhooks
+            # Resolve the upload source first so report reconciliation can be scoped to it.
+            upload_source, upload_source_created = db.UploadSource.objects.get_or_create(name=source)
+
+            if not upload_source:
+                raise Exception('upload source is missing')
+
+            # Get the current reports before we archive them so that we can filter for webhooks.
+            # Scope to this upload source so that co-located third-party hits (a non-CCX producer
+            # via platform.insights.rule-hits) and engine hits (source insights-client) on the SAME
+            # host reconcile independently instead of deleting each other.
             db_reports = db.CurrentReport.objects.filter(
-                host=inventory_uuid, org_id=org_id
+                host=inventory_uuid, org_id=org_id, upload__source=upload_source
             ).order_by('rule__rule_id')
             db_report_values = list(db_reports.values(
                 'id', 'rule_id', 'rule__active', 'rule__total_risk',
@@ -348,11 +356,6 @@ def create_db_reports(
                     id=db.OuterRef('rule'), tags__name='incident'))
             ))
             logger.debug("Got DB reports %s", db_report_values)
-
-            upload_source, upload_source_created = db.UploadSource.objects.get_or_create(name=source)
-
-            if not upload_source:
-                raise Exception('upload source is missing')
 
             # Update existing or create new upload
             upload, created = db.Upload.objects.update_or_create(
@@ -455,17 +458,43 @@ def create_db_reports(
                         f"Rule {report['rule_id']} not found in DB - content refresh needed!")
                     prometheus.INSIGHTS_ADVISOR_MISSING_CONTENT.inc()
             logger.debug("Final generated reports %s", new_report_objs + existing_report_objs)
+
+            # A rule may already have a CurrentReport owned by a DIFFERENT upload source on this same
+            # (org_id, rule, host). CurrentReport's unique_together ('org_id', 'rule', 'host') has no
+            # source column, so bulk_create of such a row raises IntegrityError and drops the whole
+            # upload. The reconcile above is deliberately source-scoped (sources don't delete each
+            # other's reports), so apply the same "first source to hold a host+rule keeps it" policy
+            # here: skip any new report whose (rule, host, org_id) is already held by another source.
+            if new_report_objs:
+                cross_source_rule_ids = set(
+                    db.CurrentReport.objects.filter(
+                        host_id=inventory_uuid, org_id=org_id,
+                        rule_id__in=[r.rule_id for r in new_report_objs],
+                    ).exclude(upload__source=upload_source).values_list('rule_id', flat=True)
+                )
+                if cross_source_rule_ids:
+                    logger.info(
+                        "Skipping %d report(s) already held by another source for host %s org %s "
+                        "(rule ids %s)",
+                        len(cross_source_rule_ids), inventory_uuid, org_id, sorted(cross_source_rule_ids)
+                    )
+                    new_report_objs = [r for r in new_report_objs if r.rule_id not in cross_source_rule_ids]
+
             num_report_objs = len(new_report_objs) + len(existing_report_objs)
 
             # Bulk insert new reports
             db.CurrentReport.objects.bulk_create(new_report_objs)
-            # Update existing reports
+            # Update existing reports.  Scope to this upload source (as with the
+            # reconcile query above) so that a rule_id reported by more than one
+            # source on the SAME host doesn't have another source's CurrentReport
+            # reassigned to this upload.
             for existing_report in existing_report_objs:
                 db.CurrentReport.objects.filter(
                     rule_id=existing_report.rule_id,
                     host_id=existing_report.host_id,
                     account=existing_report.account,
-                    org_id=existing_report.org_id
+                    org_id=existing_report.org_id,
+                    upload__source=upload_source
                 ).update(
                     upload=existing_report.upload,
                     details=existing_report.details,
