@@ -16,8 +16,11 @@
 
 import csv
 from json import loads
+import grpc
 import responses
+from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -508,6 +511,30 @@ class HostGroupsTestCase(TestCase):
         )
         response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
         self.assertEqual(response.status_code, 403, response.content.decode())
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_workspace_lookup_times_out(self):
+        # A workspace lookup that exceeds its deadline is a failed lookup,
+        # so deny rather than showing every host.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+
+        class DeadlineExceeded(grpc.RpcError):
+            def code(self):
+                return grpc.StatusCode.DEADLINE_EXCEEDED
+
+        with patch.object(
+            kessel.client.client, 'StreamedListObjects', side_effect=DeadlineExceeded()
+        ) as mock_lookup:
+            response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
+        self.assertEqual(response.status_code, 403, response.content.decode())
+        self.assertEqual(mock_lookup.call_args.kwargs['timeout'], settings.KESSEL_TIMEOUT)
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
