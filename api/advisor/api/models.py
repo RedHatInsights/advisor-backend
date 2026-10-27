@@ -183,15 +183,23 @@ def get_host_group_filter(request, relation=None):
 
     These two are ANDed together, so a user cannot request to see a group
     by name that they do not have permissions to see by RBAC.
+
+    If the RBAC host group list is not set, the user can see all hosts.  If
+    it is set but empty, the user can see no hosts.
     """
     # If we have a list of groups, combine them in an OR query clause
-    host_groups = getattr(request, host_group_attr, [])
+    host_groups = getattr(request, host_group_attr, None)
     host_groups_param = value_of_param(host_group_name_query_param, request)
     logger.debug("host_groups_rbac: %s, host_groups_query_param: %s", host_groups, host_groups_param)
+    if host_groups == []:
+        # Match nothing.  We don't use `workspace_id__in=[]` because Django
+        # then skips the query entirely, and count subqueries give None not 0.
+        prefix = relation + '__' if relation else ''
+        return Q(**{f"{prefix}workspace_id__isnull": True}) & Q(**{f"{prefix}workspace_id__isnull": False})
     if not (host_groups or host_groups_param):
         return Q()
 
-    return _get_host_group_filter_local(host_groups, host_groups_param, relation)
+    return _get_host_group_filter_local(host_groups or [], host_groups_param, relation)
 
 
 def _get_host_group_filter_local(host_groups, host_groups_param, relation=None):

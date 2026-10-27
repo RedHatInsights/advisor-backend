@@ -353,6 +353,11 @@ class constants(object):
         relation="advisor_recommendation_results_view",
         subject=kessel_std_user_obj,
     )
+    kessel_cpr_exports_read = check_request_pb2.CheckRequest(
+        object=kessel_std_org_obj,
+        relation="advisor_exports_view",
+        subject=kessel_std_user_obj,
+    )
 
     # Kessel full permissions grants
 
@@ -381,6 +386,9 @@ class constants(object):
     )]
     kessel_allow_host_01_read = [(
         kessel_cpr_host_01_recom_read, kessel.ALLOWED
+    )]
+    kessel_allow_exports_read = [(
+        kessel_cpr_exports_read, kessel.ALLOWED
     )]
     # Kessel allow standard user access to host group 1
     kessel_svc_user_in_workspace_host_group_1 = [(

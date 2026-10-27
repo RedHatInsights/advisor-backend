@@ -206,6 +206,7 @@ class constants(object):
     kessel_std_workspace_response = api_constants.kessel_std_workspace_response
     kessel_std_org_obj = api_constants.kessel_std_org_obj
     kessel_std_user_obj = api_constants.kessel_std_user_obj
+    kessel_user_in_workspace_host_group_1 = api_constants.kessel_user_in_workspace_host_group_1
     # Kessel request check values
     kessel_tasks_read = check_request_pb2.CheckRequest(
         object=kessel_std_org_obj,

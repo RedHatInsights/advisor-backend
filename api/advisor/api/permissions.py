@@ -998,6 +998,19 @@ class InsightsRBACPermission(BasePermission):
                 # a list.  We assume any list returned contains host group IDs.
                 if isinstance(result, list):
                     setattr(request, host_group_attr, result)
+                elif result and scope == ResourceScope.ORG:
+                    # The ORG check only says the user can use this resource
+                    # somewhere in the org; it doesn't limit which hosts they
+                    # can see.  Look up the workspaces they can see hosts in
+                    # too, so host-derived data (rule impacted systems, stats,
+                    # etc.) is scoped the same way as the RBAC v1 path.
+                    host_groups, lookup_elapsed = has_kessel_permission(
+                        ResourceScope.WORKSPACE, RBACPermission(permission), request
+                    )
+                    elapsed += lookup_elapsed
+                    if not isinstance(host_groups, list):
+                        return set_rbac_failure(request, 'KESSEL: workspace lookup failed')
+                    setattr(request, host_group_attr, host_groups)
         else:
             result, elapsed = has_rbac_permission(
                 request, permission

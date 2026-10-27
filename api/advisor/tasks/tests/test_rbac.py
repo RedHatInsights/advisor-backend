@@ -149,7 +149,8 @@ class KesselTestCase(TestCase):
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @responses.activate
     @add_kessel_response(
-        permission_checks=constants.kessel_tasks_rw
+        permission_checks=constants.kessel_tasks_rw,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
     def test_rbac_basic_allowed_full(self):
         responses.add(
@@ -168,7 +169,8 @@ class KesselTestCase(TestCase):
     @override_settings(RBAC_ENABLED=True, KESSEL_ENABLED=True, RBAC_URL=TEST_RBAC_URL)
     @responses.activate
     @add_kessel_response(
-        permission_checks=constants.kessel_tasks_ro
+        permission_checks=constants.kessel_tasks_ro,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
     )
     def test_rbac_basic_allowed_read_only(self):
         responses.add(
