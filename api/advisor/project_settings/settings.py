@@ -113,6 +113,9 @@ KESSEL_AUTH_CLIENT_ID = os.getenv("KESSEL_AUTH_CLIENT_ID", "")
 KESSEL_AUTH_CLIENT_SECRET = os.getenv("KESSEL_AUTH_CLIENT_SECRET", "")
 KESSEL_AUTH_OIDC_ISSUER = os.getenv("KESSEL_AUTH_OIDC_ISSUER", "")
 KESSEL_INSECURE = string_to_bool(os.getenv("KESSEL_INSECURE", "true"))
+# Deadline in seconds for each Kessel gRPC call, so a stalled call fails
+# rather than hanging the request.
+KESSEL_TIMEOUT = float(os.getenv("KESSEL_TIMEOUT", "10"))
 
 # Middleware settings
 MIDDLEWARE_HOST_URL = os.getenv('MIDDLEWARE_HOST_URL')

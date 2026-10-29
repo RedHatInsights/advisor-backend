@@ -16,8 +16,11 @@
 
 import csv
 from json import loads
+import grpc
 import responses
+from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -391,6 +394,147 @@ class HostGroupsTestCase(TestCase):
         self.assertEqual(page['meta']['count'], 1)
         self.assertEqual(len(page['data']), 1)
         self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro + constants.kessel_allow_exports_read,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_org_scoped_views(self):
+        # Org-scoped views must be limited to the hosts in the user's
+        # workspaces, the same as the RBAC v1 path in test_groups_match.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        # Rules list - systems counts only include host group 1
+        page = self._get_view('rule-list')
+        self.assertEqual(page['meta']['count'], 3)
+        self.assertEqual(page['data'][0]['rule_id'], constants.acked_rule)
+        self.assertEqual(page['data'][0]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][1]['rule_id'], constants.active_rule)
+        self.assertEqual(page['data'][1]['impacted_systems_count'], 1)
+        self.assertEqual(page['data'][2]['rule_id'], constants.second_rule)
+        self.assertEqual(page['data'][2]['impacted_systems_count'], 0)
+        # Rule systems - only system 01
+        page = self._get_view(
+            'rule-systems', view_kwargs={'rule_id': constants.active_rule}
+        )
+        self.assertEqual(page['host_ids'], [constants.host_01_uuid])
+        page = self._get_view(
+            'rule-systems-detail', view_kwargs={'rule_id': constants.active_rule}
+        )
+        self.assertEqual(page['meta']['count'], 1)
+        self.assertEqual(page['data'][0]['display_name'], constants.host_01_name)
+        # Export views
+        headers = auth_header_for_testing()
+        headers['HTTP_ACCEPT'] = 'text/csv'
+        row_data = self._get_export_view(
+            self.client.get(reverse('export-hits-list'), **headers)
+        )
+        self.assertEqual(len(row_data), 1)
+        self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
+        # Stats views
+        stats = self._get_view('stats-systems')
+        self.assertEqual(stats['total'], 1)
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=[(constants.kessel_std_user_obj, [])]
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_no_workspaces(self):
+        # A user with Advisor permissions but no access to any hosts can
+        # see the rules but no systems.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        page = self._get_view('rule-list')
+        self.assertEqual(page['meta']['count'], 3)
+        for rule in page['data']:
+            self.assertEqual(rule['impacted_systems_count'], 0, rule['rule_id'])
+        page = self._get_view(
+            'rule-systems', view_kwargs={'rule_id': constants.active_rule}
+        )
+        self.assertEqual(page['host_ids'], [])
+        stats = self._get_view('stats-systems')
+        self.assertEqual(stats['total'], 0)
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_workspace_access_needs_advisor_permission(self):
+        # Access to hosts in a workspace does not by itself grant access to
+        # Advisor's org-scoped views.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
+        self.assertEqual(response.status_code, 403, response.content.decode())
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro + constants.kessel_allow_disable_recom_ro,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_workspace_access_needs_write_permission(self):
+        # Access to hosts in a workspace does not grant write permission.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        response = self.client.post(
+            reverse('rule-ack-hosts', kwargs={'rule_id': constants.active_rule}),
+            data={'systems': [constants.host_01_uuid], 'justification': 'test'},
+            content_type=constants.json_mime, **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 403, response.content.decode())
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_workspace_lookup_fails(self):
+        # If we can't find the user's workspaces, deny rather than showing
+        # every host.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
+        self.assertEqual(response.status_code, 403, response.content.decode())
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro
+    )
+    @responses.activate
+    def test_groups_match_kessel_enabled_workspace_lookup_times_out(self):
+        # A workspace lookup that exceeds its deadline is a failed lookup,
+        # so deny rather than showing every host.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+
+        class DeadlineExceeded(grpc.RpcError):
+            def code(self):
+                return grpc.StatusCode.DEADLINE_EXCEEDED
+
+        with patch.object(
+            kessel.client.client, 'StreamedListObjects', side_effect=DeadlineExceeded()
+        ) as mock_lookup:
+            response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
+        self.assertEqual(response.status_code, 403, response.content.decode())
+        self.assertEqual(mock_lookup.call_args.kwargs['timeout'], settings.KESSEL_TIMEOUT)
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate

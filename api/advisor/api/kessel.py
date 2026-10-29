@@ -186,7 +186,7 @@ def _get_resource_page(
         )
     )
 
-    return client_stub.StreamedListObjects(request)
+    return client_stub.StreamedListObjects(request, timeout=settings.KESSEL_TIMEOUT)
 
 
 #############################################################################
@@ -225,7 +225,7 @@ def get_subjects(
             )
         )
         last_data = None
-        for data in client_stub.StreamedListSubjects(request):
+        for data in client_stub.StreamedListSubjects(request, timeout=settings.KESSEL_TIMEOUT):
             yield data.subject
             last_data = data
         if not fetch_all or last_data is None:
@@ -343,7 +343,7 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
         lookup_str = str(subject)
         del self.lookup_resources_responses[lookup_str]
 
-    def Check(self, check: check_request_pb2.CheckRequest) -> object:
+    def Check(self, check: check_request_pb2.CheckRequest, timeout: float | None = None) -> object:
         """
         Attempt the permission check, or raise a failure?
         """
@@ -357,7 +357,8 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
             raise NotImplementedError(f"Response for request {check_str} not implemented")
 
     def StreamedListObjects(
-        self, request: streamed_list_objects_request_pb2.StreamedListObjectsRequest
+        self, request: streamed_list_objects_request_pb2.StreamedListObjectsRequest,
+        timeout: float | None = None
     ) -> list[UUID]:
         """
         Find all resources for the given request.  Because at the moment we
@@ -394,7 +395,8 @@ class TestClient(inventory_service_pb2_grpc.KesselInventoryServiceStub):
         del self.lookup_subjects_responses[resource_str]
 
     def StreamedListSubjects(
-        self, request: streamed_list_subjects_request_pb2.StreamedListSubjectsRequest
+        self, request: streamed_list_subjects_request_pb2.StreamedListSubjectsRequest,
+        timeout: float | None = None
     ) -> list:
         resource = request.resource
         resource_str = str(resource)
@@ -479,7 +481,8 @@ class Kessel:
                 subject=subject.as_pb2(),
                 relation=relation,
                 object=resource.as_pb2(),
-            )
+            ),
+            timeout=settings.KESSEL_TIMEOUT,
         )
         # Note: we treat 'UNSPECIFIED' as 'DENIED' for security.
         result = (response.allowed == ALLOWED)
