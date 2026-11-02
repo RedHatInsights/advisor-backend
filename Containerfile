@@ -31,7 +31,7 @@ COPY Pipfile Pipfile.lock ./
 # Install build tools for psycopg2, then remove them and dependencies after
 # in one step so the FS layer has minimal changes
 RUN microdnf -y install python3.12-pip python3.12-devel gcc libpq-devel && \
-    pip3 -q install pipenv && \
+    pip3 -q install pipenv 'virtualenv>=21.15.1' && \
     pipenv install && \
     microdnf remove -y python3.12-devel gcc libpq-devel \
     acl binutils binutils-gold cpp \
