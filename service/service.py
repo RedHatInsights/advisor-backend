@@ -93,9 +93,9 @@ def handle_engine_results(engine_results, kafka_headers=None):
     Handle all engine results received from the shared engine instance
     This comes in on platform.engine.results
     """
-    with telemetry.kafka_consumer_span(ENGINE_RESULTS_TOPIC, kafka_headers):
+    utils.clean_threading_cruft()
+    with telemetry.kafka_consumer_span(ENGINE_RESULTS_TOPIC, kafka_headers, message=engine_results):
         # Clean threading cruft and start function metrics
-        utils.clean_threading_cruft()
         engine_results_started = time.time()
         thread_storage.set_value('engine_results_started', engine_results_started)
         thread_storage.set_value('engine_results_error', 0)
@@ -503,6 +503,14 @@ def create_db_reports(
                     the_error = traceback.format_exc()
                     payload_tracker.payload_status('error', the_error)
 
+            if source == "insights-client":
+                try:
+                    telemetry.record_ingestion_completion_on_commit(
+                        thread_storage.get_value('request_id'), org_id, inventory_uuid
+                    )
+                except Exception:
+                    logger.exception("Failed to schedule ingestion completion telemetry.")
+
             # update prometheus stats
             prometheus.INSIGHTS_ADVISOR_SUCCESSFUL_REQUESTS.inc()
 
@@ -538,8 +546,8 @@ def create_db_reports(
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_RULE_HITS_ELAPSED.time()
 def handle_rule_hits(rule_hits_json, kafka_headers=None):
-    with telemetry.kafka_consumer_span(RULE_HITS_TOPIC, kafka_headers):
-        utils.clean_threading_cruft()
+    utils.clean_threading_cruft()
+    with telemetry.kafka_consumer_span(RULE_HITS_TOPIC, kafka_headers, message=rule_hits_json):
 
         rule_hits_started = time.time()
         thread_storage.set_value('rule_hits_started', rule_hits_started)
@@ -629,9 +637,9 @@ def handle_rule_hits(rule_hits_json, kafka_headers=None):
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_INVENTORY_EVENTS_ELAPSED.time()
 def handle_inventory_event(inventory_json_msg, kafka_headers=None):
-    with telemetry.kafka_consumer_span(INVENTORY_EVENTS_TOPIC, kafka_headers):
+    utils.clean_threading_cruft()
+    with telemetry.kafka_consumer_span(INVENTORY_EVENTS_TOPIC, kafka_headers, message=inventory_json_msg):
         # clean any old thread cruft and start the timer
-        utils.clean_threading_cruft()
         inventory_event_started = time.time()
         thread_storage.set_value('inventory_event_started', inventory_event_started)
         thread_storage.set_value('inventory_event_error', 0)

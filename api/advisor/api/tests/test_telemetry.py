@@ -5,6 +5,7 @@ import os
 from django.test import SimpleTestCase
 import thread_storage
 import telemetry
+from unittest.mock import patch
 
 try:
     from opentelemetry import baggage
@@ -191,11 +192,15 @@ class TestRHAttributeSpanProcessor(SimpleTestCase):
         self.provider.add_span_processor(self.processor)
         self.provider.add_span_processor(SimpleSpanProcessor(self.exporter))
         self.tracer = self.provider.get_tracer("test-processor")
+        self.tracer_patch = patch("telemetry.get_tracer", return_value=self.tracer)
+        self.tracer_patch.start()
         thread_storage.set_value("org_id", None)
         thread_storage.set_value("request_id", None)
         thread_storage.set_value("request", None)
 
     def tearDown(self):
+        self.tracer_patch.stop()
+        self.provider.shutdown()
         super().tearDown()
         thread_storage.set_value("org_id", None)
         thread_storage.set_value("request_id", None)
@@ -250,6 +255,76 @@ class TestRHAttributeSpanProcessor(SimpleTestCase):
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].attributes.get("rh.org_id"), "45678")
         self.assertEqual(spans[0].attributes.get("rh.request_id"), "req-meta-999")
+
+    def test_unidentified_messages_do_not_inherit_previous_context(self):
+        for message in (None, {"metadata": [], "host": "invalid"}):
+            with self.subTest(message=message):
+                self.exporter.clear()
+                thread_storage.set_value("request_id", "previous-request")
+                thread_storage.set_value("org_id", "previous-org")
+                with self.tracer.start_as_current_span("unrelated") as parent:
+                    with telemetry.kafka_consumer_span("platform.inventory.events", message=message) as consumer:
+                        self.assertNotEqual(consumer.get_span_context().trace_id, parent.get_span_context().trace_id)
+                        with self.tracer.start_as_current_span("SQL validation"):
+                            pass
+                for span in self.exporter.get_finished_spans():
+                    if span.name != "unrelated":
+                        self.assertNotIn("rh.request_id", span.attributes)
+                        self.assertNotIn("rh.org_id", span.attributes)
+
+    def test_message_identity_survives_handler_context_changes(self):
+        from opentelemetry.trace import StatusCode
+
+        messages = [
+            {"metadata": {"request_id": "request-B"}, "host": {"org_id": "org-B"}},
+            {"input": {"platform_metadata": {"request_id": "request-B", "org_id": "org-B"}}},
+            {"request_id": "request-B", "org_id": "org-B"},
+        ]
+        for message in messages:
+            with self.subTest(message=message):
+                self.exporter.clear()
+                thread_storage.set_value("request_id", "previous-request")
+                thread_storage.set_value("org_id", "previous-org")
+                with self.assertRaises(ValueError):
+                    with telemetry.kafka_consumer_span("platform.inventory.events", message=message):
+                        thread_storage.thread_storage_object.__dict__.clear()
+                        thread_storage.set_value("request_id", "unrelated-request")
+                        with self.tracer.start_as_current_span("SQL update"):
+                            pass
+                        raise ValueError("handler failed")
+                spans = self.exporter.get_finished_spans()
+                self.assertEqual(len(spans), 2)
+                for span in spans:
+                    self.assertEqual(span.attributes.get("rh.request_id"), "request-B")
+                    self.assertEqual(span.attributes.get("rh.org_id"), "org-B")
+                self.assertEqual(spans[-1].status.status_code, StatusCode.ERROR)
+
+    def test_replication_batches_have_message_identity(self):
+        from kafka_utils import DummyConsumer, DummyMessage, KafkaDispatcher
+        import json
+
+        dispatcher = KafkaDispatcher(DummyConsumer())
+        groups = []
+
+        def handle_batch(_topic, messages):
+            groups.append(messages)
+            with self.tracer.start_as_current_span("SQL replication"):
+                pass
+
+        dispatcher.register_handler("platform.inventory.events", handle_batch, batch=True)
+        messages = [
+            DummyMessage("platform.inventory.events", json.dumps({
+                "metadata": {"request_id": "request-" + suffix}, "host": {"org_id": "org-" + suffix}
+            }).encode(), headers=[("traceparent", b"00-00000000000000000000000000000042-0000000000000042-01")]) for suffix in ("A", "B")
+        ]
+        with patch("telemetry.is_enabled", return_value=True):
+            self.assertTrue(dispatcher._handle_batch_messages(messages))
+        self.assertEqual(len(groups), 2)
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 4)
+        for span, suffix in zip(spans, ("A", "A", "B", "B")):
+            self.assertEqual(span.attributes.get("rh.request_id"), "request-" + suffix)
+            self.assertEqual(span.attributes.get("rh.org_id"), "org-" + suffix)
 
 
 class TestOTelLoggingCorrelation(SimpleTestCase):
@@ -612,6 +687,8 @@ class TestTelemetryPerformanceAndOptimization(SimpleTestCase):
         mock_span = type("MockSpan", (), {
             "is_recording": lambda self: True,
             "set_attribute": lambda self, k, v: None,
+            "kind": telemetry.SpanKind.INTERNAL,
+            "attributes": {},
         })()
         thread_storage.set_value("org_id", "12345")
         thread_storage.set_value("request_id", "req-xyz")

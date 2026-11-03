@@ -22,7 +22,7 @@ except ImportError:
     OTEL_AVAILABLE = False
 
 import service as advisor_service
-from service import handle_engine_results, handle_inventory_event
+from service import handle_engine_results
 
 
 @pytest.fixture
@@ -32,10 +32,85 @@ def in_memory_tracer(mocker):
     import telemetry
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
+    provider.add_span_processor(telemetry.RHAttributeSpanProcessor())
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     mocker.patch("telemetry.get_tracer", return_value=provider.get_tracer("advisor-service"))
     yield exporter
     provider.shutdown()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("scenario", ["commit", "no_host_apps", "rollback", "disabled", "schedule_failure", "callback_failure"])
+def test_result_commit_controls_completion_and_publication(
+    db, service, mocker, in_memory_tracer, sample_engine_results, mock_request_post_return_200, scenario
+):
+    import json
+    from contextlib import nullcontext
+    from unittest.mock import patch
+    from django.db import transaction, OperationalError
+    import thread_storage
+
+    producer = mocker.MagicMock()
+    tracer = service.telemetry.get_tracer("test")
+    mocker.patch("telemetry._IS_INITIALIZED", scenario != "disabled")
+    mocker.patch.object(service.inventory_view, "p", None if scenario == "no_host_apps" else producer)
+    mocker.patch.object(service.inventory_view, "INVENTORY_VIEW_TOPIC", "isolated-host-apps")
+    if scenario == "disabled":
+        mocker.patch("telemetry.get_tracer", return_value=None)
+    if scenario == "schedule_failure":
+        mocker.patch("telemetry.record_ingestion_completion_on_commit", side_effect=RuntimeError("SDK failed"))
+    failure = patch.object(transaction.get_connection(), "commit", side_effect=OperationalError("commit failed"))
+    with tracer.start_as_current_span("unrelated"):
+        with failure if scenario == "rollback" else nullcontext():
+            if scenario == "rollback":
+                assert service.handle_engine_results(sample_engine_results) is False
+            else:
+                with transaction.atomic():
+                    assert service.handle_engine_results(sample_engine_results) is True
+                    assert not any(event.name == "rh.ingestion.completed"
+                                   for span in in_memory_tracer.get_finished_spans() for event in span.events)
+                    producer.produce.assert_not_called()
+                    thread_storage.set_value("request_id", "unrelated-request")
+                    thread_storage.set_value("org_id", "unrelated-org")
+                    if scenario == "callback_failure":
+                        start_span = tracer.start_span
+
+                        def start(name, *args, **kwargs):
+                            if name == "advisor.ingestion.completed":
+                                raise RuntimeError("SDK failed")
+                            return start_span(name, *args, **kwargs)
+
+                        mocker.patch.object(tracer, "start_span", side_effect=start)
+    events = [(span, event) for span in in_memory_tracer.get_finished_spans()
+              for event in span.events if event.name == "rh.ingestion.completed"]
+    assert len(events) == int(scenario in ("commit", "no_host_apps"))
+    published = scenario not in ("no_host_apps", "rollback")
+    assert producer.produce.call_count == int(published)
+    metadata = sample_engine_results["input"]["platform_metadata"]
+    if events:
+        span, event = events[0]
+        assert dict(event.attributes) == {
+            "rh.ingestion.application": "advisor", "rh.ingestion.milestone": "processing",
+            "rh.ingestion.outcome": "processed", "rh.request_id": metadata["request_id"],
+            "rh.org_id": metadata["org_id"], "rh.host_id": sample_engine_results["input"]["host"]["id"],
+        }
+        consumer = next(s for s in in_memory_tracer.get_finished_spans() if s.name == f"process {service.ENGINE_RESULTS_TOPIC}")
+        assert span.start_time == event.timestamp == span.end_time
+        assert span.context.trace_id == consumer.context.trace_id
+        assert span.parent.span_id == consumer.context.span_id
+    if published:
+        call = producer.produce.call_args
+        headers = dict(call.kwargs["headers"])
+        assert headers["request_id"] == metadata["request_id"].encode()
+        assert headers["application"] == b"advisor"
+        assert set(headers) <= {"request_id", "application", "traceparent", "tracestate", "baggage"}
+        body = json.loads(call.kwargs["value"])
+        assert set(body) == {"org_id", "timestamp", "hosts"}
+        assert body["org_id"] == metadata["org_id"]
+        assert body["hosts"][0]["id"] == sample_engine_results["input"]["host"]["id"]
+        if scenario != "disabled":
+            consumer = next(s for s in in_memory_tracer.get_finished_spans() if s.name == f"process {service.ENGINE_RESULTS_TOPIC}")
+            assert service.telemetry.trace_id_from_kafka_headers(call.kwargs["headers"]) == consumer.context.trace_id
 
 
 def test_engine_results_trace_continuity_in_thread_pool(mocker, in_memory_tracer, sample_engine_results):
@@ -60,12 +135,15 @@ def test_engine_results_trace_continuity_in_thread_pool(mocker, in_memory_tracer
 
     assert result is True
     spans = exporter.get_finished_spans()
-    consumer_span = next((s for s in spans if s.name == "process platform.engine.results"), None)
+    consumer_span = next((s for s in spans if s.name == f"process {advisor_service.ENGINE_RESULTS_TOPIC}"), None)
     assert consumer_span is not None
 
     # Verify trace continuity across the thread pool boundary
     assert format(consumer_span.context.trace_id, "032x") == upstream_trace_id
     assert format(consumer_span.parent.span_id, "016x") == upstream_span_id
+    metadata = sample_engine_results["input"]["platform_metadata"]
+    assert consumer_span.attributes["rh.request_id"] == metadata["request_id"]
+    assert consumer_span.attributes["rh.org_id"] == metadata["org_id"]
 
 
 def test_shutdown_telemetry_flushes_spans(mocker):

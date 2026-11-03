@@ -7,6 +7,7 @@ Centralized OpenTelemetry configuration and instrumentation module for Insights 
 
 import os
 import logging
+import time
 from contextlib import contextmanager
 from typing import Optional
 from urllib.parse import urlparse
@@ -22,6 +23,7 @@ _IS_INITIALIZED = False
 
 try:
     from opentelemetry import trace, baggage, propagate
+    from opentelemetry.context import Context
     from opentelemetry.sdk.trace import SpanProcessor, ReadableSpan
     from opentelemetry.trace import SpanKind
     OTEL_AVAILABLE = True
@@ -44,32 +46,28 @@ try:
             # 1. Set Red Hat standard service identifier
             span.set_attribute("rh.service", "advisor")
 
-            # 2. Extract org_id and request_id with precedence: Baggage -> thread_storage -> Request META
-            org_id = None
-            request_id = None
+            # Consumers receive identity from their own message. A previous
+            # handler's thread storage or an ambient request is not their origin.
+            if span.kind == SpanKind.CONSUMER:
+                return
 
-            if parent_context is not None:
-                org_id = baggage.get_baggage("rh.org_id", parent_context)
-                request_id = baggage.get_baggage("rh.request_id", parent_context)
-
-            if not org_id:
-                org_id = thread_storage.get_value("org_id")
-            if not request_id:
-                request_id = thread_storage.get_value("request_id")
-
-            # Fallback to Django request object stored in thread_storage (API flow)
-            if not (org_id and request_id):
-                req = thread_storage.get_value("request")
-                if req:
-                    if not request_id and hasattr(req, "META"):
-                        request_id = req.META.get("HTTP_X_RH_INSIGHTS_REQUEST_ID")
-                    if not org_id:
-                        org_id = getattr(req, "org_id", None)
-
-            if org_id:
-                span.set_attribute("rh.org_id", str(org_id))
-            if request_id:
-                span.set_attribute("rh.request_id", str(request_id))
+            parent = trace.get_current_span(parent_context)
+            parent_attrs = parent.attributes if isinstance(parent, ReadableSpan) else {}
+            for attr, field in (("rh.org_id", "org_id"), ("rh.request_id", "request_id")):
+                if attr in (span.attributes or {}):
+                    continue
+                value: object = (parent_attrs or {}).get(attr)
+                if value is None and parent_context is not None:
+                    value = baggage.get_baggage(attr, parent_context)
+                if value is None:
+                    value = thread_storage.get_value(field)
+                if value is None:
+                    request = thread_storage.get_value("request")
+                    if request is not None:
+                        value = (getattr(request, "org_id", None) if field == "org_id"
+                                 else getattr(request, "META", {}).get("HTTP_X_RH_INSIGHTS_REQUEST_ID"))
+                if value:
+                    span.set_attribute(attr, str(value))
 
         def on_end(self, span: ReadableSpan) -> None:
             pass
@@ -416,7 +414,7 @@ def inject_trace_context_to_kafka_headers(headers: Optional[list[tuple[str, byte
 
 
 @contextmanager
-def kafka_producer_span(topic: str, tracer_name: str = "advisor-service"):
+def kafka_producer_span(topic: str, tracer_name: str = "advisor-service", kafka_headers=None, attributes=None):
     """Messaging PRODUCER span for an outbound Kafka send."""
     tracer = get_tracer(tracer_name)
     if not tracer:
@@ -424,15 +422,20 @@ def kafka_producer_span(topic: str, tracer_name: str = "advisor-service"):
         return
 
     span_name = f"{topic} send"
-    attributes = {
+    span_attributes = {
         "messaging.system": "kafka",
         "messaging.destination.name": topic,
         "messaging.operation.name": "send",
+        **(attributes or {}),
     }
+    parent = {}
+    if kafka_headers is not None:
+        parent["context"] = extract_kafka_headers_to_context(kafka_headers) or Context()
     with tracer.start_as_current_span(
         span_name,
         kind=SpanKind.PRODUCER,
-        attributes=attributes,
+        attributes=span_attributes,
+        **parent,
     ) as span:
         try:
             yield span
@@ -449,6 +452,61 @@ def kafka_producer_span(topic: str, tracer_name: str = "advisor-service"):
             _enrich_span_from_thread_storage(span)
 
 
+def record_ingestion_completion_on_commit(request_id, org_id, host_id):
+    """Emit Advisor processing evidence after the results transaction commits."""
+    tracer = get_tracer("advisor-service")
+    if not tracer or not request_id or not org_id or not host_id:
+        return
+    span = trace.get_current_span()
+    if not span.is_recording():
+        return
+    parent = trace.set_span_in_context(span)
+    attributes = {
+        "rh.ingestion.application": "advisor",
+        "rh.ingestion.milestone": "processing",
+        "rh.ingestion.outcome": "processed",
+        "rh.request_id": str(request_id),
+        "rh.org_id": str(org_id),
+        "rh.host_id": str(host_id),
+    }
+
+    def record_completion():
+        completed_at_ns = time.time_ns()
+        completion = tracer.start_span(
+            "advisor.ingestion.completed", context=parent, attributes=attributes, start_time=completed_at_ns
+        )
+        try:
+            completion.add_event("rh.ingestion.completed", attributes=attributes, timestamp=completed_at_ns)
+        finally:
+            completion.end(end_time=completed_at_ns)
+
+    from django.db import transaction
+    transaction.on_commit(record_completion, robust=True)
+
+
+def kafka_message_attributes(message):
+    """Read ingestion identity without requiring a valid application payload."""
+    def mapping(value):
+        return value if isinstance(value, dict) else {}
+
+    message = mapping(message)
+    input_data = mapping(message.get("input"))
+    metadata = mapping(message.get("metadata"))
+    platform = mapping(input_data.get("platform_metadata")) or mapping(message.get("platform_metadata"))
+    host = mapping(input_data.get("host")) or mapping(message.get("host"))
+    values = {
+        "rh.request_id": metadata.get("request_id") or platform.get("request_id") or message.get("request_id"),
+        "rh.org_id": platform.get("org_id") or host.get("org_id") or message.get("org_id"),
+    }
+    return {key: str(value) for key, value in values.items() if isinstance(value, (str, int)) and value != ""}
+
+
+def _initialize_message_identity(attributes):
+    thread_storage.set_value("request_id", attributes.get("rh.request_id"))
+    thread_storage.set_value("org_id", attributes.get("rh.org_id"))
+    thread_storage.set_value("request", None)
+
+
 def _enrich_span_from_thread_storage(span):
     """
     Enrich a span with rh.org_id and rh.request_id from thread_storage.
@@ -459,20 +517,22 @@ def _enrich_span_from_thread_storage(span):
     if not span or not span.is_recording():
         return
     org_id = thread_storage.get_value("org_id")
-    if org_id:
+    if org_id and "rh.org_id" not in (span.attributes or {}):
         span.set_attribute("rh.org_id", str(org_id))
     request_id = thread_storage.get_value("request_id")
-    if request_id:
+    if request_id and "rh.request_id" not in (span.attributes or {}):
         span.set_attribute("rh.request_id", str(request_id))
 
 
 @contextmanager
-def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advisor-service"):
+def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advisor-service", message=None):
     """
     Standard OpenTelemetry Messaging CONSUMER span wrapper for Kafka message processing.
     Extracts W3C trace context from Kafka headers, sets semantic convention attributes,
     and no-ops cleanly if OpenTelemetry is uninitialized or disabled.
     """
+    identity = kafka_message_attributes(message)
+    _initialize_message_identity(identity)
     tracer = get_tracer(tracer_name)
     if not tracer:
         yield None
@@ -489,21 +549,25 @@ def kafka_consumer_span(topic: str, kafka_headers=None, tracer_name: str = "advi
         "messaging.system": "kafka",
         "messaging.destination.name": topic,
         "messaging.operation.name": "process",
+        **identity,
     }
     with tracer.start_as_current_span(
         span_name,
-        context=extracted_ctx,
+        context=extracted_ctx if extracted_ctx is not None else Context(),
         kind=SpanKind.CONSUMER,
         attributes=attributes,
     ) as span:
         try:
             yield span
         finally:
-            _enrich_span_from_thread_storage(span)
+            if message is None:
+                _enrich_span_from_thread_storage(span)
 
 
 @contextmanager
-def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int = 0, tracer_name: str = "advisor-kafka"):
+def kafka_batch_consumer_span(
+    topic: str, headers_list=None, message_count: int = 0, tracer_name: str = "advisor-kafka", messages=None
+):
     """
     CONSUMER span for a Kafka batch.
 
@@ -512,6 +576,11 @@ def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int 
     kafka_consumer_span and HBI. Extra messages from *other* traces are attached
     as SpanLinks (a span can have only one parent).
     """
+    identities = [kafka_message_attributes(message) for message in (messages or [])]
+    identity = dict(identities[0]) if identities else {}
+    for attributes in identities[1:]:
+        identity = {key: value for key, value in identity.items() if attributes.get(key) == value}
+    _initialize_message_identity(identity)
     tracer = get_tracer(tracer_name)
     if not tracer:
         yield None
@@ -545,10 +614,11 @@ def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int 
         "messaging.destination.name": topic,
         "messaging.operation.name": "process",
         "messaging.batch.message_count": message_count,
+        **identity,
     }
     with tracer.start_as_current_span(
         span_name,
-        context=extracted_ctx,
+        context=extracted_ctx if extracted_ctx is not None else Context(),
         kind=SpanKind.CONSUMER,
         links=links,
         attributes=attributes,
@@ -556,7 +626,8 @@ def kafka_batch_consumer_span(topic: str, headers_list=None, message_count: int 
         try:
             yield span
         finally:
-            _enrich_span_from_thread_storage(span)
+            if messages is None:
+                _enrich_span_from_thread_storage(span)
 
 
 def shutdown_telemetry(timeout_millis: int = 5000) -> None:
