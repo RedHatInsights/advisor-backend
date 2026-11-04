@@ -299,6 +299,40 @@ class TestRHAttributeSpanProcessor(SimpleTestCase):
                     self.assertEqual(span.attributes.get("rh.org_id"), "org-B")
                 self.assertEqual(spans[-1].status.status_code, StatusCode.ERROR)
 
+    def test_consumer_identity_scope_and_legacy_calls(self):
+        from contextlib import nullcontext
+
+        message = {"request_id": "message-request", "org_id": "message-org"}
+        cases = [(True, True, False, {}), (True, True, True, {"request_id": "outer-request", "org_id": "outer-org"}),
+                 (True, False, False, {}), (False, True, False, {"request_id": "legacy-request", "org_id": "legacy-org"})]
+        for batch in (False, True):
+            for supplied, enabled, raises, prior in cases:
+                with self.subTest(batch=batch, supplied=supplied, enabled=enabled, raises=raises):
+                    self.exporter.clear()
+                    storage = thread_storage.thread_storage_object
+                    storage.__dict__.clear()
+                    storage.__dict__.update(prior)
+                    expected = message if supplied else prior
+                    helper = telemetry.kafka_batch_consumer_span if batch else telemetry.kafka_consumer_span
+                    kwargs = ({"messages": [message]} if batch else {"message": message}) if supplied else {}
+                    with patch("telemetry.get_tracer", return_value=self.tracer if enabled else None):
+                        with self.assertRaises(ValueError) if raises else nullcontext():
+                            with helper("test.topic", **kwargs):
+                                self.assertEqual(thread_storage.get_value("request_id"), expected["request_id"])
+                                self.assertEqual(thread_storage.get_value("org_id"), expected["org_id"])
+                                if raises:
+                                    raise ValueError("handler failed")
+                    self.assertEqual(storage.__dict__, prior)
+                    if enabled:
+                        consumer = self.exporter.get_finished_spans()[0]
+                        self.assertEqual(consumer.attributes["rh.request_id"], expected["request_id"])
+                        self.assertEqual(consumer.attributes["rh.org_id"], expected["org_id"])
+                    with self.tracer.start_as_current_span("later"):
+                        pass
+                    later = self.exporter.get_finished_spans()[-1]
+                    self.assertEqual(later.attributes.get("rh.request_id"), prior.get("request_id"))
+                    self.assertEqual(later.attributes.get("rh.org_id"), prior.get("org_id"))
+
     def test_replication_batches_have_message_identity(self):
         from kafka_utils import DummyConsumer, DummyMessage, KafkaDispatcher
         import json

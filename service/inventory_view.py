@@ -23,7 +23,6 @@ import datetime
 import settings
 import telemetry
 from confluent_kafka import Producer
-from django.db import transaction
 
 from project_settings.settings import INVENTORY_VIEW_TOPIC, KAFKA_SETTINGS
 
@@ -60,41 +59,42 @@ def inventory_view_delivery_report(err, msg):
 
 
 def send_inventory_view_event(event_data):
-    """Publish the captured host update after the caller's transaction commits."""
+    """Send an inventory view event to the INVENTORY_VIEW_TOPIC.
+
+    Args:
+        event_data: dict with the payload data.
+    """
     if p is None or not INVENTORY_VIEW_TOPIC:
         return
     try:
-        producer, topic = p, INVENTORY_VIEW_TOPIC
-        identity = {"rh.request_id": str(event_data["request_id"]), "rh.org_id": str(event_data["org_id"])}
-        headers = telemetry.inject_trace_context_to_kafka_headers([
+        headers = [
             ("application", bytes(INVENTORY_VIEW_APPLICATION, "utf-8")),
             ("request_id", bytes(event_data["request_id"], "utf-8")),
-        ])
+        ]
         payload = {
             "org_id": event_data["org_id"],
             "timestamp": datetime.datetime.utcnow().isoformat(),
-            "hosts": [{"id": event_data["host_id"], "data": event_data["data"]}],
+            "hosts": [
+                {
+                    "id": event_data["host_id"],
+                    "data": event_data["data"],
+                }
+            ],
         }
+
         payload_str = json.dumps(payload).encode("utf-8")
-
-        def publish():
-            try:
-                logger.debug("Sending inventory view message: %s", payload_str)
-                producer.poll(0)
-                with telemetry.kafka_producer_span(topic, kafka_headers=headers, attributes=identity):
-                    producer.produce(
-                        topic=topic,
-                        value=payload_str,
-                        headers=telemetry.inject_trace_context_to_kafka_headers(headers),
-                        callback=inventory_view_delivery_report,
-                    )
-                    producer.flush()
-            except Exception:
-                logger.exception("Hit exception sending inventory view event.")
-
-        transaction.on_commit(publish, robust=True)
+        logger.debug("Sending inventory view message: %s", payload_str)
+        p.poll(0)
+        with telemetry.kafka_producer_span(INVENTORY_VIEW_TOPIC):
+            p.produce(
+                topic=INVENTORY_VIEW_TOPIC,
+                value=payload_str,
+                headers=telemetry.inject_trace_context_to_kafka_headers(headers),
+                callback=inventory_view_delivery_report,
+            )
+            p.flush()
     except Exception:
-        logger.exception("Hit exception preparing inventory view event.")
+        logger.exception("Hit exception sending inventory view event.")
 
 
 _rule_risks = [None, 'low', 'moderate', 'important', 'critical']
