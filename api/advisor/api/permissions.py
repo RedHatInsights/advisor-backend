@@ -811,6 +811,32 @@ class ReadOnlyUser(BasePermission):
         return request.method in SAFE_METHODS
 
 
+_MALFORMED_FORWARDED_IDENTITY = object()
+
+
+def _satellite_forwarded_identity(request):
+    """
+    Read X-Forwarded-Identity for a satellite cert-auth request.
+
+    Returns the canonical lowercase UUID string, None when the header is
+    missing or blank, or _MALFORMED_FORWARDED_IDENTITY when it is not a UUID.
+    """
+    raw = None
+    if hasattr(request, 'headers'):
+        raw = request.headers.get('X-Forwarded-Identity')
+    if raw is None and hasattr(request, 'META'):
+        raw = request.META.get('HTTP_X_FORWARDED_IDENTITY')
+    if not isinstance(raw, str):
+        return None
+    header_value = raw.strip()
+    if not header_value:
+        return None
+    try:
+        return str(uuid.UUID(header_value))
+    except ValueError:
+        return _MALFORMED_FORWARDED_IDENTITY
+
+
 class CertAuthPermission(BasePermission):
     """
     Authorise the access based on the system providing a certificate to
@@ -845,6 +871,12 @@ class CertAuthPermission(BasePermission):
 
     We also set the `auth_system` attribute on the request, which allows
     queries to filter only on this system.
+
+    Satellite certificates (`cert_type` == `satellite`) may also send
+    `X-Forwarded-Identity` set to a host `subscription_manager_id`. When that
+    header is a UUID, it is stashed as `forwarded_subscription_manager_id`
+    so queries can scope to that host in addition to `owner_id`. A present
+    but invalid value is denied. Other identities ignore the header.
     """
 
     def has_permission(self, request: Request, view) -> bool:
@@ -882,7 +914,19 @@ class CertAuthPermission(BasePermission):
                 "'identity.system.cn' is not a UUID in Cert authentication check"
             )
         # Less important - remember what type of certificate this is:
-        setattr(request, 'auth_system_type', identity['system'].get('cert_type', 'system'))
+        auth_system_type = identity['system'].get('cert_type', 'system')
+        setattr(request, 'auth_system_type', auth_system_type)
+
+        # Satellite host scoping. Only this cert type may supply
+        # X-Forwarded-Identity; every other identity ignores the header.
+        if auth_system_type == 'satellite':
+            forwarded = _satellite_forwarded_identity(request)
+            if forwarded is _MALFORMED_FORWARDED_IDENTITY:
+                return set_rbac_failure(
+                    request, 'Invalid X-Forwarded-Identity header'
+                )
+            if forwarded:
+                setattr(request, 'forwarded_subscription_manager_id', forwarded)
 
         logger.debug("Completed CertAuthPermission.has_permission checks, allowed")
 
