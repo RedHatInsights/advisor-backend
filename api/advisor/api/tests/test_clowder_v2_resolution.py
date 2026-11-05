@@ -114,6 +114,16 @@ class ResolveV2EndpointTests(SimpleTestCase):
         result = _resolve_v2_endpoint('rbac', 'service')
         self.assertFalse(result.authenticated)
 
+    @patch('project_settings.settings.get_v2_dependency_endpoint')
+    def test_v2_endpoint_requires_authenticated_attribute(self, mock_get_v2):
+        """An incompatible V2 endpoint must not silently default to unauthenticated."""
+        mock_get_v2.return_value = SimpleNamespace(
+            uri='https://rbac.clowder.svc:8443',
+            ca_certificate=None,
+        )
+        with self.assertRaises(AttributeError):
+            _resolve_v2_endpoint('rbac', 'service')
+
     # --- V2 absent → fallback (no V1 intermediate) ---
 
     @patch('project_settings.settings.get_v2_dependency_endpoint')

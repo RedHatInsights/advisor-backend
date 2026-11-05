@@ -169,7 +169,7 @@ def _resolve_v2_endpoint(app_key, deployment_key, fallback_url=None):
         return ResolvedEndpoint(
             url=v2_ep.uri,
             ca_certificate=v2_ep.ca_certificate or None,
-            authenticated=getattr(v2_ep, 'authenticated', False),
+            authenticated=v2_ep.authenticated,
             source='v2',
         )
     import logging
