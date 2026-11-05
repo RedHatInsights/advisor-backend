@@ -93,14 +93,9 @@ class StatusViewSet(viewsets.ViewSet):
                 # Use a basic timeout of 5 seconds here, no retries
                 rbac_verify = settings.RBAC_CA_CERT if settings.RBAC_CA_CERT else True
                 rbac_kwargs = {'timeout': 5, 'verify': rbac_verify}
+                rbac_header = auth_header_for_testing(supply_http_header=True)
                 if settings.RBAC_AUTHENTICATED and kessel.service_account_auth:
-                    rbac_header = {"x-rh-rbac-org-id": "1979710"}
                     rbac_kwargs['auth'] = kessel.service_account_auth
-                else:
-                    rbac_header = auth_header_for_testing(
-                        username='test', account='540155', org_id='1979710',
-                        supply_http_header=True
-                    )
                 response = requests.get(
                     settings.RBAC_URL, headers=rbac_header, **rbac_kwargs,
                 )
