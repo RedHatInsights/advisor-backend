@@ -139,8 +139,8 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         not take an 'id' number.
         """
         # If we can't deserialize the hostack information, then return a 400 now
-        store_post_data(request, HostAckInputSerializer)
-        hostack_serdata = HostAckInputSerializer(data=request.data)
+        store_post_data(request, HostAckInputSerializer, context={'request': request})
+        hostack_serdata = HostAckInputSerializer(data=request.data, context={'request': request})
         hostack_serdata.is_valid(raise_exception=True)
         rule = hostack_serdata.validated_data['rule']
         acked_uuid = hostack_serdata.validated_data['host_id']
