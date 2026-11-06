@@ -27,6 +27,7 @@ from django.utils.dateparse import parse_datetime
 
 from kafka_utils import KafkaDispatcher, send_kafka_message
 from advisor_logging import logger
+import api.kessel as kessel
 from api.permissions import auth_header_for_testing
 from api.utils import retry_request
 import telemetry
@@ -531,10 +532,17 @@ def get_satellite_source_type_id():
         account=settings.SOURCE_API_ACCOUNT, org_id=settings.SOURCE_API_ORG,
         supply_http_header=True
     )
+    sources_verify = settings.SOURCES_CA_CERT if settings.SOURCES_CA_CERT else True
+    sources_kwargs = {
+        'headers': auth_header,
+        'verify': sources_verify,
+    }
+    if settings.SOURCES_AUTHENTICATED and kessel.service_account_auth:
+        sources_kwargs['auth'] = kessel.service_account_auth
     (response, elapsed) = retry_request(
         'sources api',
         f"{settings.SOURCES_API_URL}/api/sources/v3.1/source_types?filter[name]=satellite",
-        headers=auth_header
+        **sources_kwargs,
     )
     satellite_source_type_id = int(response.json()['data'][0]['id'])
     cache.set('satellite_source_type_id', satellite_source_type_id)
