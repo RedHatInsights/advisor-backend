@@ -26,13 +26,14 @@ from django.utils import timezone
 from tasks.models import Task, ExecutedTask, Job, Host
 from api.tests import update_stale_dates
 from api.permissions import auth_header_for_testing
-from tasks.tests import constants
+from tasks.tests import TASKS_TEST_URLCONF, constants
 from tasks.views.executed_task import extask_sort_fields
 
 
 PLAYBOOK_DISPATCHER_URL = "http://localhost/internal/v2/dispatch"
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class ExecutedTaskViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing(user_opts={'is_org_admin': True})

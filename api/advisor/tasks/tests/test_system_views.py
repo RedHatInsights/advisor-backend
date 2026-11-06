@@ -22,7 +22,7 @@ from django.urls import reverse
 
 from api.tests import update_stale_dates
 from api.permissions import auth_header_for_testing
-from tasks.tests import constants
+from tasks.tests import TASKS_TEST_URLCONF, constants
 from tasks.utils import playbook_dispatcher_connection_status_path
 
 PD_TEST_URL = "http://localhost/"
@@ -76,6 +76,7 @@ def pd_connection_status_response(request):
     ]))
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class SystemViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()

@@ -14,15 +14,16 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from project_settings import settings
-from tasks.tests import constants
+from tasks.tests import TASKS_TEST_URLCONF, constants
 
 from openapi_spec_validator import validate
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class TasksApiDocsTestCaseClass(TestCase):
     fixtures = ['basic_task_test_data']
     schema_path_name = 'tasks-schema'

@@ -27,7 +27,7 @@ python api/advisor/manage.py freshen_hosts
 ```bash
 pipenv run runapi                    # Start API server (Django runserver on :8000)
 pipenv run runservice                # Start Kafka service consumer
-pipenv run runtasks                  # Start Tasks service consumer
+pipenv run runtasks                  # Start Tasks service consumer (decommissioned)
 python api/advisor/manage.py advisor_inventory_service  # Start inventory event consumer
 ```
 
@@ -61,7 +61,7 @@ pipenv run apicovhtml                # Generate HTML coverage report
 The Django project (`api/advisor/project_settings/`) serves three APIs with separate URL prefixes:
 
 1. **Advisor API** (`api/advisor/api/`) — `/api/insights/v1/` — Main API for rules, systems, reports, acks
-2. **Tasks API** (`api/advisor/tasks/`) — `/api/tasks/v1/` — Playbook execution task management
+2. **Tasks API** (`api/advisor/tasks/`) — `/api/tasks/v1/` — **Decommissioned**: every method under `/api/tasks/v1/` and `/internal/api/tasks/v1/` returns 410 Gone (`project_settings/urls.py`). The app and models remain until the Tasks code and tables are removed; view tests route through `tasks/tests/urls.py` via `TASKS_TEST_URLCONF`
 3. **Satellite Compatibility API** (`api/advisor/sat_compat/`) — `/r/insights/` — Legacy Satellite proxy compatibility
 
 ### Key data models (`api/advisor/api/models.py`)
