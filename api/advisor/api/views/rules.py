@@ -203,7 +203,7 @@ systems_detail_sort_query_param = OpenApiParameter(
 )
 text_query_param = OpenApiParameter(
     name='text', location=OpenApiParameter.QUERY,
-    description="Display rules with this text in their text fields",
+    description="Display rules with this text in their rule ID or name (description)",
     required=False,
     type=OpenApiTypes.STR,
 )
@@ -288,24 +288,12 @@ def filter_on_rule_status(request):
 
 
 def filter_on_text(request):
-    # Filter on text search on all text fields
+    # Filter on text search on the rule ID and name (description) only -
+    # the other content fields contain URLs and long-form text that match
+    # far too broadly.
     srch = value_of_param(text_query_param, request)
     if srch:
-        # Thanks, Flake8, for not allowing wrapping of binary operators
-        # Also note that any joins here may affect the number of results
-        # found in annotations.
-        return \
-            Q(rule_id__icontains=srch) | \
-            Q(description__icontains=srch) | \
-            Q(summary__icontains=srch) | \
-            Q(generic__icontains=srch) | \
-            Q(reason__icontains=srch) | \
-            Q(more_info__icontains=srch) | \
-            Q(id__in=Subquery(
-                Resolution.objects.filter(
-                    resolution__icontains=srch
-                ).values('rule_id')
-            ))
+        return Q(rule_id__icontains=srch) | Q(description__icontains=srch)
     else:
         return Q()
 

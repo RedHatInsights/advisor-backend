@@ -19,7 +19,7 @@ import csv
 from django.test import TestCase
 from django.urls import reverse
 
-from api.models import Ack, Rule, RuleCategory
+from api.models import Ack, Resolution, Rule, RuleCategory
 from api.tests import constants, update_stale_dates
 from api.permissions import (
     auth_header_for_testing, turnpike_auth_header_for_testing
@@ -740,19 +740,21 @@ class RuleTestCase(TestCase):
         self.assertEqual(len(rules), 1)
 
     def test_rule_list_filter_text(self):
-        # Search on text in the rule's generic description - a text field
+        def check_rules(rules):
+            self._impacted_systems_counts_correct(rules)
+            self._playbook_counts_correct(rules)
+            self._hosts_acked_counts_correct(rules)
+            self._rating_correct(rules)
+
+        # Search on text in the rule's name (description)
         response = self.client.get(reverse('rule-list'), data={
-            'text': 'markdown'
+            'text': 'Active'
         }, **self.default_header)
         rules = self._response_is_good(response)
 
         self.assertIn(constants.active_rule, rules)
         self.assertEqual(len(rules), 1)
-
-        self._impacted_systems_counts_correct(rules)
-        self._playbook_counts_correct(rules)
-        self._hosts_acked_counts_correct(rules)
-        self._rating_correct(rules)
+        check_rules(rules)
 
         # We shouldn't be able to find inactive rules by text
         response = self.client.get(reverse('rule-list'), data={
@@ -763,47 +765,80 @@ class RuleTestCase(TestCase):
 
         # We should be able to search for things with spaces
         response = self.client.get(reverse('rule-list'), data={
-            'text': 'This rule'
+            'text': 'Second rule'
         }, **self.default_header)
         rules = self._response_is_good(response)
 
-        self.assertIn(constants.active_rule, rules)
         self.assertIn(constants.second_rule, rules)
-        self.assertEqual(len(rules), 2)
+        self.assertEqual(len(rules), 1)
+        check_rules(rules)
 
-        self._impacted_systems_counts_correct(rules)
-        self._playbook_counts_correct(rules)
-        self._hosts_acked_counts_correct(rules)
-        self._rating_correct(rules)
-
-        # We should be able to search on resolution description
+        # We should be able to search on the rule ID - the underscore only
+        # appears in the rule ID, not the description
         response = self.client.get(reverse('rule-list'), data={
-            'text': 'In order to fix this problem'
+            'text': 'Acked_rule'
         }, **self.default_header)
         rules = self._response_is_good(response)
 
-        self.assertIn(constants.active_rule, rules)
         self.assertIn(constants.acked_rule, rules)
-        self.assertEqual(len(rules), 2)
-
-        self._impacted_systems_counts_correct(rules)
-        self._playbook_counts_correct(rules)
-        self._hosts_acked_counts_correct(rules)
-        self._rating_correct(rules)
+        self.assertEqual(len(rules), 1)
+        check_rules(rules)
 
         # Text searches are case insensitive
         response = self.client.get(reverse('rule-list'), data={
-            'text': 'dot syntax'
+            'text': 'sECOND RULE'
         }, **self.default_header)
         rules = self._response_is_good(response)
 
-        self.assertIn(constants.active_rule, rules)
+        self.assertIn(constants.second_rule, rules)
+        self.assertEqual(len(rules), 1)
+        check_rules(rules)
+
+        # Text in the summary, generic, reason, more_info and resolution
+        # fields is not searched
+        for text in (
+            'markdown',  # summary and generic of Active_rule
+            'This rule should apply',  # summary of Second_rule
+            'In order to fix this problem',  # resolution
+        ):
+            response = self.client.get(reverse('rule-list'), data={
+                'text': text
+            }, **self.default_header)
+            json_data = response.json()
+            self.assertEqual(len(json_data['data']), 0, text)
+
+    def test_rule_list_filter_text_http(self):
+        # RHINENG-33510 - searching for 'http' matched almost every rule,
+        # because the URLs in the rule content fields were searched too.
+        # Put URLs in every content field, and 'http' in one rule's name.
+        url = 'See https://access.redhat.com/solutions/12345 for details'
+        Rule.objects.filter(rule_id=constants.active_rule).update(
+            summary=url, generic=url, reason=url, more_info=url
+        )
+        Resolution.objects.filter(
+            rule__rule_id=constants.acked_rule
+        ).update(resolution=url)
+        Rule.objects.filter(rule_id=constants.second_rule).update(
+            description='Second rule, about httpd'
+        )
+
+        # Only the rule with 'http' in its name is found
+        response = self.client.get(reverse('rule-list'), data={
+            'text': 'http'
+        }, **self.default_header)
+        rules = self._response_is_good(response)
+
+        self.assertIn(constants.second_rule, rules)
+        self.assertNotIn(constants.active_rule, rules)
+        self.assertNotIn(constants.acked_rule, rules)
         self.assertEqual(len(rules), 1)
 
-        self._impacted_systems_counts_correct(rules)
-        self._playbook_counts_correct(rules)
-        self._hosts_acked_counts_correct(rules)
-        self._rating_correct(rules)
+        # The URLs themselves are not found
+        response = self.client.get(reverse('rule-list'), data={
+            'text': 'https://'
+        }, **self.default_header)
+        json_data = response.json()
+        self.assertEqual(len(json_data['data']), 0)
 
     def test_rule_list_filter_topic(self):
         response = self.client.get(reverse('rule-list'), data={

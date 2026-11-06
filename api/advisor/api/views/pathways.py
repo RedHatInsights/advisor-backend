@@ -15,7 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Subquery
+from django.db.models import Q
 
 from rest_framework import status, viewsets
 from rest_framework.response import Response
@@ -30,7 +30,7 @@ from api.filters import (
     category_query_param, host_group_name_query_param,
     update_method_query_param,
 )
-from api.models import Pathway, Resolution
+from api.models import Pathway
 from api.permissions import InsightsRBACPermission, ResourceScope
 from api.serializers import (
     PathwaySerializer, SystemSerializer,
@@ -76,7 +76,8 @@ text_query_param = OpenApiParameter(
     name='text', location=OpenApiParameter.QUERY,
     description="Filter pathway names with this text. "
                 "If viewing details for a pathway for rules, "
-                "reports and systems, additional filter on their text fields",
+                "reports and systems, additional filter on rule ID and name "
+                "(description) for rules and reports, and display name for systems",
     required=False,
     type=OpenApiTypes.STR,
 )
@@ -113,16 +114,7 @@ def filter_on_text_report(request):
         return \
             Q(rule__pathway__name__icontains=srch) | \
             Q(rule__rule_id__icontains=srch) | \
-            Q(rule__description__icontains=srch) | \
-            Q(rule__summary__icontains=srch) | \
-            Q(rule__generic__icontains=srch) | \
-            Q(rule__reason__icontains=srch) | \
-            Q(rule__more_info__icontains=srch) | \
-            Q(rule__id__in=Subquery(
-                Resolution.objects.filter(
-                    resolution__icontains=srch
-                ).values('rule_id')
-            ))
+            Q(rule__description__icontains=srch)
     else:
         return Q()
 
@@ -134,18 +126,7 @@ def filter_on_text_rule(request):
         # Thanks, Flake8, for not allowing wrapping of binary operators
         # Also note that any joins here may affect the number of results
         # found in annotations.
-        return \
-            Q(rule_id__icontains=srch) | \
-            Q(description__icontains=srch) | \
-            Q(summary__icontains=srch) | \
-            Q(generic__icontains=srch) | \
-            Q(reason__icontains=srch) | \
-            Q(more_info__icontains=srch) | \
-            Q(id__in=Subquery(
-                Resolution.objects.filter(
-                    resolution__icontains=srch
-                ).values('rule_id')
-            ))
+        return Q(rule_id__icontains=srch) | Q(description__icontains=srch)
     else:
         return Q()
 
