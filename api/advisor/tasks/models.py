@@ -122,6 +122,8 @@ class Host(models.Model):
     bootc_booted_image = models.CharField(max_length=512, null=True, blank=True)
     bootc_booted_image_digest = models.CharField(max_length=256, null=True, blank=True)
     rhc_client_id = models.UUIDField(null=True)
+    owner_id = models.UUIDField(null=True)
+    subscription_manager_id = models.UUIDField(null=True)
     workloads = models.JSONField(default=dict)
     system_update_method = models.CharField(max_length=50, null=True, blank=True)
     workspace_id = models.UUIDField(null=True)

@@ -21,6 +21,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from api import kessel
+from api.models import AdvisorInventoryHost
 from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing, auth_header_key, make_rbac_url
 
@@ -233,3 +234,86 @@ class CertAuthTestCase(TestCase):
         self.assertEqual(page['data'][2]['display_name'], constants.host_05_name)
         self.assertEqual(page['meta']['count'], 3)  # three systems
         self.assertEqual(len(page['data']), 3)
+
+    def _satellite_owned_uuids(self, response):
+        page = self._response_is_good(response)
+        return {system['system_uuid'] for system in page['data']}
+
+    def test_satellite_forwarded_identity_scopes_host(self):
+        # Hosts 01, 03 and 05 share the Satellite owner_id. Scope to host 01
+        # only, and give host 04 the same subscription manager id with a
+        # different owner so the owner_id filter still applies.
+        host_01_smid = '49f86dd6-9b43-4db2-8b56-b5637f0b0969'
+        AdvisorInventoryHost.objects.filter(
+            inventory_id=constants.host_01_uuid
+        ).update(subscription_manager_id=host_01_smid)
+        AdvisorInventoryHost.objects.filter(
+            inventory_id=constants.host_03_uuid
+        ).update(subscription_manager_id='11111111-2222-4333-8444-555555555553')
+        AdvisorInventoryHost.objects.filter(
+            inventory_id=constants.host_04_uuid
+        ).update(subscription_manager_id=host_01_smid)
+
+        headers = dict(self.sat_cert_auth_header)
+        headers['HTTP_X_FORWARDED_IDENTITY'] = host_01_smid.upper()
+        response = self.client.get(reverse('system-list'), **headers)
+        self.assertEqual(
+            self._satellite_owned_uuids(response),
+            {constants.host_01_uuid},
+        )
+
+    def test_satellite_without_forwarded_identity_keeps_owner_scope(self):
+        AdvisorInventoryHost.objects.filter(
+            inventory_id=constants.host_01_uuid
+        ).update(subscription_manager_id='49f86dd6-9b43-4db2-8b56-b5637f0b0969')
+        AdvisorInventoryHost.objects.filter(
+            inventory_id=constants.host_03_uuid
+        ).update(subscription_manager_id='11111111-2222-4333-8444-555555555553')
+        owned = {
+            constants.host_01_uuid,
+            constants.host_03_uuid,
+            constants.host_05_uuid,
+        }
+
+        response = self.client.get(
+            reverse('system-list'), **self.sat_cert_auth_header
+        )
+        self.assertEqual(self._satellite_owned_uuids(response), owned)
+
+        # Whitespace-only is treated as absent.
+        headers = dict(self.sat_cert_auth_header)
+        headers['HTTP_X_FORWARDED_IDENTITY'] = '   '
+        response = self.client.get(reverse('system-list'), **headers)
+        self.assertEqual(self._satellite_owned_uuids(response), owned)
+
+    def test_satellite_malformed_forwarded_identity_forbidden(self):
+        headers = dict(self.sat_cert_auth_header)
+        headers['HTTP_X_FORWARDED_IDENTITY'] = 'not-a-uuid'
+        response = self.client.get(reverse('system-list'), **headers)
+        self.assertEqual(response.status_code, 403, response.content.decode())
+
+    def test_non_satellite_cert_auth_ignores_forwarded_identity(self):
+        # A header that does not match host 04 must not change system cert-auth.
+        AdvisorInventoryHost.objects.filter(
+            inventory_id=constants.host_04_uuid
+        ).update(subscription_manager_id='49f86dd6-9b43-4db2-8b56-b5637f0b0969')
+        headers = dict(self.self_cert_auth_header)
+        headers['HTTP_X_FORWARDED_IDENTITY'] = '11111111-2222-4333-8444-555555555504'
+        response = self.client.get(reverse('system-list'), **headers)
+        self.assertEqual(
+            self._satellite_owned_uuids(response),
+            {constants.host_04_uuid},
+        )
+
+        headers['HTTP_X_FORWARDED_IDENTITY'] = 'not-a-uuid'
+        response = self.client.get(reverse('system-list'), **headers)
+        self.assertEqual(
+            self._satellite_owned_uuids(response),
+            {constants.host_04_uuid},
+        )
+
+    def test_user_identity_ignores_forwarded_identity(self):
+        headers = auth_header_for_testing()
+        headers['HTTP_X_FORWARDED_IDENTITY'] = 'not-a-uuid'
+        response = self.client.get(reverse('system-list'), **headers)
+        self.assertEqual(response.status_code, 200, response.content.decode())

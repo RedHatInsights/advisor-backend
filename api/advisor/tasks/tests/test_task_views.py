@@ -383,6 +383,52 @@ class TaskViewTestCase(TestCase):
         )
         self.assertEqual(res.status_code, 404, res.content.decode())
 
+    def test_task_systems_satellite_cert_auth_scoping(self):
+        update_stale_dates()
+        owner_id = '55df28a7-d7ef-48c5-bc57-8967025399b1'
+        host_01_smid = '49f86dd6-9b43-4db2-8b56-b5637f0b0969'
+        host_03_smid = '11111111-2222-4333-8444-555555555553'
+        Host.objects.filter(inventory_id=constants.host_01_uuid).update(
+            owner_id=owner_id, subscription_manager_id=host_01_smid,
+        )
+        Host.objects.filter(inventory_id=constants.host_03_uuid).update(
+            owner_id=owner_id, subscription_manager_id=host_03_smid,
+        )
+        sat_auth = auth_header_for_testing(system_opts={
+            'cn': owner_id, 'cert_type': 'satellite',
+        })
+
+        def system_ids(response):
+            self.assertEqual(response.status_code, 200, response.content.decode())
+            return {row['id'] for row in response.json()['data']}
+
+        res = self.client.get(
+            reverse('tasks-task-systems', kwargs={'slug': constants.task_slug}),
+            data={'all_systems': 'true'},
+            **sat_auth,
+        )
+        self.assertEqual(system_ids(res), {
+            constants.host_01_uuid, constants.host_03_uuid,
+        })
+
+        scoped = dict(sat_auth)
+        scoped['HTTP_X_FORWARDED_IDENTITY'] = host_01_smid.upper()
+        res = self.client.get(
+            reverse('tasks-task-systems', kwargs={'slug': constants.task_slug}),
+            data={'all_systems': 'true'},
+            **scoped,
+        )
+        self.assertEqual(system_ids(res), {constants.host_01_uuid})
+
+        malformed = dict(sat_auth)
+        malformed['HTTP_X_FORWARDED_IDENTITY'] = 'not-a-uuid'
+        res = self.client.get(
+            reverse('tasks-task-systems', kwargs={'slug': constants.task_slug}),
+            data={'all_systems': 'true'},
+            **malformed,
+        )
+        self.assertEqual(res.status_code, 403, res.content.decode())
+
     def test_task_systems_host_group_filtering(self):
         update_stale_dates()
 
