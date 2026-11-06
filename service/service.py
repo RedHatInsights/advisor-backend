@@ -399,6 +399,22 @@ def create_db_reports(
             logger.debug("Report rules from database %s", report_rules)
             report_rules_map = dict((i['rule_id'], i) for i in report_rules)
             logger.debug("Report rules map %s", report_rules_map)
+
+            # Reported rules that survived filtering but aren't in the database
+            # are skipped below - warn so they don't vanish silently.  Malformed
+            # (non-string) rule IDs are stringified so logging them can't fail.
+            reported_rule_ids = set(x['rule_id'] for x in reports)
+            unknown_rule_ids = sorted(
+                str(r_id) for r_id in
+                reported_rule_ids.intersection(report_rule_ids) - set(report_rules_map)
+            )
+            if unknown_rule_ids:
+                logger.warning(
+                    "Skipping %d reported rule(s) that could not be matched to a rule in the database for system UUID "
+                    "(inventory ID) %s in org_id %s: %s",
+                    len(unknown_rule_ids), inventory_uuid, org_id, ", ".join(unknown_rule_ids),
+                    extra={'unknown_rule_ids': unknown_rule_ids},
+                )
             report_rule_db_ids = [rule['id'] for rule in report_rules]
             org_disabled_rule_ids = set(
                 db.Ack.objects.filter(
@@ -528,8 +544,13 @@ def create_db_reports(
             })
             logger.info(
                 f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
-                f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
-                extra={'db_duration': db_finished - db_started})
+                f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}"
+                f" ({len(reports)} received from {source})",
+                extra={
+                    'db_duration': db_finished - db_started,
+                    'reports_received': len(reports),
+                    'reports_stored': num_report_objs,
+                })
     except Exception:
         log_db_failure("Failed to process upload", get_exception=True)
         return False

@@ -15,6 +15,7 @@
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
 import json
+import logging
 import os
 import sys
 import subprocess
@@ -291,6 +292,74 @@ def test_handle_engine_results(db, service, sample_engine_results, mock_request_
     host = models.Host.objects.get(inventory_id="57c4c38b-a8c6-4289-9897-223681fd804d")
     assert host.satellite_id is None
     assert host.branch_id is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_engine_results_logs_received_and_stored_counts(
+    db, service, sample_engine_results, mock_request_post_return_200, caplog
+):
+    caplog.set_level(logging.INFO)
+    service.handle_engine_results(sample_engine_results)
+
+    logged = [r for r in caplog.records if r.getMessage().startswith('Logged ')]
+    assert len(logged) == 1
+    assert logged[0].getMessage().endswith('(1 received from insights-client)')
+    assert logged[0].reports_received == 1
+    assert logged[0].reports_stored == 1
+    assert not [r for r in caplog.records if r.levelno == logging.WARNING]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_engine_results_warns_on_unknown_rule_ids(
+    db, service, sample_engine_results, mock_request_post_return_200, caplog
+):
+    unknown_report = dict(
+        sample_engine_results['results']['reports'][0],
+        rule_id='no_such_rule|NO_SUCH_RULE', key='NO_SUCH_RULE',
+    )
+    sample_engine_results['results']['reports'].append(unknown_report)
+    caplog.set_level(logging.INFO)
+    service.handle_engine_results(sample_engine_results)
+
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert 'no_such_rule|NO_SUCH_RULE' in warnings[0].getMessage()
+    assert warnings[0].unknown_rule_ids == ['no_such_rule|NO_SUCH_RULE']
+
+    logged = [r for r in caplog.records if r.getMessage().startswith('Logged ')]
+    assert len(logged) == 1
+    assert logged[0].reports_received == 2
+    assert logged[0].reports_stored == 1
+    assert models.CurrentReport.objects.filter(
+        host_id=sample_engine_results['input']['host']['id']
+    ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_engine_results_non_string_unknown_rule_ids(
+    db, service, sample_engine_results, mock_request_post_return_200, caplog
+):
+    # Malformed rule IDs must not stop the valid reports from being stored
+    valid_report = sample_engine_results['results']['reports'][0]
+    sample_engine_results['results']['reports'].extend([
+        dict(valid_report, rule_id=None),
+        dict(valid_report, rule_id=42),
+        dict(valid_report, rule_id='no_such_rule|NO_SUCH_RULE'),
+    ])
+    caplog.set_level(logging.INFO)
+    service.handle_engine_results(sample_engine_results)
+
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert warnings[0].unknown_rule_ids == ['42', 'None', 'no_such_rule|NO_SUCH_RULE']
+
+    logged = [r for r in caplog.records if r.getMessage().startswith('Logged ')]
+    assert len(logged) == 1
+    assert logged[0].reports_received == 4
+    assert logged[0].reports_stored == 1
+    assert models.CurrentReport.objects.filter(
+        host_id=sample_engine_results['input']['host']['id']
+    ).count() == 1
 
 
 @pytest.mark.django_db(transaction=True)
