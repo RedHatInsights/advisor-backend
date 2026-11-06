@@ -19,6 +19,10 @@ from kessel.inventory.v1beta2 import check_request_pb2
 from api import kessel
 from api.tests import constants as api_constants
 
+# The Tasks API is no longer routed in the project URLconf (RHINENG-31068);
+# tests of the Tasks views use this URLconf instead.
+TASKS_TEST_URLCONF = 'tasks.tests.urls'
+
 
 class constants(object):
     standard_org = api_constants.standard_org

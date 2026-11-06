@@ -24,7 +24,7 @@ from api.permissions import (
     auth_header_for_testing, turnpike_auth_header_for_testing
 )
 from api.tests import update_stale_dates
-from tasks.tests import constants, task_creation_data
+from tasks.tests import TASKS_TEST_URLCONF, constants, task_creation_data
 from tasks.tests.test_system_views import pd_connection_status_response
 from tasks.utils import requirements, playbook_dispatcher_connection_status_path
 
@@ -44,6 +44,7 @@ RHELAI_REQ = requirements['rhelai_image']['alert']
 NOT_RHELAI_REQ = requirements['not_rhelai_image']['alert']
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class TaskViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()
@@ -760,6 +761,7 @@ class TaskViewTestCase(TestCase):
         self.assertEqual(hosts[5]['connected'], False)
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class TaskInternalViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     ext_auth = auth_header_for_testing()

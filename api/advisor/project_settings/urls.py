@@ -14,24 +14,48 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+import re
+
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.urls import path, include
+from django.http import JsonResponse
+from django.urls import path, include, re_path
+from django.views.decorators.csrf import csrf_exempt
 from django_prometheus import exports
 
 from project_settings import settings
 
 from api.urls import router, urlpatterns
-from tasks.urls import urlpatterns as tasks_urlpatterns
 from sat_compat.urls import v1router, v2router, v3urlpatterns
 from sat_compat.views.me import MeView
 from sat_compat.views.ping import PingViewSet
+
+
+@csrf_exempt
+def tasks_decommissioned(request, *args, **kwargs):
+    """
+    The Tasks API has been decommissioned (RHINENG-31068).  Every request to
+    it, whatever the method, gets 410 Gone.  csrf_exempt so that POSTs get the
+    410 rather than a CSRF failure.
+    """
+    return JsonResponse(
+        {'detail': 'The Tasks API has been decommissioned.'}, status=410
+    )
+
+
+def tasks_decommissioned_path(prefix):
+    # Match the prefix with or without its trailing slash, and anything below it
+    return re_path(
+        r'^' + re.escape(prefix.rstrip('/')) + r'(?:/.*)?$',
+        tasks_decommissioned
+    )
+
 
 urlpatterns = [
     # Regular path for Advisor API:
     path(settings.API_PATH_PREFIX, include(urlpatterns)),
 
-    # Regular path for Tasks API:
-    path(settings.TASKS_PATH_PREFIX, include(tasks_urlpatterns)),
+    # The Tasks API has been decommissioned:
+    tasks_decommissioned_path(settings.TASKS_PATH_PREFIX),
 
     # Satellite compatibility paths:
     # NB: For paths that aren't included in the routers, the basename field
@@ -54,7 +78,7 @@ urlpatterns = [
     # Other paths
     path(settings.PROMETHEUS_PATH, exports.ExportToDjangoView, name="prometheus-django-metrics"),
     path('internal/' + settings.API_PATH_PREFIX, include('api.internal_urls')),
-    path('internal/' + settings.TASKS_PATH_PREFIX, include('tasks.internal_urls')),
+    tasks_decommissioned_path('internal/' + settings.TASKS_PATH_PREFIX),
     path('private/', include('api.private_urls')),
 ]
 

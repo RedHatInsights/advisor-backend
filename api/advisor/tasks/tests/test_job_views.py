@@ -23,7 +23,7 @@ from api.tests import update_stale_dates
 from api.permissions import auth_header_for_testing
 from tasks.management.commands.tasks_service import get_stdout_url
 from tasks.models import Job, JobStatusChoices, TaskTypeChoices
-from tasks.tests import constants
+from tasks.tests import TASKS_TEST_URLCONF, constants
 
 
 job_stdout = r"""
@@ -47,6 +47,7 @@ def json_playbook_dispatcher_partial_reply():
     return {"data": [{"stdout": job_stdout}]}
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class JobViewTestCase(TestCase):
     fixtures = ['basic_task_test_data']
     std_auth = auth_header_for_testing()

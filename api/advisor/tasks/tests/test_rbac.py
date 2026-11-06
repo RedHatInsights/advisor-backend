@@ -24,7 +24,7 @@ from django.urls import reverse
 
 from api.kessel import add_kessel_response
 from api.permissions import auth_header_for_testing, make_rbac_url
-from tasks.tests import constants
+from tasks.tests import TASKS_TEST_URLCONF, constants
 
 TEST_RBAC_URL = 'http://rbac.svc/'
 TEST_RBAC_V1_ACCESS = make_rbac_url(
@@ -60,6 +60,7 @@ OiIxMTc4OTc3MiIsImF1dGhfdGltZSI6MCwiY3Jvc3NfYWNjZXNzIjpmYWxzZX0sInR5cGUiOiJVc
 """.splitlines())
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class RBACTestCase(TestCase):
     # We don't test RBAC failure modes, nor do we test 'no auth views'.
 
@@ -143,6 +144,7 @@ class RBACTestCase(TestCase):
                 )
 
 
+@override_settings(ROOT_URLCONF=TASKS_TEST_URLCONF)
 class KesselTestCase(TestCase):
     basic_auth_header = auth_header_for_testing()
 
