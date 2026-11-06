@@ -303,6 +303,20 @@ class HostAckViewTestCase(TestCase):
         self.assertEqual(len(error_json['system_uuid']), 1)
         self.assertEqual(error_json['system_uuid'][0], 'This field is required.')
 
+        # POST with a non-existent system UUID should return a 400
+        nonexistent_uuid = '00000000-0000-0000-0000-000000000000'
+        response = self.client.post(
+            reverse('hostack-list'),
+            data={
+                'rule': constants.active_rule,
+                'system_uuid': nonexistent_uuid,
+            },
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 400)
+        error_json = response.json()
+        self.assertIn('systems', error_json)
+
     def test_hostack_edit_justification(self):
         response = self.client.put(
             reverse('hostack-detail', kwargs={'pk': '1'}),

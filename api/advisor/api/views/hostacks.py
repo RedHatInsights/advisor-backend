@@ -28,7 +28,7 @@ from api.filters import (
     workload_query_param,
     host_group_name_query_param, filter_on_host_tags
 )
-from api.models import HostAck, stale_systems_q
+from api.models import Host, HostAck, stale_systems_q
 from api.permissions import (
     request_to_username, InsightsRBACPermission, CertAuthPermission,
     request_to_org, IsRedHatInternalUser, ResourceScope,
@@ -138,11 +138,16 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         not take an 'id' number.
         """
         # If we can't deserialize the hostack information, then return a 400 now
-        store_post_data(request, HostAckInputSerializer)
-        hostack_serdata = HostAckInputSerializer(data=request.data)
+        store_post_data(request, HostAckInputSerializer, context={'request': request})
+        hostack_serdata = HostAckInputSerializer(data=request.data, context={'request': request})
         hostack_serdata.is_valid(raise_exception=True)
         rule = hostack_serdata.validated_data['rule']
         acked_uuid = hostack_serdata.validated_data['host_id']
+        if not Host.objects.filter(inventory_id=acked_uuid).exists():
+            return Response(
+                {'system_uuid': [f"Host with UUID '{acked_uuid}' not found"]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         new_host_ack, updated = self.get_queryset().update_or_create(
             org_id=request.auth['org_id'], host_id=acked_uuid, rule=rule,
             defaults={
