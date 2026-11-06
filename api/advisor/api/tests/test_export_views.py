@@ -260,8 +260,8 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(len(row_data), 0)
 
         # Test text filter
-        # Searching for text 'html' matches rule 1 for which systems 01, 03, 04 and 06 have hits
-        response = self.client.get(reverse('export-hits-list'), data={'text': 'html'}, **headers)
+        # Searching for rule 1's rule ID matches rule 1 for which systems 01, 03, 04 and 06 have hits
+        response = self.client.get(reverse('export-hits-list'), data={'text': constants.active_rule}, **headers)
         row_data = self._response_is_good(response, hits_headers)
         self.assertEqual(len(row_data), 4)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
@@ -269,6 +269,11 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(row_data[1]['hostname'], constants.host_03_name)
         self.assertEqual(row_data[2]['hostname'], constants.host_04_name)
         self.assertEqual(row_data[3]['hostname'], constants.host_06_name)
+
+        # Text in rule 1's generic content (but not its rule ID or name) no longer matches
+        response = self.client.get(reverse('export-hits-list'), data={'text': 'html'}, **headers)
+        row_data = self._response_is_good(response, hits_headers)
+        self.assertEqual(len(row_data), 0)
 
         # Test total_risk filter
         # All active, non-acked rules (1 & 5) have total_risk 1, so all systems that match those rules will have hits
@@ -612,9 +617,9 @@ class ExportViewTestCase(TestCase):
         self.assertEqual(len(row_data), 0)
 
         # Test text filter
-        # Searching for text 'html' matches rule 1 for which systems 01, 03, 04 and 06 have hits
+        # Searching for rule 1's rule ID matches rule 1 for which systems 01, 03, 04 and 06 have hits
         response = self.client.get(
-            reverse('export-hits-list'), data={'text': 'html'}, **headers)
+            reverse('export-hits-list'), data={'text': constants.active_rule}, **headers)
         row_data = self._response_is_good(response)
         self.assertEqual(len(row_data), 4)
         self.assertEqual(row_data[0]['hostname'], constants.host_01_name)
