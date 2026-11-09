@@ -24,8 +24,10 @@ import signal
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from prometheus_client import start_http_server
-from django.db import transaction
+from django.db import connections, transaction
 from django.db.models import Q
+from django.db.models.constants import OnConflict
+from django.db.models.sql import InsertQuery
 from django.utils.dateparse import parse_datetime
 
 from advisor_logging import logger
@@ -217,9 +219,9 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
         logger.debug("Bulk delete committed successfully")
 
     if upserts:
-        # TOCTOU: a concurrent write between this check and bulk_upsert_hosts
-        # could be overwritten. Low risk (Kafka partitions by host ID) and
-        # self-correcting on the next event.
+        # Drop events that are already older than the stored row. The upsert
+        # applies a row only when its timestamp is newer, including when
+        # another writer commits between this check and the insert.
         upserts = _filter_stale_events(upserts)
 
     if upserts:
@@ -384,38 +386,107 @@ def parse_deleted_event(message: dict[str, JsonValue]) -> ParsedDeleteEvent | No
     )
 
 
+# Columns replaced when an inventory event is newer than the stored row.
+ADVISOR_INVENTORY_UPDATE_FIELDS = (
+    'display_name', 'account', 'tags', 'workspace_id', 'workspace_name', 'workspace_ungrouped',
+    'created', 'updated', 'last_check_in', 'insights_id', 'stale_timestamp',
+    'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
+    'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
+    'owner_id', 'subscription_manager_id', 'rhc_client_id', 'workloads',
+    'system_update_method',
+    'infrastructure_type', 'bios_release_date', 'bios_vendor',
+    'bios_version', 'release',
+)
+
+
+def _host_key(org_id: str, inventory_id: str) -> tuple[str, str]:
+    return (str(org_id), str(inventory_id).lower())
+
+
+def _upsert_newer_inventory_hosts(
+    instances: list[AdvisorInventoryHost],
+) -> set[tuple[str, str]]:
+    """Insert inventory hosts, updating a row only when the event is newer.
+
+    ``ON CONFLICT ... WHERE updated < EXCLUDED.updated`` compares the
+    timestamp while holding the row lock, and writes the incoming row only
+    when it is newer. Returns the ``(org_id, inventory_id)`` keys written.
+    """
+    if not instances:
+        return set()
+
+    model = AdvisorInventoryHost
+    opts = model._meta
+    queryset = model._default_manager.all()
+    queryset._prepare_for_bulk_create(instances)
+    fields = [field for field in opts.concrete_fields if not field.generated]
+    update_fields = [opts.get_field(name) for name in ADVISOR_INVENTORY_UPDATE_FIELDS]
+    unique_fields = [opts.get_field('org_id'), opts.get_field('inventory_id')]
+
+    db = queryset.db
+    connection = connections[db]
+    ops = connection.ops
+    batch_size = max(ops.bulk_batch_size(fields, instances), 1)
+    qn = ops.quote_name
+    updated_column = qn(opts.get_field('updated').column)
+    where_sql = (
+        f" WHERE {qn(opts.db_table)}.{updated_column} < EXCLUDED.{updated_column}"
+    )
+
+    applied: set[tuple[str, str]] = set()
+    for start in range(0, len(instances), batch_size):
+        batch = instances[start:start + batch_size]
+        query = InsertQuery(
+            model,
+            on_conflict=OnConflict.UPDATE,
+            update_fields=update_fields,
+            unique_fields=unique_fields,
+        )
+        query.insert_values(fields, batch, raw=False)
+        compiler = query.get_compiler(using=db)
+        compiler.returning_fields = unique_fields
+        with connection.cursor() as cursor:
+            for sql, params in compiler.as_sql():
+                returning_at = sql.rfind(' RETURNING ')
+                if returning_at == -1:
+                    sql += where_sql
+                else:
+                    sql = sql[:returning_at] + where_sql + sql[returning_at:]
+                cursor.execute(sql, params)
+                for org_id, inventory_id in cursor.fetchall():
+                    applied.add(_host_key(org_id, inventory_id))
+    return applied
+
+
 def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
-    """Bulk upsert AdvisorInventoryHost and Host records."""
+    """Bulk upsert AdvisorInventoryHost and Host records.
+
+    An inventory row is written only when its event timestamp is newer than
+    the stored row. Host rows are written for those same events.
+    """
     inv_instances = [item.to_advisor_model() for item in upserts]
-    host_instances = [item.to_host_model() for item in upserts]
 
     with transaction.atomic():
-        advisor_inv_upserted = len(AdvisorInventoryHost.objects.bulk_create(
-            inv_instances,
-            update_conflicts=True,
-            unique_fields=['org_id', 'inventory_id'],
-            update_fields=[
-                'display_name', 'account', 'tags', 'workspace_id', 'workspace_name', 'workspace_ungrouped',
-                'created', 'updated', 'last_check_in', 'insights_id', 'stale_timestamp',
-                'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
-                'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
-                'owner_id', 'subscription_manager_id', 'rhc_client_id', 'workloads',
-                'system_update_method',
-                'infrastructure_type', 'bios_release_date', 'bios_vendor',
-                'bios_version', 'release',
-            ],
-        ))
-        logger.debug("Bulk upserted %d AdvisorInventoryHost records", advisor_inv_upserted)
+        applied = _upsert_newer_inventory_hosts(inv_instances)
+        logger.debug("Bulk upserted %d AdvisorInventoryHost records", len(applied))
 
-        host_upserted = len(Host.objects.bulk_create(
-            host_instances,
-            update_conflicts=True,
-            unique_fields=['inventory_id'],
-            update_fields=['account', 'org_id', 'satellite_id'],
-        ))
+        host_instances = [
+            item.to_host_model()
+            for item in upserts
+            if _host_key(item.org_id, item.host_id) in applied
+        ]
+        if host_instances:
+            host_upserted = len(Host.objects.bulk_create(
+                host_instances,
+                update_conflicts=True,
+                unique_fields=['inventory_id'],
+                update_fields=['account', 'org_id', 'satellite_id'],
+            ))
+        else:
+            host_upserted = 0
         logger.debug("Bulk upserted %d Host records", host_upserted)
 
-        prometheus.INVENTORY_HOST_UPSERTED.inc(advisor_inv_upserted)
+        prometheus.INVENTORY_HOST_UPSERTED.inc(len(applied))
 
 
 def bulk_delete_hosts(deletes: list[ParsedDeleteEvent]) -> None:

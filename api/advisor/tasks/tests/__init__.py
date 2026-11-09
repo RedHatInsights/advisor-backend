@@ -136,6 +136,9 @@ class constants(object):
     executed_task_parameter_4_value = '1248'
 
     # Host constants - copied from API tests
+    standard_acct_satellite = api_constants.standard_acct_satellite
+    host_01_smid = api_constants.host_01_smid
+    host_03_smid = api_constants.host_03_smid
     host_01_uuid = api_constants.host_01_uuid
     host_01_name = api_constants.host_01_name
     host_01_clid = '00112233-4455-6677-8899-cccccccccc01'

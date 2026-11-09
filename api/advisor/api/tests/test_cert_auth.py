@@ -17,6 +17,7 @@
 import base64
 import responses
 
+from django.db import connection
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -239,23 +240,50 @@ class CertAuthTestCase(TestCase):
         page = self._response_is_good(response)
         return {system['system_uuid'] for system in page['data']}
 
+    def test_forwarded_identity_lookup_uses_org_owner_smid_index(self):
+        """Satellite scope on org, owner, and subscription manager uses an index."""
+        index_columns = "(org_id, owner_id, subscription_manager_id)"
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT indexname FROM pg_indexes
+                WHERE tablename LIKE 'advisor_inventory_host%%'
+                  AND indexdef LIKE %s
+                """,
+                [f"%{index_columns}%"],
+            )
+            index_names = [row[0] for row in cursor.fetchall()]
+        self.assertTrue(index_names, "expected an org/owner/subscription_manager_id index")
+
+        listing = AdvisorInventoryHost.objects.filter(
+            org_id=constants.standard_org,
+            owner_id=constants.standard_acct_satellite,
+            subscription_manager_id=constants.host_01_smid,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL enable_seqscan = off")
+        plan = listing.explain()
+        self.assertTrue(
+            any(name in plan for name in index_names),
+            plan,
+        )
+
     def test_satellite_forwarded_identity_scopes_host(self):
         # Hosts 01, 03 and 05 share the Satellite owner_id. Scope to host 01
         # only, and give host 04 the same subscription manager id with a
         # different owner so the owner_id filter still applies.
-        host_01_smid = '49f86dd6-9b43-4db2-8b56-b5637f0b0969'
         AdvisorInventoryHost.objects.filter(
             inventory_id=constants.host_01_uuid
-        ).update(subscription_manager_id=host_01_smid)
+        ).update(subscription_manager_id=constants.host_01_smid)
         AdvisorInventoryHost.objects.filter(
             inventory_id=constants.host_03_uuid
-        ).update(subscription_manager_id='11111111-2222-4333-8444-555555555553')
+        ).update(subscription_manager_id=constants.host_03_smid)
         AdvisorInventoryHost.objects.filter(
             inventory_id=constants.host_04_uuid
-        ).update(subscription_manager_id=host_01_smid)
+        ).update(subscription_manager_id=constants.host_01_smid)
 
         headers = dict(self.sat_cert_auth_header)
-        headers['HTTP_X_FORWARDED_IDENTITY'] = host_01_smid.upper()
+        headers['HTTP_X_FORWARDED_IDENTITY'] = constants.host_01_smid.upper()
         response = self.client.get(reverse('system-list'), **headers)
         self.assertEqual(
             self._satellite_owned_uuids(response),
@@ -265,10 +293,10 @@ class CertAuthTestCase(TestCase):
     def test_satellite_without_forwarded_identity_keeps_owner_scope(self):
         AdvisorInventoryHost.objects.filter(
             inventory_id=constants.host_01_uuid
-        ).update(subscription_manager_id='49f86dd6-9b43-4db2-8b56-b5637f0b0969')
+        ).update(subscription_manager_id=constants.host_01_smid)
         AdvisorInventoryHost.objects.filter(
             inventory_id=constants.host_03_uuid
-        ).update(subscription_manager_id='11111111-2222-4333-8444-555555555553')
+        ).update(subscription_manager_id=constants.host_03_smid)
         owned = {
             constants.host_01_uuid,
             constants.host_03_uuid,
@@ -296,9 +324,9 @@ class CertAuthTestCase(TestCase):
         # A header that does not match host 04 must not change system cert-auth.
         AdvisorInventoryHost.objects.filter(
             inventory_id=constants.host_04_uuid
-        ).update(subscription_manager_id='49f86dd6-9b43-4db2-8b56-b5637f0b0969')
+        ).update(subscription_manager_id=constants.host_01_smid)
         headers = dict(self.self_cert_auth_header)
-        headers['HTTP_X_FORWARDED_IDENTITY'] = '11111111-2222-4333-8444-555555555504'
+        headers['HTTP_X_FORWARDED_IDENTITY'] = constants.other_smid
         response = self.client.get(reverse('system-list'), **headers)
         self.assertEqual(
             self._satellite_owned_uuids(response),
