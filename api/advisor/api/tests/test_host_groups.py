@@ -25,10 +25,11 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from api import kessel
+from api import models as advisor_models
 # from api.models import sync_kessel_with_model
 from api.tests import constants, rbac_data, update_stale_dates
 from api.permissions import (
-    host_group_attr, auth_header_for_testing,
+    host_group_attr, auth_header_for_testing, identity_to_subject,
     find_host_groups, make_rbac_url, request_object_for_testing
 )
 
@@ -535,6 +536,56 @@ class HostGroupsTestCase(TestCase):
             response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
         self.assertEqual(response.status_code, 403, response.content.decode())
         self.assertEqual(mock_lookup.call_args.kwargs['timeout'], settings.KESSEL_TIMEOUT)
+
+    @kessel.add_kessel_response(
+        resource_lookups=[(
+            constants.kessel_std_user_obj,
+            [constants.host_group_1_id, constants.host_group_1_id,
+             constants.host_group_2_id, constants.host_group_1_id]
+        )]
+    )
+    def test_groups_kessel_workspace_lookup_deduplicates(self):
+        # Kessel can return a workspace once per path that grants access;
+        # each should only appear once, in the order first returned.
+        subject = identity_to_subject(constants.kessel_std_user_identity_dict)
+        result, _ = kessel.client.host_groups_for(subject)
+        self.assertEqual(result, [constants.host_group_1_id, constants.host_group_2_id])
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=[(
+            constants.kessel_std_user_obj,
+            [constants.host_group_1_id, constants.host_group_1_id,
+             constants.host_group_2_id, constants.host_group_1_id]
+        )]
+    )
+    @responses.activate
+    def test_groups_kessel_duplicate_workspaces_not_in_host_filter(self):
+        # When Kessel returns duplicate workspaces, org-scoped views build
+        # their host filter from each workspace only once.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        with patch.object(
+            advisor_models, '_get_host_group_filter_local',
+            wraps=advisor_models._get_host_group_filter_local
+        ) as mock_filter:
+            for view_name, view_kwargs in (
+                ('rule-list', {}),
+                ('rule-systems', {'rule_id': constants.active_rule}),
+                ('stats-systems', {}),
+            ):
+                response = self.client.get(
+                    reverse(view_name, kwargs=view_kwargs), **auth_header_for_testing()
+                )
+                self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertTrue(mock_filter.called)
+        for call in mock_filter.call_args_list:
+            self.assertEqual(
+                call.args[0], [constants.host_group_1_id, constants.host_group_2_id]
+            )
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
