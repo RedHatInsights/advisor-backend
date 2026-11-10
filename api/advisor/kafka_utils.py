@@ -17,7 +17,7 @@
 import app_common_python
 from advisor_logging import logger
 # from collections.abc import Callable as AbcCallable
-from confluent_kafka import Consumer, KafkaError, Producer
+from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 import json
 from typing import Callable, TypedDict
 
@@ -157,6 +157,9 @@ class DummyConsumer():
         self.closed: bool = False
         self.commit_count: int = 0
         self.store_offsets_count: int = 0
+        # Number of upcoming commit() calls that should raise, to simulate
+        # a broker-side commit failure
+        self.commit_failures: int = 0
         self.dispatcher_to_quit: 'KafkaDispatcher' | None = None
 
     def add_message(
@@ -231,6 +234,9 @@ class DummyConsumer():
 
     def commit(self, asynchronous=False):
         self.commit_count += 1
+        if self.commit_failures > 0:
+            self.commit_failures -= 1
+            raise KafkaException(KafkaError(KafkaError._TIMED_OUT, "Commit failed"))
 
     def close(self):
         """Close the consumer."""
@@ -332,6 +338,9 @@ class KafkaDispatcher(object):
         self.registered_handlers: dict[str, HandlerEntry] = {}
         self.quit: bool = False
         self.loop_timeout: float = 0.5
+        # True while offsets are stored in the consumer but not yet committed,
+        # e.g. after a failed commit, so the next commit opportunity retries.
+        self._offsets_pending: bool = False
         # When being tested, supply a DummyConsumer object that has added
         # messages via consumer.add_message().  Those messages will be processed
         # in the order they were added.
@@ -523,11 +532,21 @@ class KafkaDispatcher(object):
 
         return batch_success
 
-    def _store_offsets(self, messages: list[confluent_kafka.Message | DummyMessage]) -> None:
+    def _store_offsets(self, messages: list[confluent_kafka.Message | DummyMessage]) -> int:
+        """Store offsets for messages without errors; return how many were stored."""
+        stored = 0
         for message in messages:
             if message.error():
                 continue
             self.consumer.store_offsets(message=message)
+            self._offsets_pending = True
+            stored += 1
+        return stored
+
+    def _commit_offsets(self) -> None:
+        """Synchronously commit stored offsets, clearing the pending flag on success."""
+        self.consumer.commit(asynchronous=False)
+        self._offsets_pending = False
 
     def _receive_batch(self, batch_size: int):
         while not self.quit:
@@ -542,10 +561,15 @@ class KafkaDispatcher(object):
             if success:
                 try:
                     logger.debug("Storing offsets for %d messages", len(messages))
-                    self._store_offsets(messages)
-                    logger.debug("Committing offsets for %d messages", len(messages))
-                    self.consumer.commit(asynchronous=False)
-                    logger.debug("Offsets committed successfully")
+                    stored = self._store_offsets(messages)
+                    # A batch of only error events (e.g. a subscribed topic
+                    # that doesn't exist yet) stores no offsets, and commit()
+                    # would raise _NO_OFFSET - unless offsets from an earlier
+                    # batch are still pending because its commit failed.
+                    if self._offsets_pending:
+                        logger.debug("Committing offsets (%d stored from this batch)", stored)
+                        self._commit_offsets()
+                        logger.debug("Offsets committed successfully")
                 except Exception as e:
                     logger.exception("Error committing Kafka offsets: %s", e)
             else:
@@ -566,6 +590,14 @@ class KafkaDispatcher(object):
 
         if batch_size is not None:
             self._receive_batch(batch_size)
+            # With auto-commit disabled, close() won't commit stored offsets,
+            # so make a last attempt for any left over from a failed commit.
+            if self._offsets_pending:
+                try:
+                    logger.info("Committing pending Kafka offsets before shutdown")
+                    self._commit_offsets()
+                except Exception as e:
+                    logger.exception("Error committing Kafka offsets on shutdown: %s", e)
         else:
             self._receive_single()
 

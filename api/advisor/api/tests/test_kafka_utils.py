@@ -333,6 +333,66 @@ class TestKafkaUtils(TestCase):
         self.assertGreater(consumer.store_offsets_count, 0)
         self.assertGreater(consumer.commit_count, 0)
 
+    def test_receive_does_not_commit_error_only_batch(self):
+        """Test that receive() doesn't commit when every message in the batch is an error event."""
+        consumer = DummyConsumer()
+        error_message = DummyMessage('topic', b'')
+        error_message.set_error('Subscribed topic not available: topic: Broker: Unknown topic or partition')
+        consumer.add_message_obj(error_message)
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', batch_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        with self.assertLogs(logger='advisor-log', level='ERROR'):
+            dispatcher.receive(batch_size=10)
+
+        self.assertEqual(consumer.store_offsets_count, 0)
+        self.assertEqual(consumer.commit_count, 0)
+
+    def test_receive_retries_failed_commit_on_error_only_batch(self):
+        """Test that offsets left pending by a failed commit are committed by a following error-only batch."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+        error_message = DummyMessage('topic', b'')
+        error_message.set_error('Subscribed topic not available: topic: Broker: Unknown topic or partition')
+        consumer.add_message_obj(error_message)
+        consumer.commit_failures = 1
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', batch_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        with self.assertLogs(logger='advisor-log', level='ERROR'):
+            # One message per batch: the good message's commit fails, then
+            # the error-only batch retries it.
+            dispatcher.receive(batch_size=1)
+
+        self.assertEqual(consumer.store_offsets_count, 1)
+        self.assertEqual(consumer.commit_count, 2)
+        self.assertFalse(dispatcher._offsets_pending)
+
+    def test_receive_retries_failed_commit_on_shutdown(self):
+        """Test that offsets left pending by a failed commit are committed before the consumer closes."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+        consumer.commit_failures = 1
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', batch_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        with self.assertLogs(logger='advisor-log', level='INFO') as logs:
+            dispatcher.receive(batch_size=10)
+
+        self.assertEqual(consumer.store_offsets_count, 1)
+        self.assertEqual(consumer.commit_count, 2)
+        self.assertFalse(dispatcher._offsets_pending)
+        self.assertTrue(any('before shutdown' in line for line in logs.output))
+
     def test_receive_does_not_commit_on_failure(self):
         """Test that receive() skips commit when a batch handler raises."""
         consumer = DummyConsumer()
