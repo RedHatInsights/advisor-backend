@@ -101,6 +101,18 @@ class DummyMessage():
         return self._error
 
 
+class DummyTopicPartition:
+    """
+    A stand-in for confluent_kafka.TopicPartition, whose `error` attribute is
+    read-only, so that tests can return partition-level commit errors.
+    """
+    def __init__(self, topic: str, partition: int = 0, offset: int = 0, error: KafkaError | None = None):
+        self.topic: str = topic
+        self.partition: int = partition
+        self.offset: int = offset
+        self.error: KafkaError | None = error
+
+
 class DummyProducer:
     """
     A dummy Kafka producer for use during testing.
@@ -160,6 +172,9 @@ class DummyConsumer():
         # Number of upcoming commit() calls that should raise, to simulate
         # a broker-side commit failure
         self.commit_failures: int = 0
+        # Number of upcoming commit() calls that should return a partition
+        # with an error without raising, to simulate a partial commit failure
+        self.commit_partition_errors: int = 0
         self.dispatcher_to_quit: 'KafkaDispatcher' | None = None
 
     def add_message(
@@ -237,6 +252,11 @@ class DummyConsumer():
         if self.commit_failures > 0:
             self.commit_failures -= 1
             raise KafkaException(KafkaError(KafkaError._TIMED_OUT, "Commit failed"))
+        if self.commit_partition_errors > 0:
+            self.commit_partition_errors -= 1
+            topic = self.subscribed_topics[0] if self.subscribed_topics else 'topic'
+            return [DummyTopicPartition(topic, 0, error=KafkaError(KafkaError.REBALANCE_IN_PROGRESS))]
+        return None
 
     def close(self):
         """Close the consumer."""
@@ -544,8 +564,19 @@ class KafkaDispatcher(object):
         return stored
 
     def _commit_offsets(self) -> None:
-        """Synchronously commit stored offsets, clearing the pending flag on success."""
-        self.consumer.commit(asynchronous=False)
+        """
+        Synchronously commit stored offsets, clearing the pending flag on success.
+
+        A synchronous commit can fail for individual partitions without
+        raising, so check each returned partition and raise if any failed,
+        leaving the offsets pending so the next commit retries them.
+        """
+        committed = self.consumer.commit(asynchronous=False)
+        failed = [tp for tp in committed or [] if tp.error]
+        if failed:
+            raise KafkaException("Offset commit failed for " + ", ".join(
+                f"{tp.topic} [{tp.partition}]: {tp.error}" for tp in failed
+            ))
         self._offsets_pending = False
 
     def _receive_batch(self, batch_size: int):

@@ -21,6 +21,9 @@ from kafka_utils import (
     send_kafka_message,
 )
 
+# Error event the consumer delivers when a subscribed topic doesn't exist yet
+UNKNOWN_TOPIC_ERROR = 'Subscribed topic not available: topic: Broker: Unknown topic or partition'
+
 
 class DummyHandler:
     """
@@ -337,7 +340,7 @@ class TestKafkaUtils(TestCase):
         """Test that receive() doesn't commit when every message in the batch is an error event."""
         consumer = DummyConsumer()
         error_message = DummyMessage('topic', b'')
-        error_message.set_error('Subscribed topic not available: topic: Broker: Unknown topic or partition')
+        error_message.set_error(UNKNOWN_TOPIC_ERROR)
         consumer.add_message_obj(error_message)
 
         batch_handler = DummyBatchHandler('batch_handler')
@@ -356,7 +359,7 @@ class TestKafkaUtils(TestCase):
         consumer = DummyConsumer()
         consumer.add_message('topic', {'msg': 1})
         error_message = DummyMessage('topic', b'')
-        error_message.set_error('Subscribed topic not available: topic: Broker: Unknown topic or partition')
+        error_message.set_error(UNKNOWN_TOPIC_ERROR)
         consumer.add_message_obj(error_message)
         consumer.commit_failures = 1
 
@@ -373,6 +376,30 @@ class TestKafkaUtils(TestCase):
         self.assertEqual(consumer.store_offsets_count, 1)
         self.assertEqual(consumer.commit_count, 2)
         self.assertFalse(dispatcher._offsets_pending)
+
+    def test_receive_retries_partial_commit_failure(self):
+        """Test that offsets stay pending and are retried when a commit fails for a partition without raising."""
+        consumer = DummyConsumer()
+        consumer.add_message('topic', {'msg': 1})
+        error_message = DummyMessage('topic', b'')
+        error_message.set_error(UNKNOWN_TOPIC_ERROR)
+        consumer.add_message_obj(error_message)
+        consumer.commit_partition_errors = 1
+
+        batch_handler = DummyBatchHandler('batch_handler')
+        dispatcher = KafkaDispatcher(consumer)
+        dispatcher.register_handler('topic', batch_handler, batch=True)
+        consumer.set_dispatcher_quit(dispatcher)
+
+        with self.assertLogs(logger='advisor-log', level='ERROR') as logs:
+            # One message per batch: the good message's commit fails for a
+            # partition, then the error-only batch retries it.
+            dispatcher.receive(batch_size=1)
+
+        self.assertEqual(consumer.store_offsets_count, 1)
+        self.assertEqual(consumer.commit_count, 2)
+        self.assertFalse(dispatcher._offsets_pending)
+        self.assertTrue(any('Offset commit failed for topic [0]' in line for line in logs.output))
 
     def test_receive_retries_failed_commit_on_shutdown(self):
         """Test that offsets left pending by a failed commit are committed before the consumer closes."""
