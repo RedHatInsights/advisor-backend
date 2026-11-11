@@ -57,7 +57,7 @@ rpds-py = "==0.23.1"
 jsonschema = "==4.24.0"
 urllib3 = ">=2.7.0"
 sqlparse = "==0.6.0"
-pyasn1 = "==0.6.4"
+pyasn1 = "==0.6.5"
 confluent-kafka = "==2.16.0"
 
 [scripts]
