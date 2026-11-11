@@ -359,6 +359,7 @@ users can see.  For testing this is normally disabled as well.
 - `KESSEL_AUTH_CLIENT_SECRET` - Default: `` (empty)
 - `KESSEL_AUTH_OIDC_ISSUER` - Default: `` (empty)
 - `KESSEL_INSECURE` - Default: `true`
+- `KESSEL_TIMEOUT` - Default: `10` - deadline in seconds for each Kessel gRPC call.
 
 ## External Services
 

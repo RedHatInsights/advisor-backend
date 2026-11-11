@@ -502,14 +502,17 @@ class Kessel:
         logger.info(
             "Getting host groups for subject %s", subject
         )
-        result = [
+        # Kessel can return a workspace more than once (once per path that
+        # grants the relation), so de-duplicate, keeping the order.  This keeps
+        # the workspace filter in host queries as small as possible.
+        result = list(dict.fromkeys(
             response_object.resource_id
             for response_object in get_resources(
                 self.client, workspace_object_type,
                 'inventory_host_view', subject.as_pb2()
                 # , limit=100?
             )
-        ]
+        ))
 
         logger.debug(
             "Getting host groups for subject - Result %s", result
