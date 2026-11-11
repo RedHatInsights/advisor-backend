@@ -767,7 +767,7 @@ curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/r
 
 **List rules filtered by workspace (host groups) or impacting status:**
 ```bash
-# Returns only rules impacting systems in workspace 'group_1' (defaults to impacting=true when workspace is scoped)
+# Returns only rules impacting systems in workspace 'group_1' (defaults to impacting=true when the groups parameter is given)
 curl -s -H "x-rh-identity: $RH_IDENTITY" http://localhost:8000/api/insights/v1/rule/?groups=group_1 | python -m json.tool
 
 # Returns rules not impacting systems in workspace 'group_1'

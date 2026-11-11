@@ -52,7 +52,6 @@ from api.permissions import (
     TurnpikeIdentityAuthentication,
     IsRedHatInternalUser, InsightsRBACPermission, CertAuthPermission,
     AssociatePermission, request_to_username, set_resource, ResourceScope,
-    host_group_attr,
 )
 from api.utils import (
     CustomPageNumberPagination, PaginateMixin, store_post_data,
@@ -224,11 +223,13 @@ def filter_on_impacting(request):
     if impacting is not None:
         return Q(has_reports=impacting)
 
-    # When workspace scoping is requested without explicit impacting parameter,
-    # show only rules that impact systems in the selected workspace(s).
-    host_groups_param = value_of_param(host_group_name_query_param, request)
-    host_groups = getattr(request, host_group_attr, [])
-    if host_groups_param or host_groups:
+    # When the request filters by workspace with the 'groups' parameter and
+    # doesn't give 'impacting', show only rules that impact systems in the
+    # selected workspace(s).  The workspaces the user is allowed to see don't
+    # trigger this: with Kessel every user has a workspace list, including
+    # users with access to the whole org, and they should still get the full
+    # rule list.  Impacted system counts are scoped to those workspaces anyway.
+    if value_of_param(host_group_name_query_param, request):
         return Q(has_reports=True)
 
     return Q()
@@ -355,10 +356,9 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         be returned. If 'impacting' is False, only rules with no impacted systems
         will be returned.
 
-        When workspace filtering is applied (via the 'groups' query parameter or
-        RBAC workspace permissions) without an explicit 'impacting' parameter,
-        the list defaults to showing only rules impacting systems in the
-        specified workspace(s).
+        When the 'groups' query parameter is given without an explicit
+        'impacting' parameter, the list defaults to showing only rules
+        impacting systems in the specified workspace(s).
 
         If 'acked' is False or not given, then only rules that are not acked
         will be shown.  If acked is set and 'true' as a string or evaluates
