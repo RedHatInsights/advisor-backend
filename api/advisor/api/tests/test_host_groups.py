@@ -25,10 +25,11 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from api import kessel
+from api import models as advisor_models
 # from api.models import sync_kessel_with_model
 from api.tests import constants, rbac_data, update_stale_dates
 from api.permissions import (
-    host_group_attr, auth_header_for_testing,
+    host_group_attr, auth_header_for_testing, identity_to_subject,
     find_host_groups, make_rbac_url, request_object_for_testing
 )
 
@@ -535,6 +536,56 @@ class HostGroupsTestCase(TestCase):
             response = self.client.get(reverse('rule-list'), **auth_header_for_testing())
         self.assertEqual(response.status_code, 403, response.content.decode())
         self.assertEqual(mock_lookup.call_args.kwargs['timeout'], settings.KESSEL_TIMEOUT)
+
+    @kessel.add_kessel_response(
+        resource_lookups=[(
+            constants.kessel_std_user_obj,
+            [constants.host_group_1_id, constants.host_group_1_id,
+             constants.host_group_2_id, constants.host_group_1_id]
+        )]
+    )
+    def test_groups_kessel_workspace_lookup_deduplicates(self):
+        # Kessel can return a workspace once per path that grants access;
+        # each should only appear once, in the order first returned.
+        subject = identity_to_subject(constants.kessel_std_user_identity_dict)
+        result, _ = kessel.client.host_groups_for(subject)
+        self.assertEqual(result, [constants.host_group_1_id, constants.host_group_2_id])
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=[(
+            constants.kessel_std_user_obj,
+            [constants.host_group_1_id, constants.host_group_1_id,
+             constants.host_group_2_id, constants.host_group_1_id]
+        )]
+    )
+    @responses.activate
+    def test_groups_kessel_duplicate_workspaces_not_in_host_filter(self):
+        # When Kessel returns duplicate workspaces, org-scoped views build
+        # their host filter from each workspace only once.
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        with patch.object(
+            advisor_models, '_get_host_group_filter_local',
+            wraps=advisor_models._get_host_group_filter_local
+        ) as mock_filter:
+            for view_name, view_kwargs in (
+                ('rule-list', {}),
+                ('rule-systems', {'rule_id': constants.active_rule}),
+                ('stats-systems', {}),
+            ):
+                response = self.client.get(
+                    reverse(view_name, kwargs=view_kwargs), **auth_header_for_testing()
+                )
+                self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertTrue(mock_filter.called)
+        for call in mock_filter.call_args_list:
+            self.assertEqual(
+                call.args[0], [constants.host_group_1_id, constants.host_group_2_id]
+            )
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
     @responses.activate
@@ -1051,3 +1102,77 @@ class HostGroupsTestCase(TestCase):
         returned_names = {s['display_name'] for s in page['data']}
         self.assertIn(constants.host_02_name, returned_names)
         self.assertIn(constants.host_07_name, returned_names)
+
+
+class HostGroupsRuleListImpactingTestCase(TestCase):
+    """
+    The rule list only defaults to rules impacting systems when the 'groups'
+    query parameter is given.  A user whose access is limited to some
+    workspaces still gets the full rule list, with impacted system counts
+    limited to their workspaces.  With Kessel every user gets a workspace
+    list, so treating that list as a filter would hide rules from all users.
+    """
+    fixtures = [
+        'rulesets', 'system_types', 'rule_categories', 'upload_sources',
+        'basic_test_data', 'high_severity_rule'
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        update_stale_dates()
+
+    def _get_rules(self, data={}):
+        response = self.client.get(
+            reverse('rule-list'), data=data, **auth_header_for_testing()
+        )
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        return {rule['rule_id']: rule for rule in response.json()['data']}
+
+    def _check_rules_for_group_1_user(self):
+        # No 'groups' parameter: all active rules, including the one with no
+        # systems in the user's workspace.  Filters are only applied when
+        # there are query parameters, so check with and without one.
+        all_rules = {
+            constants.active_rule, constants.acked_rule,
+            constants.second_rule, constants.high_sev_rule,
+        }
+        self.assertEqual(set(self._get_rules()), all_rules)
+        rules = self._get_rules({'limit': 20})
+        self.assertEqual(set(rules), all_rules)
+        self.assertEqual(rules[constants.active_rule]['impacted_systems_count'], 1)
+        self.assertEqual(rules[constants.acked_rule]['impacted_systems_count'], 1)
+        self.assertEqual(rules[constants.high_sev_rule]['impacted_systems_count'], 0)
+        # A filter on another field, like the IQE resolution risk tests
+        rules = self._get_rules({'total_risk': 2})
+        self.assertIn(constants.high_sev_rule, rules)
+        # Explicit 'impacting' is still respected
+        rules = self._get_rules({'impacting': 'true'})
+        self.assertNotIn(constants.high_sev_rule, rules)
+        self.assertIn(constants.active_rule, rules)
+        # The 'groups' parameter still defaults to rules impacting systems
+        rules = self._get_rules({'groups': constants.host_group_1_name})
+        self.assertNotIn(constants.high_sev_rule, rules)
+        self.assertIn(constants.active_rule, rules)
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True)
+    @responses.activate
+    def test_rule_list_rbac_workspace_user_not_impacting_by_default(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V1_ACCESS, status=200,
+            json=rbac_data(groups=[constants.host_group_1_id])
+        )
+        self._check_rules_for_group_1_user()
+
+    @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, KESSEL_ENABLED=True)
+    @kessel.add_kessel_response(
+        permission_checks=constants.kessel_allow_recom_read_ro,
+        resource_lookups=constants.kessel_user_in_workspace_host_group_1
+    )
+    @responses.activate
+    def test_rule_list_kessel_workspace_user_not_impacting_by_default(self):
+        responses.add(
+            responses.GET, TEST_RBAC_V2_WKSPC,
+            json=constants.kessel_std_workspace_response
+        )
+        self._check_rules_for_group_1_user()

@@ -93,9 +93,9 @@ def handle_engine_results(engine_results, kafka_headers=None):
     Handle all engine results received from the shared engine instance
     This comes in on platform.engine.results
     """
-    with telemetry.kafka_consumer_span(ENGINE_RESULTS_TOPIC, kafka_headers):
+    utils.clean_threading_cruft()
+    with telemetry.kafka_consumer_span(ENGINE_RESULTS_TOPIC, kafka_headers, message=engine_results):
         # Clean threading cruft and start function metrics
-        utils.clean_threading_cruft()
         engine_results_started = time.time()
         thread_storage.set_value('engine_results_started', engine_results_started)
         thread_storage.set_value('engine_results_error', 0)
@@ -399,6 +399,22 @@ def create_db_reports(
             logger.debug("Report rules from database %s", report_rules)
             report_rules_map = dict((i['rule_id'], i) for i in report_rules)
             logger.debug("Report rules map %s", report_rules_map)
+
+            # Reported rules that survived filtering but aren't in the database
+            # are skipped below - warn so they don't vanish silently.  Malformed
+            # (non-string) rule IDs are stringified so logging them can't fail.
+            reported_rule_ids = set(x['rule_id'] for x in reports)
+            unknown_rule_ids = sorted(
+                str(r_id) for r_id in
+                reported_rule_ids.intersection(report_rule_ids) - set(report_rules_map)
+            )
+            if unknown_rule_ids:
+                logger.warning(
+                    "Skipping %d reported rule(s) that could not be matched to a rule in the database for system UUID "
+                    "(inventory ID) %s in org_id %s: %s",
+                    len(unknown_rule_ids), inventory_uuid, org_id, ", ".join(unknown_rule_ids),
+                    extra={'unknown_rule_ids': unknown_rule_ids},
+                )
             report_rule_db_ids = [rule['id'] for rule in report_rules]
             org_disabled_rule_ids = set(
                 db.Ack.objects.filter(
@@ -503,6 +519,14 @@ def create_db_reports(
                     the_error = traceback.format_exc()
                     payload_tracker.payload_status('error', the_error)
 
+            if source == "insights-client":
+                try:
+                    telemetry.record_ingestion_completion_on_commit(
+                        thread_storage.get_value('request_id'), org_id, inventory_uuid
+                    )
+                except Exception:
+                    logger.exception("Failed to schedule ingestion completion telemetry.")
+
             # update prometheus stats
             prometheus.INSIGHTS_ADVISOR_SUCCESSFUL_REQUESTS.inc()
 
@@ -528,8 +552,13 @@ def create_db_reports(
             })
             logger.info(
                 f"Logged {num_report_objs} report{'' if num_report_objs == 1 else 's'}"
-                f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}",
-                extra={'db_duration': db_finished - db_started})
+                f" for system UUID (inventory ID) {inventory_uuid} in account {account} and org_id {org_id}"
+                f" ({len(reports)} received from {source})",
+                extra={
+                    'db_duration': db_finished - db_started,
+                    'reports_received': len(reports),
+                    'reports_stored': num_report_objs,
+                })
     except Exception:
         log_db_failure("Failed to process upload", get_exception=True)
         return False
@@ -538,8 +567,8 @@ def create_db_reports(
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_RULE_HITS_ELAPSED.time()
 def handle_rule_hits(rule_hits_json, kafka_headers=None):
-    with telemetry.kafka_consumer_span(RULE_HITS_TOPIC, kafka_headers):
-        utils.clean_threading_cruft()
+    utils.clean_threading_cruft()
+    with telemetry.kafka_consumer_span(RULE_HITS_TOPIC, kafka_headers, message=rule_hits_json):
 
         rule_hits_started = time.time()
         thread_storage.set_value('rule_hits_started', rule_hits_started)
@@ -629,9 +658,9 @@ def handle_rule_hits(rule_hits_json, kafka_headers=None):
 
 @prometheus.INSIGHTS_ADVISOR_SERVICE_INVENTORY_EVENTS_ELAPSED.time()
 def handle_inventory_event(inventory_json_msg, kafka_headers=None):
-    with telemetry.kafka_consumer_span(INVENTORY_EVENTS_TOPIC, kafka_headers):
+    utils.clean_threading_cruft()
+    with telemetry.kafka_consumer_span(INVENTORY_EVENTS_TOPIC, kafka_headers, message=inventory_json_msg):
         # clean any old thread cruft and start the timer
-        utils.clean_threading_cruft()
         inventory_event_started = time.time()
         thread_storage.set_value('inventory_event_started', inventory_event_started)
         thread_storage.set_value('inventory_event_error', 0)

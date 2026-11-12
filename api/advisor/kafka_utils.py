@@ -416,7 +416,7 @@ class KafkaDispatcher(object):
             )
             return
 
-        with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka") as span:
+        with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka", message=body) as span:
             request_started.send(sender=self.__class__)
             try:
                 handler = handler_entry['handler']
@@ -436,7 +436,7 @@ class KafkaDispatcher(object):
             request_finished.send(sender=self.__class__)
 
     def _group_items_by_trace(self, items: list[tuple[JsonValue, list[tuple[str, bytes]]]]):
-        """Split a topic batch so each upstream trace gets its own CONSUMER span.
+        """Split batches by upstream trace and ingestion identity.
 
         A span can have only one parent. Mixing two ingress uploads in one
         batch nested the work under the first trace and hid it from the second.
@@ -447,7 +447,9 @@ class KafkaDispatcher(object):
         groups: dict = {}
         order: list = []
         for body, headers in items:
-            key = telemetry.trace_id_from_kafka_headers(headers)
+            attributes = telemetry.kafka_message_attributes(body)
+            key = (telemetry.trace_id_from_kafka_headers(headers),
+                   attributes.get("rh.org_id"), attributes.get("rh.request_id"))
             if key not in groups:
                 groups[key] = []
                 order.append(key)
@@ -480,7 +482,9 @@ class KafkaDispatcher(object):
                 for group in self._group_items_by_trace(items):
                     bodies = [b for b, _ in group]
                     headers_list = [h for _, h in group]
-                    with telemetry.kafka_batch_consumer_span(topic, headers_list=headers_list, message_count=len(bodies), tracer_name="advisor-kafka") as span:
+                    with telemetry.kafka_batch_consumer_span(
+                        topic, headers_list=headers_list, message_count=len(bodies), tracer_name="advisor-kafka", messages=bodies
+                    ) as span:
                         request_started.send(sender=self.__class__)
                         try:
                             handler(topic, bodies)
@@ -499,7 +503,7 @@ class KafkaDispatcher(object):
                         request_finished.send(sender=self.__class__)
             else:
                 for payload, headers in items:
-                    with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka") as span:
+                    with telemetry.kafka_consumer_span(topic, headers, tracer_name="advisor-kafka", message=payload) as span:
                         request_started.send(sender=self.__class__)
                         try:
                             handler(topic, payload)

@@ -141,23 +141,13 @@ def filter_on_resolution_risk(request):
 
 
 def filter_on_text(request, field_prefix='rule'):
-    # Filter on text search on all text fields, from the perspective of
-    # the upload
+    # Filter on text search on the rule ID and name (description), from the
+    # perspective of the upload
     srch = value_of_param(text_query_param, request)
     if srch:
-        # Thanks, Flake8, for not allowing wrapping of binary operators
-        # Also note that any joins here may affect the number of results
-        # found in annotations.
         return \
             Q(rule__rule_id__icontains=srch) | \
-            Q(rule__description__icontains=srch) | \
-            Q(rule__summary__icontains=srch) | \
-            Q(rule__generic__icontains=srch) | \
-            Q(rule__reason__icontains=srch) | \
-            Q(rule__more_info__icontains=srch) | \
-            Q(rule__in=Subquery(Resolution.objects.filter(
-                    resolution__icontains=srch
-            ).values('rule_id')))
+            Q(rule__description__icontains=srch)
     else:
         return Q()
 
