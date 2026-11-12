@@ -145,7 +145,7 @@ class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
         acked_uuid = hostack_serdata.validated_data['host_id']
         if not Host.objects.filter(inventory_id=acked_uuid).exists():
             return Response(
-                {'system_uuid': [f"Host with UUID '{acked_uuid}' not found"]},
+                {'systems': {"0": [f"Host with UUID '{acked_uuid}' not found"]}},
                 status=status.HTTP_400_BAD_REQUEST
             )
         new_host_ack, updated = self.get_queryset().update_or_create(

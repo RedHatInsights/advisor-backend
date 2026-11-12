@@ -14,8 +14,11 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+from api.models import AdvisorInventoryHost, Host, HostAck
 from django.test import TestCase
 from django.urls import reverse
+
+from datetime import timedelta, datetime
 
 from api.tests import constants, update_stale_dates
 from api.permissions import auth_header_for_testing
@@ -316,6 +319,41 @@ class HostAckViewTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         error_json = response.json()
         self.assertIn('systems', error_json)
+
+    def test_hostack_add_inventory_host_without_advisor_host(self):
+        # A system can be in inventory without Advisor ever having seen an
+        # upload from it, so it has no Host row.  Acking it must give a 400,
+        # not a 500 from the HostAck.host foreign key.
+        inventory_only_uuid = '00112233-4455-6677-8899-0123456789ff'
+        now = datetime.now()
+        AdvisorInventoryHost.objects.create(
+            inventory_id=inventory_only_uuid,
+            org_id=constants.standard_org,
+            account=constants.standard_acct,
+            display_name='inventory-only.example.com',
+            tags=[],
+            updated=now,
+            created=now,
+            last_check_in=now,
+            stale_timestamp=now + timedelta(days=1),
+            insights_id='aabbccdd-1122-3344-5566-7788990011ff',
+        )
+        self.assertFalse(Host.objects.filter(inventory_id=inventory_only_uuid).exists())
+
+        response = self.client.post(
+            reverse('hostack-list'),
+            data={
+                'rule': constants.active_rule,
+                'system_uuid': inventory_only_uuid,
+            },
+            **self.default_header
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {'systems': {"0": [f"Host with UUID '{inventory_only_uuid}' not found"]}}
+        )
+        self.assertFalse(HostAck.objects.filter(host_id=inventory_only_uuid).exists())
 
     def test_hostack_edit_justification(self):
         response = self.client.put(
