@@ -301,9 +301,13 @@ def stale_systems_q(org_id, field='host_id'):
 
 def cert_auth_q(request, relation=''):
     """
-    Returns a Q object that filters AdvisorInventoryHost on the system's
-    certificate if Certificate Authentication is used, or an empty Q object
-    otherwise.
+    Returns a Q object that filters on the system's certificate if
+    Certificate Authentication is used, or an empty Q object otherwise.
+
+    Satellite cert-auth always filters ``owner_id``. When
+    ``forwarded_subscription_manager_id`` is set on the request, the Q object
+    also filters ``subscription_manager_id``. ``relation`` is prefixed the
+    same way for both fields.
     """
     cert_auth_owner = getattr(request, 'auth_system', None)
     if cert_auth_owner is None:
@@ -316,8 +320,18 @@ def cert_auth_q(request, relation=''):
     # its own ID as the owner_id - i.e. it's 'self-owned'.  So this always
     # works :-)
     relation_field = relation + 'owner_id'
+    cert_auth_filter = models.Q(**{relation_field: cert_auth_owner})
 
-    return models.Q(**{relation_field: cert_auth_owner})
+    # Satellite cert-auth may also scope to one host via X-Forwarded-Identity.
+    # The header is only stashed for cert_type satellite, and only when it is
+    # a valid UUID. Absent header keeps owner_id-only scoping.
+    forwarded_smid = getattr(request, 'forwarded_subscription_manager_id', None)
+    if forwarded_smid:
+        cert_auth_filter &= models.Q(**{
+            relation + 'subscription_manager_id': forwarded_smid
+        })
+
+    return cert_auth_filter
 
 
 def convert_to_count_query(query, field='host', distinct=False):
@@ -665,6 +679,7 @@ class AdvisorInventoryHost(ExportModelOperationsMixin('advisorinventoryhost'), m
     bootc_booted_image = models.CharField(max_length=512, null=True, blank=True)
     bootc_booted_image_digest = models.CharField(max_length=256, null=True, blank=True)
     owner_id = models.UUIDField(null=True)
+    subscription_manager_id = models.UUIDField(null=True)
     rhc_client_id = models.UUIDField(null=True)
     workloads = models.JSONField(default=dict)
     system_update_method = models.CharField(max_length=50, null=True, blank=True)

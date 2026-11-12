@@ -69,6 +69,7 @@ class ParsedInventoryHost:
     bootc_booted_image: str | None
     bootc_booted_image_digest: str | None
     owner_id: str | None
+    subscription_manager_id: str | None
     rhc_client_id: str | None
     workloads: dict[str, Any]
     system_update_method: str | None
@@ -102,6 +103,7 @@ class ParsedInventoryHost:
             bootc_booted_image=self.bootc_booted_image,
             bootc_booted_image_digest=self.bootc_booted_image_digest,
             owner_id=self.owner_id,
+            subscription_manager_id=self.subscription_manager_id,
             rhc_client_id=self.rhc_client_id,
             workloads=self.workloads,
             system_update_method=self.system_update_method,
@@ -331,6 +333,7 @@ def parse_created_event(
         bootc_booted_image=bootc_booted.get('image') if isinstance(bootc_booted, dict) else None,
         bootc_booted_image_digest=bootc_booted.get('image_digest') if isinstance(bootc_booted, dict) else None,
         owner_id=system_profile_raw.get('owner_id') or None,
+        subscription_manager_id=host.get('subscription_manager_id') or None,
         rhc_client_id=system_profile_raw.get('rhc_client_id') or None,
         workloads=workloads,
         system_update_method=system_profile_raw.get('system_update_method'),
@@ -396,7 +399,8 @@ def bulk_upsert_hosts(upserts: list[ParsedInventoryHost]) -> None:
                 'created', 'updated', 'last_check_in', 'insights_id', 'stale_timestamp',
                 'reporter', 'per_reporter_staleness', 'os_name', 'os_major', 'os_minor',
                 'host_type', 'bootc_booted_image', 'bootc_booted_image_digest',
-                'owner_id', 'rhc_client_id', 'workloads', 'system_update_method',
+                'owner_id', 'subscription_manager_id', 'rhc_client_id', 'workloads',
+                'system_update_method',
                 'infrastructure_type', 'bios_release_date', 'bios_vendor',
                 'bios_version', 'release',
             ],

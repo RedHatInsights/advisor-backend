@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 from django.test import TestCase  # , override_settings
 from django.utils import timezone
-
 import inventory_prometheus_metrics as prometheus
 from django.core.signals import request_started, request_finished
 from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
@@ -74,7 +73,7 @@ create_new_host_msg: dict[str, JsonValue] = {
                     "image_digest": "sha256:abc123"
                 }
             },
-            "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+            "owner_id": constants.standard_acct_satellite,
             "rhc_client_id": "66ef39b8-e8f0-59d6-ca68-cee5983500c2",
             "system_update_method": "dnf",
             "workloads": {
@@ -100,6 +99,7 @@ create_new_host_msg: dict[str, JsonValue] = {
             "culled_timestamp": cull_time
         }},
         "groups": [{"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "name": "test-workspace"}],
+        "subscription_manager_id": constants.host_01_smid,
     }
 }
 update_host_msg: dict[str, JsonValue] = {
@@ -124,7 +124,7 @@ update_host_msg: dict[str, JsonValue] = {
         "stale_timestamp": stale_time,
         "system_profile": {
             "operating_system": {"name": "RHEL", "major": 7, "minor": 5},
-            "owner_id": "55df28a7-d7ef-48c5-bc57-8967025399b1",
+            "owner_id": constants.standard_acct_satellite,
             "system_update_method": "dnf",
             "workloads": {
                 "sap": {
@@ -142,6 +142,7 @@ update_host_msg: dict[str, JsonValue] = {
             "culled_timestamp": cull_time
         }},
         "groups": [],
+        "subscription_manager_id": constants.host_01_updated_smid,
     }
 }
 delete_host_msg: dict[str, JsonValue] = {  # Pick a host with acks, hostacks, etc.
@@ -239,7 +240,11 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertEqual(new_ihost.host_type, "edge")
             self.assertEqual(new_ihost.bootc_booted_image, "quay.io/example/rhel:9.4")
             self.assertEqual(new_ihost.bootc_booted_image_digest, "sha256:abc123")
-            self.assertEqual(str(new_ihost.owner_id), "55df28a7-d7ef-48c5-bc57-8967025399b1")
+            self.assertEqual(str(new_ihost.owner_id), constants.standard_acct_satellite)
+            self.assertEqual(
+                str(new_ihost.subscription_manager_id),
+                constants.host_01_smid,
+            )
             self.assertEqual(str(new_ihost.rhc_client_id), "66ef39b8-e8f0-59d6-ca68-cee5983500c2")
             self.assertEqual(new_ihost.workloads, {
                 "sap": {
@@ -389,6 +394,10 @@ class TestAdvisorInventoryServer(TestCase):
             self.assertEqual(inv_host.os_name, "RHEL")
             self.assertEqual(inv_host.os_major, 7)
             self.assertEqual(inv_host.os_minor, 5)
+            self.assertEqual(
+                str(inv_host.subscription_manager_id),
+                constants.host_01_updated_smid,
+            )
 
     def test_deleted_message_success(self):
         """
@@ -480,6 +489,7 @@ class TestAdvisorInventoryServer(TestCase):
         modified_msg = deepcopy(create_new_host_msg)
         modified_msg['host']['system_profile'] = {}
         modified_msg['host']['groups'] = []
+        del modified_msg['host']['subscription_manager_id']
         with self.assertLogs(logger='advisor-log', level='DEBUG'):
             handle_inventory_event('topic', [modified_msg])
         inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
@@ -492,6 +502,7 @@ class TestAdvisorInventoryServer(TestCase):
         self.assertIsNone(inv_host.bootc_booted_image)
         self.assertIsNone(inv_host.bootc_booted_image_digest)
         self.assertIsNone(inv_host.owner_id)
+        self.assertIsNone(inv_host.subscription_manager_id)
         self.assertIsNone(inv_host.rhc_client_id)
         self.assertEqual(inv_host.workloads, {})
         self.assertIsNone(inv_host.system_update_method)
