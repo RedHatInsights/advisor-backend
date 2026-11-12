@@ -25,6 +25,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+import api.kessel as kessel
 from api.permissions import auth_header_for_testing
 from api.serializers import StatusReadySerializer
 
@@ -89,12 +90,14 @@ class StatusViewSet(viewsets.ViewSet):
         # RBAC?
         try:
             if settings.RBAC_ENABLED:
-                rbac_header = auth_header_for_testing(
-                    username='test', account='540155', org_id='1979710', supply_http_header=True
-                )
                 # Use a basic timeout of 5 seconds here, no retries
+                rbac_verify = settings.RBAC_CA_CERT if settings.RBAC_CA_CERT else True
+                rbac_kwargs = {'timeout': 5, 'verify': rbac_verify}
+                rbac_header = auth_header_for_testing(supply_http_header=True)
+                if settings.RBAC_AUTHENTICATED and kessel.service_account_auth:
+                    rbac_kwargs['auth'] = kessel.service_account_auth
                 response = requests.get(
-                    settings.RBAC_URL, headers=rbac_header, timeout=5
+                    settings.RBAC_URL, headers=rbac_header, **rbac_kwargs,
                 )
                 status['rbac'] = response.status_code == 200
                 if response.status_code != 200:

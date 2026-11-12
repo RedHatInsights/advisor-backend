@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License along
 # with Insights Advisor. If not, see <https://www.gnu.org/licenses/>.
 
+from unittest.mock import patch
+
 import responses
 from requests.exceptions import Timeout
 
@@ -21,6 +23,7 @@ from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+import api.kessel as kessel
 from api.permissions import auth_header_for_testing
 from api.tests import constants
 
@@ -77,6 +80,45 @@ class StatusTestCase(TestCase):
             self.assertTrue(json_data[facility], f"Facility {facility} should be True")
         self.assertIn('errors', json_data)
         self.assertEqual(json_data['errors'], [])
+
+    @override_settings(
+        RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, RBAC_AUTHENTICATED=False,
+        **NORMAL_SETTINGS,
+    )
+    @patch('api.views.status.requests.get')
+    def test_status_ready_sends_identity_header_for_public_rbac(self, mock_get):
+        mock_get.return_value.status_code = 200
+
+        response = self.client.get(reverse('status-ready'))
+
+        self.assertEqual(response.status_code, 200)
+        request_kwargs = mock_get.call_args.kwargs
+        self.assertEqual(
+            request_kwargs['headers'], auth_header_for_testing(supply_http_header=True)
+        )
+        self.assertNotIn('auth', request_kwargs)
+        self.assertNotIn('x-rh-rbac-org-id', request_kwargs['headers'])
+
+    @override_settings(
+        RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True, RBAC_AUTHENTICATED=True,
+        **NORMAL_SETTINGS,
+    )
+    @patch('api.views.status.requests.get')
+    @patch('api.views.status.kessel.service_account_auth', new=object())
+    def test_status_ready_sends_identity_and_service_account_auth_for_rbac(
+        self, mock_get,
+    ):
+        mock_get.return_value.status_code = 200
+
+        response = self.client.get(reverse('status-ready'))
+
+        self.assertEqual(response.status_code, 200)
+        request_kwargs = mock_get.call_args.kwargs
+        self.assertEqual(
+            request_kwargs['headers'], auth_header_for_testing(supply_http_header=True)
+        )
+        self.assertIs(request_kwargs['auth'], kessel.service_account_auth)
+        self.assertNotIn('x-rh-rbac-org-id', request_kwargs['headers'])
 
     @override_settings(RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED='true', **NORMAL_SETTINGS)
     @responses.activate
