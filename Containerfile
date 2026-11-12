@@ -34,7 +34,7 @@ RUN microdnf -y install python3.12-pip python3.12-devel gcc libpq-devel && \
     pip3 -q install pipenv 'virtualenv>=21.15.1' && \
     PIP_IGNORE_INSTALLED=1 pipenv install && \
     microdnf remove -y python3.12-devel gcc libpq-devel \
-    acl binutils binutils-gold cpp \
+    binutils binutils-gold cpp \
     elfutils-debuginfod-client elfutils-default-yama-scope elfutils-libelf \
     elfutils-libs libxcrypt-devel glibc-devel make libgomp libmpc \
     libpkgconf pkgconf pkgconf-pkg-config \
