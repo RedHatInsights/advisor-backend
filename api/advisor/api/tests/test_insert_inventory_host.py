@@ -127,8 +127,6 @@ class InsertInventoryHostTests(TestCase):
         updated_data = dict(host_data)
         updated_data['display_name'] = 'renamed.example.com'
         updated_data['groups'] = []
-        # The upsert writes the row only when this timestamp is later than the stored one.
-        updated_data['updated'] = (now + timedelta(seconds=1)).isoformat()
         insert_inventory_host.insert_host(updated_data)
 
         self.assertEqual(

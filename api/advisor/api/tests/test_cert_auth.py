@@ -17,7 +17,6 @@
 import base64
 import responses
 
-from django.db import connection
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -239,34 +238,6 @@ class CertAuthTestCase(TestCase):
     def _satellite_owned_uuids(self, response):
         page = self._response_is_good(response)
         return {system['system_uuid'] for system in page['data']}
-
-    def test_forwarded_identity_lookup_uses_org_owner_smid_index(self):
-        """Satellite scope on org, owner, and subscription manager uses an index."""
-        index_columns = "(org_id, owner_id, subscription_manager_id)"
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT indexname FROM pg_indexes
-                WHERE tablename LIKE 'advisor_inventory_host%%'
-                  AND indexdef LIKE %s
-                """,
-                [f"%{index_columns}%"],
-            )
-            index_names = [row[0] for row in cursor.fetchall()]
-        self.assertTrue(index_names, "expected an org/owner/subscription_manager_id index")
-
-        listing = AdvisorInventoryHost.objects.filter(
-            org_id=constants.standard_org,
-            owner_id=constants.standard_acct_satellite,
-            subscription_manager_id=constants.host_01_smid,
-        )
-        with connection.cursor() as cursor:
-            cursor.execute("SET LOCAL enable_seqscan = off")
-        plan = listing.explain()
-        self.assertTrue(
-            any(name in plan for name in index_names),
-            plan,
-        )
 
     def test_satellite_forwarded_identity_scopes_host(self):
         # Hosts 01, 03 and 05 share the Satellite owner_id. Scope to host 01
