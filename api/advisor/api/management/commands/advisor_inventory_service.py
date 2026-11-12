@@ -217,9 +217,9 @@ def handle_inventory_event(topic: str, messages: list[dict[str, JsonValue]]) -> 
         logger.debug("Bulk delete committed successfully")
 
     if upserts:
-        # Drop events that are already older than the stored row. The upsert
-        # applies a row only when its timestamp is newer, including when
-        # another writer commits between this check and the insert.
+        # TOCTOU: a concurrent write between this check and bulk_upsert_hosts
+        # could be overwritten. Low risk (Kafka partitions by host ID) and
+        # self-correcting on the next event.
         upserts = _filter_stale_events(upserts)
 
     if upserts:
