@@ -319,6 +319,7 @@ class CertAuthTestCase(TestCase):
         headers['HTTP_X_FORWARDED_IDENTITY'] = 'not-a-uuid'
         response = self.client.get(reverse('system-list'), **headers)
         self.assertEqual(response.status_code, 403, response.content.decode())
+        self.assertIn('Invalid X-Forwarded-Identity header', response.content.decode())
 
     def test_non_satellite_cert_auth_ignores_forwarded_identity(self):
         # A header that does not match host 04 must not change system cert-auth.

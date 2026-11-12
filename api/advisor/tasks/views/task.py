@@ -38,7 +38,7 @@ from api.filters import (
     filter_system_profile_sap_sids_contains_query_param,
     host_group_name_query_param, filter_on_host_tags,
 )
-from api.models import cert_auth_q, get_host_group_filter
+from api.models import get_host_group_filter
 from api.permissions import (
     TurnpikeIdentityAuthentication, AssociatePermission,
     CertAuthPermission, ResourceScope, request_header_data,
@@ -194,7 +194,6 @@ class TaskViewSet(ReadOnlyModelViewSet, PaginateMixin):
             reverse_nulls_order=True
         )) + ['inventory_id']
         systems = Host.objects.filter(
-            cert_auth_q(request),
             apply_system_connected_filter(request),
             filter_on_host_tags(request, field_name='inventory_id'),
             filter_multi_param(request, 'system_profile'),

@@ -31,7 +31,7 @@ from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 
 from advisor_logging import logger
 
@@ -811,21 +811,14 @@ class ReadOnlyUser(BasePermission):
         return request.method in SAFE_METHODS
 
 
-_MALFORMED_FORWARDED_IDENTITY = object()
-
-
 def _satellite_forwarded_identity(request):
     """
     Read X-Forwarded-Identity for a satellite cert-auth request.
 
-    Returns the canonical lowercase UUID string, None when the header is
-    missing or blank, or _MALFORMED_FORWARDED_IDENTITY when it is not a UUID.
+    Returns the canonical lowercase UUID string, or None when the header is
+    missing or blank. A present non-UUID raises PermissionDenied (HTTP 403).
     """
-    raw = None
-    if hasattr(request, 'headers'):
-        raw = request.headers.get('X-Forwarded-Identity')
-    if raw is None and hasattr(request, 'META'):
-        raw = request.META.get('HTTP_X_FORWARDED_IDENTITY')
+    raw = request.headers.get('X-Forwarded-Identity')
     if not isinstance(raw, str):
         return None
     header_value = raw.strip()
@@ -834,7 +827,7 @@ def _satellite_forwarded_identity(request):
     try:
         return str(uuid.UUID(header_value))
     except ValueError:
-        return _MALFORMED_FORWARDED_IDENTITY
+        raise PermissionDenied("Invalid X-Forwarded-Identity header")
 
 
 class CertAuthPermission(BasePermission):
@@ -921,10 +914,6 @@ class CertAuthPermission(BasePermission):
         # X-Forwarded-Identity; every other identity ignores the header.
         if auth_system_type == 'satellite':
             forwarded = _satellite_forwarded_identity(request)
-            if forwarded is _MALFORMED_FORWARDED_IDENTITY:
-                return set_rbac_failure(
-                    request, 'Invalid X-Forwarded-Identity header'
-                )
             if forwarded:
                 setattr(request, 'forwarded_subscription_manager_id', forwarded)
 

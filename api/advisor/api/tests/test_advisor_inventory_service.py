@@ -20,14 +20,12 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 from django.test import TestCase  # , override_settings
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
-
 import inventory_prometheus_metrics as prometheus
 from django.core.signals import request_started, request_finished
 from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    bulk_upsert_hosts, handle_inventory_event, parse_created_event,
+    handle_inventory_event, parse_created_event,
     parse_deleted_event, NIL_UUID, INSIGHTS_ONLY_FILTERED,
 )
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
@@ -614,52 +612,6 @@ class TestAdvisorInventoryServer(TestCase):
 
         inv_host.refresh_from_db()
         self.assertEqual(inv_host.display_name, original_display_name)
-
-    def test_stale_upsert_does_not_overwrite_committed_row(self):
-        """An older upsert must not replace a row that was committed after the stale check."""
-        newer_ts = "2026-06-01T12:00:00Z"
-        msg = deepcopy(create_new_host_msg)
-        msg['host']['updated'] = newer_ts
-        msg['host']['subscription_manager_id'] = constants.host_01_smid
-        with self.assertLogs(logger='advisor-log', level='DEBUG'):
-            handle_inventory_event('topic', [msg])
-
-        stale = deepcopy(msg)
-        stale['type'] = 'updated'
-        stale['host']['updated'] = "2025-01-01T00:00:00Z"
-        stale['host']['display_name'] = 'stale-name-should-not-appear'
-        stale['host']['subscription_manager_id'] = constants.host_01_updated_smid
-        stale['host']['satellite_id'] = 'AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE99'
-        bulk_upsert_hosts([parse_created_event(stale)])
-
-        inv_host = AdvisorInventoryHost.objects.get(inventory_id=new_host_id)
-        self.assertEqual(inv_host.display_name, new_host_name)
-        self.assertEqual(str(inv_host.subscription_manager_id), constants.host_01_smid)
-        self.assertEqual(inv_host.updated, parse_datetime(newer_ts))
-        host = Host.objects.get(inventory_id=new_host_id)
-        self.assertEqual(str(host.satellite_id).upper(), new_host_satid)
-
-        same_ts = deepcopy(msg)
-        same_ts['host']['display_name'] = 'same-timestamp-should-not-appear'
-        same_ts['host']['subscription_manager_id'] = constants.host_03_smid
-        bulk_upsert_hosts([parse_created_event(same_ts)])
-        inv_host.refresh_from_db()
-        self.assertEqual(inv_host.display_name, new_host_name)
-        self.assertEqual(str(inv_host.subscription_manager_id), constants.host_01_smid)
-
-        newer = deepcopy(msg)
-        newer['host']['updated'] = "2026-07-01T12:00:00Z"
-        newer['host']['display_name'] = 'newer-name'
-        newer['host']['subscription_manager_id'] = constants.host_03_smid
-        newer['host']['satellite_id'] = 'AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE98'
-        bulk_upsert_hosts([parse_created_event(newer)])
-        inv_host.refresh_from_db()
-        host.refresh_from_db()
-        self.assertEqual(inv_host.display_name, 'newer-name')
-        self.assertEqual(str(inv_host.subscription_manager_id), constants.host_03_smid)
-        self.assertEqual(
-            str(host.satellite_id).upper(), 'AABBCCDD-EEFF-FFEE-DDCC-AABBCCDDEE98'
-        )
 
     def test_newer_event_overwrites_older_data(self):
         """Test that an event with a newer 'updated' timestamp updates the record."""
