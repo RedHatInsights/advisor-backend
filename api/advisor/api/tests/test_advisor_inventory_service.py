@@ -25,8 +25,8 @@ from django.core.signals import request_started, request_finished
 from kafka_utils import DummyConsumer, JsonValue, KafkaDispatcher
 # from project_settings import kafka_settings
 from api.management.commands.advisor_inventory_service import (
-    handle_inventory_event, parse_created_event,
-    parse_deleted_event, NIL_UUID, INSIGHTS_ONLY_FILTERED,
+    handle_inventory_event, parse_created_event, parse_deleted_event, NIL_UUID,
+    INSIGHTS_ONLY_FILTERED,
 )
 from api.models import AdvisorInventoryHost, CurrentReport, Host, HostAck, Upload
 from api.tests import constants
