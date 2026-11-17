@@ -12,6 +12,7 @@ requesting exclusive locks. Orphans are cleaned up after the parent commit.
 """
 
 import logging
+import math
 import os
 import random
 import time
@@ -23,7 +24,6 @@ from psycopg2 import sql
 logger = logging.getLogger(__name__)
 
 MigrationMode = Literal['automated', 'managed']
-EXCLUSIVE_UPGRADE_ATTEMPTS = 50
 
 
 def validate_num_partitions(num_partitions: int) -> None:
@@ -211,7 +211,7 @@ def create_partitioned_table_index(
         raise
 
 
-def _drop_index_locks(table, nowait, lock_timeout):
+def _drop_index_locks(table, nowait, lock_timeout, exclusive_upgrade_attempts):
     """Wait for maintenance compatibly with DML, then acquire exclusive locks."""
     return sql.SQL("""
         LOCK TABLE {table} IN SHARE UPDATE EXCLUSIVE MODE;
@@ -230,7 +230,8 @@ def _drop_index_locks(table, nowait, lock_timeout):
         END LOOP;
     """).format(
         table=table, lock_timeout=sql.Literal(lock_timeout),
-        upgrade_attempts=sql.Literal(EXCLUSIVE_UPGRADE_ATTEMPTS),
+        # Once in the timed phase, reach its bounded wait without another probe batch.
+        upgrade_attempts=sql.Literal(exclusive_upgrade_attempts if nowait else 1),
         exhausted=(sql.SQL('RAISE;') if nowait else sql.SQL(
             'LOCK TABLE {} IN ACCESS EXCLUSIVE MODE;'
         ).format(table)),
@@ -239,6 +240,7 @@ def _drop_index_locks(table, nowait, lock_timeout):
 
 def _drop_index_statement(
     db_connection, table_name, index_name, schema, if_exists, *, nowait=True, lock_timeout='100ms',
+    exclusive_upgrade_attempts=50,
 ):
     """Quote both SQL identifiers and the outer PL/pgSQL source separately."""
     table = sql.Identifier(schema, table_name) if schema else sql.Identifier(table_name)
@@ -281,32 +283,47 @@ def _drop_index_statement(
         index_name=sql.Literal(index.as_string(raw_connection)),
         table_name=sql.Literal(table.as_string(raw_connection)),
         missing=missing, drop=drop,
-        locks=_drop_index_locks(table, nowait, lock_timeout),
+        locks=_drop_index_locks(table, nowait, lock_timeout, exclusive_upgrade_attempts),
     ).as_string(raw_connection)
 
 
-def _remaining_drop_budget(deadline):
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
-        raise TimeoutError('Partitioned index drop exceeded max_total_seconds.')
-    return remaining
+class _DropBudget:
+    def __init__(self, seconds, table_name, index_name):
+        self.seconds = seconds
+        self.deadline = time.monotonic() + seconds
+        self.table_name = table_name
+        self.index_name = index_name
+        self.attempts = 0
 
+    def timeout_error(self):
+        attempt_word = 'attempt' if self.attempts == 1 else 'attempts'
+        return TimeoutError(
+            f'Could not finish dropping index {self.index_name!r} on table {self.table_name!r} '
+            f'within {self.seconds:g}s after {self.attempts} drop {attempt_word}.'
+        )
 
-def _limit_drop_statement(cursor, configured_timeout_ms, deadline):
-    """A long SQL statement must not overrun the remaining operation budget."""
-    remaining_ms = max(1, int(_remaining_drop_budget(deadline) * 1000))
-    timeout_ms = min(configured_timeout_ms, remaining_ms) if configured_timeout_ms else remaining_ms
-    cursor.execute("SELECT set_config('statement_timeout', %s, false)", [f'{timeout_ms}ms'])
+    def remaining(self):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise self.timeout_error()
+        return remaining
+
+    def limit_statement(self, cursor, configured_timeout_ms):
+        """Cap SQL to the remaining budget, rounded up to PostgreSQL milliseconds."""
+        remaining_ms = max(1, math.ceil(self.remaining() * 1000))
+        timeout_ms = min(configured_timeout_ms, remaining_ms) if configured_timeout_ms else remaining_ms
+        cursor.execute("SELECT set_config('statement_timeout', %s, false)", [f'{timeout_ms}ms'])
 
 
 def _drop_index_with_retry(
-    cursor, nowait_statement, wait_statement, index_name,
-    max_attempts, retry_delay_seconds, exclusive_wait_attempts, configured_timeout_ms, deadline,
+    cursor, nowait_statement, wait_statement, budget,
+    retry_delay_seconds, timed_phase_seconds, configured_timeout_ms,
 ):
-    for attempt in range(1, max_attempts + 1):
-        _limit_drop_statement(cursor, configured_timeout_ms, deadline)
-        nowait = attempt <= max_attempts - exclusive_wait_attempts
+    while True:
+        nowait = timed_phase_seconds == 0 or budget.remaining() > timed_phase_seconds
+        budget.limit_statement(cursor, configured_timeout_ms)
         statement = nowait_statement if nowait else wait_statement
+        budget.attempts += 1
         try:
             # Bind the entire DO body as a string literal. This also handles
             # identifiers containing quotes or a PL/pgSQL dollar delimiter.
@@ -314,12 +331,13 @@ def _drop_index_with_retry(
         except OperationalError as exc:
             if getattr(exc.__cause__, 'pgcode', None) != '55P03':
                 raise
-            if attempt == max_attempts:
-                raise
-            delay = min(retry_delay_seconds + random.uniform(0, 1), _remaining_drop_budget(deadline))
+            remaining = budget.remaining()
+            # A retry sleep must not consume the transition into the timed phase.
+            sleep_budget = max(0, remaining - timed_phase_seconds) if nowait and timed_phase_seconds else remaining
+            delay = min(retry_delay_seconds + random.uniform(0, 1), sleep_budget)
             logger.warning(
-                'Lock unavailable dropping %s (attempt %d/%d, exclusive=%s); retrying in %.2fs',
-                index_name, attempt, max_attempts, 'NOWAIT' if nowait else 'timed', delay,
+                'Lock unavailable dropping %s (attempt %d, exclusive=%s, %.2fs left); retrying in %.2fs',
+                budget.index_name, budget.attempts, 'NOWAIT' if nowait else 'timed', remaining, delay,
             )
             # Autocommit has already rolled back the unsuccessful DO block.
             time.sleep(delay)
@@ -338,10 +356,10 @@ def drop_partitioned_table_index(
     lock_timeout: str = '100ms',
     maintenance_lock_timeout: str = '1500ms',
     statement_timeout: str = '60s',
-    max_attempts: int = 120,
     retry_delay_seconds: float = 2,
-    exclusive_wait_attempts: int | None = None,
     max_total_seconds: float = 300,
+    timed_phase_seconds: float | None = None,
+    exclusive_upgrade_attempts: int = 50,
 ) -> None:
     """
     Drop a parent index and orphaned indexes with staged, bounded lock attempts.
@@ -354,9 +372,10 @@ def drop_partitioned_table_index(
 
     Exclusive upgrades retry NOWAIT in nested blocks, retaining maintenance
     locks while releasing any partial exclusive locks before short sleeps.
-    On multi-attempt calls, the final sixth (at least one) may additionally wait
-    briefly after these probes; a single attempt defaults to NOWAIT only.
-    exclusive_wait_attempts=0 disables timed exclusive acquisition entirely.
+    exclusive_upgrade_attempts controls probes per NOWAIT block (default 50).
+    During the final timed_phase_seconds of the shared budget, attempts may
+    wait briefly after one NOWAIT probe instead. The default is the final
+    fifth of max_total_seconds (60s of 300s); zero disables timed acquisition.
     lock_timeout bounds lock acquisition after draining, not lock-hold time.
     statement_timeout defaults to 60s for the entire DO, including draining.
     Only lock-unavailable failures retry the entire operation after rollback.
@@ -364,23 +383,27 @@ def drop_partitioned_table_index(
     Attached children disappear with the parent. Legacy orphan cleanup runs in
     separate transactions after the parent commit; a failed cleanup is resumable
     with if_exists=True. Timeout settings on the selected alias are restored.
-    Per-statement timeouts and max_attempts apply independently to each target.
+    Per-statement timeouts apply independently to each target.
     num_partitions is accepted for compatibility; actual leaves determine cleanup.
     max_total_seconds (default 300s) is shared by discovery, all targets, and
-    outer retry delays. Each SQL statement is capped to the remaining budget;
-    a statement timeout or exhausted overall budget stops the operation.
+    outer retry delays. Each SQL statement is capped to the remaining budget.
+    Budget exhaustion raises TimeoutError with the current target and the total
+    number of drop attempts, including when PostgreSQL cancels a statement at
+    the deadline. An earlier statement timeout is propagated without retry.
     """
     if num_partitions is not None:
         validate_num_partitions(num_partitions)
-    if max_attempts < 1 or retry_delay_seconds < 0:
-        raise ValueError('max_attempts must be positive and retry_delay_seconds nonnegative.')
+    if not 0 <= retry_delay_seconds < float('inf'):
+        raise ValueError('retry_delay_seconds must be nonnegative and finite.')
     if not 0 < max_total_seconds < float('inf'):
         raise ValueError('max_total_seconds must be positive and finite.')
-    if exclusive_wait_attempts is None:
-        exclusive_wait_attempts = max(1, max_attempts // 6) if max_attempts > 1 else 0
-    if not 0 <= exclusive_wait_attempts <= max_attempts:
-        raise ValueError('exclusive_wait_attempts must be between zero and max_attempts.')
-    deadline = time.monotonic() + max_total_seconds
+    if timed_phase_seconds is None:
+        timed_phase_seconds = max_total_seconds / 5
+    if not 0 <= timed_phase_seconds <= max_total_seconds:
+        raise ValueError('timed_phase_seconds must be between zero and max_total_seconds.')
+    if not isinstance(exclusive_upgrade_attempts, int) or exclusive_upgrade_attempts < 1:
+        raise ValueError('exclusive_upgrade_attempts must be a positive integer.')
+    budget = _DropBudget(max_total_seconds, _qualified_name(schema, table_name), index_name)
 
     db_connection = connections[using]
     if not db_connection.get_autocommit() or db_connection.in_atomic_block:
@@ -400,7 +423,7 @@ def drop_partitioned_table_index(
             )
             cursor.execute("SELECT setting::bigint FROM pg_settings WHERE name='statement_timeout'")
             configured_timeout_ms = cursor.fetchone()[0]
-            _limit_drop_statement(cursor, configured_timeout_ms, deadline)
+            budget.limit_statement(cursor, configured_timeout_ms)
             partitions = _table_partitions(db_connection, table_name, schema)
             logger.info(
                 "Dropping index '%s' from partitioned table '%s' with %d partitions",
@@ -412,19 +435,26 @@ def drop_partitioned_table_index(
                 for partition_schema, partition_name in partitions
             )
             for target_schema, target_table, target_index, target_if_exists in targets:
+                budget.table_name = _qualified_name(target_schema, target_table)
+                budget.index_name = target_index
                 nowait_statement = _drop_index_statement(
                     db_connection, target_table, target_index, target_schema, target_if_exists,
                     lock_timeout=lock_timeout,
+                    exclusive_upgrade_attempts=exclusive_upgrade_attempts,
                 )
                 wait_statement = _drop_index_statement(
                     db_connection, target_table, target_index, target_schema, target_if_exists,
                     nowait=False, lock_timeout=lock_timeout,
+                    exclusive_upgrade_attempts=exclusive_upgrade_attempts,
                 )
                 _drop_index_with_retry(
-                    cursor, nowait_statement, wait_statement, target_index,
-                    max_attempts, retry_delay_seconds, exclusive_wait_attempts,
-                    configured_timeout_ms, deadline,
+                    cursor, nowait_statement, wait_statement, budget,
+                    retry_delay_seconds, timed_phase_seconds, configured_timeout_ms,
                 )
+        except OperationalError as exc:
+            if getattr(exc.__cause__, 'pgcode', None) == '57014' and time.monotonic() >= budget.deadline:
+                raise budget.timeout_error() from exc
+            raise
         finally:
             # Every DO has committed or rolled back before settings are restored.
             cursor.execute(
