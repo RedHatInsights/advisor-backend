@@ -1,24 +1,31 @@
 """
-Helper functions for creating indexes on partitioned tables in Django migrations.
+Helpers for creating and dropping partitioned indexes in Django migrations.
 
 In automated mode (local, CI, ephemeral), indexes are created on the parent table only.
 PostgreSQL creates matching indexes on all partitions automatically.
 
 In managed mode (stage, production), indexes are created on each partition with
 CREATE INDEX CONCURRENTLY first, then on the parent table.
+
+Drops use autocommit, recursive NOWAIT table locks, and bounded retries. Orphan
+partition indexes are cleaned up after the parent drop has committed.
 """
 
 import logging
 import os
+import random
+import time
 from typing import Literal
 
-from django.db import connection, connections
+from django.db import OperationalError, connections
+from psycopg2 import sql
 
 logger = logging.getLogger(__name__)
 
 TABLE_NUM_PARTITIONS = int(os.getenv('ADVISOR_INVENTORY_HOST_NUM_PARTITIONS', '1'))
 
 MigrationMode = Literal['automated', 'managed']
+
 
 def validate_num_partitions(num_partitions: int) -> None:
     if not 1 <= num_partitions <= 16:
@@ -31,11 +38,12 @@ def _qualified_name(schema: str, name: str) -> str:
     return f'{schema}.{name}' if schema else name
 
 
-def _execute_sql(sql: str) -> None:
-    with connection.cursor() as cursor:
-        cursor.execute(sql)
+def _execute_sql(statement: str, using: str = 'default') -> None:
+    with connections[using].cursor() as cursor:
+        cursor.execute(statement)
 
-def _wait_for_concurrent_indexes() -> None:
+
+def _wait_for_concurrent_indexes(using: str = 'default') -> None:
     _execute_sql("""
             DO $$
             DECLARE
@@ -55,19 +63,22 @@ def _wait_for_concurrent_indexes() -> None:
                 RAISE NOTICE 'All concurrent index builds are complete.';
             END;
             $$;
-        """)
+        """, using=using)
+
 
 def _create_partitioned_table_index_automated(
     qualified_table: str,
     index_name: str,
     index_definition: str,
     unique_clause: str,
+    using: str,
 ) -> None:
     _execute_sql(
         f'CREATE {unique_clause}INDEX IF NOT EXISTS {index_name} '
-        f'ON {qualified_table} {index_definition};'
+        f'ON {qualified_table} {index_definition};', using=using,
     )
     return
+
 
 def _create_partitioned_table_index_managed(
     table_name: str,
@@ -77,9 +88,10 @@ def _create_partitioned_table_index_managed(
     num_partitions: int,
     schema: str,
     unique_clause: str,
+    using: str,
 ) -> None:
 
-    db_connection = connections['default']
+    db_connection = connections[using]
     db_connection.ensure_connection()
     original_autocommit = db_connection.get_autocommit()
 
@@ -95,7 +107,7 @@ def _create_partitioned_table_index_managed(
                     f'ON {qualified_partition} {index_definition};'
                 )
 
-        _wait_for_concurrent_indexes()
+        _wait_for_concurrent_indexes(using=using)
 
         with db_connection.cursor() as cursor:
             cursor.execute(
@@ -105,6 +117,7 @@ def _create_partitioned_table_index_managed(
     finally:
         db_connection.set_autocommit(original_autocommit)
 
+
 def create_partitioned_table_index(
     table_name: str,
     index_name: str,
@@ -113,6 +126,8 @@ def create_partitioned_table_index(
     schema: str = '',
     unique: bool = False,
     migration_mode: MigrationMode = os.getenv('MIGRATION_MODE', 'automated'),
+    *,
+    using: str = 'default',
 ) -> None:
     """
     Create an index on a partitioned table and all its partitions.
@@ -125,6 +140,7 @@ def create_partitioned_table_index(
         num_partitions: Number of hash partitions (0 .. num_partitions-1)
         schema: Optional schema name (empty string for the default public schema)
         unique: Create a UNIQUE index when True
+        using: Django database alias used by both creation modes
     """
     if num_partitions is None:
         num_partitions = TABLE_NUM_PARTITIONS
@@ -148,6 +164,7 @@ def create_partitioned_table_index(
             index_name=index_name,
             index_definition=index_definition,
             unique_clause=unique_clause,
+            using=using,
         )
         return
 
@@ -160,6 +177,7 @@ def create_partitioned_table_index(
             num_partitions=num_partitions,
             schema=schema,
             unique_clause=unique_clause,
+            using=using,
         )
 
     except Exception:
@@ -171,46 +189,134 @@ def create_partitioned_table_index(
         raise
 
 
+def _drop_index_statement(db_connection, table_name, index_name, schema, if_exists):
+    """Quote both SQL identifiers and the outer PL/pgSQL source separately."""
+    table = sql.Identifier(schema, table_name) if schema else sql.Identifier(table_name)
+    index = sql.Identifier(schema, index_name) if schema else sql.Identifier(index_name)
+    raw_connection = db_connection.connection
+    drop = sql.SQL('DROP INDEX {if_exists} {index};').format(
+        if_exists=sql.SQL('IF EXISTS' if if_exists else ''), index=index,
+    )
+    missing = sql.SQL('RETURN;') if if_exists else drop + sql.SQL(' RETURN;')
+    return sql.SQL("""
+        DECLARE
+            target_index oid := pg_catalog.to_regclass({index_name});
+        BEGIN
+            IF target_index IS NULL THEN
+                {missing}
+            END IF;
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_catalog.pg_index
+                WHERE indexrelid = target_index
+                  AND indrelid = pg_catalog.to_regclass({table_name})
+            ) THEN
+                RAISE EXCEPTION 'Index does not belong to the expected table';
+            END IF;
+            LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE NOWAIT;
+            {drop}
+        END
+    """).format(
+        index_name=sql.Literal(index.as_string(raw_connection)),
+        table_name=sql.Literal(table.as_string(raw_connection)),
+        missing=missing, table=table, drop=drop,
+    ).as_string(raw_connection)
+
+
+def _drop_index_with_retry(
+    cursor, statement, index_name, max_attempts, retry_delay_seconds,
+):
+    for attempt in range(1, max_attempts + 1):
+        try:
+            # Bind the entire DO body as a string literal. This also handles
+            # identifiers containing quotes or a PL/pgSQL dollar delimiter.
+            cursor.execute('DO %s', [statement])
+        except OperationalError as exc:
+            if getattr(exc.__cause__, 'pgcode', None) != '55P03':
+                raise
+            if attempt == max_attempts:
+                raise
+            delay = retry_delay_seconds + random.uniform(0, 1)
+            logger.warning(
+                'Lock unavailable dropping %s (attempt %d/%d); retrying in %.2fs',
+                index_name, attempt, max_attempts, delay,
+            )
+            # Autocommit has already rolled back the unsuccessful DO block.
+            time.sleep(delay)
+        else:
+            return
+
+
 def drop_partitioned_table_index(
     table_name: str,
     index_name: str,
     num_partitions: int | None = None,
     schema: str = '',
     if_exists: bool = True,
+    *,
+    using: str = 'default',
+    lock_timeout: str = '100ms',
+    statement_timeout: str = '2s',
+    max_attempts: int = 120,
+    retry_delay_seconds: float = 2,
 ) -> None:
     """
-    Drop an index from a partitioned table and any orphaned partition indexes.
+    Drop a parent index and any orphaned partition indexes with fail-fast locks.
 
-    Dropping the parent index cascades to attached partition indexes. Partition-level
-    indexes left over from a failed managed-mode creation are cleaned up explicitly.
+    Requires autocommit outside an atomic block. Each drop is one server-side
+    transaction: recursively lock the table NOWAIT and drop the index. Retry
+    only lock-unavailable errors, with no transaction held during the delay.
+
+    Attached children disappear with the parent. Legacy orphan cleanup runs in
+    separate transactions after the parent commit; a failed cleanup is resumable
+    with if_exists=True. Timeout settings on the selected alias are restored.
+    Timeouts and the retry budget apply independently to each index drop.
     """
     if num_partitions is None:
         num_partitions = TABLE_NUM_PARTITIONS
 
     validate_num_partitions(num_partitions)
+    if max_attempts < 1 or retry_delay_seconds < 0:
+        raise ValueError('max_attempts must be positive and retry_delay_seconds nonnegative.')
 
-    qualified_table = _qualified_name(schema, table_name)
-    if_exists_clause = 'IF EXISTS' if if_exists else ''
+    db_connection = connections[using]
+    if not db_connection.get_autocommit() or db_connection.in_atomic_block:
+        raise RuntimeError('Dropping a partitioned index requires a non-atomic migration.')
 
     logger.info(
         "Dropping index '%s' from partitioned table '%s' with %d partitions",
         index_name,
-        qualified_table,
+        _qualified_name(schema, table_name),
         num_partitions,
     )
 
-    try:
-        _execute_sql(f'DROP INDEX {if_exists_clause} {_qualified_name(schema, index_name)};')
-
-        for i in range(num_partitions):
-            partition_index_name = f'{table_name}_p{i}_{index_name}'
-            _execute_sql(
-                f'DROP INDEX {if_exists_clause} {_qualified_name(schema, partition_index_name)};'
-            )
-    except Exception:
-        logger.exception(
-            "Error dropping index '%s' from partitioned table '%s'",
-            index_name,
-            qualified_table,
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT current_setting('lock_timeout'), current_setting('statement_timeout')"
         )
-        raise
+        original_timeouts = cursor.fetchone()
+        try:
+            # Set statement_timeout before DO starts, rather than inside it.
+            cursor.execute(
+                "SELECT set_config('lock_timeout', %s, false), "
+                "set_config('statement_timeout', %s, false)",
+                [lock_timeout, statement_timeout],
+            )
+            targets = [(table_name, index_name, if_exists)]
+            targets.extend(
+                (f'{table_name}_p{i}', f'{table_name}_p{i}_{index_name}', True)
+                for i in range(num_partitions)
+            )
+            for target_table, target_index, target_if_exists in targets:
+                statement = _drop_index_statement(
+                    db_connection, target_table, target_index, schema, target_if_exists,
+                )
+                _drop_index_with_retry(
+                    cursor, statement, target_index, max_attempts, retry_delay_seconds,
+                )
+        finally:
+            # Every DO has committed or rolled back before settings are restored.
+            cursor.execute(
+                "SELECT set_config('lock_timeout', %s, false), "
+                "set_config('statement_timeout', %s, false)",
+                original_timeouts,
+            )
