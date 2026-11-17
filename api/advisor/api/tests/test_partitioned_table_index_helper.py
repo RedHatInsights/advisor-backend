@@ -86,18 +86,53 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
         return name
 
     @contextmanager
-    def _hold(self, table):
+    def _hold(self, table, mode='ACCESS SHARE'):
         blocker = connection.Database.connect(**connection.get_connection_params())
         try:
             with blocker.cursor() as cursor:
                 cursor.execute('SET LOCAL lock_timeout = %s', ['100ms'])
-                cursor.execute(sql.SQL('LOCK TABLE ONLY {} IN ACCESS SHARE MODE').format(
-                    self._relation(table),
+                cursor.execute(sql.SQL('LOCK TABLE ONLY {} IN {} MODE').format(
+                    self._relation(table), sql.SQL(mode),
                 ))
             yield blocker
         finally:
             blocker.rollback()
             blocker.close()
+
+    def _start_worker(self, operation):
+        ready = threading.Event()
+        state = {'errors': []}
+
+        def run():
+            try:
+                worker_connection = connections['default']
+                worker_connection.ensure_connection()
+                state['pid'] = worker_connection.connection.get_backend_pid()
+                ready.set()
+                operation()
+            except Exception as exc:
+                state['errors'].append(exc)
+            finally:
+                ready.set()
+                connections['default'].close()
+
+        worker = threading.Thread(target=run)
+        worker.start()
+        self.assertTrue(ready.wait(timeout=5))
+        self.assertIn('pid', state, state['errors'])
+        return worker, state
+
+    def _wait_for_lock(self, pid, table):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            locks = self._execute(
+                'SELECT mode FROM pg_locks WHERE pid=%s AND relation=to_regclass(%s) AND NOT granted',
+                [pid, self._relation(table).as_string(connection.connection)],
+            )
+            if locks:
+                return [row[0] for row in locks]
+            time.sleep(0.01)
+        self.fail(f'Worker {pid} did not wait for a lock on {table}.')
 
     def test_drop_preserves_rows_and_other_indexes_and_restores_timeouts(self):
         self._create()
@@ -281,19 +316,17 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
         gate_key = uuid.uuid4().int % (2 ** 31)
         with gate.cursor() as cursor:
             cursor.execute('SELECT pg_advisory_lock(%s)', [gate_key])
-        build_statement = helper._drop_index_statement
+        build_locks = helper._drop_index_locks
         errors = []
 
         def pause_before_table_lock(*args, **kwargs):
-            statement = build_statement(*args, **kwargs)
             # Test-only barrier makes concurrent replacement deterministic.
-            return statement.replace(
-                'LOCK TABLE ', f'PERFORM pg_advisory_xact_lock({gate_key}); LOCK TABLE ', 1,
-            )
+            barrier = sql.SQL('PERFORM pg_advisory_xact_lock({});').format(sql.Literal(gate_key))
+            return barrier + build_locks(*args, **kwargs)
 
         def drop_in_another_session():
             try:
-                self._drop(lock_timeout='5s', statement_timeout='10s')
+                self._drop(maintenance_lock_timeout='5s', statement_timeout='10s')
             except Exception as exc:
                 errors.append(exc)
             finally:
@@ -301,7 +334,7 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
 
         worker = threading.Thread(target=drop_in_another_session)
         try:
-            with patch.object(helper, '_drop_index_statement', side_effect=pause_before_table_lock):
+            with patch.object(helper, '_drop_index_locks', side_effect=pause_before_table_lock):
                 worker.start()
                 deadline = time.monotonic() + 4
                 while time.monotonic() < deadline:
@@ -340,9 +373,8 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
                 release.start()
 
             try:
-                with patch.object(helper, 'LOCK_SCHEDULE', (None, '1500ms')):
-                    with patch.object(helper.time, 'sleep', side_effect=release_during_timed_wait) as sleep:
-                        self._drop(max_attempts=2)
+                with patch.object(helper.time, 'sleep', side_effect=release_during_timed_wait) as sleep:
+                    self._drop(max_attempts=2, lock_timeout='200ms')
                 sleep.assert_called_once()
             finally:
                 if release is not None:
@@ -354,11 +386,93 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
         self._create()
         original = self._timeouts()
         with self._hold(self.table):
-            with patch.object(helper, 'LOCK_SCHEDULE', (None, '50ms')):
-                with patch.object(helper.time, 'sleep') as sleep:
-                    with self.assertRaises(OperationalError) as raised:
-                        self._drop(max_attempts=2)
-                sleep.assert_called_once()
+            with patch.object(helper.time, 'sleep') as sleep:
+                with self.assertRaises(OperationalError) as raised:
+                    self._drop(max_attempts=2, lock_timeout='50ms')
+            sleep.assert_called_once()
         self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
         self.assertTrue(self._exists(self.index))
         self.assertEqual(self._timeouts(), original)
+
+    def test_orphan_cleanup_uses_actual_partitions_when_legacy_count_is_low(self):
+        orphans = [self._orphan(part) for part in range(2)]
+        self._drop(num_partitions=1)
+        for orphan in orphans:
+            self.assertFalse(self._exists(orphan))
+
+    def test_managed_creation_prepares_every_actual_partition_concurrently(self):
+        # A nonstandard name also proves discovery is not just range(count).
+        partition = 'actual_leaf'
+        self._execute(sql.SQL('ALTER TABLE {} RENAME TO {}').format(
+            self._relation(f'{self.table}_p1'), sql.Identifier(partition),
+        ))
+        with self._hold(partition, 'SHARE UPDATE EXCLUSIVE') as blocker:
+            worker, state = self._start_worker(lambda: helper.create_partitioned_table_index(
+                self.table, self.index, 'USING GIN (data jsonb_path_ops)',
+                num_partitions=1, schema=self.schema, migration_mode='managed',
+            ))
+            try:
+                self.assertEqual(self._wait_for_lock(state['pid'], partition), ['ShareUpdateExclusiveLock'])
+            finally:
+                blocker.rollback()
+                worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(state['errors'], [])
+        self.assertTrue(self._exists(self.index))
+        self.assertTrue(self._exists(f'{partition}_{self.index}'))
+
+    def test_missing_table_is_idempotent(self):
+        self._execute(sql.SQL('DROP TABLE {} CASCADE').format(self._relation(self.table)))
+        self._drop()
+
+    def test_maintenance_timeout_is_separate_from_exclusive_lock_timeout(self):
+        self._create()
+        original = self._timeouts()
+        with self._hold(f'{self.table}_p0', 'SHARE UPDATE EXCLUSIVE'):
+            with self.assertRaises(OperationalError) as raised:
+                self._drop(maintenance_lock_timeout='50ms', lock_timeout='5s', statement_timeout='300ms')
+        self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
+        self.assertEqual(self._timeouts(), original)
+
+    def test_exclusive_timed_fallback_can_be_disabled(self):
+        self._create()
+        with self._hold(self.table), patch.object(helper.time, 'sleep'):
+            with self.assertRaises(OperationalError) as raised:
+                self._drop(max_attempts=2, exclusive_wait_attempts=0,
+                           lock_timeout='5s', statement_timeout='300ms')
+        self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
+
+    def test_draining_multiple_maintenance_locks_allows_reads_and_writes(self):
+        self._create()
+        with self._hold(f'{self.table}_p0', 'SHARE UPDATE EXCLUSIVE') as first:
+            with self._hold(f'{self.table}_p1', 'SHARE UPDATE EXCLUSIVE') as second:
+                worker, state = self._start_worker(lambda: self._drop(
+                    maintenance_lock_timeout='5s', statement_timeout='10s', exclusive_wait_attempts=0,
+                ))
+                original = self._timeouts()
+                try:
+                    for part, blocker in [(0, first), (1, second)]:
+                        self.assertEqual(
+                            self._wait_for_lock(state['pid'], f'{self.table}_p{part}'),
+                            ['ShareUpdateExclusiveLock'],
+                        )
+                        self.assertEqual(self._execute(
+                            "SELECT count(*) FROM pg_locks WHERE pid=%s AND mode='AccessExclusiveLock'",
+                            [state['pid']],
+                        )[0][0], 0)
+                        self._execute("SELECT set_config('statement_timeout', '300ms', false)")
+                        self.assertEqual(self._execute(sql.SQL('SELECT count(*) FROM {}').format(
+                            self._relation(self.table),
+                        ))[0][0], 10)
+                        self._execute(sql.SQL("UPDATE {} SET data='{{}}'::jsonb WHERE inventory_id=1").format(
+                            self._relation(self.table),
+                        ))
+                        blocker.rollback()
+                finally:
+                    self._execute("SELECT set_config('statement_timeout', %s, false)", [original[1]])
+                    first.rollback()
+                    second.rollback()
+                    worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(state['errors'], [])
+        self.assertFalse(self._exists(self.index))
