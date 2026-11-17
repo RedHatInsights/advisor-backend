@@ -18,6 +18,10 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
 
     def setUp(self):
         super().setUp()
+        # Keep contention tests prompt; the retention test exercises all probes.
+        upgrades = patch.object(helper, 'EXCLUSIVE_UPGRADE_ATTEMPTS', 1)
+        upgrades.start()
+        self.addCleanup(upgrades.stop)
         self.schema = f'index_helper_{uuid.uuid4().hex[:12]}'
         self.table = 'hosts'
         self.index = 'idx_staleness'
@@ -441,6 +445,96 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
                 self._drop(max_attempts=2, exclusive_wait_attempts=0,
                            lock_timeout='5s', statement_timeout='300ms')
         self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
+
+    def test_single_attempt_defaults_to_nowait(self):
+        self._create()
+        with self._hold(self.table):
+            with self.assertRaises(OperationalError) as raised:
+                self._drop(lock_timeout='5s', statement_timeout='300ms')
+        self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
+
+    def test_exclusive_retries_keep_maintenance_locks_and_release_partial_exclusive_locks(self):
+        self._create()
+        original = self._timeouts()
+        with self._hold(f'{self.table}_p1') as blocker:
+            with patch.object(helper, 'EXCLUSIVE_UPGRADE_ATTEMPTS', 50):
+                worker, state = self._start_worker(lambda: self._drop(statement_timeout='10s'))
+                try:
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        if self._execute(
+                            "SELECT wait_event='PgSleep' FROM pg_stat_activity WHERE pid=%s",
+                            [state['pid']],
+                        ) == [(True,)]:
+                            break
+                        time.sleep(0.01)
+                    else:
+                        self.fail('Exclusive upgrade did not reach its retry sleep.')
+                    locks = self._execute(
+                        'SELECT mode, count(*) FROM pg_locks WHERE pid=%s AND granted '
+                        "AND mode IN ('ShareUpdateExclusiveLock', 'AccessExclusiveLock') GROUP BY mode",
+                        [state['pid']],
+                    )
+                    self.assertEqual(locks, [('ShareUpdateExclusiveLock', 3)])
+                    self._execute("SELECT set_config('statement_timeout', '300ms', false)")
+                    self.assertEqual(self._execute(sql.SQL('SELECT count(*) FROM {}').format(
+                        self._relation(self.table),
+                    ))[0][0], 10)
+                    self._execute(sql.SQL("UPDATE {} SET data='{{}}'::jsonb WHERE inventory_id=1").format(
+                        self._relation(self.table),
+                    ))
+                finally:
+                    self._execute("SELECT set_config('statement_timeout', %s, false)", [original[1]])
+                    blocker.rollback()
+                    worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(state['errors'], [])
+        self.assertFalse(self._exists(self.index))
+
+    def test_partition_discovery_obeys_maintenance_timeout_and_restores_settings(self):
+        self._create()
+        original = self._timeouts()
+        with self._hold(f'{self.table}_p1', 'ACCESS EXCLUSIVE') as blocker:
+            # Avoid an indefinite hang if discovery regresses outside the timeout scope.
+            release = threading.Timer(1, blocker.rollback)
+            release.start()
+            try:
+                with self.assertRaises(OperationalError) as raised:
+                    self._drop(maintenance_lock_timeout='50ms')
+            finally:
+                release.cancel()
+                release.join(timeout=2)
+        self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
+        self.assertEqual(self._timeouts(), original)
+        self.assertTrue(self._exists(self.index))
+
+    def test_overall_budget_caps_a_blocked_statement(self):
+        self._create()
+        original = self._timeouts()
+        with self._hold(f'{self.table}_p1', 'SHARE UPDATE EXCLUSIVE') as blocker:
+            release = threading.Timer(1, blocker.rollback)
+            release.start()
+            try:
+                with self.assertRaises(OperationalError) as raised:
+                    self._drop(max_total_seconds=0.1, maintenance_lock_timeout='5s')
+            finally:
+                release.cancel()
+                release.join(timeout=2)
+        self.assertEqual(raised.exception.__cause__.pgcode, '57014')
+        self.assertEqual(self._timeouts(), original)
+        self.assertTrue(self._exists(self.index))
+
+    def test_overall_budget_caps_retry_delays(self):
+        self._create()
+        original = self._timeouts()
+        with self._hold(self.table):
+            started = time.monotonic()
+            with self.assertRaisesRegex(TimeoutError, 'max_total_seconds'):
+                self._drop(max_attempts=2, retry_delay_seconds=5, max_total_seconds=0.1,
+                           exclusive_wait_attempts=0)
+            self.assertLess(time.monotonic() - started, 2)
+        self.assertEqual(self._timeouts(), original)
+        self.assertTrue(self._exists(self.index))
 
     def test_draining_multiple_maintenance_locks_allows_reads_and_writes(self):
         self._create()

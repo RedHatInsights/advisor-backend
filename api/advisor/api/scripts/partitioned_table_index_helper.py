@@ -23,6 +23,7 @@ from psycopg2 import sql
 logger = logging.getLogger(__name__)
 
 MigrationMode = Literal['automated', 'managed']
+EXCLUSIVE_UPGRADE_ATTEMPTS = 50
 
 
 def validate_num_partitions(num_partitions: int) -> None:
@@ -215,10 +216,24 @@ def _drop_index_locks(table, nowait, lock_timeout):
     return sql.SQL("""
         LOCK TABLE {table} IN SHARE UPDATE EXCLUSIVE MODE;
         PERFORM pg_catalog.set_config('lock_timeout', {lock_timeout}, true);
-        LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE {nowait};
+        FOR upgrade_attempt IN 1..{upgrade_attempts} LOOP
+            BEGIN
+                LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE NOWAIT;
+                EXIT;
+            EXCEPTION WHEN lock_not_available THEN
+                IF upgrade_attempt = {upgrade_attempts} THEN
+                    {exhausted}
+                ELSE
+                    PERFORM pg_catalog.pg_sleep(0.05 + pg_catalog.random() * 0.05);
+                END IF;
+            END;
+        END LOOP;
     """).format(
         table=table, lock_timeout=sql.Literal(lock_timeout),
-        nowait=sql.SQL('NOWAIT' if nowait else ''),
+        upgrade_attempts=sql.Literal(EXCLUSIVE_UPGRADE_ATTEMPTS),
+        exhausted=(sql.SQL('RAISE;') if nowait else sql.SQL(
+            'LOCK TABLE {} IN ACCESS EXCLUSIVE MODE;'
+        ).format(table)),
     )
 
 
@@ -270,11 +285,26 @@ def _drop_index_statement(
     ).as_string(raw_connection)
 
 
+def _remaining_drop_budget(deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError('Partitioned index drop exceeded max_total_seconds.')
+    return remaining
+
+
+def _limit_drop_statement(cursor, configured_timeout_ms, deadline):
+    """A long SQL statement must not overrun the remaining operation budget."""
+    remaining_ms = max(1, int(_remaining_drop_budget(deadline) * 1000))
+    timeout_ms = min(configured_timeout_ms, remaining_ms) if configured_timeout_ms else remaining_ms
+    cursor.execute("SELECT set_config('statement_timeout', %s, false)", [f'{timeout_ms}ms'])
+
+
 def _drop_index_with_retry(
     cursor, nowait_statement, wait_statement, index_name,
-    max_attempts, retry_delay_seconds, exclusive_wait_attempts,
+    max_attempts, retry_delay_seconds, exclusive_wait_attempts, configured_timeout_ms, deadline,
 ):
     for attempt in range(1, max_attempts + 1):
+        _limit_drop_statement(cursor, configured_timeout_ms, deadline)
         nowait = attempt <= max_attempts - exclusive_wait_attempts
         statement = nowait_statement if nowait else wait_statement
         try:
@@ -286,7 +316,7 @@ def _drop_index_with_retry(
                 raise
             if attempt == max_attempts:
                 raise
-            delay = retry_delay_seconds + random.uniform(0, 1)
+            delay = min(retry_delay_seconds + random.uniform(0, 1), _remaining_drop_budget(deadline))
             logger.warning(
                 'Lock unavailable dropping %s (attempt %d/%d, exclusive=%s); retrying in %.2fs',
                 index_name, attempt, max_attempts, 'NOWAIT' if nowait else 'timed', delay,
@@ -307,10 +337,11 @@ def drop_partitioned_table_index(
     using: str = 'default',
     lock_timeout: str = '100ms',
     maintenance_lock_timeout: str = '1500ms',
-    statement_timeout: str = '10s',
+    statement_timeout: str = '60s',
     max_attempts: int = 120,
     retry_delay_seconds: float = 2,
     exclusive_wait_attempts: int | None = None,
+    max_total_seconds: float = 300,
 ) -> None:
     """
     Drop a parent index and orphaned indexes with staged, bounded lock attempts.
@@ -321,38 +352,39 @@ def drop_partitioned_table_index(
     maintenance_lock_timeout must exceed deadlock_timeout to let PostgreSQL
     interrupt ordinary autovacuum. Wraparound-prevention vacuum is protected.
 
-    Exclusive acquisition uses NOWAIT initially. By default, the final sixth of
-    max_attempts (at least one) waits briefly; exclusive_wait_attempts=0 disables
-    that fallback. lock_timeout bounds all lock waits after draining, including
-    this final exclusive wait. statement_timeout bounds the entire DO block.
-    Retry only lock-unavailable errors, with no transaction held during delays.
+    Exclusive upgrades retry NOWAIT in nested blocks, retaining maintenance
+    locks while releasing any partial exclusive locks before short sleeps.
+    On multi-attempt calls, the final sixth (at least one) may additionally wait
+    briefly after these probes; a single attempt defaults to NOWAIT only.
+    exclusive_wait_attempts=0 disables timed exclusive acquisition entirely.
+    lock_timeout bounds lock acquisition after draining, not lock-hold time.
+    statement_timeout defaults to 60s for the entire DO, including draining.
+    Only lock-unavailable failures retry the entire operation after rollback.
 
     Attached children disappear with the parent. Legacy orphan cleanup runs in
     separate transactions after the parent commit; a failed cleanup is resumable
     with if_exists=True. Timeout settings on the selected alias are restored.
-    Timeouts and the retry budget apply independently to each index drop.
+    Per-statement timeouts and max_attempts apply independently to each target.
     num_partitions is accepted for compatibility; actual leaves determine cleanup.
+    max_total_seconds (default 300s) is shared by discovery, all targets, and
+    outer retry delays. Each SQL statement is capped to the remaining budget;
+    a statement timeout or exhausted overall budget stops the operation.
     """
     if num_partitions is not None:
         validate_num_partitions(num_partitions)
     if max_attempts < 1 or retry_delay_seconds < 0:
         raise ValueError('max_attempts must be positive and retry_delay_seconds nonnegative.')
+    if not 0 < max_total_seconds < float('inf'):
+        raise ValueError('max_total_seconds must be positive and finite.')
     if exclusive_wait_attempts is None:
-        exclusive_wait_attempts = max(1, max_attempts // 6)
+        exclusive_wait_attempts = max(1, max_attempts // 6) if max_attempts > 1 else 0
     if not 0 <= exclusive_wait_attempts <= max_attempts:
         raise ValueError('exclusive_wait_attempts must be between zero and max_attempts.')
+    deadline = time.monotonic() + max_total_seconds
 
     db_connection = connections[using]
     if not db_connection.get_autocommit() or db_connection.in_atomic_block:
         raise RuntimeError('Dropping a partitioned index requires a non-atomic migration.')
-
-    partitions = _table_partitions(db_connection, table_name, schema)
-    logger.info(
-        "Dropping index '%s' from partitioned table '%s' with %d partitions",
-        index_name,
-        _qualified_name(schema, table_name),
-        len(partitions),
-    )
 
     with db_connection.cursor() as cursor:
         cursor.execute(
@@ -365,6 +397,14 @@ def drop_partitioned_table_index(
                 "SELECT set_config('lock_timeout', %s, false), "
                 "set_config('statement_timeout', %s, false)",
                 [maintenance_lock_timeout, statement_timeout],
+            )
+            cursor.execute("SELECT setting::bigint FROM pg_settings WHERE name='statement_timeout'")
+            configured_timeout_ms = cursor.fetchone()[0]
+            _limit_drop_statement(cursor, configured_timeout_ms, deadline)
+            partitions = _table_partitions(db_connection, table_name, schema)
+            logger.info(
+                "Dropping index '%s' from partitioned table '%s' with %d partitions",
+                index_name, _qualified_name(schema, table_name), len(partitions),
             )
             targets = [(schema, table_name, index_name, if_exists)]
             targets.extend(
@@ -383,6 +423,7 @@ def drop_partitioned_table_index(
                 _drop_index_with_retry(
                     cursor, nowait_statement, wait_statement, target_index,
                     max_attempts, retry_delay_seconds, exclusive_wait_attempts,
+                    configured_timeout_ms, deadline,
                 )
         finally:
             # Every DO has committed or rolled back before settings are restored.
