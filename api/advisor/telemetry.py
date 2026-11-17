@@ -515,6 +515,18 @@ def _message_identity_scope(attributes):
                 thread_storage.set_value(field, value)
 
 
+def record_processing_error(description: str) -> None:
+    """Mark a handled processing failure without changing message handling."""
+    if not OTEL_AVAILABLE:
+        return
+    try:
+        span = trace.get_current_span()
+        if span.is_recording():
+            span.set_status(trace.Status(trace.StatusCode.ERROR, description))
+    except Exception:
+        pass
+
+
 def _enrich_span_from_thread_storage(span):
     """
     Enrich a span with rh.org_id and rh.request_id from thread_storage.
