@@ -1,4 +1,4 @@
-"""Drop the unused partitioned staleness GIN index using fail-fast locking."""
+"""Drop the unused partitioned staleness GIN index with bounded lock attempts."""
 
 from django.db import migrations
 
@@ -16,7 +16,6 @@ def drop_per_reporter_staleness_index(apps, schema_editor):
     drop_partitioned_table_index(
         table_name=PARENT_TABLE,
         index_name=INDEX_NAME,
-        schema='public',
         using=schema_editor.connection.alias,
     )
 
@@ -26,7 +25,6 @@ def recreate_per_reporter_staleness_index(apps, schema_editor):
         table_name=PARENT_TABLE,
         index_name=INDEX_NAME,
         index_definition=INDEX_DEFINITION,
-        schema='public',
         using=schema_editor.connection.alias,
     )
 
@@ -42,6 +40,5 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             drop_per_reporter_staleness_index,
             recreate_per_reporter_staleness_index,
-            atomic=False,
         ),
     ]

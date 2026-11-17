@@ -2,9 +2,11 @@
 
 from contextlib import contextmanager
 from unittest.mock import patch
+import threading
+import time
 import uuid
 
-from django.db import DatabaseError, OperationalError, ProgrammingError, connection, transaction
+from django.db import DatabaseError, OperationalError, ProgrammingError, connection, connections, transaction
 from django.test import TransactionTestCase
 from psycopg2 import sql
 
@@ -233,13 +235,22 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
         self.assertEqual(raised.exception.__cause__.pgcode, 'P0001')
         self.assertTrue(self._exists(self.index))
 
-    def test_quoted_index_names_and_dollar_delimiters(self):
-        self.index = 'index"$drop_index$% odd'
-        self._execute(sql.SQL('CREATE INDEX {} ON {} USING GIN (data)').format(
-            sql.Identifier(self.index), self._relation(self.table),
-        ))
-        self._drop()
-        self.assertFalse(self._exists(self.index))
+    def test_create_and_drop_quote_identifiers_consistently(self):
+        for old, new in [(self.table, 'MixedHosts'), ('hosts_p0', 'MixedHosts_p0'), ('hosts_p1', 'MixedHosts_p1')]:
+            self._execute(sql.SQL('ALTER TABLE {} RENAME TO {}').format(
+                self._relation(old), sql.Identifier(new),
+            ))
+        self.table = 'MixedHosts'
+        self.index = 'MiXeD"$drop_index$% odd'
+        for mode in ['automated', 'managed']:
+            with self.subTest(mode=mode):
+                helper.create_partitioned_table_index(
+                    self.table, self.index, 'USING GIN (data jsonb_path_ops)',
+                    num_partitions=2, schema=self.schema, migration_mode=mode,
+                )
+                self.assertTrue(self._exists(self.index))
+                self._drop()
+                self.assertFalse(self._exists(self.index))
 
     def test_legacy_positional_arguments_and_search_path(self):
         self._create()
@@ -261,3 +272,93 @@ class PartitionedTableIndexHelperTestCase(TransactionTestCase):
         )
         self._drop()
         self.assertFalse(self._exists(self.index))
+
+    def test_index_replaced_between_validation_and_lock_is_preserved(self):
+        self._create()
+        self._execute(sql.SQL('CREATE TABLE {} (data jsonb)').format(self._relation('other')))
+        gate = connection.Database.connect(**connection.get_connection_params())
+        gate.autocommit = True
+        gate_key = uuid.uuid4().int % (2 ** 31)
+        with gate.cursor() as cursor:
+            cursor.execute('SELECT pg_advisory_lock(%s)', [gate_key])
+        build_statement = helper._drop_index_statement
+        errors = []
+
+        def pause_before_table_lock(*args, **kwargs):
+            statement = build_statement(*args, **kwargs)
+            # Test-only barrier makes concurrent replacement deterministic.
+            return statement.replace(
+                'LOCK TABLE ', f'PERFORM pg_advisory_xact_lock({gate_key}); LOCK TABLE ', 1,
+            )
+
+        def drop_in_another_session():
+            try:
+                self._drop(lock_timeout='5s', statement_timeout='10s')
+            except Exception as exc:
+                errors.append(exc)
+            finally:
+                connections['default'].close()
+
+        worker = threading.Thread(target=drop_in_another_session)
+        try:
+            with patch.object(helper, '_drop_index_statement', side_effect=pause_before_table_lock):
+                worker.start()
+                deadline = time.monotonic() + 4
+                while time.monotonic() < deadline:
+                    if self._execute(
+                        "SELECT EXISTS (SELECT FROM pg_locks WHERE locktype='advisory' "
+                        'AND classid=0 AND objid=%s AND NOT granted)', [gate_key],
+                    )[0][0]:
+                        break
+                    time.sleep(0.01)
+                else:
+                    self.fail('Index drop did not reach the synchronization barrier.')
+                self._execute(sql.SQL('DROP INDEX {}').format(self._relation(self.index)))
+                self._execute(sql.SQL('CREATE INDEX {} ON {} (data)').format(
+                    sql.Identifier(self.index), self._relation('other'),
+                ))
+                with gate.cursor() as cursor:
+                    cursor.execute('SELECT pg_advisory_unlock(%s)', [gate_key])
+                worker.join(timeout=10)
+        finally:
+            gate.close()
+            if worker.is_alive():
+                worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(len(errors), 1, errors)
+        self.assertEqual(errors[0].__cause__.pgcode, 'P0001')
+        self.assertTrue(self._exists(self.index))
+
+    def test_final_timed_attempt_can_acquire_a_previously_busy_lock(self):
+        self._create()
+        original = self._timeouts()
+        release = None
+        with self._hold(self.table) as blocker:
+            def release_during_timed_wait(delay):
+                nonlocal release
+                release = threading.Timer(0.05, blocker.rollback)
+                release.start()
+
+            try:
+                with patch.object(helper, 'LOCK_SCHEDULE', (None, '1500ms')):
+                    with patch.object(helper.time, 'sleep', side_effect=release_during_timed_wait) as sleep:
+                        self._drop(max_attempts=2)
+                sleep.assert_called_once()
+            finally:
+                if release is not None:
+                    release.join(timeout=2)
+        self.assertFalse(self._exists(self.index))
+        self.assertEqual(self._timeouts(), original)
+
+    def test_final_timed_attempt_remains_bounded_and_restores_timeouts(self):
+        self._create()
+        original = self._timeouts()
+        with self._hold(self.table):
+            with patch.object(helper, 'LOCK_SCHEDULE', (None, '50ms')):
+                with patch.object(helper.time, 'sleep') as sleep:
+                    with self.assertRaises(OperationalError) as raised:
+                        self._drop(max_attempts=2)
+                sleep.assert_called_once()
+        self.assertEqual(raised.exception.__cause__.pgcode, '55P03')
+        self.assertTrue(self._exists(self.index))
+        self.assertEqual(self._timeouts(), original)
