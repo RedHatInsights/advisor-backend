@@ -218,9 +218,35 @@ def test_engine_results_trace_continuity_in_thread_pool(mocker, in_memory_tracer
     # Verify trace continuity across the thread pool boundary
     assert format(consumer_span.context.trace_id, "032x") == upstream_trace_id
     assert format(consumer_span.parent.span_id, "016x") == upstream_span_id
+    assert consumer_span.status.status_code == trace.StatusCode.UNSET
     metadata = sample_engine_results["input"]["platform_metadata"]
     assert consumer_span.attributes["rh.request_id"] == metadata["request_id"]
     assert consumer_span.attributes["rh.org_id"] == metadata["org_id"]
+
+
+@pytest.mark.parametrize("failure_stage", ["host", "reports"])
+def test_caught_database_failure_marks_consumer_error(mocker, in_memory_tracer, sample_engine_results, failure_stage):
+    from django.db import IntegrityError
+
+    mocker.patch("service.payload_tracker.payload_status")
+    mocker.patch("service.db.SystemType.objects.filter").return_value.first.return_value = mocker.MagicMock()
+    if failure_stage == "host":
+        mocker.patch("service.db.Host.objects.filter", side_effect=IntegrityError("host write failed"))
+    else:
+        mocker.patch("service.db.Host.objects.filter").return_value.first.return_value = mocker.MagicMock()
+        mocker.patch("service.transaction.atomic")
+        mocker.patch("service.db.Host.objects.select_for_update", side_effect=IntegrityError("report write failed"))
+
+    assert handle_engine_results(sample_engine_results) is False
+
+    span = next(s for s in in_memory_tracer.get_finished_spans() if s.name == "process platform.engine.results")
+    assert span.status.status_code == trace.StatusCode.ERROR
+    assert span.status.description == ("Could not create host" if failure_stage == "host" else "Failed to process upload")
+    assert not any(event.name == "rh.ingestion.completed"
+                   for finished in in_memory_tracer.get_finished_spans() for event in finished.events)
+    metadata = sample_engine_results["input"]["platform_metadata"]
+    assert span.attributes["rh.request_id"] == metadata["request_id"]
+    assert span.attributes["rh.org_id"] == metadata["org_id"]
 
 
 def test_shutdown_telemetry_flushes_spans(mocker):

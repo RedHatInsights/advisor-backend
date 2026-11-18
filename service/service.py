@@ -245,6 +245,7 @@ def create_db_reports(
     upload_source_created = None
 
     def log_db_failure(message, get_exception=False):
+        telemetry.record_processing_error(message)
         if get_exception:
             the_error = traceback.format_exc()
             message += f': {the_error}'
