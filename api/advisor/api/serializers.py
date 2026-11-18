@@ -441,6 +441,14 @@ class HostAckInputSerializer(serializers.ModelSerializer):
     )
     system_uuid = serializers.UUIDField(source='host_id')
 
+    def validate(self, data):
+        assert 'request' in self._context, (
+            "Supply the request in the context to the serializer, e.g. "
+            "context={'request': request}"
+        )
+        validate_hosts_in_org([data['host_id']], self._context['request'].auth['org_id'])
+        return data
+
     class Meta:
         model = models.HostAck
         fields = (
