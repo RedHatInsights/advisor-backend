@@ -74,6 +74,11 @@ class constants(object):
     host_01_uuid = '00112233-4455-6677-8899-012345678901'
     host_01_inid = 'ffeeddcc-bbaa-9988-7766-554433221101'
     host_01_said = 'aabbccdd-eeff-ffee-ddcc-aabbccddee01'
+    # Subscription-manager IDs for Satellite forwarded-identity scoping.
+    host_01_smid = '49f86dd6-9b43-4db2-8b56-b5637f0b0969'
+    host_01_updated_smid = '11111111-2222-4333-8444-555555555501'
+    host_03_smid = '11111111-2222-4333-8444-555555555553'
+    other_smid = '11111111-2222-4333-8444-555555555504'
     host_03_name = 'system03.example.com'
     host_03_uuid = '00112233-4455-6677-8899-012345678903'
     host_03_inid = 'ffeeddcc-bbaa-9988-7766-554433221103'
