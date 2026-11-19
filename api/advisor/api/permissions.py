@@ -462,8 +462,13 @@ def has_rbac_permission(request: Request, permission: str = 'advisor:*:*') -> tu
         logger.info(f"RBAC permissions list {tested_list} did not match sought permission {request_permission}")
         return (False, elapsed)
     else:
-        logger.warning(f"Warning: Got status {response.status_code} from RBAC: '{response.content.decode()}'")
-        return (False, elapsed)
+        return (
+            set_rbac_failure(
+                request,
+                f"Got status {response.status_code} from RBAC: '{response.content.decode()}'"
+            ),
+            elapsed
+        )
 
 
 def get_workspace_id(
