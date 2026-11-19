@@ -58,6 +58,8 @@ jsonschema = "==4.24.0"
 confluent-kafka = "==2.10.1"
 pyasn1 = "==0.6.5"
 certifi = ">=2026.10.19"
+urllib3 = ">=2.8.0"
+sqlparse = ">=0.6.1"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"
