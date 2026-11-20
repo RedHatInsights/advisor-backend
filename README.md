@@ -480,6 +480,39 @@ now and need to be updated in the DB so the hosts will show up in queries:
 python api/advisor/manage.py freshen_hosts
 ```
 
+## Reindexing and vacuuming the database
+
+The `vacuum_db` command rebuilds indexes (`REINDEX ... CONCURRENTLY`) and
+runs `VACUUM ANALYZE` on the busiest Advisor tables.  It goes through
+Django's database connection, so it does not need the `psql` client, and is
+what the `vacuum-advisor-db` cronjob runs.  Partitioned tables and indexes
+are reindexed one partition at a time, and the size of each reindexed
+relation is reported before and after.
+
+The defaults are chosen to limit the load on the database: VACUUM is
+throttled like autovacuum (`--vacuum-cost-delay 2`), lock waits give up
+after 30 seconds (`--lock-timeout`), and indexes over 8 GB are not rebuilt
+(`--max-index-size-mb`).  Invalid indexes left by an interrupted
+`REINDEX CONCURRENTLY` are dropped.  A failing statement does not stop the
+rest, but the command exits non-zero.  Run
+`python api/advisor/manage.py vacuum_db --help` for all options.
+
+```bash
+# Show what would be run, without running it
+python api/advisor/manage.py vacuum_db --dry-run
+
+# Reindex and vacuum the built-in list of tables
+python api/advisor/manage.py vacuum_db
+
+# Rebuild just one index, with no VACUUM, cancelling it after an hour
+python api/advisor/manage.py vacuum_db --reindex-index api_host_pkey \
+    --skip-vacuum --statement-timeout 1h
+
+# VACUUM ANALYZE two tables only, pausing 30 seconds between them
+python api/advisor/manage.py vacuum_db --skip-reindex \
+    --vacuum-table api_currentreport --vacuum-table api_upload --pause 30
+```
+
 ## Running the Service with podman-compose
 
 Start the service
