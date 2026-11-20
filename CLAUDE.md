@@ -25,33 +25,13 @@ python api/advisor/manage.py freshen_hosts
 
 ### Running
 ```bash
-pipenv run runapi                    # Start API server (Django runserver on :8000)
-pipenv run runservice                # Start Kafka service consumer
-pipenv run runtasks                  # Start Tasks service consumer (decommissioned)
 python api/advisor/manage.py advisor_inventory_service  # Start inventory event consumer
-```
-
-### Testing
-```bash
-pipenv run testapi                   # Run API tests (uses Django test runner with coverage)
-pipenv run testtasks                 # Run Tasks tests
-pipenv run testservice               # Run Service tests (pytest)
-pipenv run linter                    # Run flake8 on api/ and service/
 ```
 
 ### Running a single API test
 ```bash
 python api/advisor/manage.py test api/advisor/api/tests/test_rule_views    # Single test module
 python api/advisor/manage.py test api/advisor/api/tests/test_rule_views.RuleViewSetTests.test_rule_list  # Single test
-```
-
-### Other useful pipenv scripts
-```bash
-pipenv run migratedb                 # Run migrations
-pipenv run makemigrations            # Create new migrations
-pipenv run loaddata                  # Load production fixtures
-pipenv run loadtestdata              # Load test fixtures
-pipenv run apicovhtml                # Generate HTML coverage report
 ```
 
 ## Architecture
@@ -66,13 +46,9 @@ The Django project (`api/advisor/project_settings/`) serves three APIs with sepa
 
 ### Key data models (`api/advisor/api/models.py`)
 
-- **Rule**, **RuleImpact**, **Resolution**, **Playbook** — Rule content imported from external repos via `import_content` command
 - **AdvisorInventoryHost** — Advisor-owned, hash-partitioned host data populated from HBI Kafka events. Uses the `for_account(request)` manager method to scope queries by org_id and staleness
 - **Host** — Advisor's own host tracking (Satellite IDs, etc.), used as FK for uploads/reports
 - **CurrentReport** — Active rule hits per host. Central to most queries
-- **Upload** — Groups reports from a single system check-in; tracks `checked_on` date
-- **Ack** / **HostAck** — User acknowledgments to suppress recommendations (global or per-host)
-- **Pathway** — Groups rules into remediation pathways
 
 ### Query filtering pattern (`api/advisor/api/filters.py`)
 
