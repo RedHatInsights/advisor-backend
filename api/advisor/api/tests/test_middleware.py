@@ -21,7 +21,7 @@ from django.test import TestCase, override_settings
 from django.core.exceptions import ValidationError
 
 from api.management.commands.weekly_report_emails import (
-    MiddlewareClient, get_users_to_email, send_emails,
+    MiddlewareClient, UserLookupError, get_users_to_email, send_emails,
 )
 from api.utils import user_account_details
 from api.tests import constants
@@ -39,7 +39,9 @@ class MiddlewareTests(TestCase):
         # MIDDLEWARE_HOST_URL not set
         with self.assertRaisesRegex(ValidationError, 'Middleware host URL not defined'):
             user_account_details('username')
-        with self.assertRaisesRegex(ValidationError, 'Middleware host URL not defined'):
+        # get_users_to_email turns this into a UserLookupError so the org is
+        # skipped rather than its users being treated as expired
+        with self.assertRaisesRegex(UserLookupError, 'Middleware host URL not defined'):
             get_users_to_email('1234567', '9876543', '2020-10-06T04:36:27Z')
 
     @responses.activate
@@ -51,7 +53,7 @@ class MiddlewareTests(TestCase):
         with self.settings(MIDDLEWARE_HOST_URL=test_middleware_url):
             with self.assertRaisesRegex(ValidationError, 'Connection error retrieving account details'):
                 user_account_details('username')
-            with self.assertRaisesRegex(ValidationError, 'Connection error retrieving account details'):
+            with self.assertRaisesRegex(UserLookupError, 'Connection error retrieving account details'):
                 get_users_to_email('1234567', '9876543', '2010-10-06T04:36:27Z')
 
     @responses.activate

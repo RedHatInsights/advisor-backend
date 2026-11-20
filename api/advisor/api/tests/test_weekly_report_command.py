@@ -391,8 +391,11 @@ class WeeklyReportEmailTest(TestCase):
         # Normal emails sent out
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0]['recipients'], ['"Test User" test-user@example.com'])
-        # But the unknown and invalid users have been deleted
-        self.assertEqual(WeeklyReportSubscription.objects.count(), 4)
+        # The inactive user has been deleted, but the user without permission
+        # is only skipped - their subscription is kept
+        self.assertEqual(WeeklyReportSubscription.objects.count(), 5)
+        self.assertFalse(WeeklyReportSubscription.objects.filter(username='test-deleted-user').exists())
+        self.assertTrue(WeeklyReportSubscription.objects.filter(username='denied-user').exists())
 
     @responses.activate
     def test_weekly_report_emails_command_with_rbac_unknown_user(self):
@@ -430,6 +433,75 @@ class WeeklyReportEmailTest(TestCase):
         ):
             call_command('weekly_report_emails', '--org-id=1234567', stdout=out)
         self.assertEqual(len(mail.outbox), 0)
+
+    @responses.activate
+    def test_weekly_report_emails_command_rbac_error_skips_org(self):
+        """
+        An RBAC error (e.g. the 400 RBAC returns for v1 access queries on V2
+        orgs) is not a denial: no emails are sent, and no subscriptions are
+        deleted even with --delete-expired-users.
+        """
+        responses.add_callback(responses.POST, test_middleware_url + '/users', callback=lookup_user_details)
+        responses.add_callback(responses.POST, test_middleware_url + '/sendEmails', callback=count_posted_emails)
+        responses.add(
+            responses.GET, TEST_RBAC_V1_ACCESS, status=400,
+            json={"detail": "V2 orgs may only query applications in the allowed list. Disallowed: advisor"},
+        )
+        subscription_count = WeeklyReportSubscription.objects.count()
+
+        mail.outbox = []
+        with self.settings(
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
+            MIDDLEWARE_HOST_URL=test_middleware_url
+        ):
+            with self.assertLogs(logger='advisor-log', level='ERROR') as logs:
+                call_command('weekly_report_emails', '--delete-expired', stdout=StringIO())
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(WeeklyReportSubscription.objects.count(), subscription_count)
+        self.assertTrue(any(
+            'Could not look up weekly report users' in line
+            and f'org_id {constants.standard_org}' in line and 'Got status 400 from RBAC' in line
+            for line in logs.output
+        ))
+
+    @responses.activate
+    def test_weekly_report_emails_command_middleware_error_skips_org(self):
+        """
+        A middleware account lookup failure for one org skips only that org:
+        later orgs still get their emails, and no subscriptions in the failed
+        org are deleted even with --delete-expired-users.
+        """
+        def lookup_user_details_failing_for_first_org(request):
+            if 'first-acct-user' in json.loads(request.body)['users']:
+                return (500, {}, json.dumps('Internal server error'))
+            return lookup_user_details(request)
+
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/users',
+            callback=lookup_user_details_failing_for_first_org,
+        )
+        responses.add_callback(responses.POST, test_middleware_url + '/sendEmails', callback=count_posted_emails)
+        responses.add_callback(responses.GET, TEST_RBAC_V1_ACCESS, callback=lookup_rbac_permissions)
+
+        mail.outbox = []
+        with self.settings(
+            RBAC_URL=TEST_RBAC_URL, RBAC_ENABLED=True,
+            MIDDLEWARE_HOST_URL=test_middleware_url
+        ):
+            with self.assertLogs(logger='advisor-log', level='ERROR') as logs:
+                call_command('weekly_report_emails', '--delete-expired', stdout=StringIO())
+        # Org 2000001 is processed before org 9876543, which still gets its email
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0]['recipients'], ['"Test User" test-user@example.com'])
+        # The failed org's subscription is kept; the inactive user in the
+        # other org is still deleted as normal
+        self.assertTrue(WeeklyReportSubscription.objects.filter(username='first-acct-user').exists())
+        self.assertFalse(WeeklyReportSubscription.objects.filter(username='test-deleted-user').exists())
+        self.assertTrue(any(
+            'Could not look up weekly report users' in line
+            and 'org_id 2000001' in line and 'middleware account lookup failed' in line
+            for line in logs.output
+        ))
 
 
 class KesselWeeklyReportTest(TestCase):
@@ -473,7 +545,8 @@ class KesselWeeklyReportTest(TestCase):
         usernames = [u['username'] for u in users_to_email]
         self.assertIn('test-user', usernames)
         self.assertNotIn('denied-user', usernames)
-        self.assertIn('denied-user', expired)
+        # Denied users are skipped, not expired, so they are never deleted
+        self.assertNotIn('denied-user', expired)
 
     @responses.activate
     def test_kessel_path_empty_permitted_set_sends_no_emails(self):
@@ -494,6 +567,9 @@ class KesselWeeklyReportTest(TestCase):
                     '9876543', '1234567', timezone.now()
                 )
         self.assertEqual(len(users_to_email), 0)
+        # An empty permitted set must not mark anyone for deletion
+        self.assertNotIn('test-user', expired)
+        self.assertNotIn('denied-user', expired)
 
     @responses.activate
     def test_kessel_disabled_falls_back_to_v1(self):
@@ -520,11 +596,13 @@ class KesselWeeklyReportTest(TestCase):
         self.assertIn('test-user', usernames)
         self.assertNotIn('denied-user', usernames)
 
-    def test_kessel_error_returns_none(self):
-        """When Kessel errors, _get_kessel_permitted_user_ids returns None
-        so the v1 fallback is used."""
+    def test_kessel_error_raises_lookup_error(self):
+        """When Kessel errors, _get_kessel_permitted_user_ids raises
+        UserLookupError rather than falling back to the v1 check."""
         from unittest.mock import patch
-        from api.management.commands.weekly_report_emails import _get_kessel_permitted_user_ids
+        from api.management.commands.weekly_report_emails import (
+            _get_kessel_permitted_user_ids, UserLookupError,
+        )
 
         with patch('api.management.commands.weekly_report_emails.kessel') as mock_kessel:
             mock_kessel.client.client = True
@@ -538,8 +616,69 @@ class KesselWeeklyReportTest(TestCase):
                         'api.management.commands.weekly_report_emails.feature_flag_is_enabled',
                         return_value=True,
                     ):
-                        result = _get_kessel_permitted_user_ids('9876543')
-        self.assertIsNone(result)
+                        with self.assertRaisesMessage(UserLookupError, 'gRPC down'):
+                            _get_kessel_permitted_user_ids(constants.standard_org)
+
+    def test_kessel_no_workspace_raises_lookup_error(self):
+        from unittest.mock import patch
+        from api.management.commands.weekly_report_emails import (
+            _get_kessel_permitted_user_ids, UserLookupError,
+        )
+
+        with patch('api.management.commands.weekly_report_emails.kessel') as mock_kessel:
+            mock_kessel.client.client = True
+            with patch(
+                'api.management.commands.weekly_report_emails.get_workspace_id',
+                return_value=('', 0.0),
+            ):
+                with self.settings(KESSEL_ENABLED=True):
+                    with patch(
+                        'api.management.commands.weekly_report_emails.feature_flag_is_enabled',
+                        return_value=True,
+                    ):
+                        with self.assertRaisesMessage(UserLookupError, 'no default workspace'):
+                            _get_kessel_permitted_user_ids(constants.standard_org)
+
+    def test_kessel_client_unavailable_raises_lookup_error(self):
+        from unittest.mock import patch
+        from api.management.commands.weekly_report_emails import (
+            _get_kessel_permitted_user_ids, UserLookupError,
+        )
+
+        with patch('api.management.commands.weekly_report_emails.kessel') as mock_kessel:
+            mock_kessel.client.client = None
+            with self.settings(KESSEL_ENABLED=True):
+                with patch(
+                    'api.management.commands.weekly_report_emails.feature_flag_is_enabled',
+                    return_value=True,
+                ):
+                    with self.assertRaisesMessage(UserLookupError, 'not available'):
+                        _get_kessel_permitted_user_ids(constants.standard_org)
+
+    @responses.activate
+    def test_kessel_error_skips_org_without_deleting(self):
+        """A Kessel lookup failure skips the org: no emails, and no
+        subscriptions deleted even with --delete-expired-users."""
+        from unittest.mock import patch
+        from api.management.commands.weekly_report_emails import UserLookupError
+
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/users',
+            callback=lookup_user_details,
+        )
+        responses.add_callback(
+            responses.POST, test_middleware_url + '/sendEmails',
+            callback=count_posted_emails,
+        )
+        subscription_count = WeeklyReportSubscription.objects.count()
+        with patch(
+            'api.management.commands.weekly_report_emails._get_kessel_permitted_user_ids',
+            side_effect=UserLookupError("Kessel error: deadline exceeded"),
+        ):
+            with self.settings(MIDDLEWARE_HOST_URL=test_middleware_url):
+                call_command('weekly_report_emails', '--delete-expired', stdout=StringIO())
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(WeeklyReportSubscription.objects.count(), subscription_count)
 
 
 class AdvisorInventoryWeeklyReportTestCase(TestCase):

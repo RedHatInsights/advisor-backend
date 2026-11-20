@@ -20,8 +20,8 @@ from os import environ
 from time import sleep
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand
-from django.http import Http404
 from django.db.models import Q, Count, Exists, OuterRef
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -54,26 +54,34 @@ The process here is:
     1) `get_users_to_email()` - get the users in this org_id to email - if no
       users in this org_id, go to next org_id
        a) `utils.user_account_details()` - get the account details for all the
-          users in this org_id
+          users in this org_id.  If the lookup fails, skip the whole org_id
+          this run - no emails are sent and no subscriptions are deleted.
        b) Filter out users that don't have account details
        c) Filter out users that don't have the RBAC WEEKLY_REPORT_RBAC_PERMISSION
-          set
+          set.  These users are skipped this run but never deleted, so they
+          get emails again if their permission comes back.  If Kessel or RBAC
+          can't tell us (an error rather than a denial), skip the whole
+          org_id this run - no emails are sent and no subscriptions are
+          deleted.
        d) Filter out users that don't have an email address
-       filtered users are 'rejected' - see later
+       users filtered in a), b) and d) are 'expired' - see later
     2) `get_reports()` - get the reports for this account
     3) `send_emails()` - for each user in this org_id receiving reports:
       a) Try sending the formatted HTML report to this user
       b) Try up to MAIL_RETRY_ATTEMPTS times with exponential backoff
       c) If successful, update the subscription's last email report date
-      d) If the --delete-rejected-users flag is set, delete users rejected by
-         the filters in step 2.b.1
+      d) If the --delete-expired-users flag is set, delete the expired users
+         from step 2.b.1 - users whose accounts are gone, inactive or have no
+         email address.  Users without permission are not deleted.
 3) Report the number of failed and successful emails sent (per person).
 """
 
 delete_expired_users_help = '''
-If set, users that will not receive an email will be deleted.  This
-includes users that have been deleted in the portal, inactive users,
-users without RBAC permissions, and users without an email address.
+If set, subscriptions are deleted for users whose accounts are gone:
+users that have been deleted in the portal, inactive users, and users
+without an email address.  Users without permission to receive the report
+are skipped but not deleted, so a wrong or temporary denial does not
+unsubscribe them.
 '''
 
 default_subject = environ.get('MAIL_SUBJECT', 'Weekly Red Hat Lightspeed summary report')
@@ -200,38 +208,52 @@ def get_reports(org_id):
     }
 
 
+class UserLookupError(Exception):
+    """
+    We could not look up the users in an org - their account details, or
+    whether they have permission to receive the weekly report.  This is
+    different from the users being gone or denied: the org is skipped for
+    this run rather than its users being treated as expired (and possibly
+    having their subscriptions deleted), and the other orgs still get their
+    emails.
+    """
+
+
 def _get_kessel_permitted_user_ids(org_id):
     """
     Use Kessel StreamedListSubjects to find all user_ids that have the
     weekly-report view permission on this org's default workspace.
-    Returns a set of user_id strings, or None if Kessel is not available.
+    Returns a set of user_id strings, or None if Kessel is not enabled (so
+    the RBAC v1 check is used instead).  Raises UserLookupError if
+    Kessel is enabled but the lookup fails.
     """
     if not (settings.KESSEL_ENABLED and feature_flag_is_enabled(FLAG_ADVISOR_KESSEL_ENABLED)):
         return None
     if not kessel.client or not kessel.client.client:
-        logger.warning("Kessel client not available for weekly report permission check")
-        return None
+        raise UserLookupError("Kessel client not available")
     try:
         request = request_object_for_testing(
             auth_by=RHIdentityAuthentication, org_id=org_id
         )
         workspace_id, _ = get_workspace_id(request)
         if not workspace_id:
-            logger.error("No workspace found for org %s", org_id)
-            return None
+            raise UserLookupError("no default workspace found")
         permitted_ids, _ = kessel.client.subjects_with_permission(
             kessel.Workspace(workspace_id).to_ref(),
             'advisor_weekly_report_view'
         )
         return set(permitted_ids)
+    except UserLookupError:
+        raise
     except Exception as e:
-        logger.error("Error checking Kessel permissions for weekly report: %s", e)
-        return None
+        raise UserLookupError(f"Kessel error: {e}") from e
 
 
 def _user_has_permission(username, org_id, account, permitted_user_ids, account_data):
     """
     Check if a user has permission via Kessel (user_id match) or v1/access.
+    Raises UserLookupError if the RBAC v1 check fails rather than
+    denies (e.g. RBAC is unreachable or returns an error status).
     """
     if permitted_user_ids is not None:
         if 'id' not in account_data:
@@ -250,6 +272,10 @@ def _user_has_permission(username, org_id, account, permitted_user_ids, account_
         auth_by=RHIdentityAuthentication, org_id=org_id, username=username
     )
     result, _ = has_rbac_permission(request, WEEKLY_REPORT_RBAC_PERMISSION)
+    if not result and (rbac_message := getattr(request, 'rbac_message', None)):
+        # has_rbac_permission only sets a failure message when it couldn't
+        # get an answer from RBAC; a plain denial leaves it unset.
+        raise UserLookupError(f"RBAC error: {rbac_message}")
     if not result:
         logger.debug(
             "User '%s' in account '%s' org_id '%s' doesn't have permission "
@@ -273,9 +299,10 @@ def get_users_to_email(org_id, account, latest_email_time):
             data['username']: data
             for data in user_account_details(sorted(subscription_for.keys()))
         }
-    except Http404:
-        # Error already logged, go with no account details.
-        account_details_for = {}
+    except ValidationError as e:
+        # Error already logged.  Don't go on with no account details: that
+        # would treat every user in the org as expired.
+        raise UserLookupError(f"middleware account lookup failed: {e.message}") from e
     users_to_email = []
     expired_users = []
 
@@ -293,7 +320,8 @@ def get_users_to_email(org_id, account, latest_email_time):
             expired_users.append(username)
             continue
         if not _user_has_permission(username, org_id, account, permitted_user_ids, account_data):
-            expired_users.append(username)
+            # Skip, but don't treat as expired: the account still exists, and
+            # a denial may be wrong or temporary, so keep the subscription.
             continue
         user_to_email = account_data
         user_to_email['subscription_object'] = subscription_data
@@ -368,9 +396,18 @@ def handle_emails(
 
     client = MiddlewareClient()
     for account_org in account_orgs:
-        (users_to_email, expired_users) = get_users_to_email(
-            account_org['org_id'], account_org['account'], latest_email_time
-        )
+        try:
+            (users_to_email, expired_users) = get_users_to_email(
+                account_org['org_id'], account_org['account'], latest_email_time
+            )
+        except UserLookupError as e:
+            logger.error(
+                "Could not look up weekly report users for account %s "
+                "org_id %s, skipping this org (no emails sent, no "
+                "subscriptions deleted): %s",
+                account_org['account'], account_org['org_id'], e
+            )
+            continue
         if not users_to_email:
             logger.error(
                 f"No users have valid email addresses in account {account_org['account']} org_id {account_org['org_id']}, or we"
