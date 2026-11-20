@@ -460,7 +460,7 @@ class WeeklyReportEmailTest(TestCase):
         self.assertEqual(WeeklyReportSubscription.objects.count(), subscription_count)
         self.assertTrue(any(
             'Could not look up weekly report users' in line
-            and 'org_id 9876543' in line and 'Got status 400 from RBAC' in line
+            and f'org_id {constants.standard_org}' in line and 'Got status 400 from RBAC' in line
             for line in logs.output
         ))
 
@@ -617,7 +617,7 @@ class KesselWeeklyReportTest(TestCase):
                         return_value=True,
                     ):
                         with self.assertRaisesMessage(UserLookupError, 'gRPC down'):
-                            _get_kessel_permitted_user_ids('9876543')
+                            _get_kessel_permitted_user_ids(constants.standard_org)
 
     def test_kessel_no_workspace_raises_lookup_error(self):
         from unittest.mock import patch
@@ -637,7 +637,7 @@ class KesselWeeklyReportTest(TestCase):
                         return_value=True,
                     ):
                         with self.assertRaisesMessage(UserLookupError, 'no default workspace'):
-                            _get_kessel_permitted_user_ids('9876543')
+                            _get_kessel_permitted_user_ids(constants.standard_org)
 
     def test_kessel_client_unavailable_raises_lookup_error(self):
         from unittest.mock import patch
@@ -653,7 +653,7 @@ class KesselWeeklyReportTest(TestCase):
                     return_value=True,
                 ):
                     with self.assertRaisesMessage(UserLookupError, 'not available'):
-                        _get_kessel_permitted_user_ids('9876543')
+                        _get_kessel_permitted_user_ids(constants.standard_org)
 
     @responses.activate
     def test_kessel_error_skips_org_without_deleting(self):
