@@ -447,6 +447,7 @@ class HostAckInputSerializer(serializers.ModelSerializer):
             "context={'request': request}"
         )
         validate_hosts_in_org([data['host_id']], self._context['request'].auth['org_id'])
+        validate_hosts_have_records([data['host_id']])
         return data
 
     class Meta:
@@ -481,21 +482,35 @@ def validate_hosts_in_org(hosts, org_id, field_name='systems'):
     """
     Check that the hosts given exist, and they are in this org.  We need to
     not distinguish between the two to avoid leaking that a host UUID exists.
-    Also check the Host table since HostAck has a FK to Host.
     """
     valid_hosts = set(models.AdvisorInventoryHost.objects.filter(
         org_id=org_id, inventory_id__in=hosts
     ).values_list('inventory_id', flat=True))
-    hosts_with_records = set(models.Host.objects.filter(
-        inventory_id__in=hosts
-    ).values_list('inventory_id', flat=True))
     nonexistent_hosts = {
         str(row): [f"Host with UUID '{str(system_uuid)}' not found"]
         for row, system_uuid in enumerate(hosts)
-        if system_uuid not in valid_hosts or system_uuid not in hosts_with_records
+        if system_uuid not in valid_hosts
     }
     if nonexistent_hosts:
         raise serializers.ValidationError({field_name: nonexistent_hosts})
+
+
+def validate_hosts_have_records(hosts, field_name='systems'):
+    """
+    Check that the hosts have Host records.  HostAck has a FK to Host,
+    so a host can exist in AdvisorInventoryHost (inventory-only) but
+    still cause an IntegrityError when creating a HostAck.
+    """
+    hosts_with_records = set(models.Host.objects.filter(
+        inventory_id__in=hosts
+    ).values_list('inventory_id', flat=True))
+    missing_hosts = {
+        str(row): [f"Host with UUID '{str(system_uuid)}' not found"]
+        for row, system_uuid in enumerate(hosts)
+        if system_uuid not in hosts_with_records
+    }
+    if missing_hosts:
+        raise serializers.ValidationError({field_name: missing_hosts})
 
 
 class MultiHostAckSerializer(serializers.Serializer):
@@ -511,6 +526,7 @@ class MultiHostAckSerializer(serializers.Serializer):
             "context={'request': request}"
         )
         validate_hosts_in_org(data['systems'], self._context['request'].auth['org_id'])
+        validate_hosts_have_records(data['systems'])
         return data
 
 
