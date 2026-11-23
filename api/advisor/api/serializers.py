@@ -481,14 +481,18 @@ def validate_hosts_in_org(hosts, org_id, field_name='systems'):
     """
     Check that the hosts given exist, and they are in this org.  We need to
     not distinguish between the two to avoid leaking that a host UUID exists.
+    Also check the Host table since HostAck has a FK to Host.
     """
     valid_hosts = set(models.AdvisorInventoryHost.objects.filter(
         org_id=org_id, inventory_id__in=hosts
     ).values_list('inventory_id', flat=True))
+    hosts_with_records = set(models.Host.objects.filter(
+        inventory_id__in=hosts
+    ).values_list('inventory_id', flat=True))
     nonexistent_hosts = {
         str(row): [f"Host with UUID '{str(system_uuid)}' not found"]
         for row, system_uuid in enumerate(hosts)
-        if system_uuid not in valid_hosts
+        if system_uuid not in valid_hosts or system_uuid not in hosts_with_records
     }
     if nonexistent_hosts:
         raise serializers.ValidationError({field_name: nonexistent_hosts})

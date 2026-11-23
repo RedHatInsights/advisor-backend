@@ -1835,6 +1835,36 @@ class RuleTestCase(TestCase):
             '{"systems":{"0":["Must be a valid UUID."]}}'
         )
 
+    def test_rule_ack_hosts_inventory_only_host(self):
+        """Bulk-acking a host in AdvisorInventoryHost but not in Host must 400."""
+        from datetime import timedelta, datetime
+        from api.models import AdvisorInventoryHost, HostAck
+        inventory_only_uuid = '00112233-4455-6677-8899-0123456789ff'
+        now = datetime.now()
+        AdvisorInventoryHost.objects.create(
+            inventory_id=inventory_only_uuid,
+            org_id=constants.standard_org,
+            account=constants.standard_acct,
+            display_name='inventory-only.example.com',
+            tags=[],
+            updated=now,
+            created=now,
+            last_check_in=now,
+            stale_timestamp=now + timedelta(days=1),
+            insights_id='aabbccdd-1122-3344-5566-7788990011ff',
+        )
+        response = self.client.post(
+            reverse('rule-ack-hosts', kwargs={'rule_id': constants.active_rule}),
+            data={
+                'systems': [inventory_only_uuid],
+                'justification': 'inventory-only host',
+            },
+            **self.default_header,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('systems', response.json())
+        self.assertFalse(HostAck.objects.filter(host_id=inventory_only_uuid).exists())
+
     def test_rule_component_pathway_counts(self):
         pathways = {'test-component-1': 2, 'test-component-2': 0}
         for pathway, count in pathways.items():
