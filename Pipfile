@@ -60,6 +60,7 @@ pyasn1 = "==0.6.5"
 certifi = ">=2026.10.19"
 urllib3 = ">=2.8.0"
 sqlparse = ">=0.6.1"
+maturin = "==1.16.0"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"
