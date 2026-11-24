@@ -60,6 +60,7 @@ certifi = ">=2026.10.19"
 sqlparse = "==0.6.1"
 pyasn1 = "==0.6.5"
 confluent-kafka = "==2.16.0"
+maturin = "==1.16.0"
 
 [scripts]
 migratedb = "api/advisor/manage.py migrate"
