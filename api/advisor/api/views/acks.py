@@ -52,6 +52,7 @@ class RedHatAllAcksPermission(IsRedHatInternalUser):
         Display the list of rules that have been disabled or acknowledged in
         this account, along with who disabled them and their justification.
         """,
+        tags=['foreman'],
     )
 )
 @method_decorator(
@@ -62,6 +63,7 @@ class RedHatAllAcksPermission(IsRedHatInternalUser):
         Display who disabled a rule in this account, when, and their
         justification for disabling it.
         """,
+        tags=['foreman'],
     )
 )
 class AckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
@@ -119,6 +121,7 @@ class AckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         request=AckInputSerializer,
         responses={200: AckSerializer(many=False)},
+        tags=['foreman'],
     )
     def create(self, request, format=None):
         """
@@ -149,6 +152,7 @@ class AckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         request=AckJustificationSerializer,
         responses={200: AckSerializer(many=False)},
+        tags=['foreman'],
     )
     def update(self, request, rule_id, format=None):
         """
@@ -173,6 +177,7 @@ class AckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         responses={204: str},
+        tags=['foreman'],
     )
     def destroy(self, request, rule_id, format=None):
         """

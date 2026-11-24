@@ -357,6 +357,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             filter_system_profile_ansible_query_param,
             host_group_name_query_param, update_method_query_param,
         ],
+        tags=['foreman'],
     )
     def list(self, request, format=None):
         """
@@ -412,6 +413,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[host_tags_query_param, host_group_name_query_param],
+        tags=['foreman'],
     )
     def retrieve(self, request, rule_id, format=None):
         """
@@ -429,6 +431,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     @extend_schema(
         request=MultiHostAckSerializer(many=False),
         responses={200: MultiAckResponseSerializer(many=False)},
+        tags=['foreman'],
     )
     @action(detail=True, methods=['post'])
     def ack_hosts(self, request, rule_id, format=None):
@@ -583,6 +586,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             system_type_query_param,
         ],
         responses={200: SystemsForRuleSerializer(many=False)},
+        tags=['foreman'],
     )
     @action(detail=True, renderer_classes=(JSONRenderer, SystemsForRuleCSVRenderer, ))
     def systems(self, request, rule_id, format=None):
@@ -634,6 +638,7 @@ class RuleViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             system_type_query_param,
         ],
         responses={200: SystemsDetailSerializer(many=True)},
+        tags=['foreman'],
         # should_page=True,  # How do we support this now?
     )
     @action(detail=True)

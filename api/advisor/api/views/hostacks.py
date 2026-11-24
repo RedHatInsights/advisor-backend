@@ -65,8 +65,10 @@ class RedHatAllAcksPermission(IsRedHatInternalUser):
         Display who disabled a rule on a system, when, and their justification
         for disabling it.  Host acks are selected by their ID number.
         """,
+        tags=['foreman'],
     )
 )
+@extend_schema(tags=['foreman'])
 class HostAckViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
     """
     HostAcks acknowledge (and therefore hide) a rule from view in an account
