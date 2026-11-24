@@ -127,19 +127,44 @@ advisor_api_settings = {
 }
 
 
-def make_spectacular_view(view_class):
+def filter_by_tags(allowed_tags):
+    """
+    Return a postprocessing hook that removes any path operations whose tags
+    don't intersect with *allowed_tags*.  Paths left with no operations are
+    dropped entirely.
+    """
+    allowed = set(allowed_tags)
+
+    def _hook(result, generator, request, public):
+        filtered_paths = {}
+        for path, methods in result.get('paths', {}).items():
+            filtered_methods = {
+                method: op for method, op in methods.items()
+                if set(op.get('tags', [])) & allowed
+            }
+            if filtered_methods:
+                filtered_paths[path] = filtered_methods
+        result['paths'] = filtered_paths
+        return result
+    return _hook
+
+
+def make_spectacular_view(view_class, custom_settings=None):
     """
     drf-spectacular makes up a new request object for every view it tests
     permissions on (for reasons I don't yet comprehend).  So we'd like to
     cache the permission response we got from RBAC while we generate the
     schema, and then go back to not caching it.
     """
+    if custom_settings is None:
+        custom_settings = advisor_api_settings
+
     # In order to base this in a different view class, we generate a different
     # function based on that class argument.
     def spectacular_view(*args, **kwargs):
         permissions.rbac_perm_cache = dict()
         rtn = view_class.as_view(
-            custom_settings=advisor_api_settings,
+            custom_settings=custom_settings,
             authentication_classes=[],
             permission_classes=[AllowAny],
         )(*args, **kwargs)
@@ -153,4 +178,31 @@ spectacular_json_view = make_spectacular_view(SpectacularJSONAPIView)
 
 spectacular_ui_view = SpectacularSwaggerView.as_view(
     url_name='advisor-openapi-spec'
+)
+
+
+# --- Foreman API docs (tag-filtered subset) ---
+
+FOREMAN_TAG = 'foreman'
+
+filter_foreman_tags = filter_by_tags([FOREMAN_TAG])
+
+foreman_api_settings = {
+    'TITLE': 'Insights Advisor Foreman API',
+    'DESCRIPTION': 'Advisor API endpoints available in Foreman',
+    'PREPROCESSING_HOOKS': ['api.views.swagger.filter_advisor_api_paths'],
+    'POSTPROCESSING_HOOKS': [
+        'api.views.swagger.sanitise_regex_patterns',
+        'api.views.swagger.filter_foreman_tags',
+    ],
+}
+
+foreman_spectacular_view = make_spectacular_view(
+    SpectacularAPIView, custom_settings=foreman_api_settings,
+)
+foreman_spectacular_json_view = make_spectacular_view(
+    SpectacularJSONAPIView, custom_settings=foreman_api_settings,
+)
+foreman_spectacular_ui_view = SpectacularSwaggerView.as_view(
+    url_name='foreman-openapi-spec'
 )

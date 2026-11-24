@@ -101,6 +101,7 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             has_disabled_recommendation_query_param,
             system_type_query_param,
         ],
+        tags=['foreman'],
     )
     def list(self, request, format=None):
         """
@@ -125,7 +126,8 @@ class SystemViewSet(PaginateMixin, viewsets.ReadOnlyModelViewSet):
             filter_system_profile_ansible_query_param,
             system_type_query_param,
         ],
-        responses={200: ReportSerializer(many=True)}
+        responses={200: ReportSerializer(many=True)},
+        tags=['foreman'],
     )
     @action(detail=True, pagination_class=None)
     # @set_resource(scope=ResourceScope.HOST)  - needed for Kessel?

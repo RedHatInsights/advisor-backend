@@ -144,6 +144,7 @@ class StatsViewSet(viewsets.ViewSet):
     @extend_schema(
         responses={200: OverviewStatsSerializer},
         parameters=standard_parameters,
+        tags=['foreman'],
     )
     def overview(self, request, format=None):
         """
