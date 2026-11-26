@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi10/ubi-minimal:latest
 
 ENV LC_ALL=C.utf8
 ENV LANG=C.utf8
@@ -6,22 +6,18 @@ ENV HOME=/opt/app-root/src
 WORKDIR $HOME
 
 USER root
-ADD https://copr.fedorainfracloud.org/coprs/g/insights/postgresql-16/repo/epel-9/group_insights-postgresql-16-epel-9.repo group_insights-postgresql-16-epel-9.repo
 # Install & upgrade RHEL packages
-RUN (microdnf module enable -y postgresql:16 || \
-    cp group_insights-postgresql-16-epel-9.repo /etc/yum.repos.d/postgresql.repo \
-    ) && \
-    microdnf -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install \
-    python3.12 postgresql git-core && \
+# RHEL 10/UBI 10 ships Python 3.12 and PostgreSQL 16 in AppStream directly, so
+# no module stream and no COPR repository are needed any more.
+RUN microdnf -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install \
+    python3 postgresql git-core && \
     microdnf -y upgrade && \
     microdnf clean all && \
     rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
 
-# alias pip and python for compatibility
-RUN alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.12 1 && \
-    alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 && \
-    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    alternatives --install /usr/bin/python python /usr/bin/python3 1
+# alias python for compatibility - python3, pip and pip3 already exist unversioned
+# in UBI 10, but `python` does not and is needed by cgroup-limits' shebang
+RUN alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # Needed because $HOME isn't owned by user 1001
 RUN chown 1001 $HOME && install -o 1001 -d $HOME/.cache
@@ -30,14 +26,14 @@ RUN chown 1001 $HOME && install -o 1001 -d $HOME/.cache
 COPY Pipfile Pipfile.lock ./
 # Install build tools for psycopg2, then remove them and dependencies after
 # in one step so the FS layer has minimal changes
-RUN microdnf -y install python3.12-pip python3.12-devel gcc libpq-devel && \
+RUN microdnf -y install python3-pip python3-devel gcc libpq-devel && \
     pip3 -q install pipenv 'virtualenv>=21.15.1' && \
     PIP_IGNORE_INSTALLED=1 pipenv install && \
-    microdnf remove -y python3.12-devel gcc libpq-devel \
+    microdnf remove -y python3-devel gcc libpq-devel openssl-devel \
     binutils binutils-gold cpp \
     elfutils-debuginfod-client elfutils-default-yama-scope elfutils-libelf \
     elfutils-libs libxcrypt-devel glibc-devel make libgomp libmpc \
-    libpkgconf pkgconf pkgconf-pkg-config \
+    libpkgconf pkgconf pkgconf-m4 pkgconf-pkg-config \
     glibc-headers kernel-headers && \
     chown -R 1001 .cache .local
 # The unit tests need to install --dev packages, which needs to write to
