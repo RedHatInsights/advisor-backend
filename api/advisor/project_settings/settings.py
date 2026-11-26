@@ -440,7 +440,7 @@ SPECTACULAR_SETTINGS['SERVERS'] = [
     {'url': url, 'description': SPECTACULAR_SETTINGS['DESCRIPTION']}
     for url in (
         ['http://localhost:8000/'] if DEBUG else [
-            'https://console.redhat.com/',
+            os.getenv('OPENAPI_SETTINGS_SERVERS', 'https://console.redhat.com/')
         ]
     )
 ]
