@@ -467,6 +467,7 @@ These are the actual topics read and written to when we use Kafka
 - `STATIC_URL` - Default: `/apps/insights/`
 - `STATIC_ROOT` - Default: `/tmp/static`
 - `ENABLE_AUTOSUB` - Default: `false`
+- `OPENAPI_SETTINGS_SERVERS` - Default: `https://console.redhat.com/`
 
 # Notes
 
